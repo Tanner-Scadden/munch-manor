@@ -1,6 +1,6 @@
 import { Array, Function, Option } from 'effect'
-import type { Canvas } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import type { Model } from '../../app/model'
 import { textShapes, textWidth } from '../../art/font'
@@ -12,6 +12,7 @@ import {
 import { placeAt, spriteShapes } from '../../art/sprite'
 import { ZOMBIE_SPRITES } from '../../art/sprites/zombies'
 import type { DeathTip } from '../../domain/clientSchema'
+import type * as Draw from '../../render/draw'
 import { isObjectSecond } from '../../shared/dualArgs'
 import type { Difficulty } from '../../shared/playerData'
 import { pickLine } from '../../shared/prng'
@@ -64,8 +65,8 @@ export const noteDeathTip: {
     !isMunched(before) && isMunched(after)
       ? Option.match(tipKindOf(after, played), {
           onNone: () =>
-            modifyFields(after, {
-              endCard: modifyFields({ maybeDeathTip: Option.none }),
+            UiStruct.evolve(after, {
+              endCard: UiStruct.evolve({ maybeDeathTip: Option.none }),
             }),
           onSome: kind => {
             const [state, line] = pickLine(
@@ -74,9 +75,11 @@ export const noteDeathTip: {
               lastLineOf(after),
             )
             const tip: DeathTip = { kind, line }
-            return modifyFields(after, {
-              endCard: modifyFields({ maybeDeathTip: () => Option.some(tip) }),
-              cosmetics: modifyFields({ cosmeticRngState: () => state }),
+            return UiStruct.evolve(after, {
+              endCard: UiStruct.evolve({
+                maybeDeathTip: () => Option.some(tip),
+              }),
+              cosmetics: UiStruct.evolve({ cosmeticRngState: () => state }),
             })
           },
         })
@@ -98,11 +101,11 @@ const RATTLES_HEAD = spriteShapes(
 // NOTE: the tip on the line over the tally, centered on `centerX` at the
 // text's top `y`: Rattles, the line, then the zombie it is about.
 export const deathTipShapes: {
-  (centerX: number, y: number): (tip: DeathTip) => ReadonlyArray<Canvas.Shape>
-  (tip: DeathTip, centerX: number, y: number): ReadonlyArray<Canvas.Shape>
+  (centerX: number, y: number): (tip: DeathTip) => ReadonlyArray<Draw.Shape>
+  (tip: DeathTip, centerX: number, y: number): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   3,
-  (tip: DeathTip, centerX: number, y: number): ReadonlyArray<Canvas.Shape> => {
+  (tip: DeathTip, centerX: number, y: number): ReadonlyArray<Draw.Shape> => {
     const width = HEAD_PX + GAP_PX + textWidth(tip.line) + GAP_PX + ICON_PX
     const left = Math.round(centerX - width / 2)
     const textLeft = left + HEAD_PX + GAP_PX

@@ -1,5 +1,4 @@
 import { Array } from 'effect'
-import type { Canvas } from 'foldkit'
 
 import type { Model } from '../../app/model'
 import {
@@ -11,6 +10,7 @@ import {
 } from '../../art/caseArt'
 import { placeAt } from '../../art/sprite'
 import type { Drawable } from '../../render/depth'
+import type * as Draw from '../../render/draw'
 import { GLINT } from '../../render/drawing'
 import { featLockShapes, lockSpotIn } from '../../render/featLockView'
 import {
@@ -38,7 +38,7 @@ const GLINT_ON_MS = 180
 const caseShapes = (
   model: Model,
   displayCase: DisplayCase,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const level = levelOf(model)
   const foot = caseFootOf(level, displayCase)
   const art = CASE_ART[caseLookOf(level, displayCase)]

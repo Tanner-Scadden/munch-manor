@@ -1,5 +1,6 @@
 import { Schema } from 'effect'
-import { defineMessageUnion } from 'foldkit/message'
+
+import { UiSchema } from '@effect/ui'
 
 import { GunSlot } from '../world/schema/worldSchema'
 import { PadDirection } from './gamepad'
@@ -55,17 +56,17 @@ export const inputCases = {
   CompletedDetectInputDevice: { touchControls: TouchControls },
   PolledGamepad: Gamepad.fields,
   DisconnectedGamepad: { index: Schema.Finite },
-  CompletedRumble: {},
   RepeatedPadDirection: { direction: PadDirection },
   ClickedPadFocus: { scope: PadScope, outcome: PadClick },
-  CompletedPadMenu: {},
 }
-export const InputMessage = defineMessageUnion(inputCases)
+export const InputMessage = UiSchema.TaggedEnum(inputCases)
 
-export type PressedHudSlot = typeof InputMessage.PressedHudSlot.Type
-export type PolledGamepad = typeof InputMessage.PolledGamepad.Type
-export type DisconnectedGamepad = typeof InputMessage.DisconnectedGamepad.Type
-export type RepeatedPadDirection = typeof InputMessage.RepeatedPadDirection.Type
+export type PressedHudSlot = typeof InputMessage.cases.PressedHudSlot.Type
+export type PolledGamepad = typeof InputMessage.cases.PolledGamepad.Type
+export type DisconnectedGamepad =
+  typeof InputMessage.cases.DisconnectedGamepad.Type
+export type RepeatedPadDirection =
+  typeof InputMessage.cases.RepeatedPadDirection.Type
 
 // NOTE: the run's buttons: the touch HUD's slots, reload, MEDIC, traps,
 // READY, the hold-to-buy button, and pause. Each goes to
@@ -84,5 +85,5 @@ export const runButtonCases = {
   ClickedNextTrapButton: {},
   ClickedDareList: {},
 }
-export const RunButtonMessage = defineMessageUnion(runButtonCases)
+export const RunButtonMessage = UiSchema.TaggedEnum(runButtonCases)
 export type RunButtonMessage = typeof RunButtonMessage.Type

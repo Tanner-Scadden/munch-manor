@@ -1,6 +1,6 @@
-import { Scene } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
+import { Effect } from 'effect'
 
+import { UiStruct } from '@effect/ui'
 import { describe, it } from '@effect/vitest'
 
 import { Life, type Model } from '../../../app/model'
@@ -10,7 +10,8 @@ import {
   placeSeat,
   withSeatLife,
 } from '../../../test/model.fixture'
-import { APPLICATION, measureSurface } from '../../../test/testing'
+import { byClass, expectAttr, measureHud } from '../../../test/sceneTesting'
+import { sceneOf } from '../../../test/testing'
 import { MEDIC_RULES } from '../medic'
 import { COOP_RULES } from '../party'
 
@@ -18,10 +19,10 @@ import { COOP_RULES } from '../party'
 // for your own downed player, and only then. A tap shouts, and the button
 // glows while the shout rings.
 
-const medicButton = Scene.selector('.medic-button')
+const medicButton = byClass('medic-button')
 
 const onTouch = (base: Model): Model =>
-  modifyFields(base, { lastDevice: () => 'Touch' })
+  UiStruct.evolve(base, { lastDevice: () => 'Touch' })
 
 const fighting = pipeline(
   placeSeat(0, 60, 104),
@@ -39,9 +40,8 @@ describe('the MEDIC button', () => {
   it.effect(
     'is not there while you stand, nor for a teammate who is down',
     () =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(
+      Effect.gen(function* () {
+        const s = yield* sceneOf(
           withSeatLife(
             1,
             Life.Downed({
@@ -50,22 +50,20 @@ describe('the MEDIC button', () => {
               callMs: 0,
             }),
           )(fighting),
-        ),
-        measureSurface,
-        Scene.expect(medicButton).toBeAbsent(),
-      ),
+        )
+        s.pipe(measureHud).expect(medicButton).toBeAbsent()
+      }),
   )
 
   it.effect('shows while you are down, and a tap shouts MEDIC!', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(downedLead(MEDIC_RULES.cooldownMs)),
-      measureSurface,
-      Scene.expect(medicButton).toExist(),
-      Scene.expect(medicButton).toHaveAttr('aria-label', 'MEDIC!'),
-      Scene.expect(medicButton).toHaveAttr('data-fresh', 'false'),
-      Scene.click(medicButton),
-      Scene.expect(medicButton).toHaveAttr('data-fresh', 'true'),
-    ),
+    Effect.gen(function* () {
+      const s = yield* sceneOf(downedLead(MEDIC_RULES.cooldownMs))
+      s.pipe(measureHud).expect(medicButton).toExist()
+      s.pipe(
+        expectAttr(medicButton, 'aria-label', 'MEDIC!'),
+        expectAttr(medicButton, 'data-fresh', 'false'),
+      ).click(medicButton)
+      s.pipe(expectAttr(medicButton, 'data-fresh', 'true'))
+    }),
   )
 })

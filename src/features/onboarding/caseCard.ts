@@ -1,5 +1,6 @@
 import { Array, Function, Option, pipe } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import type { Model } from '../../app/model'
 import { CaseCard, PocketCard, QuestTour } from '../../domain/clientSchema'
@@ -75,10 +76,10 @@ export const isCaseCardBlocking = (model: Model): boolean =>
   !isCoop(model)
 
 const finishCaseCard = (model: Model): Model =>
-  modifyFields(model, {
+  UiStruct.evolve(model, {
     caseCard: () => CaseCard.Hidden(),
     lessons: lessons =>
-      modifyFields(lessons, {
+      UiStruct.evolve(lessons, {
         displayCase: lesson => learn(lesson, model.elapsedMs),
       }),
   })
@@ -93,7 +94,7 @@ export const advanceCaseCard = (model: Model): Model =>
         ? Option.match(maybeCaseNear(model), {
             onNone: () => model,
             onSome: ({ id }) =>
-              modifyFields(model, {
+              UiStruct.evolve(model, {
                 caseCard: () => CaseCard.Showing({ caseId: id, ageMs: 0 }),
               }),
           })
@@ -113,7 +114,7 @@ export const ageCaseCard: {
     Showing: ({ caseId, ageMs }) =>
       ageMs + deltaMs >= CASE_CARD_MS
         ? finishCaseCard(model)
-        : modifyFields(model, {
+        : UiStruct.evolve(model, {
             caseCard: () =>
               CaseCard.Showing({ caseId, ageMs: ageMs + deltaMs }),
           }),

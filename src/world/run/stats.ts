@@ -1,5 +1,6 @@
 import { Array, Function, Option, String, pipe } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import { MS_PER_SECOND, SCORE_PER_ZOMBIE } from '../../shared/constants'
 import { focusOf } from '../party/party'
@@ -14,7 +15,7 @@ import {
 // TALLY
 
 const addKill = (kills: KillCounts, kind: ZombieKind): KillCounts =>
-  modifyFields(kills, {
+  UiStruct.evolve(kills, {
     Shambler: count => (kind === 'Shambler' ? count + 1 : count),
     Runner: count => (kind === 'Runner' ? count + 1 : count),
     Tank: count => (kind === 'Tank' ? count + 1 : count),
@@ -57,7 +58,7 @@ export const tallyFrame: {
   <M extends World>(before: World, after: M, deltaMs: number): M =>
     modifyWorldFields(after, {
       stats: stats =>
-        modifyFields(stats, {
+        UiStruct.evolve(stats, {
           kills: kills =>
             Array.reduce(killedKinds(after.frameEvents), kills, addKill),
           wavesCleared: count => count + clearedWaves(after.frameEvents),
@@ -78,18 +79,18 @@ export const countShots: {
   (shots: number): (stats: RunStats) => RunStats
   (stats: RunStats, shots: number): RunStats
 } = Function.dual(2, (stats: RunStats, shots: number): RunStats =>
-  modifyFields(stats, { shotsFired: fired => fired + shots }),
+  UiStruct.evolve(stats, { shotsFired: fired => fired + shots }),
 )
 
 export const countHits: {
   (hits: number): (stats: RunStats) => RunStats
   (stats: RunStats, hits: number): RunStats
 } = Function.dual(2, (stats: RunStats, hits: number): RunStats =>
-  modifyFields(stats, { shotsHit: hit => hit + hits }),
+  UiStruct.evolve(stats, { shotsHit: hit => hit + hits }),
 )
 
 export const countTrapPlaced = (stats: RunStats): RunStats =>
-  modifyFields(stats, { trapsPlaced: placed => placed + 1 })
+  UiStruct.evolve(stats, { trapsPlaced: placed => placed + 1 })
 
 // READING
 

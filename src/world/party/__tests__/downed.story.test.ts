@@ -1,11 +1,11 @@
 import { Array, Effect, Option } from 'effect'
-import { type Canvas, Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
 import { sceneShapes } from '../../../app/layers'
 import { Life, type Model, Reload } from '../../../app/model'
+import type * as Draw from '../../../render/draw'
 import { QUARTER_TURN } from '../../../render/drawing'
 import { healthBarShapes } from '../../../render/healthBarView'
 import {
@@ -21,7 +21,13 @@ import {
   placeSeat,
   withSeatLife,
 } from '../../../test/model.fixture'
-import { APPLICATION, jsonOf, ticks } from '../../../test/testing'
+import {
+  checkModel,
+  jsonOf,
+  modelAfter,
+  steps,
+  ticks,
+} from '../../../test/testing'
 import { MEDIC_RULES } from '../medic'
 import { COOP_RULES, focusOf, maybePlayerAt, modifyFocus } from '../party'
 
@@ -36,23 +42,23 @@ const RIGHT_X = 240
 const ROW_Y = 104
 
 const allShapes = (
-  shapes: ReadonlyArray<Canvas.Shape>,
-): ReadonlyArray<Canvas.Shape> =>
+  shapes: ReadonlyArray<Draw.Shape>,
+): ReadonlyArray<Draw.Shape> =>
   Array.flatMap(shapes, shape =>
     shape._tag === 'Group' ? [shape, ...allShapes(shape.shapes)] : [shape],
   )
 
 // NOTE: a lying body is the only group turned a quarter in a fight.
-const lyingBodies = (current: Model): ReadonlyArray<Canvas.Group> =>
+const lyingBodies = (current: Model): ReadonlyArray<Draw.Group> =>
   Array.filter(
     allShapes(sceneShapes(current)),
-    (shape): shape is Canvas.Group =>
+    (shape): shape is Draw.Group =>
       shape._tag === 'Group' &&
       shape.rotate !== undefined &&
       Math.abs(Math.abs(shape.rotate) - QUARTER_TURN) < 1e-9,
   )
 
-const isDrawn = (current: Model, wanted: Canvas.Shape): boolean => {
+const isDrawn = (current: Model, wanted: Draw.Shape): boolean => {
   const json = jsonOf(wanted)
   return Array.some(
     allShapes(sceneShapes(current)),
@@ -60,7 +66,7 @@ const isDrawn = (current: Model, wanted: Canvas.Shape): boolean => {
   )
 }
 
-const isImage = (shape: Canvas.Shape): shape is Canvas.Image =>
+const isImage = (shape: Draw.Shape): shape is Draw.Image =>
   shape._tag === 'Image'
 
 // NOTE: a full bleed bar is one baked image; another bar's image differs.
@@ -96,14 +102,15 @@ describe('a downed teammate', () => {
   it.effect(
     'lies on the floor with a bleed bar, while the standing player stands',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(apart),
-        ...ticks(1, TICK_MS),
-        Story.model(current => {
-          expect(lyingBodies(current)).toHaveLength(1)
-          expect(hasBleedBar(current)).toBe(true)
-        }),
+      modelAfter(
+        apart,
+        steps(
+          ticks(1, TICK_MS),
+          checkModel(current => {
+            expect(lyingBodies(current)).toHaveLength(1)
+            expect(hasBleedBar(current)).toBe(true)
+          }),
+        ),
       ),
   )
 
@@ -113,71 +120,73 @@ describe('a downed teammate', () => {
       Effect.gen(function* () {
         const beside = placeSeat(0, RIGHT_X - 8, ROW_Y)(apart)
         const half = Math.floor(COOP_RULES.reviveMs / TICK_MS / 2)
-        yield* Story.story(
-          APPLICATION,
-          Story.given(apart),
-          ...ticks(1, TICK_MS),
-          Story.model(current => {
-            const rings = reviveRingGroundShapes(current)
-            expect(rings).toHaveLength(1)
-            Array.forEach(rings, ring => {
-              expect(ring._tag === 'Group' && ring.opacity).toBeLessThan(1)
-              expect(isDrawn(current, ring)).toBe(true)
-            })
-          }),
+        yield* modelAfter(
+          apart,
+          steps(
+            ticks(1, TICK_MS),
+            checkModel(current => {
+              const rings = reviveRingGroundShapes(current)
+              expect(rings).toHaveLength(1)
+              Array.forEach(rings, ring => {
+                expect(ring._tag === 'Group' && ring.opacity).toBeLessThan(1)
+                expect(isDrawn(current, ring)).toBe(true)
+              })
+            }),
+          ),
         )
-        yield* Story.story(
-          APPLICATION,
-          Story.given(beside),
-          ...ticks(half, TICK_MS),
-          Story.model(current => {
-            const rings = reviveRingGroundShapes(current)
-            expect(rings).toHaveLength(1)
-            Array.forEach(rings, ring => {
-              expect(ring._tag === 'Group' && ring.opacity).toBe(1)
-              expect(isDrawn(current, ring)).toBe(true)
-            })
-            expect(rings).not.toEqual(reviveRingGroundShapes(apart))
-          }),
+        yield* modelAfter(
+          beside,
+          steps(
+            ticks(half, TICK_MS),
+            checkModel(current => {
+              const rings = reviveRingGroundShapes(current)
+              expect(rings).toHaveLength(1)
+              Array.forEach(rings, ring => {
+                expect(ring._tag === 'Group' && ring.opacity).toBe(1)
+                expect(isDrawn(current, ring)).toBe(true)
+              })
+              expect(rings).not.toEqual(reviveRingGroundShapes(apart))
+            }),
+          ),
         )
       }),
   )
 
   it.effect('stands up again once revived, with no ring left', () => {
     const beside = placeSeat(0, RIGHT_X - 8, ROW_Y)(apart)
-    return Story.story(
-      APPLICATION,
-      Story.given(beside),
-      ...ticks(Math.ceil(COOP_RULES.reviveMs / TICK_MS) + 1, TICK_MS),
-      Story.model(current => {
-        expect(lyingBodies(current)).toHaveLength(0)
-        expect(reviveRingGroundShapes(current)).toHaveLength(0)
-      }),
+    return modelAfter(
+      beside,
+      steps(
+        ticks(Math.ceil(COOP_RULES.reviveMs / TICK_MS) + 1, TICK_MS),
+        checkModel(current => {
+          expect(lyingBodies(current)).toHaveLength(0)
+          expect(reviveRingGroundShapes(current)).toHaveLength(0)
+        }),
+      ),
     )
   })
 })
 
 describe('a bled-out teammate', () => {
   it.effect('stays a faded body on the floor, with no bars', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        pipeline(
-          placeSeat(0, LEFT_X, ROW_Y),
-          placeSeat(1, RIGHT_X, ROW_Y, 0),
-          withSeatLife(1, Life.BledOut()),
-        )(crewInWave(2)),
+    modelAfter(
+      pipeline(
+        placeSeat(0, LEFT_X, ROW_Y),
+        placeSeat(1, RIGHT_X, ROW_Y, 0),
+        withSeatLife(1, Life.BledOut()),
+      )(crewInWave(2)),
+      steps(
+        ticks(1, TICK_MS),
+        checkModel(current => {
+          const bodies = lyingBodies(current)
+          expect(bodies).toHaveLength(1)
+          Array.forEach(bodies, body => {
+            expect(body.opacity).toBeLessThan(1)
+          })
+          expect(hasBleedBar(current)).toBe(false)
+          expect(reviveRingGroundShapes(current)).toHaveLength(0)
+        }),
       ),
-      ...ticks(1, TICK_MS),
-      Story.model(current => {
-        const bodies = lyingBodies(current)
-        expect(bodies).toHaveLength(1)
-        Array.forEach(bodies, body => {
-          expect(body.opacity).toBeLessThan(1)
-        })
-        expect(hasBleedBar(current)).toBe(false)
-        expect(reviveRingGroundShapes(current)).toHaveLength(0)
-      }),
     ),
   )
 })
@@ -187,7 +196,7 @@ describe('your own downed player', () => {
     atSeat(current, 0, world =>
       modifyFocus(world, {
         player: player =>
-          modifyFields(player, {
+          UiStruct.evolve(player, {
             reload: () =>
               Reload.Reloading({ remainingMs: 500, durationMs: 1000 }),
           }),
@@ -195,25 +204,24 @@ describe('your own downed player', () => {
     )
 
   it.effect('lies down too, with no gun up and no reload bar', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        pipeline(
-          placeSeat(0, LEFT_X, ROW_Y, 0),
-          placeSeat(1, RIGHT_X, ROW_Y),
-          downedAt(0),
-          reloading,
-        )(crewInWave(2)),
+    modelAfter(
+      pipeline(
+        placeSeat(0, LEFT_X, ROW_Y, 0),
+        placeSeat(1, RIGHT_X, ROW_Y),
+        downedAt(0),
+        reloading,
+      )(crewInWave(2)),
+      steps(
+        ticks(1, TICK_MS),
+        checkModel(current => {
+          expect(lyingBodies(current)).toHaveLength(1)
+          expect(
+            Array.some(reloadBarShapes(focusOf(current).player), bar =>
+              isDrawn(current, bar),
+            ),
+          ).toBe(false)
+        }),
       ),
-      ...ticks(1, TICK_MS),
-      Story.model(current => {
-        expect(lyingBodies(current)).toHaveLength(1)
-        expect(
-          Array.some(reloadBarShapes(focusOf(current).player), bar =>
-            isDrawn(current, bar),
-          ),
-        ).toBe(false)
-      }),
     ),
   )
 })
@@ -225,7 +233,7 @@ describe('the MEDIC bubble', () => {
       Life.Downed({ bleedMs: COOP_RULES.bleedOutMs, reviveMs: 0, callMs }),
     )
 
-  const bubbleOf = (current: Model, slot: number): Canvas.Shape => {
+  const bubbleOf = (current: Model, slot: number): Draw.Shape => {
     const { player, seat } = Option.getOrThrow(maybePlayerAt(current, slot))
     return medicBubbleShape(
       player.x,
@@ -237,43 +245,41 @@ describe('the MEDIC bubble', () => {
   it.effect(
     'pops over a teammate who just shouted, and over your own body',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(
-          pipeline(
-            placeSeat(0, LEFT_X, ROW_Y, 0),
-            placeSeat(1, RIGHT_X, ROW_Y, 0),
-            calledAt(0, 0),
-            calledAt(1, 0),
-          )(crewInWave(3)),
+      modelAfter(
+        pipeline(
+          placeSeat(0, LEFT_X, ROW_Y, 0),
+          placeSeat(1, RIGHT_X, ROW_Y, 0),
+          calledAt(0, 0),
+          calledAt(1, 0),
+        )(crewInWave(3)),
+        steps(
+          ticks(1, TICK_MS),
+          checkModel(current => {
+            expect(isDrawn(current, bubbleOf(current, 0))).toBe(true)
+            expect(isDrawn(current, bubbleOf(current, 1))).toBe(true)
+          }),
         ),
-        ...ticks(1, TICK_MS),
-        Story.model(current => {
-          expect(isDrawn(current, bubbleOf(current, 0))).toBe(true)
-          expect(isDrawn(current, bubbleOf(current, 1))).toBe(true)
-        }),
       ),
   )
 
   it.effect(
     'is gone once the shout is old, and never over a standing player',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(
-          pipeline(
-            placeSeat(0, LEFT_X, ROW_Y),
-            placeSeat(1, RIGHT_X, ROW_Y, 0),
-            calledAt(1, MEDIC_RULES.freshMs),
-          )(crewInWave(2)),
+      modelAfter(
+        pipeline(
+          placeSeat(0, LEFT_X, ROW_Y),
+          placeSeat(1, RIGHT_X, ROW_Y, 0),
+          calledAt(1, MEDIC_RULES.freshMs),
+        )(crewInWave(2)),
+        steps(
+          ticks(1, TICK_MS),
+          checkModel(current => {
+            expect(isDrawn(current, bubbleOf(current, 1))).toBe(false)
+            expect(isDrawn(current, medicBubbleShape(LEFT_X, ROW_Y, 0))).toBe(
+              false,
+            )
+          }),
         ),
-        ...ticks(1, TICK_MS),
-        Story.model(current => {
-          expect(isDrawn(current, bubbleOf(current, 1))).toBe(false)
-          expect(isDrawn(current, medicBubbleShape(LEFT_X, ROW_Y, 0))).toBe(
-            false,
-          )
-        }),
       ),
   )
 })

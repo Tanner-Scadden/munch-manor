@@ -1,11 +1,8 @@
 import { Effect, Function, Option, Queue, Stream } from 'effect'
 
-import { copyToClipboard, readClipboard } from '../../platform/clipboard'
-import { ProfileBlock } from './block'
-import { Message } from './message'
+import { Mount } from '@effect/ui'
 
-type SucceededCopyLinkCode = typeof Message.SucceededCopyLinkCode.Type
-type SucceededReadClipboard = typeof Message.SucceededReadClipboard.Type
+import { copyToClipboard, readClipboard } from '../../platform/clipboard'
 
 // NOTE: the link code button carries its code here, read at the tap.
 export const LINK_CODE_DATA = 'link-code'
@@ -85,47 +82,38 @@ export const listenForPasteTaps: {
   },
 )
 
-export const CopyLinkCodeOnClick = ProfileBlock.makeMountStream(
+// NOTE: a value for each copy the link code button makes, for as long as
+// the button is drawn; the listener goes with the Mount's Scope.
+export const CopyLinkCodeOnClick = Mount.makeStream(
   'CopyLinkCodeOnClick',
-  {
-    messages: [Message.SucceededCopyLinkCode],
-    handler: function* () {
-      return ({ element }) =>
-        Stream.callback<SucceededCopyLinkCode>(queue =>
-          Effect.acquireRelease(
-            Effect.sync(() =>
-              listenForCopyClicks(element, () => {
-                Queue.offerUnsafe(queue, Message.SucceededCopyLinkCode())
-              }),
-            ),
-            stopListening => Effect.sync(stopListening),
-          ).pipe(Effect.flatMap(() => Effect.never)),
-        )
-    },
-  },
+  { args: {} },
+  (node: HTMLElement) =>
+    Stream.callback<void>(queue =>
+      Effect.acquireRelease(
+        Effect.sync(() =>
+          listenForCopyClicks(node, () => {
+            Queue.offerUnsafe(queue, undefined)
+          }),
+        ),
+        stopListening => Effect.sync(stopListening),
+      ),
+    ),
 )
 
-export const PasteLinkCodeOnTap = ProfileBlock.makeMountStream(
+// NOTE: the clipboard's text for each tap on the link code field that reads
+// it, with what the field held at the tap.
+export const PasteLinkCodeOnTap = Mount.makeStream(
   'PasteLinkCodeOnTap',
-  {
-    messages: [Message.SucceededReadClipboard],
-    handler: function* () {
-      return ({ element }) =>
-        Stream.callback<SucceededReadClipboard>(queue =>
-          Effect.acquireRelease(
-            Effect.sync(() =>
-              listenForPasteTaps(element, (text, typed) => {
-                Queue.offerUnsafe(
-                  queue,
-                  Message.SucceededReadClipboard({ text, typed }),
-                )
-              }),
-            ),
-            stopListening => Effect.sync(stopListening),
-          ).pipe(Effect.flatMap(() => Effect.never)),
-        )
-    },
-  },
+  { args: {} },
+  (node: HTMLElement) =>
+    Stream.callback<Readonly<{ text: string; typed: string }>>(queue =>
+      Effect.acquireRelease(
+        Effect.sync(() =>
+          listenForPasteTaps(node, (text, typed) => {
+            Queue.offerUnsafe(queue, { text, typed })
+          }),
+        ),
+        stopListening => Effect.sync(stopListening),
+      ),
+    ),
 )
-
-export const linkMounts = [CopyLinkCodeOnClick, PasteLinkCodeOnTap]

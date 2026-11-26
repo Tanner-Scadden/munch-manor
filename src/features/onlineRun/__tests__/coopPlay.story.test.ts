@@ -1,10 +1,8 @@
 import { Array, Effect, Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { Component, UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { CoopBinding } from '../../../app/bindings'
 import { Message } from '../../../app/message'
 import { AudioState, Lesson, type Model } from '../../../app/model'
 import { PlaySound } from '../../../app/update/sound'
@@ -12,11 +10,16 @@ import { type SoundEffect, positionVariation } from '../../../audio/audio'
 import { Screen, maybeRoomOf } from '../../../domain/coopRoom'
 import { withKeys } from '../../../test/model.fixture'
 import {
-  APPLICATION,
+  type StoryStep,
   changeModel,
+  checkModel,
   checkPendingSounds,
+  modelAfter,
   press,
+  resolveFocusCoop,
+  send,
   settleRunCommands,
+  steps,
 } from '../../../test/testing'
 import { heldKeys } from '../../../world/keys/keys'
 import {
@@ -39,9 +42,7 @@ import {
 import { aimTracers } from '../../../world/step/firing'
 import { SeatAction } from '../../../world/step/stepWorld'
 import { startWaveEarly } from '../../../world/waves/waves'
-import { Message as CoopMessage } from '../../coop/message'
 import { freshRoom } from '../../coop/roomState'
-import { FocusCoopElement } from '../../coop/steps'
 import { CODE, lobbyOf, memberOf, playingSession } from '../../coop/testing'
 import { RememberRoom, SendRoomFrames } from '../../coop/update'
 import { UNFOLD_MS, isPocketCardBlocking } from '../../dare/pocketCard'
@@ -55,9 +56,9 @@ import { OWN_SLOT, graduated, roomWorld } from './onlineRun.fixture'
 // with a session already holding a World.
 
 const inRun = (world: RoomWorld, isAnchored = false): Model =>
-  modifyFields(graduated, {
+  UiStruct.evolve(graduated, {
     coop: coop =>
-      modifyFields(coop, {
+      UiStruct.evolve(coop, {
         screen: () =>
           Screen.InRoom({
             room: {
@@ -78,7 +79,8 @@ const inRun = (world: RoomWorld, isAnchored = false): Model =>
       }),
   })
 
-const roomFrame = (nowMs: number) => Message.TickedRoomFrame({ nowMs })
+const roomFrame = (nowMs: number): StoryStep =>
+  send(Message.TickedRoomFrame({ nowMs }))
 
 const countOf = (
   sounds: ReadonlyArray<SoundEffect>,
@@ -88,9 +90,9 @@ const countOf = (
 // NOTE: the run with the room's session swapped for one holding `world`,
 // as a new World arriving from the room would leave it.
 const showing = (current: Model, world: RoomWorld): Model =>
-  modifyFields(current, {
+  UiStruct.evolve(current, {
     coop: coop =>
-      modifyFields(coop, {
+      UiStruct.evolve(coop, {
         screen: () =>
           Option.match(maybeRoomOf(coop), {
             onNone: () => coop.screen,
@@ -103,10 +105,8 @@ const showing = (current: Model, world: RoomWorld): Model =>
   })
 
 // NOTE: an anchored room's frame sends this player's input to the room.
-const sendFrames = Story.Command.resolve(
-  SendRoomFrames,
-  CoopMessage.CompletedSendRoomFrames({ bytes: [] }),
-)
+const sendFrames: StoryStep = s =>
+  s.resolve(SendRoomFrames, Message.CompletedSendRoomFrames({ bytes: [] }))
 
 const queuedOf = (current: Model): ReadonlyArray<number> =>
   Option.match(maybeRoomOf(current.coop), {
@@ -121,7 +121,7 @@ describe("an online co-op run's intro", () => {
   })
   const arrivingAt = (elapsedMs: number): RoomWorld => ({
     ...fresh,
-    world: modifyFields(fresh.world, {
+    world: UiStruct.evolve(fresh.world, {
       phase: () => Phase.Arriving({ elapsedMs, cut: 'Full' }),
     }),
   })
@@ -131,42 +131,43 @@ describe("an online co-op run's intro", () => {
   it.effect(
     "plays off the room's clock, and a skip waits at the door for the room's slam",
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(inRun(arrivingAt(0))),
-        Story.message(roomFrame(100)),
-        Story.model(current => {
-          expect(current.phase._tag).toBe('Arriving')
-          expect(beatOf(current)).toEqual(Option.some('Drive'))
-        }),
-        press('Escape'),
-        Story.model(current => {
-          expect(current.introSkip).toBe('Skipped')
-          expect(current.phase).toEqual(
-            Phase.Arriving({ elapsedMs: 0, cut: 'Full' }),
-          )
-          expect(beatOf(current)).toEqual(Option.some('Knock'))
-        }),
-        changeModel(current =>
-          showing(current, arrivingAt(slamAtMs('Full') - 500)),
+      modelAfter(
+        inRun(arrivingAt(0)),
+        steps(
+          roomFrame(100),
+          checkModel(current => {
+            expect(current.phase._tag).toBe('Arriving')
+            expect(beatOf(current)).toEqual(Option.some('Drive'))
+          }),
+          press('Escape'),
+          checkModel(current => {
+            expect(current.introSkip).toBe('Skipped')
+            expect(current.phase).toEqual(
+              Phase.Arriving({ elapsedMs: 0, cut: 'Full' }),
+            )
+            expect(beatOf(current)).toEqual(Option.some('Knock'))
+          }),
+          changeModel(current =>
+            showing(current, arrivingAt(slamAtMs('Full') - 500)),
+          ),
+          roomFrame(200),
+          checkModel(current => {
+            expect(beatOf(current)).toEqual(Option.some('Knock'))
+          }),
+          changeModel(current =>
+            showing(current, arrivingAt(slamAtMs('Full') + 20)),
+          ),
+          roomFrame(300),
+          checkModel(current => {
+            expect(beatOf(current)).toEqual(Option.some('Slam'))
+          }),
+          changeModel(current => showing(current, pastArrival(fresh))),
+          roomFrame(400),
+          checkModel(current => {
+            expect(current.phase._tag).toBe('Preparation')
+            expect(current.stats.runMs).toBeLessThan(500)
+          }),
         ),
-        Story.message(roomFrame(200)),
-        Story.model(current => {
-          expect(beatOf(current)).toEqual(Option.some('Knock'))
-        }),
-        changeModel(current =>
-          showing(current, arrivingAt(slamAtMs('Full') + 20)),
-        ),
-        Story.message(roomFrame(300)),
-        Story.model(current => {
-          expect(beatOf(current)).toEqual(Option.some('Slam'))
-        }),
-        changeModel(current => showing(current, pastArrival(fresh))),
-        Story.message(roomFrame(400)),
-        Story.model(current => {
-          expect(current.phase._tag).toBe('Preparation')
-          expect(current.stats.runMs).toBeLessThan(500)
-        }),
       ),
   )
 
@@ -175,59 +176,60 @@ describe("an online co-op run's intro", () => {
   it.effect(
     "the dare card comes out on the room's slam, and the room never waits for it",
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(
-          modifyFields(inRun(arrivingAt(slamAtMs('Full') + 20)), {
-            lessons: lessons =>
-              modifyFields(lessons, { dareCard: () => Lesson.Pending() }),
+      modelAfter(
+        UiStruct.evolve(inRun(arrivingAt(slamAtMs('Full') + 20)), {
+          lessons: lessons =>
+            UiStruct.evolve(lessons, { dareCard: () => Lesson.Pending() }),
+        }),
+        steps(
+          roomFrame(100),
+          changeModel(current => showing(current, pastArrival(fresh))),
+          roomFrame(200),
+          checkModel(current => {
+            expect(current.phase._tag).toBe('Preparation')
+            expect(current.pocketCard._tag).toBe('Reading')
+            expect(isPocketCardBlocking(current)).toBe(false)
+          }),
+          ...Array.makeBy(UNFOLD_MS / 50, index => roomFrame(250 + index * 50)),
+          send(Message.PressedKey({ code: 'Enter' })),
+          checkModel(current => {
+            expect(current.pocketCard._tag).toBe('Folding')
+            expect(queuedOf(current)).toEqual([
+              actionCodeOf(SeatAction.Ready()),
+            ])
           }),
         ),
-        Story.message(roomFrame(100)),
-        changeModel(current => showing(current, pastArrival(fresh))),
-        Story.message(roomFrame(200)),
-        Story.model(current => {
-          expect(current.phase._tag).toBe('Preparation')
-          expect(current.pocketCard._tag).toBe('Reading')
-          expect(isPocketCardBlocking(current)).toBe(false)
-        }),
-        ...Array.makeBy(UNFOLD_MS / 50, index =>
-          Story.message(roomFrame(250 + index * 50)),
-        ),
-        Story.message(Message.PressedKey({ code: 'Enter' })),
-        Story.model(current => {
-          expect(current.pocketCard._tag).toBe('Folding')
-          expect(queuedOf(current)).toEqual([actionCodeOf(SeatAction.Ready())])
-        }),
       ),
   )
 
   // NOTE: a newcomer who sits through the room's whole intro has seen it,
   // so their next room may skip the drive up; a short cut proves nothing.
   const newcomer = (world: RoomWorld): Model =>
-    modifyFields(inRun(world), { introSeen: () => 'Unseen' })
+    UiStruct.evolve(inRun(world), { introSeen: () => 'Unseen' })
 
   it.effect('the whole intro in a room marks it seen', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(newcomer(arrivingAt(0))),
-      Story.message(roomFrame(100)),
-      Story.model(current => {
-        expect(current.introSeen).toBe('Seen')
-      }),
+    modelAfter(
+      newcomer(arrivingAt(0)),
+      steps(
+        roomFrame(100),
+        checkModel(current => {
+          expect(current.introSeen).toBe('Seen')
+        }),
+      ),
     ),
   )
 
   it.effect('the short intro in a room leaves it unseen', () => {
     const short = startRoomWorld([0, OWN_SLOT], 7, DEFAULT_ROOM_SETTINGS)
-    return Story.story(
-      APPLICATION,
-      Story.given(newcomer(short)),
-      Story.message(roomFrame(100)),
-      Story.model(current => {
-        expect(current.phase._tag).toBe('Arriving')
-        expect(current.introSeen).toBe('Unseen')
-      }),
+    return modelAfter(
+      newcomer(short),
+      steps(
+        roomFrame(100),
+        checkModel(current => {
+          expect(current.phase._tag).toBe('Arriving')
+          expect(current.introSeen).toBe('Unseen')
+        }),
+      ),
     )
   })
 })
@@ -238,17 +240,18 @@ describe('an online co-op run', () => {
     () => {
       const ownX = Option.getOrThrow(maybePlayerAt(roomWorld.world, OWN_SLOT))
         .player.x
-      return Story.story(
-        APPLICATION,
-        Story.given(inRun(roomWorld)),
-        Story.message(roomFrame(100)),
-        Story.model(current => {
-          expect(current.phase._tag).toBe('Preparation')
-          expect(leadSeatOf(current).slot).toBe(OWN_SLOT)
-          expect(focusOf(current).player.x).toBe(ownX)
-          expect(current.party._tag).toBe('Crew')
-          expect(current.lessons).toEqual(graduated.lessons)
-        }),
+      return modelAfter(
+        inRun(roomWorld),
+        steps(
+          roomFrame(100),
+          checkModel(current => {
+            expect(current.phase._tag).toBe('Preparation')
+            expect(leadSeatOf(current).slot).toBe(OWN_SLOT)
+            expect(focusOf(current).player.x).toBe(ownX)
+            expect(current.party._tag).toBe('Crew')
+            expect(current.lessons).toEqual(graduated.lessons)
+          }),
+        ),
       )
     },
   )
@@ -269,24 +272,27 @@ describe('an online co-op run', () => {
         tick: 1,
         events: [{ tick: 1, events: [shot(OWN_SLOT, 40), shot(0, 200)] }],
       }
-      const audible = modifyFields(inRun(withShots, true), {
+      const audible = UiStruct.evolve(inRun(withShots, true), {
         audio: () => AudioState.Ready(),
-        settings: modifyFields({ soundSetting: () => 'On' }),
+        settings: settings =>
+          UiStruct.evolve(settings, { soundSetting: () => 'On' }),
       })
-      return Story.story(
-        APPLICATION,
-        Story.given(audible),
-        Story.message(roomFrame(2000)),
-        Story.Command.expectHas(
-          PlaySound({
-            sound: 'ShotgunBlast',
-            variation: positionVariation(200, 60),
+      return modelAfter(
+        audible,
+        steps(
+          roomFrame(2000),
+          s =>
+            s.expectHas(
+              PlaySound.make({
+                sound: 'ShotgunBlast',
+                variation: positionVariation(200, 60),
+              }),
+            ),
+          checkPendingSounds(sounds => {
+            expect(countOf(sounds, 'ShotgunBlast')).toBe(1)
           }),
+          sendFrames,
         ),
-        checkPendingSounds(sounds => {
-          expect(countOf(sounds, 'ShotgunBlast')).toBe(1)
-        }),
-        sendFrames,
       )
     },
   )
@@ -299,31 +305,33 @@ describe('an online co-op run', () => {
           ...roomWorld,
           world: startWaveEarly(roomWorld.world),
         }
-        const newcomer = modifyFields(inRun(roomWorld), {
+        const newcomer = UiStruct.evolve(inRun(roomWorld), {
           introducedKinds: () => [],
         })
-        const preparing = yield* Story.story(
-          APPLICATION,
-          Story.given(newcomer),
-          Story.message(roomFrame(100)),
-          Story.model(current => {
-            expect(current.debutCard._tag).toBe('Hidden')
-          }),
+        const preparing = yield* modelAfter(
+          newcomer,
+          steps(
+            roomFrame(100),
+            checkModel(current => {
+              expect(current.debutCard._tag).toBe('Hidden')
+            }),
+          ),
         )
-        return yield* Story.story(
-          APPLICATION,
-          Story.given(showing(preparing, waveWorld)),
-          Story.message(roomFrame(200)),
-          Story.model(waved => {
-            expect(waved.phase._tag).toBe('Wave')
-            expect(waved.debutCard._tag).toBe('Hidden')
-            expect(waved.introducedKinds).toEqual([])
-          }),
-          Story.message(roomFrame(300)),
-          Story.model(later => {
-            expect(later.phase._tag).toBe('Wave')
-            expect(later.debutCard._tag).toBe('Hidden')
-          }),
+        return yield* modelAfter(
+          showing(preparing, waveWorld),
+          steps(
+            roomFrame(200),
+            checkModel(waved => {
+              expect(waved.phase._tag).toBe('Wave')
+              expect(waved.debutCard._tag).toBe('Hidden')
+              expect(waved.introducedKinds).toEqual([])
+            }),
+            roomFrame(300),
+            checkModel(later => {
+              expect(later.phase._tag).toBe('Wave')
+              expect(later.debutCard._tag).toBe('Hidden')
+            }),
+          ),
         )
       }),
   )
@@ -338,29 +346,29 @@ describe('an online co-op run', () => {
         const step = (x: number, y: number) =>
           GameEvent.Footfall({ x, y, kind: 'Tank', nearness: 0 })
         const stomps = (x: number, y: number, heard: number) =>
-          Story.story(
-            APPLICATION,
-            Story.given(
-              modifyFields(
-                inRun(
-                  {
-                    ...roomWorld,
-                    tick: 1,
-                    events: [{ tick: 1, events: [step(x, y)] }],
-                  },
-                  true,
-                ),
+          modelAfter(
+            UiStruct.evolve(
+              inRun(
                 {
-                  audio: () => AudioState.Ready(),
-                  settings: modifyFields({ soundSetting: () => 'On' }),
+                  ...roomWorld,
+                  tick: 1,
+                  events: [{ tick: 1, events: [step(x, y)] }],
                 },
+                true,
               ),
+              {
+                audio: () => AudioState.Ready(),
+                settings: settings =>
+                  UiStruct.evolve(settings, { soundSetting: () => 'On' }),
+              },
             ),
-            Story.message(roomFrame(2000)),
-            checkPendingSounds(sounds => {
-              expect(countOf(sounds, 'Stomp')).toBe(heard)
-            }),
-            sendFrames,
+            steps(
+              roomFrame(2000),
+              checkPendingSounds(sounds => {
+                expect(countOf(sounds, 'Stomp')).toBe(heard)
+              }),
+              sendFrames,
+            ),
           )
         yield* stomps(own.x + 10, own.y, 1)
         yield* stomps(own.x + 200, own.y, 0)
@@ -373,36 +381,40 @@ describe('an online co-op run', () => {
       Effect.gen(function* () {
         const endless = (phase: Phase): RoomWorld => ({
           ...roomWorld,
-          world: modifyFields(startWaveEarly(roomWorld.world), {
+          world: UiStruct.evolve(startWaveEarly(roomWorld.world), {
             mode: () => RunMode.Endless(),
             difficulty: difficulty =>
-              modifyFields(difficulty, { chosen: () => 'Hard' }),
+              UiStruct.evolve(difficulty, { chosen: () => 'Hard' }),
             phase: current =>
               Phase.isAnyOf(['GameOver'])(phase) ? phase : current,
           }),
         })
-        const playing = yield* Story.story(
-          APPLICATION,
-          Story.given(inRun(endless(Phase.Ready()))),
-          Story.message(roomFrame(100)),
-          Story.model(current => {
-            expect(current.phase._tag).toBe('Wave')
-          }),
+        const playing = yield* modelAfter(
+          inRun(endless(Phase.Ready())),
+          steps(
+            roomFrame(100),
+            checkModel(current => {
+              expect(current.phase._tag).toBe('Wave')
+            }),
+          ),
         )
-        return yield* Story.story(
-          APPLICATION,
-          Story.given(showing(playing, endless(Phase.GameOver({ wave: 14 })))),
-          Story.message(roomFrame(200)),
-          Story.model(lost => {
-            expect(lost.phase._tag).toBe('GameOver')
-            expect(lost.difficulty.chosen).toBe(graduated.difficulty.chosen)
-            expect(lost.bests.byDifficulty.Hard.maybeBestEndlessWave).toEqual(
-              Option.some(14),
-            )
-            expect(lost.bests.byDifficulty.Normal.maybeBestEndlessWave).toEqual(
-              graduated.bests.byDifficulty.Normal.maybeBestEndlessWave,
-            )
-          }),
+        return yield* modelAfter(
+          showing(playing, endless(Phase.GameOver({ wave: 14 }))),
+          steps(
+            roomFrame(200),
+            checkModel(lost => {
+              expect(lost.phase._tag).toBe('GameOver')
+              expect(lost.difficulty.chosen).toBe(graduated.difficulty.chosen)
+              expect(lost.bests.byDifficulty.Hard.maybeBestEndlessWave).toEqual(
+                Option.some(14),
+              )
+              expect(
+                lost.bests.byDifficulty.Normal.maybeBestEndlessWave,
+              ).toEqual(
+                graduated.bests.byDifficulty.Normal.maybeBestEndlessWave,
+              )
+            }),
+          ),
         )
       }),
   )
@@ -413,31 +425,35 @@ describe('an online co-op run', () => {
       Effect.gen(function* () {
         const leftEarly: RoomWorld = {
           ...roomWorld,
-          world: modifyFields(roomWorld.world, {
+          world: UiStruct.evolve(roomWorld.world, {
             phase: () => Phase.LeftEarly({ wave: 3 }),
           }),
         }
-        const playing = yield* Story.story(
-          APPLICATION,
-          Story.given(inRun(roomWorld)),
-          Story.message(roomFrame(100)),
-          Story.model(current => {
-            expect(current.phase._tag).toBe('Preparation')
-          }),
+        const playing = yield* modelAfter(
+          inRun(roomWorld),
+          steps(
+            roomFrame(100),
+            checkModel(current => {
+              expect(current.phase._tag).toBe('Preparation')
+            }),
+          ),
         )
-        return yield* Story.story(
-          APPLICATION,
-          Story.given(showing(playing, leftEarly)),
-          Story.message(roomFrame(200)),
-          settleRunCommands,
-          Story.model(left => {
-            expect(left.phase).toEqual(Phase.LeftEarly({ wave: 3 }))
-            expect(endKindOf(left)).toEqual(Option.some('Chicken'))
-            expect(left.lastRunEnding).toBe('LeftEarly')
-            const gain = Option.getOrThrow(left.runGains.maybeRankGain)
-            expect(gain.bonuses).not.toContain('FirstEscape')
-            expect(left.bonuses.escapedOn).toEqual(graduated.bonuses.escapedOn)
-          }),
+        return yield* modelAfter(
+          showing(playing, leftEarly),
+          steps(
+            roomFrame(200),
+            settleRunCommands,
+            checkModel(left => {
+              expect(left.phase).toEqual(Phase.LeftEarly({ wave: 3 }))
+              expect(endKindOf(left)).toEqual(Option.some('Chicken'))
+              expect(left.lastRunEnding).toBe('LeftEarly')
+              const gain = Option.getOrThrow(left.runGains.maybeRankGain)
+              expect(gain.bonuses).not.toContain('FirstEscape')
+              expect(left.bonuses.escapedOn).toEqual(
+                graduated.bonuses.escapedOn,
+              )
+            }),
+          ),
         )
       }),
   )
@@ -469,7 +485,7 @@ describe('an online co-op run', () => {
         })
         const withBullets: RoomWorld = {
           ...roomWorld,
-          world: modifyFields(roomWorld.world, {
+          world: UiStruct.evolve(roomWorld.world, {
             bullets: () => [
               bulletAt(40, OWN_SLOT, 'Pistol'),
               bulletAt(41, 0, 'Pistol'),
@@ -478,9 +494,9 @@ describe('an online co-op run', () => {
           }),
         }
         const tracer = { ...bulletAt(-1, OWN_SLOT, 'Pistol'), x: own.x + 10 }
-        const withTracer = modifyFields(inRun(withBullets), {
+        const withTracer = UiStruct.evolve(inRun(withBullets), {
           coop: coop =>
-            modifyFields(coop, {
+            UiStruct.evolve(coop, {
               screen: () =>
                 Option.match(maybeRoomOf(coop), {
                   onNone: () => coop.screen,
@@ -495,21 +511,19 @@ describe('an online co-op run', () => {
           Option.getOrThrow(
             Array.findFirst(current.bullets, bullet => bullet.id === -1),
           )
-        return yield* Story.story(
-          APPLICATION,
-          Story.given(withTracer),
-          Story.message(roomFrame(100)),
-          Story.models(
-            Story.steps(Story.message(roomFrame(150))),
-            (drawn, later) => {
-              expect(Array.map(drawn.bullets, bullet => bullet.id)).toEqual([
-                41, 42, -1,
-              ])
-              expect(flownOf(drawn).x).toBeGreaterThan(tracer.x)
-              expect(flownOf(later).x).toBeGreaterThan(flownOf(drawn).x)
-              expect(later.zombies).toEqual(drawn.zombies)
-            },
-          ),
+        return yield* modelAfter(
+          withTracer,
+          steps(roomFrame(100), s => {
+            const drawn = s.model
+            const later = roomFrame(150)(s).model
+            expect(Array.map(drawn.bullets, bullet => bullet.id)).toEqual([
+              41, 42, -1,
+            ])
+            expect(flownOf(drawn).x).toBeGreaterThan(tracer.x)
+            expect(flownOf(later).x).toBeGreaterThan(flownOf(drawn).x)
+            expect(later.zombies).toEqual(drawn.zombies)
+            return s
+          }),
         )
       }),
   )
@@ -534,96 +548,98 @@ describe('an online co-op run', () => {
   })
 
   it.effect('presses go to the room, and there is no pause', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(inRun(roomWorld)),
-      Story.message(roomFrame(100)),
-      Story.message(Message.PressedKey({ code: 'KeyQ' })),
-      Story.message(Message.ClickedReloadButton()),
-      Story.message(Message.PressedKey({ code: 'Enter' })),
-      Story.message(Message.ClickedPauseButton()),
-      Story.message(Message.PressedKey({ code: 'Escape' })),
-      Story.message(Message.TickedFrame({ deltaTime: 16 })),
-      Story.model(current => {
-        expect(queuedOf(current)).toEqual([
-          actionCodeOf(SeatAction.Swap()),
-          actionCodeOf(SeatAction.Reload()),
-          actionCodeOf(SeatAction.Ready()),
-        ])
-        expect(current.phase._tag).toBe('Preparation')
-      }),
+    modelAfter(
+      inRun(roomWorld),
+      steps(
+        roomFrame(100),
+        send(Message.PressedKey({ code: 'KeyQ' })),
+        send(Message.ClickedReloadButton()),
+        send(Message.PressedKey({ code: 'Enter' })),
+        send(Message.ClickedPauseButton()),
+        send(Message.PressedKey({ code: 'Escape' })),
+        send(Message.TickedFrame({ deltaTime: 16 })),
+        checkModel(current => {
+          expect(queuedOf(current)).toEqual([
+            actionCodeOf(SeatAction.Swap()),
+            actionCodeOf(SeatAction.Reload()),
+            actionCodeOf(SeatAction.Ready()),
+          ])
+          expect(current.phase._tag).toBe('Preparation')
+        }),
+      ),
     ),
   )
 
   it.effect('the number keys go to the room as draws', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(inRun(roomWorld)),
-      Story.message(roomFrame(100)),
-      Story.message(Message.PressedKey({ code: 'Digit2' })),
-      Story.message(Message.PressedKey({ code: 'Digit1' })),
-      Story.message(Message.PressedKey({ code: 'Digit3' })),
-      Story.model(current => {
-        expect(queuedOf(current)).toEqual([
-          actionCodeOf(SeatAction.Draw({ slot: 'Second' })),
-          actionCodeOf(SeatAction.Draw({ slot: 'First' })),
-          actionCodeOf(SeatAction.Melee()),
-        ])
-      }),
+    modelAfter(
+      inRun(roomWorld),
+      steps(
+        roomFrame(100),
+        send(Message.PressedKey({ code: 'Digit2' })),
+        send(Message.PressedKey({ code: 'Digit1' })),
+        send(Message.PressedKey({ code: 'Digit3' })),
+        checkModel(current => {
+          expect(queuedOf(current)).toEqual([
+            actionCodeOf(SeatAction.Draw({ slot: 'Second' })),
+            actionCodeOf(SeatAction.Draw({ slot: 'First' })),
+            actionCodeOf(SeatAction.Melee()),
+          ])
+        }),
+      ),
     ),
   )
 
   // NOTE: the HUD's list opens the dare card over the live room: a key
   // past its gate puts it away and still goes to the room.
   it.effect('Tab opens the dare card, and the room never waits for it', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(inRun(roomWorld)),
-      Story.message(roomFrame(100)),
-      press('Tab'),
-      Story.model(current => {
-        expect(current.pocketCard._tag).toBe('Opened')
-        expect(isPocketCardBlocking(current)).toBe(false)
-      }),
-      ...Array.makeBy(4, index => Story.message(roomFrame(150 + index * 50))),
-      Story.model(current => {
-        expect(current.pocketCard._tag).toBe('Opened')
-      }),
-      press('Enter'),
-      Story.model(current => {
-        expect(current.pocketCard._tag).toBe('Pocketed')
-        expect(queuedOf(current)).toEqual([actionCodeOf(SeatAction.Ready())])
-      }),
+    modelAfter(
+      inRun(roomWorld),
+      steps(
+        roomFrame(100),
+        press('Tab'),
+        checkModel(current => {
+          expect(current.pocketCard._tag).toBe('Opened')
+          expect(isPocketCardBlocking(current)).toBe(false)
+        }),
+        ...Array.makeBy(4, index => roomFrame(150 + index * 50)),
+        checkModel(current => {
+          expect(current.pocketCard._tag).toBe('Opened')
+        }),
+        press('Enter'),
+        checkModel(current => {
+          expect(current.pocketCard._tag).toBe('Pocketed')
+          expect(queuedOf(current)).toEqual([actionCodeOf(SeatAction.Ready())])
+        }),
+      ),
     ),
   )
 
   it.effect("the crew's one key ring comes from the room", () =>
-    Story.story(
-      APPLICATION,
-      Story.given(inRun({ ...roomWorld, world: withKeys(roomWorld.world, 6) })),
-      Story.message(roomFrame(100)),
-      Story.model(current => {
-        expect(heldKeys(current)).toBe(6)
-      }),
+    modelAfter(
+      inRun({ ...roomWorld, world: withKeys(roomWorld.world, 6) }),
+      steps(
+        roomFrame(100),
+        checkModel(current => {
+          expect(heldKeys(current)).toBe(6)
+        }),
+      ),
     ),
   )
 
   it.effect('leaving the room goes home', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(inRun(roomWorld)),
-      Story.message(roomFrame(100)),
-      Story.messageIn(CoopBinding, CoopMessage.CompletedLeaveRoom()),
-      Story.Command.resolve(RememberRoom, CoopMessage.CompletedRememberRoom()),
-      Story.Command.resolve(
-        FocusCoopElement,
-        CoopMessage.CompletedFocusCoopElement(),
+    modelAfter(
+      inRun(roomWorld),
+      steps(
+        roomFrame(100),
+        send(Message.CompletedLeaveRoom()),
+        s => s.resolve(RememberRoom, Component.noop),
+        resolveFocusCoop,
+        checkModel(current => {
+          expect(current.coop.screen._tag).toBe('Hub')
+          expect(current.phase._tag).toBe('Ready')
+          expect(current.party._tag).toBe('Solo')
+        }),
       ),
-      Story.model(current => {
-        expect(current.coop.screen._tag).toBe('Hub')
-        expect(current.phase._tag).toBe('Ready')
-        expect(current.party._tag).toBe('Solo')
-      }),
     ),
   )
 })

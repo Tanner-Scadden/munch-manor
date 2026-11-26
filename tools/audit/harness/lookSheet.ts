@@ -1,12 +1,14 @@
 // NOTE: the look sheet (`looksheet`): every look part's options on one
-// canvas, and walk frames, facings, and the hit flash for a few mixed looks.
+// picture, painted by Pixi as the game's overlay is, and walk frames,
+// facings, and the hit flash for a few mixed looks.
 
 import { Array } from 'effect'
-import { Canvas } from 'foldkit'
-import { type Document } from 'foldkit/html'
-import { modifyFields } from 'foldkit/struct'
 
-import type { ApplicationComposition } from '@game/app/composition'
+import { UiStruct } from '@effect/ui'
+import type {
+  ApplicationHtml,
+  ApplicationViewBuilder,
+} from '@game/app/definition'
 import { type Appearance, defaultAppearance } from '@game/app/model'
 import {
   BODIES,
@@ -21,12 +23,11 @@ import {
 } from '@game/art/appearance'
 import { frameAt, group } from '@game/art/sprite'
 import { gunSprite } from '@game/art/sprites/guns'
+import { overlayElement } from '@game/render/iso/overlayElement'
 import { FLOOR_COLOR } from '@game/render/room/roomPalette'
 import { SHADOW_COLOR } from '@game/shared/constants'
 
-export type ViewHtml = Parameters<
-  Parameters<typeof ApplicationComposition.makeView>[0]
->[1]
+import * as Draw from '../../../src/render/draw'
 
 const CELL_W = 12
 const CELL_H = 16
@@ -37,9 +38,9 @@ const SHEET_H = 268
 // look (the bodies three times: in a tee, in a dress, and in overalls with
 // the Rainbow print, a beard, and glasses), then walk frames, both facings,
 // and the hit flash for four mixed looks.
-const lookSheetShapes = (): Array<Canvas.Shape> => {
-  const shapes: Array<Canvas.Shape> = [
-    Canvas.Rect({
+const lookSheetShapes = (): Array<Draw.Shape> => {
+  const shapes: Array<Draw.Shape> = [
+    Draw.Rect({
       x: 0,
       y: 0,
       width: SHEET_W,
@@ -58,7 +59,7 @@ const lookSheetShapes = (): Array<Canvas.Shape> => {
   ) => {
     const sprites = playerSprites(appearance)
     shapes.push(
-      Canvas.Rect({
+      Draw.Rect({
         x: x - 3,
         y: y - 1,
         width: 7,
@@ -77,16 +78,16 @@ const lookSheetShapes = (): Array<Canvas.Shape> => {
   }
   const base = defaultAppearance
   const rows: ReadonlyArray<ReadonlyArray<Appearance>> = [
-    Array.map(BODIES, body => modifyFields(base, { body: () => body })),
+    Array.map(BODIES, body => UiStruct.evolve(base, { body: () => body })),
     Array.map(BODIES, body =>
-      modifyFields(base, {
+      UiStruct.evolve(base, {
         body: () => body,
         outfit: () => 'Dress',
         hairStyle: () => 'Long',
       }),
     ),
     Array.map(BODIES, body =>
-      modifyFields(base, {
+      UiStruct.evolve(base, {
         body: () => body,
         outfit: () => 'Overalls',
         print: () => 'Rainbow',
@@ -95,25 +96,27 @@ const lookSheetShapes = (): Array<Canvas.Shape> => {
       }),
     ),
     Array.map(HAIR_STYLES, hairStyle =>
-      modifyFields(base, { hairStyle: () => hairStyle }),
+      UiStruct.evolve(base, { hairStyle: () => hairStyle }),
     ),
     Array.map(HAIR_COLORS, hairColor =>
-      modifyFields(base, {
+      UiStruct.evolve(base, {
         hairColor: () => hairColor,
         hairStyle: () => 'Long',
       }),
     ),
     Array.map(SKIN_TONES, skinTone =>
-      modifyFields(base, { skinTone: () => skinTone }),
+      UiStruct.evolve(base, { skinTone: () => skinTone }),
     ),
     Array.map(SHIRT_COLORS, shirtColor =>
-      modifyFields(base, { shirtColor: () => shirtColor }),
+      UiStruct.evolve(base, { shirtColor: () => shirtColor }),
     ),
-    Array.map(OUTFITS, outfit => modifyFields(base, { outfit: () => outfit })),
-    Array.map(PRINTS, print => modifyFields(base, { print: () => print })),
+    Array.map(OUTFITS, outfit =>
+      UiStruct.evolve(base, { outfit: () => outfit }),
+    ),
+    Array.map(PRINTS, print => UiStruct.evolve(base, { print: () => print })),
     Array.flatMap(OUTFITS, outfit =>
       Array.map(PRINTS, print =>
-        modifyFields(base, {
+        UiStruct.evolve(base, {
           outfit: () => outfit,
           print: () => print,
           body: () => 'Slim',
@@ -122,7 +125,7 @@ const lookSheetShapes = (): Array<Canvas.Shape> => {
     ),
     Array.flatMap(ON_OFF, beard =>
       Array.map(ON_OFF, glasses =>
-        modifyFields(base, { beard: () => beard, glasses: () => glasses }),
+        UiStruct.evolve(base, { beard: () => beard, glasses: () => glasses }),
       ),
     ),
   ]
@@ -196,20 +199,15 @@ const lookSheetShapes = (): Array<Canvas.Shape> => {
   return shapes
 }
 
-export const lookSheetView = (h: ViewHtml): Document => ({
-  title: 'Looks',
-  body: h.div(
-    [h.Style({ background: '#000', padding: '8px' })],
-    [
-      Canvas.view(
-        {
-          width: SHEET_W,
-          height: SHEET_H,
-          shapes: lookSheetShapes(),
-          className: 'look-sheet',
-        },
-        h,
-      ),
-    ],
-  ),
-})
+// NOTE: the sheet's shapes never change, so they are built once.
+const SHEET_SHAPES = lookSheetShapes()
+
+export const lookSheetView = (h: ApplicationViewBuilder): ApplicationHtml =>
+  h.div
+    .style({ background: '#000', padding: '8px' })
+    .children(
+      overlayElement(h)
+        .key('look-sheet')
+        .class('look-sheet')
+        .picture({ width: SHEET_W, height: SHEET_H, shapes: SHEET_SHAPES }),
+    )

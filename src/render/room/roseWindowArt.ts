@@ -7,8 +7,8 @@
 // (src/render/iso/godRays.ts, src/render/iso/emissives.ts).
 
 import { Array, Option, Record, Result, String } from 'effect'
-import type { Canvas } from 'foldkit'
 
+import type * as Draw from '../draw'
 import { pixelArt } from '../drawing'
 import type { Box } from './roomPalette'
 
@@ -127,7 +127,7 @@ export const roseLightsOf = (room: Box): ReadonlyArray<Box> => {
   return Array.map(GLASS_RUNS, run => ({ ...run, x: run.x + x, y: run.y + y }))
 }
 
-export const roseWindowShapes = (room: Box): ReadonlyArray<Canvas.Shape> => {
+export const roseWindowShapes = (room: Box): ReadonlyArray<Draw.Shape> => {
   const { x, y } = spotOf(room)
   return pixelArt(x, y, ROSE_PIXELS, ROSE_PALETTE)
 }
@@ -138,7 +138,7 @@ const GLASS_PALETTE: Readonly<Record<string, string>> = Record.filter(
   (_, letter) => isRoseGlass(letter),
 )
 
-export const roseGlowShapes = (room: Box): ReadonlyArray<Canvas.Shape> => {
+export const roseGlowShapes = (room: Box): ReadonlyArray<Draw.Shape> => {
   const { x, y } = spotOf(room)
   return pixelArt(x, y, ROSE_PIXELS, GLASS_PALETTE)
 }

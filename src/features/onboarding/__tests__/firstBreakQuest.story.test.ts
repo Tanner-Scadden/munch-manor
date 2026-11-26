@@ -1,7 +1,6 @@
 import { Array, Effect, Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
 import { Message } from '../../../app/message'
@@ -28,17 +27,23 @@ import {
 } from '../../../shared/constants'
 import { DISTANT_SPAWN, newPlayerCardSeen } from '../../../test/model.fixture'
 import {
-  APPLICATION,
+  type AppStory,
   HOLD_TICKS,
   SHOWN_TICKS,
   changeModel,
+  checkModel,
   hintIds,
   holdEnter,
+  modelAfter,
   mouseDown,
   press,
   release,
+  send,
+  settleRunCommands,
   startWave,
   startedRun,
+  steps,
+  storyOf,
   tap,
   throughIntro,
   tick,
@@ -97,16 +102,16 @@ const frame = tick(FRAME_MS)
 
 // NOTE: the wave's clearing blow holds the world still a moment
 // (src/world/step/hitStop.ts) before the break's first step.
-const throughClearingBlow = Story.steps(
-  ...ticks(Math.ceil(HIT_STOP_WAVE_CLEAR_MS / FRAME_MS), FRAME_MS),
+const throughClearingBlow = steps(
+  ticks(Math.ceil(HIT_STOP_WAVE_CLEAR_MS / FRAME_MS), FRAME_MS),
 )
 
 // NOTE: a new save on a measured surface, its zombies all met so no new
 // zombie card holds the practice wave.
-const newSave: Model = modifyFields(newPlayerCardSeen, {
+const newSave: Model = UiStruct.evolve(newPlayerCardSeen, {
   introducedKinds: () => ZOMBIE_KIND_ORDER,
   lessons: lessons =>
-    modifyFields(lessons, { rattles: () => Lesson.Learned({ atMs: 0 }) }),
+    UiStruct.evolve(lessons, { rattles: () => Lesson.Learned({ atMs: 0 }) }),
 })
 
 const standAt =
@@ -114,7 +119,7 @@ const standAt =
   (current: Model): Model =>
     modifyFocus(current, {
       player: player =>
-        modifyFields(player, { x: () => spot.x, y: () => spot.y }),
+        UiStruct.evolve(player, { x: () => spot.x, y: () => spot.y }),
     })
 
 // NOTE: where a player stands at the cheapest padlock: just below its
@@ -136,35 +141,35 @@ const belowTutorialCase = (current: Model): Vector => {
 // NOTE: the sim's own rule for the practice wave: the player has made 5
 // kills, and every zombie of the wave is gone.
 const wonPracticeWave = (current: Model): Model =>
-  modifyFields(
+  UiStruct.evolve(
     modifySeat(current, 0, {
-      feats: feats => modifyFields(feats, { kills: () => 5 }),
+      feats: feats => UiStruct.evolve(feats, { kills: () => 5 }),
     }),
     {
       zombies: () => [],
       phase: phase =>
         Phase.isAnyOf(['Wave'])(phase)
-          ? modifyFields(phase, { spawns: () => [] })
+          ? UiStruct.evolve(phase, { spawns: () => [] })
           : phase,
     },
   )
 
 // NOTE: moving and shooting in the practice wave's break, as the hints ask.
-const practise = Story.steps(
+const practise = steps(
   press('KeyD'),
-  ...ticks(10, TICK_MS),
+  ticks(10, TICK_MS),
   release('KeyD'),
-  Story.message(Message.MovedMouse({ clientX: 700, clientY: 100 })),
+  send(Message.MovedMouse({ clientX: 700, clientY: 100 })),
   mouseDown(700, 100),
-  ...ticks(SHOWN_TICKS, TICK_MS),
-  Story.message(Message.ReleasedPointer({ pointerId: 1 })),
+  ticks(SHOWN_TICKS, TICK_MS),
+  send(Message.ReleasedPointer({ pointerId: 1 })),
 )
 
 const stepOf = (current: Model): Option.Option<QuestStep> =>
   questStepOf(current)
 
 // NOTE: the break before wave 2, a frame in, with the case already sprung.
-const reachFirstBreak = Story.steps(
+const reachFirstBreak = steps(
   tap('Enter'),
   throughIntro,
   practise,
@@ -177,7 +182,7 @@ const reachFirstBreak = Story.steps(
 
 // NOTE: the tour's break set straight, for the checks that need no run.
 const tourBreak = (base: Model): Model =>
-  modifyFields(base, {
+  UiStruct.evolve(base, {
     phase: () =>
       Phase.Preparation({
         wave: DARE_TOUR_WAVE,
@@ -192,293 +197,331 @@ describe('the guided first break', () => {
   it.effect(
     'walks a new save from the intro and the practice wave through the key, the padlock, the case, the dare card, and START WAVE',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(newSave),
-        tap('Enter'),
-        throughIntro,
-        Story.model(current => {
-          expect(Phase.isAnyOf(['Preparation'])(current.phase)).toBe(true)
-          expect(hintIds(current)).toEqual(['Move', 'Fire'])
-          expect(
-            Option.map(maybeTutorialCase(current), ({ feat }) => feat),
-          ).toEqual(Option.some(Feat.Kills({ count: 5 })))
-        }),
-        practise,
-        startWave,
-        Story.model(current => {
-          expect(Phase.isAnyOf(['Wave'])(current.phase)).toBe(true)
-          expect(stepOf(current)).toEqual(Option.none())
-        }),
-        changeModel(wonPracticeWave),
-        frame,
-        frame,
-        Story.model(current => {
-          expect(current.phase).toMatchObject({
-            _tag: 'Preparation',
-            wave: DARE_TOUR_WAVE,
-          })
-          expect(
-            Option.map(maybeTutorialCase(current), ({ state }) => state),
-          ).toEqual(Option.some(CaseState.Opened({ by: 0 })))
-          expect(current.firstBreakQuest).toEqual(
-            QuestTour.Running({ isLockSeen: false }),
-          )
-          expect(stepOf(current)).toEqual(Option.some('Key'))
-          expect(maybeQuestMark(current)).toEqual(
-            Option.some(tutorialKeySpotOf(current)),
-          )
-        }),
-        throughClearingBlow,
-        changeModel(current => standAt(tutorialKeySpotOf(current))(current)),
-        frame,
-        Story.model(current => {
-          expect(isPending(current.lessons.dareKey)).toBe(false)
-          expect(
-            Array.some(current.frameEvents, ({ _tag }) => _tag === 'KeysFound'),
-          ).toBe(true)
-          expect(stepOf(current)).toEqual(Option.some('Lock'))
-          const padlock = Option.getOrThrow(
-            maybeCheapestPadlock(current, focusOf(current).player),
-          )
-          expect(maybeQuestMark(current)).toEqual(
-            Option.some(padlockMarkOf(padlock)),
-          )
-          expect(padlock.price).toBe(exitPriceFor(current, padlock.exit))
-          expect(maybeLockProgress(current)).toEqual(
-            Option.some({
-              box: padlock.box,
-              held: heldKeys(current),
-              price: padlock.price,
+      Effect.gen(function* () {
+        const s = yield* storyOf(newSave)
+        s.pipe(
+          steps<AppStory>(
+            tap('Enter'),
+            throughIntro,
+            checkModel(current => {
+              expect(Phase.isAnyOf(['Preparation'])(current.phase)).toBe(true)
+              expect(hintIds(current)).toEqual(['Move', 'Fire'])
+              expect(
+                Option.map(maybeTutorialCase(current), ({ feat }) => feat),
+              ).toEqual(Option.some(Feat.Kills({ count: 5 })))
             }),
-          )
-        }),
-        changeModel(current => standAt(belowPadlock(current))(current)),
-        frame,
-        Story.model(current => {
-          expect(current.firstBreakQuest).toEqual(
-            QuestTour.Running({ isLockSeen: true }),
-          )
-          expect(stepOf(current)).toEqual(Option.some('Case'))
-          expect(maybeLockProgress(current)).toEqual(Option.none())
-        }),
-        changeModel(current => standAt(tutorialKeySpotOf(current))(current)),
-        frame,
-        Story.model(current => {
-          expect(stepOf(current)).toEqual(Option.some('Case'))
-        }),
-        changeModel(current => standAt(belowTutorialCase(current))(current)),
-        // NOTE: the case's first-time card comes up at the tour's Case step
-        // (src/features/onboarding/caseCard.ts), and is put away first.
-        frame,
-        Story.model(current => {
-          expect(isCaseCardUp(current)).toBe(true)
-        }),
-        ...ticks(CASE_CARD_FRAMES, FRAME_MS),
-        tap('Enter'),
-        ...holdEnter(HOLD_TICKS + 2),
-        Story.model(current => {
-          expect(
-            Option.map(maybeTutorialCase(current), ({ state }) => state),
-          ).toEqual(Option.some(CaseState.Emptied({ by: 0 })))
-          expect(stepOf(current)).toEqual(Option.some('Card'))
-          expect(isQuestOnCard(current)).toBe(true)
-          expect(QuestTour.isAnyOf(['Looking'])(current.firstBreakQuest)).toBe(
-            true,
-          )
-          expect(Phase.isAnyOf(['Preparation'])(current.phase)).toBe(true)
-        }),
-        ...ticks(LOOK_FRAMES, FRAME_MS),
-        Story.model(current => {
-          expect(current.firstBreakQuest).toEqual(QuestTour.Starting())
-          expect(stepOf(current)).toEqual(Option.some('Start'))
-          expect(isQuestOnStart(current)).toBe(true)
-          expect(isStartWaveBeckoning(current)).toBe(true)
-          expect(isPending(current.lessons.dareTour)).toBe(true)
-          expect(current.phase).toMatchObject({
-            _tag: 'Preparation',
-            wave: DARE_TOUR_WAVE,
-            clock: { _tag: 'Waiting' },
-          })
-        }),
-        startWave,
-        frame,
-        Story.model(current => {
-          expect(Phase.isAnyOf(['Wave'])(current.phase)).toBe(true)
-          expect(current.firstBreakQuest).toEqual(QuestTour.Done({ ageMs: 0 }))
-          expect(isPending(current.lessons.dareTour)).toBe(false)
-          expect(isPending(current.lessons.startWave)).toBe(false)
-          expect(stepOf(current)).toEqual(Option.none())
-        }),
-        Story.Command.resolveAll(),
-      ),
+            practise,
+            startWave,
+            checkModel(current => {
+              expect(Phase.isAnyOf(['Wave'])(current.phase)).toBe(true)
+              expect(stepOf(current)).toEqual(Option.none())
+            }),
+            changeModel(wonPracticeWave),
+            frame,
+            frame,
+            checkModel(current => {
+              expect(current.phase).toMatchObject({
+                _tag: 'Preparation',
+                wave: DARE_TOUR_WAVE,
+              })
+              expect(
+                Option.map(maybeTutorialCase(current), ({ state }) => state),
+              ).toEqual(Option.some(CaseState.Opened({ by: 0 })))
+              expect(current.firstBreakQuest).toEqual(
+                QuestTour.Running({ isLockSeen: false }),
+              )
+              expect(stepOf(current)).toEqual(Option.some('Key'))
+              expect(maybeQuestMark(current)).toEqual(
+                Option.some(tutorialKeySpotOf(current)),
+              )
+            }),
+            throughClearingBlow,
+            changeModel(current =>
+              standAt(tutorialKeySpotOf(current))(current),
+            ),
+            frame,
+            checkModel(current => {
+              expect(isPending(current.lessons.dareKey)).toBe(false)
+              expect(
+                Array.some(
+                  current.frameEvents,
+                  ({ _tag }) => _tag === 'KeysFound',
+                ),
+              ).toBe(true)
+              expect(stepOf(current)).toEqual(Option.some('Lock'))
+              const padlock = Option.getOrThrow(
+                maybeCheapestPadlock(current, focusOf(current).player),
+              )
+              expect(maybeQuestMark(current)).toEqual(
+                Option.some(padlockMarkOf(padlock)),
+              )
+              expect(padlock.price).toBe(exitPriceFor(current, padlock.exit))
+              expect(maybeLockProgress(current)).toEqual(
+                Option.some({
+                  box: padlock.box,
+                  held: heldKeys(current),
+                  price: padlock.price,
+                }),
+              )
+            }),
+            changeModel(current => standAt(belowPadlock(current))(current)),
+            frame,
+            checkModel(current => {
+              expect(current.firstBreakQuest).toEqual(
+                QuestTour.Running({ isLockSeen: true }),
+              )
+              expect(stepOf(current)).toEqual(Option.some('Case'))
+              expect(maybeLockProgress(current)).toEqual(Option.none())
+            }),
+            changeModel(current =>
+              standAt(tutorialKeySpotOf(current))(current),
+            ),
+            frame,
+            checkModel(current => {
+              expect(stepOf(current)).toEqual(Option.some('Case'))
+            }),
+            changeModel(current =>
+              standAt(belowTutorialCase(current))(current),
+            ),
+            // NOTE: the case's first-time card comes up at the tour's Case step
+            // (src/features/onboarding/caseCard.ts), and is put away first.
+            frame,
+            checkModel(current => {
+              expect(isCaseCardUp(current)).toBe(true)
+            }),
+            ticks(CASE_CARD_FRAMES, FRAME_MS),
+            tap('Enter'),
+            holdEnter(HOLD_TICKS + 2),
+            checkModel(current => {
+              expect(
+                Option.map(maybeTutorialCase(current), ({ state }) => state),
+              ).toEqual(Option.some(CaseState.Emptied({ by: 0 })))
+              expect(stepOf(current)).toEqual(Option.some('Card'))
+              expect(isQuestOnCard(current)).toBe(true)
+              expect(
+                QuestTour.isAnyOf(['Looking'])(current.firstBreakQuest),
+              ).toBe(true)
+              expect(Phase.isAnyOf(['Preparation'])(current.phase)).toBe(true)
+            }),
+            ticks(LOOK_FRAMES, FRAME_MS),
+            checkModel(current => {
+              expect(current.firstBreakQuest).toEqual(QuestTour.Starting())
+              expect(stepOf(current)).toEqual(Option.some('Start'))
+              expect(isQuestOnStart(current)).toBe(true)
+              expect(isStartWaveBeckoning(current)).toBe(true)
+              expect(isPending(current.lessons.dareTour)).toBe(true)
+              expect(current.phase).toMatchObject({
+                _tag: 'Preparation',
+                wave: DARE_TOUR_WAVE,
+                clock: { _tag: 'Waiting' },
+              })
+            }),
+            startWave,
+            frame,
+            checkModel(current => {
+              expect(Phase.isAnyOf(['Wave'])(current.phase)).toBe(true)
+              expect(current.firstBreakQuest).toEqual(
+                QuestTour.Done({ ageMs: 0 }),
+              )
+              expect(isPending(current.lessons.dareTour)).toBe(false)
+              expect(isPending(current.lessons.startWave)).toBe(false)
+              expect(stepOf(current)).toEqual(Option.none())
+            }),
+            settleRunCommands,
+          ),
+        )
+      }),
   )
 
   it.effect('the key lies there once: taken, it is not on the next run', () =>
     Effect.gen(function* () {
-      const taken = yield* Story.story(
-        APPLICATION,
-        Story.given(newSave),
-        reachFirstBreak,
-        changeModel(current => standAt(tutorialKeySpotOf(current))(current)),
-        frame,
-        Story.Command.resolveAll(),
+      const taken = yield* modelAfter(
+        newSave,
+        steps<AppStory>(
+          reachFirstBreak,
+          changeModel(current => standAt(tutorialKeySpotOf(current))(current)),
+          frame,
+          settleRunCommands,
+        ),
       )
       expect(isPending(taken.lessons.dareKey)).toBe(false)
       const keys = heldKeys(taken)
-      return yield* Story.story(
-        APPLICATION,
-        Story.given(taken),
-        frame,
-        Story.model(current => {
-          expect(heldKeys(current)).toBe(keys)
-          expect(stepOf(current)).toEqual(Option.some('Lock'))
-        }),
+      const story1 = yield* storyOf(taken)
+      story1.pipe(
+        steps<AppStory>(
+          frame,
+          checkModel(current => {
+            expect(heldKeys(current)).toBe(keys)
+            expect(stepOf(current)).toEqual(Option.some('Lock'))
+          }),
+        ),
       )
     }),
   )
 
   it.effect('the skip button ends it at any step, for good', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(newSave),
-      reachFirstBreak,
-      Story.message(Message.ClickedSkipQuestButton()),
-      Story.model(skipped => {
-        expect(skipped.firstBreakQuest).toEqual(QuestTour.Over())
-        expect(isPending(skipped.lessons.dareTour)).toBe(false)
-      }),
-      frame,
-      Story.model(current => {
-        expect(stepOf(current)).toEqual(Option.none())
-        expect(maybeQuestMark(current)).toEqual(Option.none())
-      }),
-      Story.Command.resolveAll(),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(newSave)
+      s.pipe(
+        steps<AppStory>(
+          reachFirstBreak,
+          send(Message.ClickedSkipQuestButton()),
+          checkModel(skipped => {
+            expect(skipped.firstBreakQuest).toEqual(QuestTour.Over())
+            expect(isPending(skipped.lessons.dareTour)).toBe(false)
+          }),
+          frame,
+          checkModel(current => {
+            expect(stepOf(current)).toEqual(Option.none())
+            expect(maybeQuestMark(current)).toEqual(Option.none())
+          }),
+          settleRunCommands,
+        ),
+      )
+    }),
   )
 
   it.effect('starting the wave ends it', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(newSave),
-      reachFirstBreak,
-      startWave,
-      Story.model(waved => {
-        expect(Phase.isAnyOf(['Wave'])(waved.phase)).toBe(true)
-      }),
-      frame,
-      Story.model(current => {
-        expect(current.firstBreakQuest).toEqual(QuestTour.Over())
-        expect(isPending(current.lessons.dareTour)).toBe(false)
-      }),
-      Story.Command.resolveAll(),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(newSave)
+      s.pipe(
+        steps<AppStory>(
+          reachFirstBreak,
+          startWave,
+          checkModel(waved => {
+            expect(Phase.isAnyOf(['Wave'])(waved.phase)).toBe(true)
+          }),
+          frame,
+          checkModel(current => {
+            expect(current.firstBreakQuest).toEqual(QuestTour.Over())
+            expect(isPending(current.lessons.dareTour)).toBe(false)
+          }),
+          settleRunCommands,
+        ),
+      )
+    }),
   )
 
   it.effect('the wave started before the last step ends it unticked', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        modifyFields(tourBreak(newSave), {
+    Effect.gen(function* () {
+      const s = yield* storyOf(
+        UiStruct.evolve(tourBreak(newSave), {
           firstBreakQuest: () => QuestTour.Looking({ ageMs: 0 }),
         }),
-      ),
-      startWave,
-      frame,
-      Story.model(current => {
-        expect(current.firstBreakQuest).toEqual(QuestTour.Over())
-        expect(isPending(current.lessons.dareTour)).toBe(false)
-      }),
-      Story.Command.resolveAll(),
-    ),
+      )
+      s.pipe(
+        steps<AppStory>(
+          startWave,
+          frame,
+          checkModel(current => {
+            expect(current.firstBreakQuest).toEqual(QuestTour.Over())
+            expect(isPending(current.lessons.dareTour)).toBe(false)
+          }),
+          settleRunCommands,
+        ),
+      )
+    }),
   )
 
   // NOTE: the tour hands the player a Plank Pile, so a new save's dining
   // room crate holds one whatever the run's seed.
   it.effect('the dining room crate holds a Plank Pile in the tour', () =>
     Effect.forEach([1, 2, 3, 4, 5, 6], seed =>
-      Story.story(
-        APPLICATION,
-        Story.given(
-          modifyFields(tourBreak(newSave), {
+      Effect.gen(function* () {
+        const s = yield* storyOf(
+          UiStruct.evolve(tourBreak(newSave), {
             crates: crates =>
-              modifyFields(crates, { rngState: () => seed * 7919 }),
+              UiStruct.evolve(crates, { rngState: () => seed * 7919 }),
           }),
-        ),
-        frame,
-        Story.model(current => {
-          expect(
-            Array.map(current.crates.crates, ({ stock }) => stock),
-          ).toEqual([CrateStock.Stocked({ trap: 'Barricade' })])
-        }),
-      ),
+        )
+        s.pipe(
+          steps<AppStory>(
+            frame,
+            checkModel(current => {
+              expect(
+                Array.map(current.crates.crates, ({ stock }) => stock),
+              ).toEqual([CrateStock.Stocked({ trap: 'Barricade' })])
+            }),
+          ),
+        )
+      }),
     ),
   )
 
   it.effect('a returning player never sees any of it', () =>
     Effect.gen(function* () {
-      const veteran = modifyFields(asVeteran(newSave), {
+      const veteran = UiStruct.evolve(asVeteran(newSave), {
         maybeSurface: () => newSave.maybeSurface,
       })
       const started = yield* startedRun(veteran)
       expect(Phase.isAnyOf(['Preparation'])(started.phase)).toBe(true)
       const caseFeats = Array.map(started.cases, ({ feat }) => feat)
       expect(caseFeats).not.toContainEqual(Feat.Kills({ count: 5 }))
-      yield* Story.story(
-        APPLICATION,
-        Story.given(tourBreak(veteran)),
-        frame,
-        Story.model(current => {
-          expect(current.firstBreakQuest).toEqual(QuestTour.Waiting())
-          expect(stepOf(current)).toEqual(Option.none())
-          expect(maybeQuestMark(current)).toEqual(Option.none())
-        }),
+      const story2 = yield* storyOf(tourBreak(veteran))
+      story2.pipe(
+        steps<AppStory>(
+          frame,
+          checkModel(current => {
+            expect(current.firstBreakQuest).toEqual(QuestTour.Waiting())
+            expect(stepOf(current)).toEqual(Option.none())
+            expect(maybeQuestMark(current)).toEqual(Option.none())
+          }),
+        ),
       )
-      return yield* Story.story(
-        APPLICATION,
-        Story.given(tourBreak(asTutorialDone(asVeteran(initialModel)))),
-        frame,
-        Story.model(current => {
-          expect(stepOf(current)).toEqual(Option.none())
-        }),
+      const story3 = yield* storyOf(
+        tourBreak(asTutorialDone(asVeteran(initialModel))),
+      )
+      story3.pipe(
+        steps<AppStory>(
+          frame,
+          checkModel(current => {
+            expect(stepOf(current)).toEqual(Option.none())
+          }),
+        ),
       )
     }),
   )
 
   it.effect('a tutorial reset plays it again', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
+    Effect.gen(function* () {
+      const s = yield* storyOf(
         tourBreak(
-          modifyFields(forgetTutorial(asTutorialDone(newSave)), {
+          UiStruct.evolve(forgetTutorial(asTutorialDone(newSave)), {
             lessons: lessons =>
-              modifyFields(lessons, {
+              UiStruct.evolve(lessons, {
                 rattles: () => Lesson.Learned({ atMs: 0 }),
               }),
           }),
         ),
-      ),
-      frame,
-      Story.model(current => {
-        expect(current.firstBreakQuest).toEqual(
-          QuestTour.Running({ isLockSeen: false }),
-        )
-      }),
-    ),
+      )
+      s.pipe(
+        steps<AppStory>(
+          frame,
+          checkModel(current => {
+            expect(current.firstBreakQuest).toEqual(
+              QuestTour.Running({ isLockSeen: false }),
+            )
+          }),
+        ),
+      )
+    }),
   )
 
   it.effect('in co-op it never runs', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        modifyFields(tourBreak(newSave), { party: () => Party.Crew() }),
-      ),
-      frame,
-      Story.model(current => {
-        expect(stepOf(current)).toEqual(Option.none())
-        expect(seatStateAt(current, 0).trapStock.Barricade).toBe(0)
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(
+        UiStruct.evolve(tourBreak(newSave), { party: () => Party.Crew() }),
+      )
+      s.pipe(
+        steps<AppStory>(
+          frame,
+          checkModel(current => {
+            expect(stepOf(current)).toEqual(Option.none())
+            expect(seatStateAt(current, 0).trapStock.Barricade).toBe(0)
+          }),
+        ),
+      )
+    }),
   )
 })
 
@@ -486,55 +529,61 @@ describe('the guided first break', () => {
 // starting the wave, by the button, the key, or a tap
 // (firstBreakQuest.scene.test.ts), ticks every step off.
 describe('the START WAVE step', () => {
-  const onStart: Model = modifyFields(tourBreak(newSave), {
+  const onStart: Model = UiStruct.evolve(tourBreak(newSave), {
     firstBreakQuest: () => QuestTour.Starting(),
   })
 
   it.effect('comes after a moment on the dare card', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        modifyFields(tourBreak(newSave), {
+    Effect.gen(function* () {
+      const s = yield* storyOf(
+        UiStruct.evolve(tourBreak(newSave), {
           firstBreakQuest: () => QuestTour.Looking({ ageMs: 0 }),
         }),
-      ),
-      ...ticks(LOOK_FRAMES - 2, FRAME_MS),
-      Story.model(current => {
-        expect(stepOf(current)).toEqual(Option.some('Card'))
-        expect(isStartWaveBeckoning(current)).toBe(false)
-      }),
-      frame,
-      frame,
-      Story.model(current => {
-        expect(stepOf(current)).toEqual(Option.some('Start'))
-        expect(isStartWaveBeckoning(current)).toBe(true)
-      }),
-    ),
+      )
+      s.pipe(
+        steps<AppStory>(
+          ticks(LOOK_FRAMES - 2, FRAME_MS),
+          checkModel(current => {
+            expect(stepOf(current)).toEqual(Option.some('Card'))
+            expect(isStartWaveBeckoning(current)).toBe(false)
+          }),
+          frame,
+          frame,
+          checkModel(current => {
+            expect(stepOf(current)).toEqual(Option.some('Start'))
+            expect(isStartWaveBeckoning(current)).toBe(true)
+          }),
+        ),
+      )
+    }),
   )
 
   // NOTE: the tour's break is the open break, whose clock waits, so the
   // step waits on the player as long as they like.
   it.effect('never rushes the player: the break waits', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(onStart),
-      ...ticks(120, TICK_MS),
-      Story.model(current => {
-        expect(current.phase).toMatchObject({
-          _tag: 'Preparation',
-          wave: DARE_TOUR_WAVE,
-          remainingMs: PREPARATION_MS,
-        })
-        expect(
-          BreakClock.isAnyOf(['Waiting'])(
-            Phase.isAnyOf(['Preparation'])(current.phase)
-              ? current.phase.clock
-              : BreakClock.Counting(),
-          ),
-        ).toBe(true)
-        expect(stepOf(current)).toEqual(Option.some('Start'))
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(onStart)
+      s.pipe(
+        steps<AppStory>(
+          ticks(120, TICK_MS),
+          checkModel(current => {
+            expect(current.phase).toMatchObject({
+              _tag: 'Preparation',
+              wave: DARE_TOUR_WAVE,
+              remainingMs: PREPARATION_MS,
+            })
+            expect(
+              BreakClock.isAnyOf(['Waiting'])(
+                Phase.isAnyOf(['Preparation'])(current.phase)
+                  ? current.phase.clock
+                  : BreakClock.Counting(),
+              ),
+            ).toBe(true)
+            expect(stepOf(current)).toEqual(Option.some('Start'))
+          }),
+        ),
+      )
+    }),
   )
 
   const starters = [
@@ -544,43 +593,51 @@ describe('the START WAVE step', () => {
 
   it.effect('starting the wave ticks it off and learns the tour', () =>
     Effect.forEach(starters, ({ start }) =>
-      Story.story(
-        APPLICATION,
-        Story.given(onStart),
-        start,
-        frame,
-        Story.model(current => {
-          expect(Phase.isAnyOf(['Wave'])(current.phase)).toBe(true)
-          expect(current.firstBreakQuest).toEqual(QuestTour.Done({ ageMs: 0 }))
-          expect(isPending(current.lessons.dareTour)).toBe(false)
-          expect(isPending(current.lessons.startWave)).toBe(false)
-        }),
-        Story.Command.resolveAll(),
-      ),
+      Effect.gen(function* () {
+        const s = yield* storyOf(onStart)
+        s.pipe(
+          steps<AppStory>(
+            start,
+            frame,
+            checkModel(current => {
+              expect(Phase.isAnyOf(['Wave'])(current.phase)).toBe(true)
+              expect(current.firstBreakQuest).toEqual(
+                QuestTour.Done({ ageMs: 0 }),
+              )
+              expect(isPending(current.lessons.dareTour)).toBe(false)
+              expect(isPending(current.lessons.startWave)).toBe(false)
+            }),
+            settleRunCommands,
+          ),
+        )
+      }),
     ),
   )
 
   it.effect('in co-op it never comes', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        modifyFields(tourBreak(newSave), {
+    Effect.gen(function* () {
+      const s = yield* storyOf(
+        UiStruct.evolve(tourBreak(newSave), {
           party: () => Party.Crew(),
           firstBreakQuest: () => QuestTour.Looking({ ageMs: 0 }),
         }),
-      ),
-      frame,
-      Story.model(current => {
-        expect(stepOf(current)).toEqual(Option.none())
-      }),
-    ),
+      )
+      s.pipe(
+        steps<AppStory>(
+          frame,
+          checkModel(current => {
+            expect(stepOf(current)).toEqual(Option.none())
+          }),
+        ),
+      )
+    }),
   )
 })
 
 // NOTE: a break past the tour, the ring holding `keys`.
 const laterBreak = (keys: number): Model =>
-  modifyFields(asTutorialDone(asVeteran(newSave)), {
-    keys: ring => modifyFields(ring, { held: () => keys }),
+  UiStruct.evolve(asTutorialDone(asVeteran(newSave)), {
+    keys: ring => UiStruct.evolve(ring, { held: () => keys }),
     phase: () =>
       Phase.Preparation({
         wave: 4,
@@ -598,35 +655,41 @@ describe('the padlock nudge', () => {
     Option.getOrThrow(maybeQuestPadlock(model)).price
 
   it.effect('pulses over the cheapest padlock once the keys are there', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(laterBreak(0)),
-      Story.model(short => {
-        const price = cheapestPrice(short)
-        expect(maybePadlockNudge(short)).toEqual(Option.none())
-        expect(maybePadlockNudge(laterBreak(price - 1))).toEqual(Option.none())
-        expect(maybePadlockNudge(laterBreak(price))).toEqual(
-          Option.map(maybeQuestPadlock(short), padlockMarkOf),
-        )
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(laterBreak(0))
+      s.pipe(
+        steps<AppStory>(
+          checkModel(short => {
+            const price = cheapestPrice(short)
+            expect(maybePadlockNudge(short)).toEqual(Option.none())
+            expect(maybePadlockNudge(laterBreak(price - 1))).toEqual(
+              Option.none(),
+            )
+            expect(maybePadlockNudge(laterBreak(price))).toEqual(
+              Option.map(maybeQuestPadlock(short), padlockMarkOf),
+            )
+          }),
+        ),
+      )
+    }),
   )
 
   it.effect('goes once boards open, in a wave, and in the tour break', () =>
     Effect.gen(function* () {
       const flush = laterBreak(9)
-      const opened = yield* Story.story(
-        APPLICATION,
-        Story.given(flush),
-        changeModel(current => standAt(belowPadlock(current))(current)),
-        ...holdEnter(HOLD_TICKS + 2),
-        Story.Command.resolveAll(),
+      const opened = yield* modelAfter(
+        flush,
+        steps<AppStory>(
+          changeModel(current => standAt(belowPadlock(current))(current)),
+          holdEnter(HOLD_TICKS + 2),
+          settleRunCommands,
+        ),
       )
       expect(heldKeys(opened)).toBeLessThan(9)
       expect(maybePadlockNudge(opened)).toEqual(Option.none())
       expect(
         maybePadlockNudge(
-          modifyFields(flush, {
+          UiStruct.evolve(flush, {
             phase: () =>
               Phase.Wave({
                 wave: 4,
@@ -636,17 +699,18 @@ describe('the padlock nudge', () => {
           }),
         ),
       ).toEqual(Option.none())
-      return yield* Story.story(
-        APPLICATION,
-        Story.given(
-          modifyFields(tourBreak(newSave), {
-            keys: ring => modifyFields(ring, { held: () => 9 }),
+      const story4 = yield* storyOf(
+        UiStruct.evolve(tourBreak(newSave), {
+          keys: ring => UiStruct.evolve(ring, { held: () => 9 }),
+        }),
+      )
+      story4.pipe(
+        steps<AppStory>(
+          frame,
+          checkModel(current => {
+            expect(maybePadlockNudge(current)).toEqual(Option.none())
           }),
         ),
-        frame,
-        Story.model(current => {
-          expect(maybePadlockNudge(current)).toEqual(Option.none())
-        }),
       )
     }),
   )
@@ -672,59 +736,70 @@ describe('the padlock pointer', () => {
     questEdgeShapes(current, screenOf(current), screenCameraOf(current)).length
 
   it.effect('points to an affordable padlock out of sight, then stops', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(laterBreak(9)),
-      changeModel(current => standAt(farFromPadlock(current))(current)),
-      Story.model(far => {
-        expect(maybePadlockPointer(far)).toEqual(
-          Option.map(maybeQuestPadlock(far), padlockMarkOf),
-        )
-        expect(arrowsOf(far)).toBe(1)
-        expect(maybePadlockPointer(standAt(belowPadlock(far))(far))).toEqual(
-          Option.none(),
-        )
-        expect(
-          maybePadlockPointer(
-            modifyFields(far, {
-              keys: ring => modifyFields(ring, { held: () => 0 }),
-            }),
-          ),
-        ).toEqual(Option.none())
-        expect(
-          maybePadlockPointer(modifyFields(far, { party: () => Party.Crew() })),
-        ).toEqual(Option.none())
-        expect(
-          maybePadlockPointer(
-            modifyFields(far, {
-              phase: () =>
-                Phase.Wave({ wave: 4, spawns: [DISTANT_SPAWN], elapsedMs: 0 }),
-            }),
-          ),
-        ).toEqual(Option.none())
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(laterBreak(9))
+      s.pipe(
+        steps<AppStory>(
+          changeModel(current => standAt(farFromPadlock(current))(current)),
+          checkModel(far => {
+            expect(maybePadlockPointer(far)).toEqual(
+              Option.map(maybeQuestPadlock(far), padlockMarkOf),
+            )
+            expect(arrowsOf(far)).toBe(1)
+            expect(
+              maybePadlockPointer(standAt(belowPadlock(far))(far)),
+            ).toEqual(Option.none())
+            expect(
+              maybePadlockPointer(
+                UiStruct.evolve(far, {
+                  keys: ring => UiStruct.evolve(ring, { held: () => 0 }),
+                }),
+              ),
+            ).toEqual(Option.none())
+            expect(
+              maybePadlockPointer(
+                UiStruct.evolve(far, { party: () => Party.Crew() }),
+              ),
+            ).toEqual(Option.none())
+            expect(
+              maybePadlockPointer(
+                UiStruct.evolve(far, {
+                  phase: () =>
+                    Phase.Wave({
+                      wave: 4,
+                      spawns: [DISTANT_SPAWN],
+                      elapsedMs: 0,
+                    }),
+                }),
+              ),
+            ).toEqual(Option.none())
+          }),
+        ),
+      )
+    }),
   )
 
   it.effect('still points after boards have opened this run', () =>
     Effect.gen(function* () {
-      const opened = yield* Story.story(
-        APPLICATION,
-        Story.given(laterBreak(99)),
-        changeModel(current => standAt(belowPadlock(current))(current)),
-        ...holdEnter(HOLD_TICKS + 2),
-        Story.Command.resolveAll(),
+      const opened = yield* modelAfter(
+        laterBreak(99),
+        steps<AppStory>(
+          changeModel(current => standAt(belowPadlock(current))(current)),
+          holdEnter(HOLD_TICKS + 2),
+          settleRunCommands,
+        ),
       )
-      return yield* Story.story(
-        APPLICATION,
-        Story.given(opened),
-        changeModel(current => standAt(farFromPadlock(current))(current)),
-        Story.model(far => {
-          expect(maybePadlockNudge(far)).toEqual(Option.none())
-          expect(maybePadlockPointer(far)).toEqual(
-            Option.map(maybeQuestPadlock(far), padlockMarkOf),
-          )
-        }),
+      const story5 = yield* storyOf(opened)
+      story5.pipe(
+        steps<AppStory>(
+          changeModel(current => standAt(farFromPadlock(current))(current)),
+          checkModel(far => {
+            expect(maybePadlockNudge(far)).toEqual(Option.none())
+            expect(maybePadlockPointer(far)).toEqual(
+              Option.map(maybeQuestPadlock(far), padlockMarkOf),
+            )
+          }),
+        ),
       )
     }),
   )

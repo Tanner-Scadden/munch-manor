@@ -1,7 +1,6 @@
 import { Array, Effect } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
 import { Message } from '../../../app/message'
@@ -17,10 +16,12 @@ import {
   withPlayerAt,
 } from '../../../test/model.fixture'
 import {
-  APPLICATION,
+  checkModel,
   eventsOver,
   holdFire,
+  modelAfter,
   settleRunCommands,
+  steps,
   tagsOf,
   ticks,
 } from '../../../test/testing'
@@ -54,12 +55,12 @@ type FindCase = Readonly<{
 const openSlotRoom =
   (room: SlotRoomId) =>
   (model: Model): Model =>
-    modifyFields(model, {
+    UiStruct.evolve(model, {
       level: () => roomOpenIn(DEFAULT_ARRANGEMENT, room),
     })
 
 const openKitchen = (model: Model): Model =>
-  modifyFields(model, { level: level => openExitIn(level, KITCHEN_EXIT) })
+  UiStruct.evolve(model, { level: level => openExitIn(level, KITCHEN_EXIT) })
 
 const CASES: ReadonlyArray<FindCase> = [
   { room: PARLOUR_ROOM_ID, style: 'Rummage', open: openSlotRoom('Parlour') },
@@ -110,21 +111,24 @@ describe('each room finds its own way', () => {
     () =>
       Effect.forEach(CASES, findCase => {
         const workMs = FIND_RULES[findCase.style].workMs
-        return Story.story(
-          APPLICATION,
-          Story.given(atFind(findCase)),
-          ...ticks(Math.ceil(workMs / FRAME_MS) - 2, FRAME_MS),
-          settleRunCommands,
-          Story.model(current => {
-            expect(isWorkingFind(current, 0)).toBe(true)
-            expect(stateOf(current)?._tag).toBe('Hidden')
-          }),
-          ...ticks(3, FRAME_MS),
-          settleRunCommands,
-          Story.model(current => {
-            expect(stateOf(current)).toEqual(DareThingState.Found({ slot: 0 }))
-            expect(isWorkingFind(current, 0)).toBe(false)
-          }),
+        return modelAfter(
+          atFind(findCase),
+          steps(
+            ticks(Math.ceil(workMs / FRAME_MS) - 2, FRAME_MS),
+            settleRunCommands,
+            checkModel(current => {
+              expect(isWorkingFind(current, 0)).toBe(true)
+              expect(stateOf(current)?._tag).toBe('Hidden')
+            }),
+            ticks(3, FRAME_MS),
+            settleRunCommands,
+            checkModel(current => {
+              expect(stateOf(current)).toEqual(
+                DareThingState.Found({ slot: 0 }),
+              )
+              expect(isWorkingFind(current, 0)).toBe(false)
+            }),
+          ),
         )
       }),
   )
@@ -146,16 +150,17 @@ describe('each room finds its own way', () => {
 
   it.effect('a player at work holds their fire', () =>
     Effect.forEach(CASES, findCase =>
-      Story.story(
-        APPLICATION,
-        Story.given(atFind(findCase)),
-        holdFire,
-        ...ticks(20, FRAME_MS),
-        settleRunCommands,
-        Story.model(current => {
-          expect(isWorkingFind(current, 0)).toBe(true)
-          expect(current.bullets).toEqual([])
-        }),
+      modelAfter(
+        atFind(findCase),
+        steps(
+          holdFire,
+          ticks(20, FRAME_MS),
+          settleRunCommands,
+          checkModel(current => {
+            expect(isWorkingFind(current, 0)).toBe(true)
+            expect(current.bullets).toEqual([])
+          }),
+        ),
       ),
     ),
   )
@@ -164,18 +169,14 @@ describe('each room finds its own way', () => {
     Effect.gen(function* () {
       const findCase = CASES[2] ?? { room: '', style: 'Walk', open: m => m }
       const spot = spotOf(findCase.room)
-      const worked = yield* Story.story(
-        APPLICATION,
-        Story.given(atFind(findCase)),
-        ...ticks(60, FRAME_MS),
-        settleRunCommands,
+      const worked = yield* modelAfter(
+        atFind(findCase),
+        steps(ticks(60, FRAME_MS), settleRunCommands),
       )
       const away = withPlayerAt(worked, spot.x + 40, spot.y)
-      const drained = yield* Story.story(
-        APPLICATION,
-        Story.given(away),
-        ...ticks(60, FRAME_MS),
-        settleRunCommands,
+      const drained = yield* modelAfter(
+        away,
+        steps(ticks(60, FRAME_MS), settleRunCommands),
       )
       const workedMsOf = (model: Model): number => {
         const state = stateOf(model)
@@ -193,11 +194,9 @@ describe('each room finds its own way', () => {
     Effect.gen(function* () {
       const findCase = CASES[0] ?? { room: '', style: 'Walk', open: m => m }
       const shut = atFind({ ...findCase, open: model => model })
-      const after = yield* Story.story(
-        APPLICATION,
-        Story.given(shut),
-        ...ticks(80, FRAME_MS),
-        settleRunCommands,
+      const after = yield* modelAfter(
+        shut,
+        steps(ticks(80, FRAME_MS), settleRunCommands),
       )
       expect(isWorkingFind(after, 0)).toBe(false)
       expect(stateOf(after)).toEqual(
@@ -219,32 +218,34 @@ describe('a find in co-op', () => {
   }
 
   it.effect('two players haul the dumbwaiter up in half the time', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(crewAt(2)),
-      ...ticks(
-        Math.ceil(FIND_RULES.Dumbwaiter.workMs / 2 / FRAME_MS) + 1,
-        FRAME_MS,
+    modelAfter(
+      crewAt(2),
+      steps(
+        ticks(
+          Math.ceil(FIND_RULES.Dumbwaiter.workMs / 2 / FRAME_MS) + 1,
+          FRAME_MS,
+        ),
+        settleRunCommands,
+        checkModel(current => {
+          expect(stateOf(current)).toEqual(DareThingState.Found({ slot: 0 }))
+        }),
       ),
-      settleRunCommands,
-      Story.model(current => {
-        expect(stateOf(current)).toEqual(DareThingState.Found({ slot: 0 }))
-      }),
     ),
   )
 
   it.effect('one player alone is not done in that time', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(crewAt(1)),
-      ...ticks(
-        Math.ceil(FIND_RULES.Dumbwaiter.workMs / 2 / FRAME_MS) + 1,
-        FRAME_MS,
+    modelAfter(
+      crewAt(1),
+      steps(
+        ticks(
+          Math.ceil(FIND_RULES.Dumbwaiter.workMs / 2 / FRAME_MS) + 1,
+          FRAME_MS,
+        ),
+        settleRunCommands,
+        checkModel(current => {
+          expect(stateOf(current)?._tag).toBe('Hidden')
+        }),
       ),
-      settleRunCommands,
-      Story.model(current => {
-        expect(stateOf(current)?._tag).toBe('Hidden')
-      }),
     ),
   )
 })

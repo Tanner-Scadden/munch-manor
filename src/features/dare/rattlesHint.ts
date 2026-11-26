@@ -1,5 +1,6 @@
 import { Array, Function, Option, Result } from 'effect'
-import { makeModifyFieldsFor, modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import type { Model } from '../../app/model'
 import {
@@ -12,6 +13,7 @@ import {
   Tour,
 } from '../../domain/clientSchema'
 import { runDifficultyOf } from '../../domain/onlineRun'
+import { evolveFor } from '../../shared/evolve'
 import type { Difficulty } from '../../shared/playerData'
 import { type Seeded, drawIndex, pickLine } from '../../shared/prng'
 import {
@@ -255,12 +257,12 @@ const isHushed = (model: Model): boolean =>
   Tour.isAnyOf(['Running'])(model.kitchenTour) ||
   QuestTour.isAnyOf(['Running', 'Looking', 'Starting'])(model.firstBreakQuest)
 
-const modifyHint = makeModifyFieldsFor<DareHint>()
+const modifyHint = evolveFor<DareHint>()
 
 type HintChange = Parameters<typeof modifyHint>[1]
 
 const withHint = (model: Model, change: HintChange): Model =>
-  modifyFields(model, { dareHint: hint => modifyHint(hint, change) })
+  UiStruct.evolve(model, { dareHint: hint => modifyHint(hint, change) })
 
 const startCall = (model: Model, hint: Hint, change: HintChange): Model => {
   const [state, line] = pickLine(
@@ -268,7 +270,7 @@ const startCall = (model: Model, hint: Hint, change: HintChange): Model => {
     hint.lines,
     model.dareHint.lastLine,
   )
-  return modifyFields(model, {
+  return UiStruct.evolve(model, {
     dareHint: current =>
       modifyHint(modifyHint(current, change), {
         call: () =>
@@ -280,7 +282,7 @@ const startCall = (model: Model, hint: Hint, change: HintChange): Model => {
             endsAtMs: model.elapsedMs + HINT_MS,
           }),
       }),
-    cosmetics: modifyFields({ cosmeticRngState: () => state }),
+    cosmetics: UiStruct.evolve({ cosmeticRngState: () => state }),
   })
 }
 
@@ -334,8 +336,8 @@ const callInBreak = (model: Model, wave: number, frameMs: number): Model => {
       }),
     onSome: picked =>
       startCall(
-        modifyFields(model, {
-          cosmetics: modifyFields({ cosmeticRngState: () => state }),
+        UiStruct.evolve(model, {
+          cosmetics: UiStruct.evolve({ cosmeticRngState: () => state }),
         }),
         picked,
         {

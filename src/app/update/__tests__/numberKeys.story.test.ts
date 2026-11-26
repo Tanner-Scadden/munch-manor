@@ -1,7 +1,6 @@
 import { Effect } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
 import {
@@ -15,7 +14,7 @@ import {
   withArsenal,
   withKnifeOut,
 } from '../../../test/model.fixture'
-import { APPLICATION, tap } from '../../../test/testing'
+import { checkModel, modelAfter, steps, tap } from '../../../test/testing'
 import {
   STARTING_PISTOL,
   freshGun,
@@ -34,7 +33,7 @@ const bothGuns = withArsenal(quietWave(3), holdingFirst(SHOTGUN))
 const withPan = (base: Model): Model =>
   modifyFocus(base, {
     player: player =>
-      modifyFields(player, {
+      UiStruct.evolve(player, {
         melee: () => Melee.Pan({ pan: freshGun('Pan') }),
       }),
   })
@@ -42,7 +41,7 @@ const withPan = (base: Model): Model =>
 // NOTE: the pistol in hand halfway through a reload, with two rounds in.
 const reloadingPistol = modifyFocus(bothGuns, {
   player: player =>
-    modifyFields(player, {
+    UiStruct.evolve(player, {
       arsenal: () =>
         Arsenal.HoldingFirst({
           first: { ...STARTING_PISTOL, loaded: 2 },
@@ -54,32 +53,36 @@ const reloadingPistol = modifyFocus(bothGuns, {
 
 describe('the number keys', () => {
   it.effect('2 draws the second gun and 1 the first', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(bothGuns),
-      tap('Digit2'),
-      Story.model(current => {
-        expect(focusOf(current).player.arsenal).toEqual(holdingSecond(SHOTGUN))
-      }),
-      tap('Digit1'),
-      Story.model(current => {
-        expect(focusOf(current).player.arsenal).toEqual(holdingFirst(SHOTGUN))
-      }),
-      tap('Numpad2'),
-      Story.model(current => {
-        expect(inHandOf(focusOf(current).player)).toBe('Shotgun')
-      }),
+    modelAfter(
+      bothGuns,
+      steps(
+        tap('Digit2'),
+        checkModel(current => {
+          expect(focusOf(current).player.arsenal).toEqual(
+            holdingSecond(SHOTGUN),
+          )
+        }),
+        tap('Digit1'),
+        checkModel(current => {
+          expect(focusOf(current).player.arsenal).toEqual(holdingFirst(SHOTGUN))
+        }),
+        tap('Numpad2'),
+        checkModel(current => {
+          expect(inHandOf(focusOf(current).player)).toBe('Shotgun')
+        }),
+      ),
     ),
   )
 
   it.effect('the gun already in hand stays as it is', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(bothGuns),
-      tap('Digit1'),
-      Story.model(current => {
-        expect(focusOf(current).player).toEqual(focusOf(bothGuns).player)
-      }),
+    modelAfter(
+      bothGuns,
+      steps(
+        tap('Digit1'),
+        checkModel(current => {
+          expect(focusOf(current).player).toEqual(focusOf(bothGuns).player)
+        }),
+      ),
     ),
   )
 
@@ -90,26 +93,28 @@ describe('the number keys', () => {
         withKnifeOut(withArsenal(quietWave(3), pistolOnly())),
       ],
       start =>
-        Story.story(
-          APPLICATION,
-          Story.given(start),
-          tap('Digit2'),
-          Story.model(current => {
-            expect(focusOf(current).player).toEqual(focusOf(start).player)
-          }),
+        modelAfter(
+          start,
+          steps(
+            tap('Digit2'),
+            checkModel(current => {
+              expect(focusOf(current).player).toEqual(focusOf(start).player)
+            }),
+          ),
         ),
     ),
   )
 
   it.effect('1 draws the first gun from the knife', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(withKnifeOut(withArsenal(bothGuns, holdingSecond(SHOTGUN)))),
-      tap('Digit1'),
-      Story.model(current => {
-        expect(focusOf(current).player.wield).toBe('Gun')
-        expect(focusOf(current).player.arsenal).toEqual(holdingFirst(SHOTGUN))
-      }),
+    modelAfter(
+      withKnifeOut(withArsenal(bothGuns, holdingSecond(SHOTGUN))),
+      steps(
+        tap('Digit1'),
+        checkModel(current => {
+          expect(focusOf(current).player.wield).toBe('Gun')
+          expect(focusOf(current).player.arsenal).toEqual(holdingFirst(SHOTGUN))
+        }),
+      ),
     ),
   )
 
@@ -120,43 +125,46 @@ describe('the number keys', () => {
         [withPan(bothGuns), 'Pan'],
       ] as const,
       ([start, melee]) =>
-        Story.story(
-          APPLICATION,
-          Story.given(start),
-          tap('Digit3'),
-          Story.model(current => {
-            expect(inHandOf(focusOf(current).player)).toBe(melee)
-          }),
+        modelAfter(
+          start,
+          steps(
+            tap('Digit3'),
+            checkModel(current => {
+              expect(inHandOf(focusOf(current).player)).toBe(melee)
+            }),
+          ),
         ),
     ),
   )
 
   it.effect('drawing the other gun stops a reload and keeps the magazine', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(reloadingPistol),
-      tap('Digit2'),
-      tap('Digit1'),
-      Story.model(current => {
-        const { player } = focusOf(current)
-        expect(Reload.isAnyOf(['Ready'])(player.reload)).toBe(true)
-        expect(focusOf(current).player.arsenal).toEqual(
-          focusOf(reloadingPistol).player.arsenal,
-        )
-      }),
+    modelAfter(
+      reloadingPistol,
+      steps(
+        tap('Digit2'),
+        tap('Digit1'),
+        checkModel(current => {
+          const { player } = focusOf(current)
+          expect(Reload.isAnyOf(['Ready'])(player.reload)).toBe(true)
+          expect(focusOf(current).player.arsenal).toEqual(
+            focusOf(reloadingPistol).player.arsenal,
+          )
+        }),
+      ),
     ),
   )
 
   it.effect('a reload carries on while 3 has the knife out', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(reloadingPistol),
-      tap('Digit3'),
-      Story.model(current => {
-        const { player } = focusOf(current)
-        expect(inHandOf(player)).toBe('Knife')
-        expect(Reload.isAnyOf(['Reloading'])(player.reload)).toBe(true)
-      }),
+    modelAfter(
+      reloadingPistol,
+      steps(
+        tap('Digit3'),
+        checkModel(current => {
+          const { player } = focusOf(current)
+          expect(inHandOf(player)).toBe('Knife')
+          expect(Reload.isAnyOf(['Reloading'])(player.reload)).toBe(true)
+        }),
+      ),
     ),
   )
 })

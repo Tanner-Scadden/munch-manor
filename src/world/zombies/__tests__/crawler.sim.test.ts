@@ -2,12 +2,12 @@
 // takes about a second, so it runs in `bun run test:full` and CI, not in
 // `bun run test`. The Ankle Biter's rules are in crawler.story.test.ts.
 import { Array, Effect, Option } from 'effect'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
 import { Message } from '../../../app/message'
-import { Phase } from '../../../app/model'
+import { BreakClock, Phase } from '../../../app/model'
 import { initialModel } from '../../../app/pureApp'
 import { PREPARATION_MS } from '../../../shared/constants'
 import { playedThrough } from '../../../test/testing'
@@ -24,12 +24,13 @@ describe('the Ankle Biter', () => {
         const play = (seed: number) => {
           const [rngState, spawns] = rollSpawns(seed, 7)
           const start = modifyFocus(
-            modifyFields(asVeteran(initialModel), {
+            UiStruct.evolve(asVeteran(initialModel), {
               maybeSurface: () =>
                 Option.some({ left: 0, top: 0, width: 800, height: 400 }),
               rngState: () => rngState,
               phase: () =>
                 Phase.Preparation({
+                  clock: BreakClock.Counting(),
                   wave: 7,
                   remainingMs: PREPARATION_MS,
                   durationMs: PREPARATION_MS,
@@ -39,7 +40,7 @@ describe('the Ankle Biter', () => {
             }),
             {
               player: player =>
-                modifyFields(player, {
+                UiStruct.evolve(player, {
                   hp: () => 1e6,
                 }),
             },

@@ -14,12 +14,6 @@
   --profile-stone-deep: #3b3842;
 }
 
-.profile-dialog[open] {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
 .profile-backdrop {
   position: fixed;
   inset: 0;
@@ -390,9 +384,8 @@
   background: transparent;
 }
 
-.look-stage .look-preview-canvas {
-  width: 160px;
-  height: 160px;
+.look-stage .look-preview-art {
+  --preview-scale: 8;
 }
 
 .look-poof {
@@ -478,13 +471,29 @@
 }
 
 .look-preview {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  position: relative;
+  display: block;
 }
 
-.look-preview-canvas {
-  display: block;
+/* NOTE: the figure is drawn on a 20 by 20 grid of game pixels (one span a
+   sprite or rect, src/features/profile/blocks/look/view.ts), scaled by a
+   whole number to fill its box. */
+.look-preview-art {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 20px;
+  height: 20px;
+  transform: scale(var(--preview-scale, 8));
+  transform-origin: 0 0;
+}
+
+.look-preview-leaf {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  background-size: 100% 100%;
   image-rendering: crisp-edges;
   image-rendering: pixelated;
 }
@@ -1560,10 +1569,13 @@
   gap: 10px;
 }
 
-.game-root[data-layout='Portrait'] .look-stage .look-preview,
-.game-root[data-layout='Portrait'] .look-stage .look-preview-canvas {
+.game-root[data-layout='Portrait'] .look-stage .look-preview {
   width: 120px;
   height: 120px;
+}
+
+.game-root[data-layout='Portrait'] .look-stage .look-preview-art {
+  --preview-scale: 6;
 }
 
 .game-root[data-layout='Portrait'] .look-bounce {
@@ -1581,10 +1593,13 @@
     height: 120px;
   }
 
-  .game-root[data-layout='Portrait'] .look-stage .look-preview,
-  .game-root[data-layout='Portrait'] .look-stage .look-preview-canvas {
+  .game-root[data-layout='Portrait'] .look-stage .look-preview {
     width: 100px;
     height: 100px;
+  }
+
+  .game-root[data-layout='Portrait'] .look-stage .look-preview-art {
+    --preview-scale: 5;
   }
 
   .game-root[data-layout='Portrait'] .look-bounce {

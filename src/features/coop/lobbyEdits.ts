@@ -1,5 +1,6 @@
 import { Option, String } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import {
   LobbyChange,
@@ -16,31 +17,25 @@ import {
   modifiersOfMask,
   toggledModifier,
 } from '../../world/run/modifiers'
-import { OutMessage } from './message'
+import { CoopNotice } from './message'
 import { type Model } from './model'
-import {
-  NAME_BUTTON_ID,
-  NAME_INPUT_ID,
-  isPicking,
-  meIn,
-  withRoom,
-} from './roomState'
+import { type CoopFocus, isPicking, meIn, withRoom } from './roomState'
 
 // The lobby's edits: the host's modifiers, a tap on a pick that is not
 // yours, and your name (the hero is the picker's, src/features/coop/steps.ts). They are
 // plain changes of the room; the Commands they return come from the caller,
-// as the update names them (`ChangeLobby`, `FocusCoopElement`), so this
+// as the rules name them (`ChangeLobby`, `focusCoop`), so this
 // module never imports the update that holds them.
 
 export type EditCommands<C> = Readonly<{
   changeLobby: (change: LobbyChange) => C
-  focus: (id: string) => C
+  focus: (target: CoopFocus) => C
 }>
 
 type EditReturn<C> = Readonly<{
   model: Model
   commands?: ReadonlyArray<C>
-  outMessage?: OutMessage
+  notice?: CoopNotice
 }>
 
 export const makeEdits = <C>(commands: EditCommands<C>) => {
@@ -158,7 +153,7 @@ export const makeEdits = <C>(commands: EditCommands<C>) => {
         isInLobby(room)
           ? {
               model: withNameDraft(model, room, Option.some(me.name)),
-              commands: [commands.focus(NAME_INPUT_ID)],
+              commands: [commands.focus('NameInput')],
             }
           : { model },
     })
@@ -167,7 +162,7 @@ export const makeEdits = <C>(commands: EditCommands<C>) => {
     Option.isSome(room.maybeNameDraft)
       ? {
           model: withNameDraft(model, room, Option.none()),
-          commands: [commands.focus(NAME_BUTTON_ID)],
+          commands: [commands.focus('NameButton')],
         }
       : { model }
 
@@ -182,10 +177,13 @@ export const makeEdits = <C>(commands: EditCommands<C>) => {
       onSome: draft => {
         const [rngState, name] = rollName(model.rngState, cleanName(draft))
         return {
-          model: modifyFields(withNameDraft(model, room, Option.some(name)), {
-            rngState: () => rngState,
-          }),
-          commands: [commands.focus(NAME_INPUT_ID)],
+          model: UiStruct.evolve(
+            withNameDraft(model, room, Option.some(name)),
+            {
+              rngState: () => rngState,
+            },
+          ),
+          commands: [commands.focus('NameInput')],
         }
       },
     })
@@ -201,12 +199,12 @@ export const makeEdits = <C>(commands: EditCommands<C>) => {
           return closed
         } else {
           return {
-            model: modifyFields(closed.model, { name: () => name }),
+            model: UiStruct.evolve(closed.model, { name: () => name }),
             commands: [
               commands.changeLobby(LobbyChange.ChangedMemberName({ name })),
               ...(closed.commands ?? []),
             ],
-            outMessage: OutMessage.ChoseName({ name }),
+            notice: CoopNotice.ChoseName({ name }),
           }
         }
       },

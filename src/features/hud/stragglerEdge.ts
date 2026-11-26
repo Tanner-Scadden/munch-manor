@@ -1,9 +1,9 @@
 import { Array, Function, pipe } from 'effect'
-import type { Canvas } from 'foldkit'
 
 import type { Model } from '../../app/model'
 import { placeAt } from '../../art/sprite'
 import { type Camera, worldToView } from '../../render/camera'
+import type * as Draw from '../../render/draw'
 import { EDGE_BADGE_PX, edgeBadgeOf } from '../../render/edgeBadge'
 import { clearWindowOf } from '../../render/hudLayout'
 import type { Screen } from '../../render/screen'
@@ -22,23 +22,16 @@ const EDGE_GAP = 3
 const BLINK_MS = 160
 
 const RAGE_BADGES: readonly [
-  ReadonlyArray<Canvas.Shape>,
-  ReadonlyArray<Canvas.Shape>,
+  ReadonlyArray<Draw.Shape>,
+  ReadonlyArray<Draw.Shape>,
 ] = [edgeBadgeOf('#e8343a'), edgeBadgeOf('#ff9a8a')]
 
 export const stragglerEdgeShapes: {
-  (
-    screen: Screen,
-    camera: Camera,
-  ): (model: Model) => ReadonlyArray<Canvas.Shape>
-  (model: Model, screen: Screen, camera: Camera): ReadonlyArray<Canvas.Shape>
+  (screen: Screen, camera: Camera): (model: Model) => ReadonlyArray<Draw.Shape>
+  (model: Model, screen: Screen, camera: Camera): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   3,
-  (
-    model: Model,
-    screen: Screen,
-    camera: Camera,
-  ): ReadonlyArray<Canvas.Shape> => {
+  (model: Model, screen: Screen, camera: Camera): ReadonlyArray<Draw.Shape> => {
     const loneMs = model.pacing.loneMs
     if (loneMs <= 0) {
       return []

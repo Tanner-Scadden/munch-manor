@@ -1,7 +1,7 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  // NOTE: the same baseline as the root .oxlintrc.json, without the Foldkit
-  // and game rules, which are about the app.
+  // NOTE: the same baseline as the root .oxlintrc.json, without the game's
+  // rules, which are about the app.
   "plugins": ["eslint", "typescript", "unicorn", "oxc", "import"],
   // NOTE: the project's own rules (AGENTS.md "Code shape").
   "jsPlugins": ["../tools/lint/munchPlugin.ts"],

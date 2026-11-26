@@ -303,7 +303,7 @@ export const chunkDodge: {
     return undefined
   }
   const chunk = maybeBody.value
-  return BossMove.matchOrElse<Vector | undefined>(
+  return BossMove.matchOrElse(
     world.boss.move,
     {
       // NOTE: only a stomp or a slam is a ring on the floor. Through a

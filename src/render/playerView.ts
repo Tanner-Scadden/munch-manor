@@ -1,5 +1,4 @@
 import { Array, Function, Option, Result } from 'effect'
-import { Canvas } from 'foldkit'
 
 import type { Model } from '../app/model'
 import { PLAYER_WIDTH, playerSprites } from '../art/appearance'
@@ -75,6 +74,7 @@ import {
   tossOf,
 } from './actionView'
 import { type Drawable, glowOn } from './depth'
+import * as Draw from './draw'
 import {
   AIMING_UP,
   QUARTER_TURN,
@@ -135,7 +135,7 @@ const playerHurtScale = (player: Player): Vector =>
 export const MUZZLE_FLASHES: Readonly<
   Record<
     MuzzleFlash,
-    (isBig: boolean, x: number, y: number) => ReadonlyArray<Canvas.Shape>
+    (isBig: boolean, x: number, y: number) => ReadonlyArray<Draw.Shape>
   >
 > = {
   Flicker: (isBig, x, y) =>
@@ -205,11 +205,11 @@ const tierSparkShapes = (
   tier: number,
   x: number,
   y: number,
-): ReadonlyArray<Canvas.Shape> =>
+): ReadonlyArray<Draw.Shape> =>
   Array.map(
     Option.getOrElse(Array.get(TIER_SPARKS, tier), () => []),
     ({ dx, dy, fill }) =>
-      Canvas.Rect({ x: x + dx, y: y + dy, width: 1, height: 1, fill }),
+      Draw.Rect({ x: x + dx, y: y + dy, width: 1, height: 1, fill }),
   )
 
 const muzzleFlashShapes = (
@@ -218,7 +218,7 @@ const muzzleFlashShapes = (
   tier: number,
   muzzleX: number,
   muzzleY: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const msSinceShot = stats.recoilMs - player.recoilRemainingMs
   if (player.recoilRemainingMs <= 0 || msSinceShot >= MUZZLE_FLASH_MS) {
     return []
@@ -291,7 +291,7 @@ const playerPose = (player: Player): PlayerPose => {
 // (src/render/actionView.ts) in place of the body and gun; otherwise the
 // standing frames and the gun in hand, with a reload drawn on the gun and
 // a swapped gun tossed and caught.
-export const playerShapes = (model: Model): ReadonlyArray<Canvas.Shape> => {
+export const playerShapes = (model: Model): ReadonlyArray<Draw.Shape> => {
   const { player, seat } = focusOf(model)
   const pose = poseOf(model, model.cosmetics.actionWatch, seat.slot)
   const facing: Facing = player.facing.x < 0 ? 'Left' : 'Right'
@@ -330,7 +330,7 @@ const standingShapes = (
   model: Model,
   pose: ActionPose,
   facing: Facing,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const { player } = focusOf(model)
   const { weapon, tier, stats, bodyX, bodyY } = playerPose(player)
   const recoil = clamp(player.recoilRemainingMs / stats.recoilMs, 0, 1)
@@ -421,11 +421,11 @@ const lyingFrames = (model: Model, lying: Lying): SpriteSet => {
 // nothing new is baked. Crawling plays the walk slower; a bled-out body
 // lies still and faded.
 export const lyingShapes: {
-  (lying: Lying): (model: Model) => ReadonlyArray<Canvas.Shape>
-  (model: Model, lying: Lying): ReadonlyArray<Canvas.Shape>
+  (lying: Lying): (model: Model) => ReadonlyArray<Draw.Shape>
+  (model: Model, lying: Lying): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   2,
-  (model: Model, lying: Lying): ReadonlyArray<Canvas.Shape> => {
+  (model: Model, lying: Lying): ReadonlyArray<Draw.Shape> => {
     const { player } = focusOf(model)
     const facing: Facing = player.facing.x < 0 ? 'Left' : 'Right'
     const foot = footPosition(player, PLAYER_FOOT_OFFSET)
@@ -473,7 +473,7 @@ const compressionPx = (model: Model, lying: Lying): number =>
 // NOTE: a player who is down swings their melee slot (swingWhileDown in
 // src/world/step/simulation.ts): the knife's slash, or the Clang Pan over the body for
 // as long as its swing lasts. Nothing shows between swings.
-const downSwingShapes = (model: Model): ReadonlyArray<Canvas.Shape> => {
+const downSwingShapes = (model: Model): ReadonlyArray<Draw.Shape> => {
   const { player } = focusOf(model)
   return Option.match(maybePanOf(player), {
     onNone: () => knifeSlashShapes(player),
@@ -547,8 +547,8 @@ const pixelAt = (
   direction: Vector,
   distance: number,
   fill: string,
-): Canvas.Shape =>
-  Canvas.Rect({
+): Draw.Shape =>
+  Draw.Rect({
     x: Math.round(center.x + direction.x * distance),
     y: Math.round(center.y + direction.y * distance),
     width: 1,
@@ -559,7 +559,7 @@ const pixelAt = (
 const bladeShapes = (
   player: Player,
   share: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const base = PLAYER_RADIUS + 1 + thrustOf(share) * THRUST_PX
   return [
     pixelAt(player, player.facing, base - 2, HANDLE_COLOR),
@@ -578,7 +578,7 @@ const bladeShapes = (
 const slashArcShapes = (
   player: Player,
   share: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const radius = PLAYER_RADIUS + KNIFE_RULES.reachPx * 0.8
   const facingAngle = Math.atan2(player.facing.y, player.facing.x)
   const swept = Math.min(1, share * 2.5)
@@ -603,7 +603,7 @@ const slashArcShapes = (
   )
 }
 
-const knifeSlashShapes = (player: Player): ReadonlyArray<Canvas.Shape> =>
+const knifeSlashShapes = (player: Player): ReadonlyArray<Draw.Shape> =>
   Option.match(maybeSlashShare(player), {
     onNone: () => [],
     onSome: share => [
@@ -644,7 +644,7 @@ export const muzzlePointOf = (player: Player): Vector => {
   })
 }
 
-const playerFlashShapes = (player: Player): ReadonlyArray<Canvas.Shape> => {
+const playerFlashShapes = (player: Player): ReadonlyArray<Draw.Shape> => {
   const { tier, stats } = playerPose(player)
   const muzzle = muzzlePointOf(player)
   return [
@@ -674,16 +674,16 @@ export const muzzleFlashLevel = (player: Player): number => {
 export const playerFootY = (player: Player): number =>
   player.y + PLAYER_FOOT_OFFSET
 
-export const playerShadow = (player: Player): Canvas.Shape =>
+export const playerShadow = (player: Player): Draw.Shape =>
   footShadow(player, PLAYER_FOOT_OFFSET, PLAYER_SHADOW_WIDTH, SHADOW_COLOR)
 
 // NOTE: `rise` lifts the bar over a hat (hatRiseOf in src/art/sprites/hatArt.ts).
 export const reloadBarShapes: {
-  (rise?: number): (player: Player) => ReadonlyArray<Canvas.Shape>
-  (player: Player, rise?: number): ReadonlyArray<Canvas.Shape>
+  (rise?: number): (player: Player) => ReadonlyArray<Draw.Shape>
+  (player: Player, rise?: number): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   isObjectFirst,
-  (player: Player, rise: number = 0): ReadonlyArray<Canvas.Shape> =>
+  (player: Player, rise: number = 0): ReadonlyArray<Draw.Shape> =>
     Reload.match(player.reload, {
       Ready: () => [],
       Reloading: ({ remainingMs, durationMs }) => {
@@ -692,14 +692,14 @@ export const reloadBarShapes: {
         const left = Math.round(player.x - RELOAD_BAR_WIDTH / 2)
         const top = Math.round(player.y) - RELOAD_BAR_LIFT_PX - rise
         return [
-          Canvas.Rect({
+          Draw.Rect({
             x: left - 1,
             y: top - 1,
             width: RELOAD_BAR_WIDTH + 2,
             height: 3,
             fill: RELOAD_BAR_BACK_COLOR,
           }),
-          Canvas.Rect({
+          Draw.Rect({
             x: left,
             y: top,
             width: Math.max(1, Math.round(RELOAD_BAR_WIDTH * progress)),

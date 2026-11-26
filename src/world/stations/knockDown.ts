@@ -1,5 +1,6 @@
 import { Array, Function, Option } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import type { World } from '../schema/world'
 import {
@@ -31,7 +32,7 @@ const knock = (
     damage > 0
       ? ZOMBIE_BLAST_TARGET.hurt(zombie, { damage, direction, knockbackSpeed })
       : {
-          target: modifyFields(zombie, {
+          target: UiStruct.evolve(zombie, {
             knockback: () => ({
               x: direction.x * knockbackSpeed,
               y: direction.y * knockbackSpeed,
@@ -42,7 +43,7 @@ const knock = (
   return {
     target:
       isWalking(target) && target.hp > 0
-        ? modifyFields(target, {
+        ? UiStruct.evolve(target, {
             action: () =>
               ZombieAction.Dazed({ remainingMs: dazeMs, durationMs: dazeMs }),
           })
@@ -70,7 +71,7 @@ export const knockDownWhere: {
           onSome: each => knock(zombie, each),
         }),
     )
-    return modifyFields(world, {
+    return UiStruct.evolve(world, {
       zombies: () => Array.map(outcomes, ({ target }) => target),
       frameEvents: frameEvents => [
         ...frameEvents,

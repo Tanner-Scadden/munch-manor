@@ -1,9 +1,9 @@
 import { Array, Option, Result } from 'effect'
-import type { Canvas } from 'foldkit'
 import { describe, expect, test } from 'vitest'
 
 import { MANOR, levelFor, openExit } from '../../../world/level/arena'
 import { type LevelSpec, MANOR_SPEC } from '../../../world/level/plan'
+import type * as Draw from '../../draw'
 import { everyRoomImage, roomShapes } from '../room'
 
 // NOTE: a hall with a study west of it and a den east of it, each behind its
@@ -69,16 +69,16 @@ const HOUSE: LevelSpec = {
 }
 
 const imagesOf = (
-  shapes: ReadonlyArray<Canvas.Shape>,
-): ReadonlyArray<Canvas.Image> =>
+  shapes: ReadonlyArray<Draw.Shape>,
+): ReadonlyArray<Draw.Image> =>
   Array.filterMap(shapes, shape =>
     shape._tag === 'Image' ? Result.succeed(shape) : Result.failVoid,
   )
 
 const imageAtX = (
-  shapes: ReadonlyArray<Canvas.Shape>,
+  shapes: ReadonlyArray<Draw.Shape>,
   x: number,
-): Option.Option<Canvas.Image> =>
+): Option.Option<Draw.Image> =>
   Array.findFirst(imagesOf(shapes), image => image.x === x)
 
 describe('room images', () => {
@@ -102,10 +102,10 @@ describe('room images', () => {
     // NOTE: the parlour sits at x -320, the dining room at 0, the kitchen
     // at 0 too but above it, so they are told apart by their y.
     const imageAt = (
-      shapes: ReadonlyArray<Canvas.Shape>,
+      shapes: ReadonlyArray<Draw.Shape>,
       x: number,
       y: number,
-    ): Option.Option<Canvas.Image> =>
+    ): Option.Option<Draw.Image> =>
       Array.findFirst(imagesOf(shapes), image => image.x === x && image.y === y)
     expect(imageAt(kitchenOpen, -320, 40)).toEqual(imageAt(shut, -320, 40))
     expect(imageAt(westOpen, 0, -150)).toEqual(imageAt(shut, 0, -150))

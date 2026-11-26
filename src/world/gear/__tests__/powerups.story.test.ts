@@ -1,7 +1,6 @@
 import { Array, Effect, Option, Record } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
 import { Message } from '../../../app/message'
@@ -10,6 +9,7 @@ import {
   type BoostKind,
   BoostTimer,
   type Boosts,
+  BreakClock,
   DebutCard,
   GameEvent,
   HitStop,
@@ -49,14 +49,17 @@ import {
   withPickups,
 } from '../../../test/model.fixture'
 import {
-  APPLICATION,
   SURFACE,
   bulletInto,
+  checkModel,
   holdFire,
   jsonOf,
+  modelAfter,
   press,
   release,
   releaseFire,
+  send,
+  steps,
   tagsOf,
   tick,
   ticks,
@@ -86,18 +89,19 @@ const FRAME_MS = 50
 const TICK_MS = FIXED_STEP_MS
 
 const fightingWave = (wave: number): Model =>
-  modifyFields(asVeteran(initialModel), {
+  UiStruct.evolve(asVeteran(initialModel), {
     maybeSurface: () => Option.some(SURFACE),
     phase: () => Phase.Wave({ wave, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
     pacing: pacing =>
-      modifyFields(pacing, { warnedPacks: () => [DISTANT_SPAWN.pack] }),
+      UiStruct.evolve(pacing, { warnedPacks: () => [DISTANT_SPAWN.pack] }),
   })
 
 const fighting = fightingWave(3)
 
-const preparing: Model = modifyFields(fighting, {
+const preparing: Model = UiStruct.evolve(fighting, {
   phase: () =>
     Phase.Preparation({
+      clock: BreakClock.Counting(),
       wave: 3,
       remainingMs: 15_000,
       durationMs: PREPARATION_MS,
@@ -106,7 +110,7 @@ const preparing: Model = modifyFields(fighting, {
 })
 
 const withLoot = (base: Model, loot: Partial<Loot>): Model =>
-  modifyFields(base, {
+  UiStruct.evolve(base, {
     loot: current => ({
       ...current,
       rngState: loot.rngState ?? current.rngState,
@@ -121,7 +125,7 @@ const victimsOf = (kind: ZombieKind, count: number): ReadonlyArray<Zombie> =>
   )
 
 const withKills = (base: Model, victims: ReadonlyArray<Zombie>): Model =>
-  modifyFields(base, {
+  UiStruct.evolve(base, {
     zombies: () => victims,
     bullets: () =>
       Array.map(victims, victim =>
@@ -165,11 +169,9 @@ describe('drops', () => {
     })
 
   const dropsFor = (rngState: number): Effect.Effect<ReadonlyArray<Drop>> =>
-    Story.story(
-      APPLICATION,
-      Story.given(tankRoom(rngState)),
-      tick(FRAME_MS),
-    ).pipe(Effect.map(({ pickups }) => dropsOf(pickups)))
+    modelAfter(tankRoom(rngState), tick(FRAME_MS)).pipe(
+      Effect.map(({ pickups }) => dropsOf(pickups)),
+    )
 
   it.effect(
     'the same seed drops the same pickups, and other seeds drop differently',
@@ -189,32 +191,32 @@ describe('drops', () => {
   it.effect(
     'drops come from their own seeded stream and never touch the game seed',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(withLoot(tankRoom(12345), { dryMs: DROP_RULES.pityMs })),
-        tick(FRAME_MS),
-        Story.model(({ loot, pickups }) => {
-          expect(pickups).toHaveLength(1)
-          expect(loot.rngState).not.toBe(12345)
-          expect(loot.dryMs).toBe(0)
-        }),
+      modelAfter(
+        withLoot(tankRoom(12345), { dryMs: DROP_RULES.pityMs }),
+        steps(
+          tick(FRAME_MS),
+          checkModel(({ loot, pickups }) => {
+            expect(pickups).toHaveLength(1)
+            expect(loot.rngState).not.toBe(12345)
+            expect(loot.dryMs).toBe(0)
+          }),
+        ),
       ),
   )
 
   it.effect('random drops wait out the gap after the last drop', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        withLoot(withKills(fighting, victimsOf('Tank', 6)), { dryMs: 0 }),
+    modelAfter(
+      withLoot(withKills(fighting, victimsOf('Tank', 6)), { dryMs: 0 }),
+      steps(
+        tick(TICK_MS),
+        checkModel(({ pickups, loot, frameEvents }) => {
+          expect(
+            Array.filter(frameEvents, GameEvent.isAnyOf(['ZombieKilled'])),
+          ).toHaveLength(6)
+          expect(pickups).toEqual([])
+          expect(loot.dryMs).toBe(TICK_MS)
+        }),
       ),
-      tick(TICK_MS),
-      Story.model(({ pickups, loot, frameEvents }) => {
-        expect(
-          Array.filter(frameEvents, GameEvent.isAnyOf(['ZombieKilled'])),
-        ).toHaveLength(6)
-        expect(pickups).toEqual([])
-        expect(loot.dryMs).toBe(TICK_MS)
-      }),
     ),
   )
 
@@ -222,23 +224,22 @@ describe('drops', () => {
     const full = Array.makeBy(DROP_RULES.floorMax, index =>
       pickupAt(800 + index, 'Speed', 60 + index * 20, 150),
     )
-    return Story.story(
-      APPLICATION,
-      Story.given(
-        withPickups(
-          withLoot(withKills(fighting, victimsOf('Tank', 6)), {
-            dryMs: DROP_RULES.pityMs,
-            prize: Prize.Owed(),
-          }),
-          full,
-        ),
+    return modelAfter(
+      withPickups(
+        withLoot(withKills(fighting, victimsOf('Tank', 6)), {
+          dryMs: DROP_RULES.pityMs,
+          prize: Prize.Owed(),
+        }),
+        full,
       ),
-      tick(TICK_MS),
-      Story.model(({ pickups, loot }) => {
-        expect(pickups).toHaveLength(DROP_RULES.floorMax)
-        expect(loot.prize).toEqual(Prize.Owed())
-        expect(loot.dryMs).toBe(DROP_RULES.pityMs + TICK_MS)
-      }),
+      steps(
+        tick(TICK_MS),
+        checkModel(({ pickups, loot }) => {
+          expect(pickups).toHaveLength(DROP_RULES.floorMax)
+          expect(loot.prize).toEqual(Prize.Owed())
+          expect(loot.dryMs).toBe(DROP_RULES.pityMs + TICK_MS)
+        }),
+      ),
     )
   })
 
@@ -246,27 +247,27 @@ describe('drops', () => {
     'a dry spell ends: once the pity time passes, the next kill drops for sure',
     () =>
       Effect.gen(function* () {
-        yield* Story.story(
-          APPLICATION,
-          Story.given(withLoot(fighting, { dryMs: 0 })),
-          ...ticks(10, FRAME_MS),
-          Story.model(({ loot }) => {
-            expect(loot.dryMs).toBeCloseTo(10 * FRAME_MS)
-          }),
-        )
-        yield* Story.story(
-          APPLICATION,
-          Story.given(
-            withLoot(withKills(fighting, victimsOf('Shambler', 1)), {
-              dryMs: DROP_RULES.pityMs,
+        yield* modelAfter(
+          withLoot(fighting, { dryMs: 0 }),
+          steps(
+            ticks(10, FRAME_MS),
+            checkModel(({ loot }) => {
+              expect(loot.dryMs).toBeCloseTo(10 * FRAME_MS)
             }),
           ),
-          tick(FRAME_MS),
-          Story.model(({ pickups, loot, frameEvents }) => {
-            expect(pickups).toHaveLength(1)
-            expect(tagsOf(frameEvents)).toContain('PickupDropped')
-            expect(loot.dryMs).toBe(0)
+        )
+        yield* modelAfter(
+          withLoot(withKills(fighting, victimsOf('Shambler', 1)), {
+            dryMs: DROP_RULES.pityMs,
           }),
+          steps(
+            tick(FRAME_MS),
+            checkModel(({ pickups, loot, frameEvents }) => {
+              expect(pickups).toHaveLength(1)
+              expect(tagsOf(frameEvents)).toContain('PickupDropped')
+              expect(loot.dryMs).toBe(0)
+            }),
+          ),
         )
       }),
   )
@@ -280,7 +281,7 @@ describe('drops', () => {
           zombieOf('Tank', 300 + index, 40 + index * 20, 150, { hp: 30 }),
         )
         const target = zombieOf('Shambler', 400, 120, 85, { hp: 1 })
-        const incoming = modifyFields(
+        const incoming = UiStruct.evolve(
           bulletInto(target.id + 500, target, { knockback: 0 }),
           {
             x: x => x - 18,
@@ -288,29 +289,30 @@ describe('drops', () => {
           },
         )
         const peakRoom = (rngState: number): Model =>
-          modifyFields(withLoot(fighting, { dryMs: 0, rngState }), {
+          UiStruct.evolve(withLoot(fighting, { dryMs: 0, rngState }), {
             phase: () =>
               Phase.Wave({ wave: 3, elapsedMs: 990, spawns: [DISTANT_SPAWN] }),
-            pacing: pacing => modifyFields(pacing, { holds: () => [hold] }),
+            pacing: pacing => UiStruct.evolve(pacing, { holds: () => [hold] }),
             zombies: () => [...crowd, target],
             bullets: () => [incoming],
           })
         const seeds = Array.makeBy(40, index => 11 + index * 7919)
         const dropped = yield* Effect.forEach(seeds, rngState =>
-          Story.story(
-            APPLICATION,
-            Story.given(peakRoom(rngState)),
-            tick(FRAME_MS),
-            Story.model(({ pacing, loot, pickups }) => {
-              expect(Beat.isAnyOf(['Fading'])(pacing.beat)).toBe(true)
-              expect(loot.prize).toEqual(Prize.Owed())
-              expect(pickups).toEqual([])
-            }),
-            tick(FRAME_MS),
-            Story.model(({ loot, frameEvents }) => {
-              expect(tagsOf(frameEvents)).toContain('ZombieKilled')
-              expect(loot.prize).toEqual(Prize.Settled())
-            }),
+          modelAfter(
+            peakRoom(rngState),
+            steps(
+              tick(FRAME_MS),
+              checkModel(({ pacing, loot, pickups }) => {
+                expect(Beat.isAnyOf(['Fading'])(pacing.beat)).toBe(true)
+                expect(loot.prize).toEqual(Prize.Owed())
+                expect(pickups).toEqual([])
+              }),
+              tick(FRAME_MS),
+              checkModel(({ loot, frameEvents }) => {
+                expect(tagsOf(frameEvents)).toContain('ZombieKilled')
+                expect(loot.prize).toEqual(Prize.Settled())
+              }),
+            ),
           ).pipe(Effect.map(({ pickups }) => pickups.length)),
         )
         const share = Array.reduce(dropped, 0, (sum, count) => sum + count) / 40
@@ -323,26 +325,25 @@ describe('drops', () => {
     'wave 1 drops one Wind-Up Key on its third kill and nothing else',
     () => {
       const victims = victimsOf('Shambler', 5)
-      return Story.story(
-        APPLICATION,
-        Story.given(
-          withLoot(withKills(fightingWave(1), victims), {
-            dryMs: DROP_RULES.pityMs,
-            prize: Prize.Owed(),
+      return modelAfter(
+        withLoot(withKills(fightingWave(1), victims), {
+          dryMs: DROP_RULES.pityMs,
+          prize: Prize.Owed(),
+        }),
+        steps(
+          tick(FRAME_MS),
+          checkModel(({ pickups }) => {
+            expect(Array.map(pickups, ({ kind }) => kind)).toEqual([
+              TUTORIAL_DROP,
+            ])
+            const third = Option.getOrThrow(
+              Array.get(victims, TUTORIAL_DROP_KILL - 1),
+            )
+            expect(dropsOf(pickups)).toEqual([
+              { kind: TUTORIAL_DROP, x: third.x, y: third.y },
+            ])
           }),
         ),
-        tick(FRAME_MS),
-        Story.model(({ pickups }) => {
-          expect(Array.map(pickups, ({ kind }) => kind)).toEqual([
-            TUTORIAL_DROP,
-          ])
-          const third = Option.getOrThrow(
-            Array.get(victims, TUTORIAL_DROP_KILL - 1),
-          )
-          expect(dropsOf(pickups)).toEqual([
-            { kind: TUTORIAL_DROP, x: third.x, y: third.y },
-          ])
-        }),
       )
     },
   )
@@ -353,17 +354,16 @@ describe('drops', () => {
       const atDoor = zombieOf('Tank', 100, MANOR.doors.North.center.x - 5, 4, {
         hp: 1,
       })
-      return Story.story(
-        APPLICATION,
-        Story.given(
-          withLoot(withKills(fighting, [atDoor]), { dryMs: DROP_RULES.pityMs }),
+      return modelAfter(
+        withLoot(withKills(fighting, [atDoor]), { dryMs: DROP_RULES.pityMs }),
+        steps(
+          tick(FRAME_MS),
+          checkModel(({ pickups }) => {
+            const pickup = Option.getOrThrow(Array.head(pickups))
+            expect(pickup.y).toBeGreaterThanOrEqual(26)
+            expect(pickup.x).toBeGreaterThan(10)
+          }),
         ),
-        tick(FRAME_MS),
-        Story.model(({ pickups }) => {
-          const pickup = Option.getOrThrow(Array.head(pickups))
-          expect(pickup.y).toBeGreaterThanOrEqual(26)
-          expect(pickup.x).toBeGreaterThan(10)
-        }),
       )
     },
   )
@@ -374,97 +374,97 @@ describe('drops', () => {
 describe('grabbing', () => {
   it.effect('walking over a pickup grabs it and announces its name', () => {
     const { x, y } = focusOf(fighting).player
-    return Story.story(
-      APPLICATION,
-      Story.given(
-        withPickups(fighting, [pickupAt(900, 'RapidFire', x + 14, y)]),
-      ),
-      tick(FRAME_MS),
-      Story.model(({ pickups }) => {
-        expect(pickups).toHaveLength(1)
-      }),
-      press('KeyD'),
-      ...ticks(3, FRAME_MS),
-      Story.model(
-        ({
-          pickups,
-          seats: [{ boosts }],
-          cosmetics: { callouts },
-          lessons,
-        }) => {
-          expect(pickups).toEqual([])
-          expect(remainingOf(boosts, 'RapidFire')).toBeGreaterThan(0)
-          expect(Array.map(callouts, ({ kind }) => kind)).toEqual(['RapidFire'])
-          expect(lessons.pickup._tag).toBe('Learned')
-        },
+    return modelAfter(
+      withPickups(fighting, [pickupAt(900, 'RapidFire', x + 14, y)]),
+      steps(
+        tick(FRAME_MS),
+        checkModel(({ pickups }) => {
+          expect(pickups).toHaveLength(1)
+        }),
+        press('KeyD'),
+        ticks(3, FRAME_MS),
+        checkModel(
+          ({
+            pickups,
+            seats: [{ boosts }],
+            cosmetics: { callouts },
+            lessons,
+          }) => {
+            expect(pickups).toEqual([])
+            expect(remainingOf(boosts, 'RapidFire')).toBeGreaterThan(0)
+            expect(Array.map(callouts, ({ kind }) => kind)).toEqual([
+              'RapidFire',
+            ])
+            expect(lessons.pickup._tag).toBe('Learned')
+          },
+        ),
       ),
     )
   })
 
   it.effect('a thumb on the move stick grabs a pickup the same way', () => {
     const { x, y } = focusOf(fighting).player
-    return Story.story(
-      APPLICATION,
-      Story.given(withPickups(fighting, [pickupAt(900, 'Speed', x + 14, y)])),
-      Story.message(
-        Message.PressedPointer({
-          pointerId: 7,
-          device: 'Touch',
-          clientX: 100,
-          clientY: 300,
+    return modelAfter(
+      withPickups(fighting, [pickupAt(900, 'Speed', x + 14, y)]),
+      steps(
+        send(
+          Message.PressedPointer({
+            pointerId: 7,
+            device: 'Touch',
+            clientX: 100,
+            clientY: 300,
+          }),
+        ),
+        send(
+          Message.MovedPointer({ pointerId: 7, clientX: 160, clientY: 300 }),
+        ),
+        ticks(4, FRAME_MS),
+        checkModel(({ pickups, seats: [{ boosts }] }) => {
+          expect(pickups).toEqual([])
+          expect(remainingOf(boosts, 'Speed')).toBeGreaterThan(0)
         }),
       ),
-      Story.message(
-        Message.MovedPointer({ pointerId: 7, clientX: 160, clientY: 300 }),
-      ),
-      ...ticks(4, FRAME_MS),
-      Story.model(({ pickups, seats: [{ boosts }] }) => {
-        expect(pickups).toEqual([])
-        expect(remainingOf(boosts, 'Speed')).toBeGreaterThan(0)
-      }),
     )
   })
 
   it.effect('a pickup out of reach stays on the floor', () => {
     const { x, y } = focusOf(fighting).player
-    return Story.story(
-      APPLICATION,
-      Story.given(withPickups(fighting, [pickupAt(900, 'Damage', x + 20, y)])),
-      ...ticks(5, FRAME_MS),
-      Story.model(({ pickups, seats: [{ boosts }] }) => {
-        expect(pickups).toHaveLength(1)
-        expect(boosts).toEqual(idleBoosts)
-      }),
+    return modelAfter(
+      withPickups(fighting, [pickupAt(900, 'Damage', x + 20, y)]),
+      steps(
+        ticks(5, FRAME_MS),
+        checkModel(({ pickups, seats: [{ boosts }] }) => {
+          expect(pickups).toHaveLength(1)
+          expect(boosts).toEqual(idleBoosts)
+        }),
+      ),
     )
   })
 
   it.effect('the first pickup ever wears an arrow until one is grabbed', () => {
     const { x, y } = focusOf(fighting).player
-    return Story.story(
-      APPLICATION,
-      Story.given(withPickups(fighting, [pickupAt(900, 'Damage', x + 14, y)])),
-      tick(FRAME_MS),
-      Story.model(current => {
-        expect(shownHints(current)).toEqual([])
-        expect(isGoodieBeckoning(current)).toBe(true)
-      }),
-      press('KeyD'),
-      ...ticks(3, FRAME_MS),
-      release('KeyD'),
-      Story.model(current => {
-        expect(isGoodieBeckoning(current)).toBe(false)
-      }),
+    return modelAfter(
+      withPickups(fighting, [pickupAt(900, 'Damage', x + 14, y)]),
+      steps(
+        tick(FRAME_MS),
+        checkModel(current => {
+          expect(shownHints(current)).toEqual([])
+          expect(isGoodieBeckoning(current)).toBe(true)
+        }),
+        press('KeyD'),
+        ticks(3, FRAME_MS),
+        release('KeyD'),
+        checkModel(current => {
+          expect(isGoodieBeckoning(current)).toBe(false)
+        }),
+      ),
     )
   })
 })
 
 describe('explaining a power-up once', () => {
   const afterGrabbing = (base: Model, kind: PickupKind): Effect.Effect<Model> =>
-    Story.story(
-      APPLICATION,
-      Story.given(underPlayer(base, kind)),
-      tick(FRAME_MS),
-    )
+    modelAfter(underPlayer(base, kind), tick(FRAME_MS))
 
   const looksOf = (current: Model) =>
     Array.map(current.cosmetics.callouts, ({ kind, look }) => ({ kind, look }))
@@ -495,8 +495,8 @@ describe('explaining a power-up once', () => {
   it.effect('a name pop goes sooner than an explanation', () =>
     Effect.gen(function* () {
       const grabbed = yield* afterGrabbing(fighting, 'Speed')
-      const named = modifyFields(grabbed, {
-        cosmetics: modifyFields({
+      const named = UiStruct.evolve(grabbed, {
+        cosmetics: UiStruct.evolve({
           callouts: callouts =>
             Array.map(callouts, callout => ({
               ...callout,
@@ -505,21 +505,25 @@ describe('explaining a power-up once', () => {
         }),
       })
       const explained = yield* afterGrabbing(fighting, 'Speed')
-      yield* Story.story(
-        APPLICATION,
-        Story.given(named),
-        ...ticksFor(1100, FRAME_MS),
-        Story.model(({ cosmetics: { callouts } }) => {
-          expect(callouts).toEqual([])
-        }),
+      yield* modelAfter(
+        named,
+        steps(
+          ticksFor(1100, FRAME_MS),
+          checkModel(({ cosmetics: { callouts } }) => {
+            expect(callouts).toEqual([])
+          }),
+        ),
       )
-      yield* Story.story(
-        APPLICATION,
-        Story.given(explained),
-        ...ticksFor(1100, FRAME_MS),
-        Story.model(({ cosmetics: { callouts } }) => {
-          expect(Array.map(callouts, ({ look }) => look)).toEqual(['Explained'])
-        }),
+      yield* modelAfter(
+        explained,
+        steps(
+          ticksFor(1100, FRAME_MS),
+          checkModel(({ cosmetics: { callouts } }) => {
+            expect(Array.map(callouts, ({ look }) => look)).toEqual([
+              'Explained',
+            ])
+          }),
+        ),
       )
     }),
   )
@@ -527,18 +531,19 @@ describe('explaining a power-up once', () => {
   it.effect('a new run keeps the kinds seen', () =>
     Effect.gen(function* () {
       const grabbed = yield* afterGrabbing(fighting, 'Pierce')
-      const seen = modifyFields(grabbed, {
+      const seen = UiStruct.evolve(grabbed, {
         phase: () => Phase.GameOver({ wave: 3 }),
         screenMs: () => 5000,
       })
-      return yield* Story.story(
-        APPLICATION,
-        Story.given(seen),
-        press('Enter'),
-        Story.model(({ seenPowerUps, cosmetics: { callouts } }) => {
-          expect(seenPowerUps).toEqual(['Pierce'])
-          expect(callouts).toEqual([])
-        }),
+      return yield* modelAfter(
+        seen,
+        steps(
+          press('Enter'),
+          checkModel(({ seenPowerUps, cosmetics: { callouts } }) => {
+            expect(seenPowerUps).toEqual(['Pierce'])
+            expect(callouts).toEqual([])
+          }),
+        ),
       )
     }),
   )
@@ -554,17 +559,18 @@ describe('effects', () => {
         player: player =>
           withPistol(player, pistol => ({ ...pistol, loaded: 2 })),
       })
-      return Story.story(
-        APPLICATION,
-        Story.given(withBoost(loaded, 'RapidFire', 5000)),
-        holdFire,
-        ...ticksFor(2000, FRAME_MS),
-        Story.model(({ stats, seats: [{ player }] }) => {
-          const plainShots = 2000 / FIRE_INTERVAL_MS
-          expect(stats.shotsFired).toBeGreaterThan(plainShots * 1.6)
-          expect(pistolOf(player).loaded).toBe(PISTOL_MAGAZINE)
-          expect(Reload.isAnyOf(['Ready'])(player.reload)).toBe(true)
-        }),
+      return modelAfter(
+        withBoost(loaded, 'RapidFire', 5000),
+        steps(
+          holdFire,
+          ticksFor(2000, FRAME_MS),
+          checkModel(({ stats, seats: [{ player }] }) => {
+            const plainShots = 2000 / FIRE_INTERVAL_MS
+            expect(stats.shotsFired).toBeGreaterThan(plainShots * 1.6)
+            expect(pistolOf(player).loaded).toBe(PISTOL_MAGAZINE)
+            expect(Reload.isAnyOf(['Ready'])(player.reload)).toBe(true)
+          }),
+        ),
       )
     },
   )
@@ -574,7 +580,7 @@ describe('effects', () => {
     () => {
       const reloading = modifyFocus(fighting, {
         player: player =>
-          modifyFields(
+          UiStruct.evolve(
             withPistol(player, pistol => ({ ...pistol, loaded: 0 })),
             {
               reload: () =>
@@ -582,14 +588,15 @@ describe('effects', () => {
             },
           ),
       })
-      return Story.story(
-        APPLICATION,
-        Story.given(underPlayer(reloading, 'RapidFire')),
-        tick(FRAME_MS),
-        Story.model(({ seats: [{ player }] }) => {
-          expect(Reload.isAnyOf(['Ready'])(player.reload)).toBe(true)
-          expect(pistolOf(player).loaded).toBeGreaterThan(0)
-        }),
+      return modelAfter(
+        underPlayer(reloading, 'RapidFire'),
+        steps(
+          tick(FRAME_MS),
+          checkModel(({ seats: [{ player }] }) => {
+            expect(Reload.isAnyOf(['Ready'])(player.reload)).toBe(true)
+            expect(pistolOf(player).loaded).toBeGreaterThan(0)
+          }),
+        ),
       )
     },
   )
@@ -597,17 +604,18 @@ describe('effects', () => {
   it.effect(
     'the Family Silver doubles the damage and adds knockback to every shot',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(withBoost(fighting, 'Damage', 5000)),
-        holdFire,
-        tick(FRAME_MS),
-        Story.model(({ bullets }) => {
-          const bullet = Option.getOrThrow(Array.head(bullets))
-          expect(bullet.damage).toBe(PISTOL_DAMAGE * 2)
-          expect(bullet.knockback).toBe(ZOMBIE_KNOCKBACK_SPEED * 1.5)
-          expect(bullet.glaze).toBe('Mean')
-        }),
+      modelAfter(
+        withBoost(fighting, 'Damage', 5000),
+        steps(
+          holdFire,
+          tick(FRAME_MS),
+          checkModel(({ bullets }) => {
+            const bullet = Option.getOrThrow(Array.head(bullets))
+            expect(bullet.damage).toBe(PISTOL_DAMAGE * 2)
+            expect(bullet.knockback).toBe(ZOMBIE_KNOCKBACK_SPEED * 1.5)
+            expect(bullet.glaze).toBe('Mean')
+          }),
+        ),
       ),
   )
 
@@ -615,25 +623,26 @@ describe('effects', () => {
     // NOTE: a step up from the start spot, onto the open floor below the
     // table, so the run east meets no candelabra.
     const onOpenFloor = modifyFocus(withBoost(fighting, 'Speed', 5000), {
-      player: player => modifyFields(player, { y: () => 130 }),
+      player: player => UiStruct.evolve(player, { y: () => 130 }),
     })
     const startX = focusOf(onOpenFloor).player.x
-    return Story.story(
-      APPLICATION,
-      Story.given(onOpenFloor),
-      walkToward({ x: 1, y: 0 }),
-      ...ticksFor(1000, FRAME_MS),
-      Story.model(({ seats: [{ player }] }) => {
-        expect(player.x - startX).toBeCloseTo(
-          PLAYER_SPEED * BOOSTS.Speed.speedScale,
-          5,
-        )
-      }),
+    return modelAfter(
+      onOpenFloor,
+      steps(
+        walkToward({ x: 1, y: 0 }),
+        ticksFor(1000, FRAME_MS),
+        checkModel(({ seats: [{ player }] }) => {
+          expect(player.x - startX).toBeCloseTo(
+            PLAYER_SPEED * BOOSTS.Speed.speedScale,
+            5,
+          )
+        }),
+      ),
     )
   })
 
   const skewerLine = (base: Model): Model =>
-    modifyFields(base, {
+    UiStruct.evolve(base, {
       zombies: () =>
         Array.makeBy(5, index =>
           zombieOf(
@@ -648,31 +657,33 @@ describe('effects', () => {
 
   it.effect('Hat Pins send one shot through four zombies', () =>
     Effect.gen(function* () {
-      yield* Story.story(
-        APPLICATION,
-        Story.given(withBoost(skewerLine(fighting), 'Pierce', 5000)),
-        holdFire,
-        tick(FRAME_MS),
-        releaseFire,
-        ...ticks(30, FRAME_MS),
-        Story.model(({ zombies, stats }) => {
-          expect(stats.shotsFired).toBe(1)
-          expect(stats.kills.Shambler).toBe(1 + BOOSTS.Pierce.pierce)
-          expect(Array.filter(zombies, ({ hp }) => hp > 0)).toHaveLength(1)
-        }),
+      yield* modelAfter(
+        withBoost(skewerLine(fighting), 'Pierce', 5000),
+        steps(
+          holdFire,
+          tick(FRAME_MS),
+          releaseFire,
+          ticks(30, FRAME_MS),
+          checkModel(({ zombies, stats }) => {
+            expect(stats.shotsFired).toBe(1)
+            expect(stats.kills.Shambler).toBe(1 + BOOSTS.Pierce.pierce)
+            expect(Array.filter(zombies, ({ hp }) => hp > 0)).toHaveLength(1)
+          }),
+        ),
       )
-      yield* Story.story(
-        APPLICATION,
-        Story.given(skewerLine(fighting)),
-        holdFire,
-        tick(FRAME_MS),
-        releaseFire,
-        ...ticks(30, FRAME_MS),
-        Story.model(({ zombies, stats }) => {
-          expect(stats.shotsFired).toBe(1)
-          expect(stats.kills.Shambler).toBe(1)
-          expect(Array.filter(zombies, ({ hp }) => hp > 0)).toHaveLength(4)
-        }),
+      yield* modelAfter(
+        skewerLine(fighting),
+        steps(
+          holdFire,
+          tick(FRAME_MS),
+          releaseFire,
+          ticks(30, FRAME_MS),
+          checkModel(({ zombies, stats }) => {
+            expect(stats.shotsFired).toBe(1)
+            expect(stats.kills.Shambler).toBe(1)
+            expect(Array.filter(zombies, ({ hp }) => hp > 0)).toHaveLength(4)
+          }),
+        ),
       )
     }),
   )
@@ -683,26 +694,29 @@ describe('effects', () => {
       const { x, y } = focusOf(fighting).player
       const near = zombieOf('Shambler', 300, x + 50, y, { hp: BURP_DAMAGE })
       const far = zombieOf('Shambler', 301, x - BURP_RADIUS - 20, y, { hp: 3 })
-      return Story.story(
-        APPLICATION,
-        Story.given(
-          modifyFields(underPlayer(fighting, 'Burp'), {
-            zombies: () => [near, far],
+      return modelAfter(
+        UiStruct.evolve(underPlayer(fighting, 'Burp'), {
+          zombies: () => [near, far],
+        }),
+        steps(
+          tick(FRAME_MS),
+          checkModel(({ zombies, seats: [{ boosts }], frameEvents }) => {
+            const byId = (id: number) =>
+              Option.getOrThrow(
+                Array.findFirst(zombies, zombie => zombie.id === id),
+              )
+            expect(byId(near.id).hp).toBe(0)
+            expect(byId(far.id).hp).toBe(far.hp)
+            expect(tagsOf(frameEvents)).toEqual(
+              expect.arrayContaining([
+                'PickupGrabbed',
+                'Burped',
+                'ZombieKilled',
+              ]),
+            )
+            expect(boosts).toEqual(idleBoosts)
           }),
         ),
-        tick(FRAME_MS),
-        Story.model(({ zombies, seats: [{ boosts }], frameEvents }) => {
-          const byId = (id: number) =>
-            Option.getOrThrow(
-              Array.findFirst(zombies, zombie => zombie.id === id),
-            )
-          expect(byId(near.id).hp).toBe(0)
-          expect(byId(far.id).hp).toBe(far.hp)
-          expect(tagsOf(frameEvents)).toEqual(
-            expect.arrayContaining(['PickupGrabbed', 'Burped', 'ZombieKilled']),
-          )
-          expect(boosts).toEqual(idleBoosts)
-        }),
       )
     },
   )
@@ -710,24 +724,26 @@ describe('effects', () => {
   it.effect('a Pickled Heart heals one heart, never past the maximum', () =>
     Effect.gen(function* () {
       const hurt = modifyFocus(fighting, {
-        player: player => modifyFields(player, { hp: () => 2 }),
+        player: player => UiStruct.evolve(player, { hp: () => 2 }),
       })
-      yield* Story.story(
-        APPLICATION,
-        Story.given(underPlayer(hurt, 'Heart')),
-        tick(FRAME_MS),
-        Story.model(({ seats: [{ player }] }) => {
-          expect(player.hp).toBe(3)
-        }),
+      yield* modelAfter(
+        underPlayer(hurt, 'Heart'),
+        steps(
+          tick(FRAME_MS),
+          checkModel(({ seats: [{ player }] }) => {
+            expect(player.hp).toBe(3)
+          }),
+        ),
       )
-      yield* Story.story(
-        APPLICATION,
-        Story.given(underPlayer(fighting, 'Heart')),
-        tick(FRAME_MS),
-        Story.model(({ seats: [{ player }], pickups }) => {
-          expect(player.hp).toBe(PLAYER_MAX_HP)
-          expect(pickups).toEqual([])
-        }),
+      yield* modelAfter(
+        underPlayer(fighting, 'Heart'),
+        steps(
+          tick(FRAME_MS),
+          checkModel(({ seats: [{ player }], pickups }) => {
+            expect(player.hp).toBe(PLAYER_MAX_HP)
+            expect(pickups).toEqual([])
+          }),
+        ),
       )
     }),
   )
@@ -738,29 +754,30 @@ describe('effects', () => {
 describe('timers', () => {
   it.effect('a boost counts down and runs out after its duration', () => {
     const durationMs = BOOSTS.Damage.durationMs
-    return Story.story(
-      APPLICATION,
-      Story.given(underPlayer(fighting, 'Damage')),
-      tick(TICK_MS),
-      Story.model(({ seats: [{ boosts }] }) => {
-        expect(remainingOf(boosts, 'Damage')).toBe(durationMs)
-      }),
-      ...ticksFor(durationMs - FRAME_MS, FRAME_MS),
-      Story.model(({ seats: [{ boosts }] }) => {
-        expect(remainingOf(boosts, 'Damage')).toBeCloseTo(FRAME_MS)
-      }),
-      tick(FRAME_MS),
-      Story.model(({ seats: [{ boosts }], frameEvents }) => {
-        expect(boosts.Damage).toEqual(BoostTimer.Off())
-        expect(tagsOf(frameEvents)).toContain('BoostFaded')
-      }),
-      holdFire,
-      tick(FRAME_MS),
-      Story.model(({ bullets }) => {
-        const bullet = Option.getOrThrow(Array.last(bullets))
-        expect(bullet.damage).toBe(PISTOL_DAMAGE)
-        expect(bullet.glaze).toBe('Plain')
-      }),
+    return modelAfter(
+      underPlayer(fighting, 'Damage'),
+      steps(
+        tick(TICK_MS),
+        checkModel(({ seats: [{ boosts }] }) => {
+          expect(remainingOf(boosts, 'Damage')).toBe(durationMs)
+        }),
+        ticksFor(durationMs - FRAME_MS, FRAME_MS),
+        checkModel(({ seats: [{ boosts }] }) => {
+          expect(remainingOf(boosts, 'Damage')).toBeCloseTo(FRAME_MS)
+        }),
+        tick(FRAME_MS),
+        checkModel(({ seats: [{ boosts }], frameEvents }) => {
+          expect(boosts.Damage).toEqual(BoostTimer.Off())
+          expect(tagsOf(frameEvents)).toContain('BoostFaded')
+        }),
+        holdFire,
+        tick(FRAME_MS),
+        checkModel(({ bullets }) => {
+          const bullet = Option.getOrThrow(Array.last(bullets))
+          expect(bullet.damage).toBe(PISTOL_DAMAGE)
+          expect(bullet.glaze).toBe('Plain')
+        }),
+      ),
     )
   })
 
@@ -771,12 +788,12 @@ describe('timers', () => {
   })
 
   const frozenRoom = (base: Model): Model =>
-    modifyFields(
+    UiStruct.evolve(
       withPickups(withBoost(base, 'RapidFire', 4000), [
         pickupAt(901, 'Damage', 40, 150, 2000),
       ]),
       {
-        cosmetics: modifyFields({
+        cosmetics: UiStruct.evolve({
           callouts: () => [
             {
               kind: 'RapidFire',
@@ -792,19 +809,20 @@ describe('timers', () => {
 
   const expectStaysFrozen = (base: Model) => {
     const before = timersOf(frozenRoom(base))
-    return Story.story(
-      APPLICATION,
-      Story.given(frozenRoom(base)),
-      ...ticks(10, FRAME_MS),
-      Story.model(current => {
-        expect(timersOf(current)).toEqual(before)
-      }),
+    return modelAfter(
+      frozenRoom(base),
+      steps(
+        ticks(10, FRAME_MS),
+        checkModel(current => {
+          expect(timersOf(current)).toEqual(before)
+        }),
+      ),
     )
   }
 
   it.effect('boosts, pickups, and callouts stand still while paused', () =>
     expectStaysFrozen(
-      modifyFields(fighting, {
+      UiStruct.evolve(fighting, {
         phase: () =>
           Phase.Paused({
             round: Phase.Wave({
@@ -819,7 +837,7 @@ describe('timers', () => {
 
   it.effect('boosts, pickups, and callouts stand still during hit-stop', () =>
     expectStaysFrozen(
-      modifyFields(fighting, {
+      UiStruct.evolve(fighting, {
         hitStop: () => HitStop.Frozen({ remainingMs: 10 * FRAME_MS + 1 }),
       }),
     ),
@@ -829,7 +847,7 @@ describe('timers', () => {
     'boosts, pickups, and callouts stand still under the new zombie card',
     () =>
       expectStaysFrozen(
-        modifyFields(fighting, {
+        UiStruct.evolve(fighting, {
           debutCard: () => DebutCard.Showing({ kind: 'Tank', ageMs: 0 }),
         }),
       ),
@@ -839,23 +857,25 @@ describe('timers', () => {
     'a boost holds its time through the break and runs again in the wave',
     () =>
       Effect.gen(function* () {
-        yield* Story.story(
-          APPLICATION,
-          Story.given(withBoost(preparing, 'Speed', 4000)),
-          ...ticks(10, FRAME_MS),
-          Story.model(({ seats: [{ boosts }] }) => {
-            expect(remainingOf(boosts, 'Speed')).toBe(4000)
-          }),
+        yield* modelAfter(
+          withBoost(preparing, 'Speed', 4000),
+          steps(
+            ticks(10, FRAME_MS),
+            checkModel(({ seats: [{ boosts }] }) => {
+              expect(remainingOf(boosts, 'Speed')).toBe(4000)
+            }),
+          ),
         )
-        yield* Story.story(
-          APPLICATION,
-          Story.given(withBoost(fighting, 'Speed', 4000)),
-          ...ticks(10, FRAME_MS),
-          Story.model(({ seats: [{ boosts }] }) => {
-            expect(remainingOf(boosts, 'Speed')).toBeCloseTo(
-              4000 - 10 * FRAME_MS,
-            )
-          }),
+        yield* modelAfter(
+          withBoost(fighting, 'Speed', 4000),
+          steps(
+            ticks(10, FRAME_MS),
+            checkModel(({ seats: [{ boosts }] }) => {
+              expect(remainingOf(boosts, 'Speed')).toBeCloseTo(
+                4000 - 10 * FRAME_MS,
+              )
+            }),
+          ),
         )
       }),
   )
@@ -868,42 +888,41 @@ describe('timers', () => {
         const elapsedMs = 2000
         const secondGrab = (current: Model): Model =>
           underPlayer(current, 'RapidFire')
-        yield* Story.story(
-          APPLICATION,
-          Story.given(
-            secondGrab(
-              withBoost(fighting, 'RapidFire', durationMs - elapsedMs),
-            ),
+        yield* modelAfter(
+          secondGrab(withBoost(fighting, 'RapidFire', durationMs - elapsedMs)),
+          steps(
+            tick(TICK_MS),
+            checkModel(({ seats: [{ boosts }] }) => {
+              expect(remainingOf(boosts, 'RapidFire')).toBe(
+                durationMs * BOOST_STACK_MAX,
+              )
+            }),
           ),
-          tick(TICK_MS),
-          Story.model(({ seats: [{ boosts }] }) => {
-            expect(remainingOf(boosts, 'RapidFire')).toBe(
-              durationMs * BOOST_STACK_MAX,
-            )
-          }),
         )
-        yield* Story.story(
-          APPLICATION,
-          Story.given(secondGrab(withBoost(fighting, 'RapidFire', 1000))),
-          tick(TICK_MS),
-          Story.model(({ seats: [{ boosts }] }) => {
-            expect(remainingOf(boosts, 'RapidFire')).toBeCloseTo(
-              1000 - TICK_MS + durationMs,
-            )
-          }),
+        yield* modelAfter(
+          secondGrab(withBoost(fighting, 'RapidFire', 1000)),
+          steps(
+            tick(TICK_MS),
+            checkModel(({ seats: [{ boosts }] }) => {
+              expect(remainingOf(boosts, 'RapidFire')).toBeCloseTo(
+                1000 - TICK_MS + durationMs,
+              )
+            }),
+          ),
         )
       }),
   )
 
   it.effect('different kinds run side by side on their own timers', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(underPlayer(withBoost(fighting, 'Speed', 3000), 'Damage')),
-      tick(TICK_MS),
-      Story.model(({ seats: [{ boosts }] }) => {
-        expect(remainingOf(boosts, 'Speed')).toBeCloseTo(3000 - TICK_MS)
-        expect(remainingOf(boosts, 'Damage')).toBe(BOOSTS.Damage.durationMs)
-      }),
+    modelAfter(
+      underPlayer(withBoost(fighting, 'Speed', 3000), 'Damage'),
+      steps(
+        tick(TICK_MS),
+        checkModel(({ seats: [{ boosts }] }) => {
+          expect(remainingOf(boosts, 'Speed')).toBeCloseTo(3000 - TICK_MS)
+          expect(remainingOf(boosts, 'Damage')).toBe(BOOSTS.Damage.durationMs)
+        }),
+      ),
     ),
   )
 })
@@ -932,28 +951,28 @@ describe('the floor', () => {
       expect(Array.some(steadyAges, isDimmedAt)).toBe(false)
       expect(Array.some(blinkingAges, isDimmedAt)).toBe(true)
       expect(Array.every(blinkingAges, isDimmedAt)).toBe(false)
-      return Story.story(
-        APPLICATION,
-        Story.given(withPickups(fighting, [pickupAt(900, 'Pierce', 40, 150)])),
-        ...ticksFor(PICKUP_LIFETIME_MS - FRAME_MS, FRAME_MS),
-        Story.model(({ pickups }) => {
-          expect(pickups).toHaveLength(1)
-          expect(pickups[0]?.ageMs).toBeCloseTo(PICKUP_LIFETIME_MS - FRAME_MS)
-        }),
-        // NOTE: summed 60 Hz ticks land a hair short of the lifetime, so it
-        // fizzles within one tick of it.
-        tick(FRAME_MS),
-        tick(TICK_MS),
-        Story.model(({ pickups, frameEvents }) => {
-          expect(pickups).toEqual([])
-          expect(tagsOf(frameEvents)).toContain('PickupFizzled')
-        }),
+      return modelAfter(
+        withPickups(fighting, [pickupAt(900, 'Pierce', 40, 150)]),
+        steps(
+          ticksFor(PICKUP_LIFETIME_MS - FRAME_MS, FRAME_MS),
+          checkModel(({ pickups }) => {
+            expect(pickups).toHaveLength(1)
+            expect(pickups[0]?.ageMs).toBeCloseTo(PICKUP_LIFETIME_MS - FRAME_MS)
+          }), // NOTE: summed 60 Hz ticks land a hair short of the lifetime, so it
+          // fizzles within one tick of it.
+          tick(FRAME_MS),
+          tick(TICK_MS),
+          checkModel(({ pickups, frameEvents }) => {
+            expect(pickups).toEqual([])
+            expect(tagsOf(frameEvents)).toContain('PickupFizzled')
+          }),
+        ),
       )
     },
   )
 
   it.effect('a new run clears the floor, the boosts, and the callouts', () => {
-    const over = modifyFields(
+    const over = UiStruct.evolve(
       withBoost(
         withPickups(fighting, [pickupAt(900, 'Pierce', 40, 150)]),
         'Damage',
@@ -962,24 +981,25 @@ describe('the floor', () => {
       {
         phase: () => Phase.GameOver({ wave: 3 }),
         screenMs: () => 5000,
-        cosmetics: modifyFields({
+        cosmetics: UiStruct.evolve({
           callouts: () => [
             { kind: 'Damage', look: 'Explained', x: 10, y: 10, ageMs: 0 },
           ],
         }),
       },
     )
-    return Story.story(
-      APPLICATION,
-      Story.given(over),
-      press('Enter'),
-      Story.model(
-        ({ pickups, seats: [{ boosts }], cosmetics: { callouts }, loot }) => {
-          expect(pickups).toEqual([])
-          expect(boosts).toEqual(idleBoosts)
-          expect(callouts).toEqual([])
-          expect(loot.dryMs).toBe(0)
-        },
+    return modelAfter(
+      over,
+      steps(
+        press('Enter'),
+        checkModel(
+          ({ pickups, seats: [{ boosts }], cosmetics: { callouts }, loot }) => {
+            expect(pickups).toEqual([])
+            expect(boosts).toEqual(idleBoosts)
+            expect(callouts).toEqual([])
+            expect(loot.dryMs).toBe(0)
+          },
+        ),
       ),
     )
   })

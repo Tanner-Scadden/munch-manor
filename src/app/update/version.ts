@@ -1,7 +1,8 @@
-import { Effect, Function, Option, pipe } from 'effect'
-import { Update } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
+import { Effect, Function, Option } from 'effect'
 
+import { Command, Component, UiStruct } from '@effect/ui'
+
+import { VersionMessage } from '../../platform/message'
 import {
   isUsingServiceWorker,
   registerServiceWorker,
@@ -14,9 +15,6 @@ import {
   isGreetingDue,
   maybeNewerBuild,
 } from '../../platform/version'
-import { ApplicationBlock } from '../definition'
-import { Message } from '../message'
-import type { Model } from '../model'
 import {
   greetUpdate,
   newsFromGreeting,
@@ -25,135 +23,113 @@ import {
   unwrapUpdateGift,
 } from './home'
 import { tapSound, unlockAudio } from './sound'
-import { type UpdateReturn, combine, defineHandlers } from './step'
+import { type UpdateStep, combine, defineHandlers, modelStep } from './step'
 
-// COMMAND
+// COMMANDS
 
-export const FetchBuild = ApplicationBlock.makeCommand('FetchBuild', {
-  messages: [Message.CompletedFetchBuild, Message.FailedFetchBuild],
-  handler: function* () {
-    return () =>
-      pipe(
-        fetchRemoteBuild,
-        Effect.map(build => Message.CompletedFetchBuild({ build })),
-        Effect.catch(error =>
-          Effect.succeed(Message.FailedFetchBuild({ reason: error.reason })),
-        ),
-      )
-  },
-})
-
-export const RegisterServiceWorker = ApplicationBlock.makeCommand(
-  'RegisterServiceWorker',
+// NOTE: the build check reads `version.json` over the network, so it is a
+// service a test fakes (`FetchBuild.toLayer(...)`).
+export class FetchBuild extends Command.Service<FetchBuild>()(
+  'app/FetchBuild',
   {
-    messages: [
-      Message.CompletedRegisterServiceWorker,
-      Message.FailedRegisterServiceWorker,
-    ],
-    handler: function* () {
-      return () =>
-        pipe(
-          registerServiceWorker,
-          Effect.as(Message.CompletedRegisterServiceWorker()),
-          Effect.catch(error =>
-            Effect.succeed(
-              Message.FailedRegisterServiceWorker({ reason: error.reason }),
-            ),
-          ),
-        )
-    },
+    args: {},
+    success: VersionMessage,
+    // NOTE: a slow check is dropped for the newer one.
+    mode: 'switch',
   },
+) {
+  static readonly layer = this.toLayer(() =>
+    fetchRemoteBuild.pipe(
+      Effect.match({
+        onSuccess: build => VersionMessage.CompletedFetchBuild({ build }),
+        onFailure: error =>
+          VersionMessage.FailedFetchBuild({ reason: error.reason }),
+      }),
+    ),
+  )
+}
+
+// NOTE: the service worker only precaches for offline play, so a failure
+// changes nothing on screen: it is logged and nothing is reported.
+export const RegisterServiceWorker = Command.make(
+  'RegisterServiceWorker',
+  { args: {} },
+  () =>
+    registerServiceWorker.pipe(
+      Effect.catch(error =>
+        Effect.logWarning('register service worker', error.reason),
+      ),
+      Effect.as(Component.noop),
+    ),
 )
 
-export const UpdateServiceWorker = ApplicationBlock.makeCommand(
+export const UpdateServiceWorker = Command.make(
   'UpdateServiceWorker',
-  {
-    messages: [
-      Message.CompletedUpdateServiceWorker,
-      Message.FailedUpdateServiceWorker,
-    ],
-    handler: function* () {
-      return () =>
-        pipe(
-          updateServiceWorker,
-          Effect.as(Message.CompletedUpdateServiceWorker()),
-          Effect.catch(error =>
-            Effect.succeed(
-              Message.FailedUpdateServiceWorker({ reason: error.reason }),
-            ),
-          ),
-        )
-    },
-  },
+  { args: {} },
+  () =>
+    updateServiceWorker.pipe(
+      Effect.catch(error =>
+        Effect.logWarning('update service worker', error.reason),
+      ),
+      Effect.as(Component.noop),
+    ),
 )
 
 // VERSION
 
-export const checkForUpdate = (model: Model): UpdateReturn =>
-  isCheckingForUpdates(RUNNING_BUILD)
-    ? { model, commands: [FetchBuild()] }
-    : { model }
+export const checkForUpdate: UpdateStep = $ =>
+  isCheckingForUpdates(RUNNING_BUILD) ? $.run(FetchBuild.make()) : $.model
 
 // NOTE: a newer build also asks the service worker to look for it, so the
 // new build installs in the background before the player taps the chip.
 export const recordRemoteBuild: {
-  (runningBuild: string, remoteBuild: string): (model: Model) => UpdateReturn
-  (model: Model, runningBuild: string, remoteBuild: string): UpdateReturn
+  (remoteBuild: string): (runningBuild: string) => UpdateStep
+  (runningBuild: string, remoteBuild: string): UpdateStep
 } = Function.dual(
-  3,
-  (model: Model, runningBuild: string, remoteBuild: string): UpdateReturn => {
-    const maybeNewer = maybeNewerBuild(runningBuild, remoteBuild)
-    const next = modifyFields(model, {
-      release: modifyFields({ maybeNewerBuild: () => maybeNewer }),
-    })
-    return Option.isSome(maybeNewer) && isUsingServiceWorker(runningBuild)
-      ? { model: next, commands: [UpdateServiceWorker()] }
-      : { model: next }
-  },
+  2,
+  (runningBuild: string, remoteBuild: string): UpdateStep =>
+    $ => {
+      const maybeNewer = maybeNewerBuild(runningBuild, remoteBuild)
+      const next = $.evolve({
+        release: UiStruct.evolve({ maybeNewerBuild: () => maybeNewer }),
+      })
+      return Option.isSome(maybeNewer) && isUsingServiceWorker(runningBuild)
+        ? next.run(UpdateServiceWorker.make())
+        : next
+    },
 )
 
 // NOTE: the service worker registers once the splash is gone, so precaching
 // the game for offline play never slows the game's own first load.
-export const registerServiceWorkerAfterSplash: {
-  (runningBuild: string): (model: Model) => UpdateReturn
-  (model: Model, runningBuild: string): UpdateReturn
-} = Function.dual(2, (model: Model, runningBuild: string): UpdateReturn =>
-  isUsingServiceWorker(runningBuild)
-    ? { model, commands: [RegisterServiceWorker()] }
-    : { model },
-)
+export const registerServiceWorkerAfterSplash =
+  (runningBuild: string): UpdateStep =>
+  $ =>
+    isUsingServiceWorker(runningBuild)
+      ? $.run(RegisterServiceWorker.make())
+      : $.model
 
 // NOTE: the build check, the update gift, and the service worker
 // (src/platform/message.ts).
 export const versionHandlers = defineHandlers({
-  TickedUpdateCheck: model => checkForUpdate(model),
+  TickedUpdateCheck: checkForUpdate,
 
-  CompletedFetchBuild: (model, { build }) =>
-    recordRemoteBuild(model, RUNNING_BUILD, build),
+  CompletedFetchBuild: ($, { build }) =>
+    recordRemoteBuild(RUNNING_BUILD, build)($),
 
-  FailedFetchBuild: model => ({ model }),
+  FailedFetchBuild: $ => $.model,
 
-  ClickedUpdateButton: model => combine(model, [unlockAudio, unwrapUpdateGift]),
+  ClickedUpdateButton: combine([unlockAudio, unwrapUpdateGift]),
 
-  CompletedWaitForUnwrap: model => reloadOntoNewerBuild(model),
+  CompletedWaitForUnwrap: reloadOntoNewerBuild,
 
-  CompletedReadUpdateMarker: (model, { maybeBuild }) =>
-    Update.combineSteps(model, [
-      greetUpdate(isGreetingDue(RUNNING_BUILD, maybeBuild)),
-    ]),
+  CompletedReadUpdateMarker: ($, { maybeBuild }) =>
+    greetUpdate(isGreetingDue(RUNNING_BUILD, maybeBuild))($),
 
-  ClickedUpdateGreetingNewsButton: model =>
-    Update.combineSteps(model, [unlockAudio, tapSound, newsFromGreeting]),
+  ClickedUpdateGreetingNewsButton: combine([
+    unlockAudio,
+    tapSound,
+    newsFromGreeting,
+  ]),
 
-  CompletedReloadPage: model => ({ model }),
-
-  FailedReloadPage: model => ({ model: rewrapUpdateGift(model) }),
-
-  CompletedRegisterServiceWorker: model => ({ model }),
-
-  FailedRegisterServiceWorker: model => ({ model }),
-
-  CompletedUpdateServiceWorker: model => ({ model }),
-
-  FailedUpdateServiceWorker: model => ({ model }),
+  FailedReloadPage: modelStep(rewrapUpdateGift),
 })

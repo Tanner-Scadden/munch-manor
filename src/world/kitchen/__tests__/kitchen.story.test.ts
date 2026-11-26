@@ -1,11 +1,11 @@
 import { Array, Effect, Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
 import { Message } from '../../../app/message'
 import {
+  BreakClock,
   GameEvent,
   type Model,
   Oven,
@@ -27,13 +27,16 @@ import {
   withKeys,
 } from '../../../test/model.fixture'
 import {
-  APPLICATION,
   BELOW_KITCHEN_DOOR,
   HOLD_TICKS,
+  checkModel,
   eventsOver,
   isKitchenOpen,
+  modelAfter,
   press,
   release,
+  send,
+  steps,
   tick,
   ticks,
   zombieOf,
@@ -55,9 +58,10 @@ const base: Model = pastTimedBreaks(freshRunModel())
 
 const inBreak = (wave: number, keys: number): Model =>
   modifyFocus(
-    modifyFields(withKeys(base, keys), {
+    UiStruct.evolve(withKeys(base, keys), {
       phase: () =>
         Phase.Preparation({
+          clock: BreakClock.Counting(),
           wave,
           remainingMs: 15_000,
           durationMs: 20_000,
@@ -66,7 +70,7 @@ const inBreak = (wave: number, keys: number): Model =>
     }),
     {
       player: player =>
-        modifyFields(player, {
+        UiStruct.evolve(player, {
           x: () => BELOW_KITCHEN_DOOR.x,
           y: () => BELOW_KITCHEN_DOOR.y,
         }),
@@ -80,7 +84,7 @@ const midWave = (
   spawns: ReadonlyArray<PlannedSpawn>,
   keys: number,
 ): Model =>
-  modifyFields(inBreak(wave, keys), {
+  UiStruct.evolve(inBreak(wave, keys), {
     phase: () => Phase.Wave({ wave, elapsedMs: 0, spawns }),
   })
 
@@ -88,68 +92,69 @@ const waveClockOf = (current: Model): number =>
   Phase.isAnyOf(['Wave'])(current.phase) ? current.phase.elapsedMs : 0
 
 const withKitchen = (current: Model): Model =>
-  modifyFields(current, {
+  UiStruct.evolve(current, {
     level: level => openExitIn(level, KITCHEN_EXIT),
   })
 
 const fightingInKitchen = (current: Model): Model =>
-  modifyFields(withKitchen(current), {
+  UiStruct.evolve(withKitchen(current), {
     phase: () => Phase.Wave({ wave: 4, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
   })
 
 const KITCHEN_TARGET = Purchasable.Exit({ exit: KITCHEN_EXIT })
 
-const holdToBuy = [press('Enter'), ...ticks(HOLD_TICKS, FRAME_MS)]
+const holdToBuy = steps(press('Enter'), ticks(HOLD_TICKS, FRAME_MS))
 
 const awayFromDoor = (current: Model): Model =>
   modifyFocus(current, {
-    player: player => modifyFields(player, { y: () => 120 }),
+    player: player => UiStruct.evolve(player, { y: () => 120 }),
   })
 
 describe('holding to buy the kitchen open', () => {
   it.effect(
     'holding Enter at the boards for half a second buys it and smashes it open, with no dialog',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(inBreak(3, KEYS)),
-        press('Enter'),
-        ...ticks(HOLD_TICKS - 4, FRAME_MS),
-        Story.model(current => {
-          expect(isKitchenOpen(current)).toBe(false)
-          expect(Purchase.isAnyOf(['Holding'])(focusOf(current).purchase)).toBe(
-            true,
-          )
-          expect(holdProgress(focusOf(current).purchase)).toBeGreaterThan(0.8)
-          expect(Phase.isAnyOf(['Preparation'])(current.phase)).toBe(true)
-        }),
-        ...ticks(4, FRAME_MS),
-        Story.model(current => {
-          expect(isKitchenOpen(current)).toBe(true)
-          expect(current.keys.held).toBe(KEYS - EXIT_RULES.kitchenKeys)
-          expect(current.keys.spent).toBe(EXIT_RULES.kitchenKeys)
-          expect(focusOf(current).purchase).toEqual(Purchase.Done())
-          expect(levelOf(current).doorIds).toEqual([
-            'North',
-            'West',
-            'East',
-            'South',
-            'Back',
-            'Window',
-          ])
-          expect(
-            Array.some(
-              current.cosmetics.particles,
-              ({ kind }) => kind === 'Splinter',
-            ),
-          ).toBe(true)
-          expect(current.shake.trauma).toBeGreaterThan(0)
-        }),
-        release('Enter'),
-        tick(FRAME_MS),
-        Story.model(current => {
-          expect(focusOf(current).purchase).toEqual(Purchase.Spent())
-        }),
+      modelAfter(
+        inBreak(3, KEYS),
+        steps(
+          press('Enter'),
+          ticks(HOLD_TICKS - 4, FRAME_MS),
+          checkModel(current => {
+            expect(isKitchenOpen(current)).toBe(false)
+            expect(
+              Purchase.isAnyOf(['Holding'])(focusOf(current).purchase),
+            ).toBe(true)
+            expect(holdProgress(focusOf(current).purchase)).toBeGreaterThan(0.8)
+            expect(Phase.isAnyOf(['Preparation'])(current.phase)).toBe(true)
+          }),
+          ticks(4, FRAME_MS),
+          checkModel(current => {
+            expect(isKitchenOpen(current)).toBe(true)
+            expect(current.keys.held).toBe(KEYS - EXIT_RULES.kitchenKeys)
+            expect(current.keys.spent).toBe(EXIT_RULES.kitchenKeys)
+            expect(focusOf(current).purchase).toEqual(Purchase.Done())
+            expect(levelOf(current).doorIds).toEqual([
+              'North',
+              'West',
+              'East',
+              'South',
+              'Back',
+              'Window',
+            ])
+            expect(
+              Array.some(
+                current.cosmetics.particles,
+                ({ kind }) => kind === 'Splinter',
+              ),
+            ).toBe(true)
+            expect(current.shake.trauma).toBeGreaterThan(0)
+          }),
+          release('Enter'),
+          tick(FRAME_MS),
+          checkModel(current => {
+            expect(focusOf(current).purchase).toEqual(Purchase.Spent())
+          }),
+        ),
       ),
   )
 
@@ -173,46 +178,48 @@ describe('holding to buy the kitchen open', () => {
   it.effect(
     'letting go and stepping off before the ring fills cancels, and the next hold starts over',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(inBreak(3, KEYS)),
-        press('Enter'),
-        ...ticks(HOLD_TICKS - 6, FRAME_MS),
-        press('KeyD'),
-        release('Enter'),
-        tick(FRAME_MS),
-        Story.model(current => {
-          expect(focusOf(current).purchase).toEqual(Purchase.Idle())
-          expect(isKitchenOpen(current)).toBe(false)
-        }),
-        release('KeyD'),
-        press('Enter'),
-        ...ticks(HOLD_TICKS - 6, FRAME_MS),
-        Story.model(current => {
-          expect(isKitchenOpen(current)).toBe(false)
-          expect(current.keys.held).toBe(KEYS)
-        }),
+      modelAfter(
+        inBreak(3, KEYS),
+        steps(
+          press('Enter'),
+          ticks(HOLD_TICKS - 6, FRAME_MS),
+          press('KeyD'),
+          release('Enter'),
+          tick(FRAME_MS),
+          checkModel(current => {
+            expect(focusOf(current).purchase).toEqual(Purchase.Idle())
+            expect(isKitchenOpen(current)).toBe(false)
+          }),
+          release('KeyD'),
+          press('Enter'),
+          ticks(HOLD_TICKS - 6, FRAME_MS),
+          checkModel(current => {
+            expect(isKitchenOpen(current)).toBe(false)
+            expect(current.keys.held).toBe(KEYS)
+          }),
+        ),
       ),
   )
 
   it.effect('walking out of reach cancels the hold', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(inBreak(3, KEYS)),
-      press('Enter'),
-      ...ticks(10, FRAME_MS),
-      press('KeyS'),
-      ...ticks(HOLD_TICKS, FRAME_MS),
-      Story.model(current => {
-        expect(focusOf(current).player.y).toBeGreaterThan(
-          BELOW_KITCHEN_DOOR.y + 10,
-        )
-        expect(Purchase.isAnyOf(['Holding'])(focusOf(current).purchase)).toBe(
-          false,
-        )
-        expect(isKitchenOpen(current)).toBe(false)
-        expect(current.keys.held).toBe(KEYS)
-      }),
+    modelAfter(
+      inBreak(3, KEYS),
+      steps(
+        press('Enter'),
+        ticks(10, FRAME_MS),
+        press('KeyS'),
+        ticks(HOLD_TICKS, FRAME_MS),
+        checkModel(current => {
+          expect(focusOf(current).player.y).toBeGreaterThan(
+            BELOW_KITCHEN_DOOR.y + 10,
+          )
+          expect(Purchase.isAnyOf(['Holding'])(focusOf(current).purchase)).toBe(
+            false,
+          )
+          expect(isKitchenOpen(current)).toBe(false)
+          expect(current.keys.held).toBe(KEYS)
+        }),
+      ),
     ),
   )
 
@@ -228,33 +235,34 @@ describe('holding to buy the kitchen open', () => {
         expect(
           Array.filter(events, GameEvent.isAnyOf(['PurchaseRefused'])),
         ).toHaveLength(1)
-        return yield* Story.story(
-          APPLICATION,
-          Story.given(short),
-          press('Enter'),
-          tick(FRAME_MS),
-          Story.model(current => {
-            expect(focusOf(current).purchase).toEqual(
-              Purchase.Refused({
-                target: KITCHEN_TARGET,
-                shortBy: 2,
-                sinceMs: 0,
-              }),
-            )
-          }),
-          ...ticks(HOLD_TICKS * 2, FRAME_MS),
-          Story.model(current => {
-            expect(isKitchenOpen(current)).toBe(false)
-            expect(current.keys.held).toBe(EXIT_RULES.kitchenKeys - 2)
-            expect(
-              Purchase.isAnyOf(['Refused'])(focusOf(current).purchase),
-            ).toBe(true)
-          }),
-          release('Enter'),
-          tick(FRAME_MS),
-          Story.model(current => {
-            expect(focusOf(current).purchase).toEqual(Purchase.Idle())
-          }),
+        return yield* modelAfter(
+          short,
+          steps(
+            press('Enter'),
+            tick(FRAME_MS),
+            checkModel(current => {
+              expect(focusOf(current).purchase).toEqual(
+                Purchase.Refused({
+                  target: KITCHEN_TARGET,
+                  shortBy: 2,
+                  sinceMs: 0,
+                }),
+              )
+            }),
+            ticks(HOLD_TICKS * 2, FRAME_MS),
+            checkModel(current => {
+              expect(isKitchenOpen(current)).toBe(false)
+              expect(current.keys.held).toBe(EXIT_RULES.kitchenKeys - 2)
+              expect(
+                Purchase.isAnyOf(['Refused'])(focusOf(current).purchase),
+              ).toBe(true)
+            }),
+            release('Enter'),
+            tick(FRAME_MS),
+            checkModel(current => {
+              expect(focusOf(current).purchase).toEqual(Purchase.Idle())
+            }),
+          ),
         )
       }),
   )
@@ -263,22 +271,24 @@ describe('holding to buy the kitchen open', () => {
     'at the boards Enter holds to buy, and away from them it starts the wave',
     () =>
       Effect.gen(function* () {
-        yield* Story.story(
-          APPLICATION,
-          Story.given(inBreak(3, KEYS)),
-          press('Enter'),
-          tick(FRAME_MS),
-          Story.model(current => {
-            expect(Phase.isAnyOf(['Preparation'])(current.phase)).toBe(true)
-          }),
+        yield* modelAfter(
+          inBreak(3, KEYS),
+          steps(
+            press('Enter'),
+            tick(FRAME_MS),
+            checkModel(current => {
+              expect(Phase.isAnyOf(['Preparation'])(current.phase)).toBe(true)
+            }),
+          ),
         )
-        yield* Story.story(
-          APPLICATION,
-          Story.given(awayFromDoor(inBreak(3, KEYS))),
-          press('Enter'),
-          Story.model(current => {
-            expect(Phase.isAnyOf(['Wave'])(current.phase)).toBe(true)
-          }),
+        yield* modelAfter(
+          awayFromDoor(inBreak(3, KEYS)),
+          steps(
+            press('Enter'),
+            checkModel(current => {
+              expect(Phase.isAnyOf(['Wave'])(current.phase)).toBe(true)
+            }),
+          ),
         )
       }),
   )
@@ -286,27 +296,28 @@ describe('holding to buy the kitchen open', () => {
   it.effect(
     'mid-wave the hold buys it while the wave and the zombies keep going',
     () => {
-      const fighting = modifyFields(midWave(4, WAVE_FOUR, KEYS), {
+      const fighting = UiStruct.evolve(midWave(4, WAVE_FOUR, KEYS), {
         zombies: () => [zombieOf('Shambler', 900, 150, 104, { speed: 30 })],
       })
-      return Story.story(
-        APPLICATION,
-        Story.given(fighting),
-        ...holdToBuy,
-        Story.model(current => {
-          expect(isKitchenOpen(current)).toBe(true)
-          expect(current.keys.held).toBe(KEYS - EXIT_RULES.kitchenKeys)
-          expect(waveClockOf(current)).toBeGreaterThan(
-            (HOLD_TICKS - 1) * FRAME_MS,
-          )
-          const shambler = Array.findFirst(
-            current.zombies,
-            ({ id }) => id === 900,
-          )
-          expect(
-            Option.exists(shambler, ({ x, y }) => x !== 150 || y !== 104),
-          ).toBe(true)
-        }),
+      return modelAfter(
+        fighting,
+        steps(
+          holdToBuy,
+          checkModel(current => {
+            expect(isKitchenOpen(current)).toBe(true)
+            expect(current.keys.held).toBe(KEYS - EXIT_RULES.kitchenKeys)
+            expect(waveClockOf(current)).toBeGreaterThan(
+              (HOLD_TICKS - 1) * FRAME_MS,
+            )
+            const shambler = Array.findFirst(
+              current.zombies,
+              ({ id }) => id === 900,
+            )
+            expect(
+              Option.exists(shambler, ({ x, y }) => x !== 150 || y !== 104),
+            ).toBe(true)
+          }),
+        ),
       )
     },
   )
@@ -314,34 +325,39 @@ describe('holding to buy the kitchen open', () => {
   it.effect(
     'on touch, the hold button buys it and the move stick keeps its finger',
     () => {
-      const touching = modifyFields(inBreak(3, KEYS), {
+      const touching = UiStruct.evolve(inBreak(3, KEYS), {
         lastDevice: () => 'Touch' as const,
       })
-      return Story.story(
-        APPLICATION,
-        Story.given(touching),
-        Story.message(
-          Message.PressedPointer({
-            pointerId: 1,
-            device: 'Touch',
-            clientX: 100,
-            clientY: 300,
+      return modelAfter(
+        touching,
+        steps(
+          send(
+            Message.PressedPointer({
+              pointerId: 1,
+              device: 'Touch',
+              clientX: 100,
+              clientY: 300,
+            }),
+          ),
+          send(Message.PressedHoldButton({ pointerId: 2 })),
+          ticks(HOLD_TICKS, FRAME_MS),
+          checkModel(current => {
+            expect(isKitchenOpen(current)).toBe(true)
+            expect(current.keys.held).toBe(KEYS - EXIT_RULES.kitchenKeys)
+            expect(Stick.isAnyOf(['Active'])(current.input.moveStick)).toBe(
+              true,
+            )
+            expect(Stick.isAnyOf(['Idle'])(current.input.aimStick)).toBe(true)
+          }),
+          send(Message.ReleasedPointer({ pointerId: 2 })),
+          tick(FRAME_MS),
+          checkModel(current => {
+            expect(focusOf(current).purchase).toEqual(Purchase.Spent())
+            expect(Stick.isAnyOf(['Active'])(current.input.moveStick)).toBe(
+              true,
+            )
           }),
         ),
-        Story.message(Message.PressedHoldButton({ pointerId: 2 })),
-        ...ticks(HOLD_TICKS, FRAME_MS),
-        Story.model(current => {
-          expect(isKitchenOpen(current)).toBe(true)
-          expect(current.keys.held).toBe(KEYS - EXIT_RULES.kitchenKeys)
-          expect(Stick.isAnyOf(['Active'])(current.input.moveStick)).toBe(true)
-          expect(Stick.isAnyOf(['Idle'])(current.input.aimStick)).toBe(true)
-        }),
-        Story.message(Message.ReleasedPointer({ pointerId: 2 })),
-        tick(FRAME_MS),
-        Story.model(current => {
-          expect(focusOf(current).purchase).toEqual(Purchase.Spent())
-          expect(Stick.isAnyOf(['Active'])(current.input.moveStick)).toBe(true)
-        }),
       )
     },
   )
@@ -349,40 +365,41 @@ describe('holding to buy the kitchen open', () => {
   it.effect(
     'on touch, lifting the holding finger drops to standing speed, and lifting a stick finger does not cancel',
     () => {
-      const touching = modifyFields(inBreak(3, KEYS), {
+      const touching = UiStruct.evolve(inBreak(3, KEYS), {
         lastDevice: () => 'Touch' as const,
       })
-      return Story.story(
-        APPLICATION,
-        Story.given(touching),
-        Story.message(
-          Message.PressedPointer({
-            pointerId: 1,
-            device: 'Touch',
-            clientX: 700,
-            clientY: 300,
+      return modelAfter(
+        touching,
+        steps(
+          send(
+            Message.PressedPointer({
+              pointerId: 1,
+              device: 'Touch',
+              clientX: 700,
+              clientY: 300,
+            }),
+          ),
+          send(Message.PressedHoldButton({ pointerId: 2 })),
+          ticks(10, FRAME_MS),
+          send(Message.ReleasedPointer({ pointerId: 1 })),
+          ticks(2, FRAME_MS),
+          checkModel(current => {
+            expect(
+              Purchase.isAnyOf(['Holding'])(focusOf(current).purchase),
+            ).toBe(true)
+          }),
+          send(Message.ReleasedPointer({ pointerId: 2 })),
+          tick(FRAME_MS),
+          checkModel(current => {
+            expect(
+              Purchase.isAnyOf(['Holding'])(focusOf(current).purchase),
+            ).toBe(true)
+            expect(holdProgress(focusOf(current).purchase)).toBeLessThan(
+              (13 * FRAME_MS) / PURCHASE_RULES.holdMs,
+            )
+            expect(isKitchenOpen(current)).toBe(false)
           }),
         ),
-        Story.message(Message.PressedHoldButton({ pointerId: 2 })),
-        ...ticks(10, FRAME_MS),
-        Story.message(Message.ReleasedPointer({ pointerId: 1 })),
-        ...ticks(2, FRAME_MS),
-        Story.model(current => {
-          expect(Purchase.isAnyOf(['Holding'])(focusOf(current).purchase)).toBe(
-            true,
-          )
-        }),
-        Story.message(Message.ReleasedPointer({ pointerId: 2 })),
-        tick(FRAME_MS),
-        Story.model(current => {
-          expect(Purchase.isAnyOf(['Holding'])(focusOf(current).purchase)).toBe(
-            true,
-          )
-          expect(holdProgress(focusOf(current).purchase)).toBeLessThan(
-            (13 * FRAME_MS) / PURCHASE_RULES.holdMs,
-          )
-          expect(isKitchenOpen(current)).toBe(false)
-        }),
       )
     },
   )
@@ -391,27 +408,27 @@ describe('holding to buy the kitchen open', () => {
     'the boards stay shut in the first break and in the waves before the third',
     () =>
       Effect.gen(function* () {
-        yield* Story.story(
-          APPLICATION,
-          Story.given(inBreak(2, 500)),
-          ...holdToBuy,
-          Story.model(current => {
-            expect(focusOf(current).purchase).toEqual(Purchase.Idle())
-            expect(isKitchenOpen(current)).toBe(false)
-          }),
-        )
-        yield* Story.story(
-          APPLICATION,
-          Story.given(
-            modifyFields(inBreak(2, 500), {
-              phase: () =>
-                Phase.Wave({ wave: 2, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
+        yield* modelAfter(
+          inBreak(2, 500),
+          steps(
+            holdToBuy,
+            checkModel(current => {
+              expect(focusOf(current).purchase).toEqual(Purchase.Idle())
+              expect(isKitchenOpen(current)).toBe(false)
             }),
           ),
-          ...holdToBuy,
-          Story.model(current => {
-            expect(isKitchenOpen(current)).toBe(false)
+        )
+        yield* modelAfter(
+          UiStruct.evolve(inBreak(2, 500), {
+            phase: () =>
+              Phase.Wave({ wave: 2, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
           }),
+          steps(
+            holdToBuy,
+            checkModel(current => {
+              expect(isKitchenOpen(current)).toBe(false)
+            }),
+          ),
         )
       }),
   )
@@ -443,37 +460,41 @@ describe('the kitchen in the waves', () => {
     () => {
       const fighting = midWave(4, WAVE_FOUR, 500)
       const before = doorsOf(fighting)
-      return Story.story(
-        APPLICATION,
-        Story.given(fighting),
-        ...holdToBuy,
-        Story.model(current => {
-          const after = Array.filter(
-            doorsOf(current),
-            ({ pack }) => !isWakePack(pack),
-          )
-          const clockMs = waveClockOf(current)
-          expect(isKitchenOpen(current)).toBe(true)
-          expect(Array.some(after, isKitchenDoor)).toBe(true)
-          expect(
-            Array.every(after, spawn =>
-              Array.some(
-                before,
-                planned =>
-                  planned.atMs === spawn.atMs &&
-                  planned.kind === spawn.kind &&
-                  planned.pack === spawn.pack &&
-                  planned.offset === spawn.offset,
+      return modelAfter(
+        fighting,
+        steps(
+          holdToBuy,
+          checkModel(current => {
+            const after = Array.filter(
+              doorsOf(current),
+              ({ pack }) => !isWakePack(pack),
+            )
+            const clockMs = waveClockOf(current)
+            expect(isKitchenOpen(current)).toBe(true)
+            expect(Array.some(after, isKitchenDoor)).toBe(true)
+            expect(
+              Array.every(after, spawn =>
+                Array.some(
+                  before,
+                  planned =>
+                    planned.atMs === spawn.atMs &&
+                    planned.kind === spawn.kind &&
+                    planned.pack === spawn.pack &&
+                    planned.offset === spawn.offset,
+                ),
               ),
-            ),
-          ).toBe(true)
-          expect(
-            Array.every(
-              Array.filter(after, ({ atMs }) => atMs < clockMs + JOIN_LEAD_MS),
-              spawn => !isKitchenDoor(spawn),
-            ),
-          ).toBe(true)
-        }),
+            ).toBe(true)
+            expect(
+              Array.every(
+                Array.filter(
+                  after,
+                  ({ atMs }) => atMs < clockMs + JOIN_LEAD_MS,
+                ),
+                spawn => !isKitchenDoor(spawn),
+              ),
+            ).toBe(true)
+          }),
+        ),
       )
     },
   )
@@ -481,37 +502,39 @@ describe('the kitchen in the waves', () => {
   it.effect(
     'bought in the break, its doors join the wave the markers show',
     () => {
-      const shopping = modifyFields(inBreak(4, 500), {
+      const shopping = UiStruct.evolve(inBreak(4, 500), {
         phase: () =>
           Phase.Preparation({
+            clock: BreakClock.Counting(),
             wave: 4,
             remainingMs: 15_000,
             durationMs: 20_000,
             spawns: WAVE_FOUR,
           }),
       })
-      return Story.story(
-        APPLICATION,
-        Story.given(shopping),
-        ...holdToBuy,
-        Story.model(current => {
-          const woken = Array.filter(doorsOf(current), ({ pack }) =>
-            isWakePack(pack),
-          )
-          const after = Array.filter(
-            doorsOf(current),
-            ({ pack }) => !isWakePack(pack),
-          )
-          expect(after).toHaveLength(WAVE_FOUR.length)
-          expect(woken).toHaveLength(WAKE_RULES.count)
-          expect(Array.some(after, isKitchenDoor)).toBe(true)
-          expect(
-            Array.some(
-              doorCounts(after, current.traps, levelOf(current).doorIds),
-              ({ door }) => door === 'Back' || door === 'Window',
-            ),
-          ).toBe(true)
-        }),
+      return modelAfter(
+        shopping,
+        steps(
+          holdToBuy,
+          checkModel(current => {
+            const woken = Array.filter(doorsOf(current), ({ pack }) =>
+              isWakePack(pack),
+            )
+            const after = Array.filter(
+              doorsOf(current),
+              ({ pack }) => !isWakePack(pack),
+            )
+            expect(after).toHaveLength(WAVE_FOUR.length)
+            expect(woken).toHaveLength(WAKE_RULES.count)
+            expect(Array.some(after, isKitchenDoor)).toBe(true)
+            expect(
+              Array.some(
+                doorCounts(after, current.traps, levelOf(current).doorIds),
+                ({ door }) => door === 'Back' || door === 'Window',
+              ),
+            ).toBe(true)
+          }),
+        ),
       )
     },
   )
@@ -521,7 +544,7 @@ describe('the kitchen in the waves', () => {
     const fightingFrom = (seed: number): Model => {
       const [, spawns] = rollSpawns(seed, 4)
       return withKitchen(
-        modifyFields(midWave(4, spawns, 0), {
+        UiStruct.evolve(midWave(4, spawns, 0), {
           phase: () =>
             Phase.Wave({
               wave: 4,
@@ -540,9 +563,9 @@ describe('the kitchen in the waves', () => {
         Array.map(doorsOf(fighting), ({ atMs }) => atMs),
       )
       expect(joinNewDoors(fighting, ['Back', 'Window'])).toEqual(free)
-      const rattled = modifyFields(fighting, {
+      const rattled = UiStruct.evolve(fighting, {
         pacing: pacing =>
-          modifyFields(pacing, {
+          UiStruct.evolve(pacing, {
             warnedPacks: () => Array.map(doorsOf(fighting), ({ pack }) => pack),
           }),
       })
@@ -605,7 +628,7 @@ describe('ovens', () => {
 
   const shotAtOven = (ovens: ReadonlyArray<Oven>): Model =>
     modifyFocus(
-      modifyFields(fightingInKitchen(base), {
+      UiStruct.evolve(fightingInKitchen(base), {
         ovens: () => ovens,
         zombies: () => [victim],
         bullets: () => [
@@ -626,7 +649,7 @@ describe('ovens', () => {
       }),
       {
         player: player =>
-          modifyFields(player, {
+          UiStruct.evolve(player, {
             x: () => oven.left - 30,
             y: () => oven.bottom + 30,
           }),
@@ -636,56 +659,54 @@ describe('ovens', () => {
   it.effect(
     'a shot into a ready oven belches fire that burns the zombie in front of it',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(
-          shotAtOven(Array.map(ovenBoxesOf(MANOR), () => Oven.Ready())),
+      modelAfter(
+        shotAtOven(Array.map(ovenBoxesOf(MANOR), () => Oven.Ready())),
+        steps(
+          tick(FRAME_MS),
+          checkModel(current => {
+            expect(
+              Array.some(current.frameEvents, GameEvent.guards.OvenBelched),
+            ).toBe(true)
+            expect(Oven.guards.Belching(current.ovens[0] ?? Oven.Ready())).toBe(
+              true,
+            )
+            expect(
+              Array.some(
+                current.zombies,
+                ({ id, hp }) => id === victim.id && hp < victim.hp,
+              ) || !Array.some(current.zombies, ({ id }) => id === victim.id),
+            ).toBe(true)
+          }),
+          ticks(Math.ceil(OVEN_RULES.belchMs / FRAME_MS) + 20, FRAME_MS),
+          checkModel(current => {
+            expect(Oven.guards.Cooling(current.ovens[0] ?? Oven.Ready())).toBe(
+              true,
+            )
+          }),
         ),
-        tick(FRAME_MS),
-        Story.model(current => {
-          expect(
-            Array.some(current.frameEvents, GameEvent.guards.OvenBelched),
-          ).toBe(true)
-          expect(Oven.guards.Belching(current.ovens[0] ?? Oven.Ready())).toBe(
-            true,
-          )
-          expect(
-            Array.some(
-              current.zombies,
-              ({ id, hp }) => id === victim.id && hp < victim.hp,
-            ) || !Array.some(current.zombies, ({ id }) => id === victim.id),
-          ).toBe(true)
-        }),
-        ...ticks(Math.ceil(OVEN_RULES.belchMs / FRAME_MS) + 20, FRAME_MS),
-        Story.model(current => {
-          expect(Oven.guards.Cooling(current.ovens[0] ?? Oven.Ready())).toBe(
-            true,
-          )
-        }),
       ),
   )
 
   it.effect('a cooling oven only takes the bullet', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        shotAtOven(
-          Array.map(ovenBoxesOf(MANOR), () =>
-            Oven.Cooling({ remainingMs: OVEN_RULES.cooldownMs }),
-          ),
+    modelAfter(
+      shotAtOven(
+        Array.map(ovenBoxesOf(MANOR), () =>
+          Oven.Cooling({ remainingMs: OVEN_RULES.cooldownMs }),
         ),
       ),
-      tick(FRAME_MS),
-      Story.model(current => {
-        expect(
-          Array.some(current.frameEvents, GameEvent.guards.OvenBelched),
-        ).toBe(false)
-        expect(
-          Array.findFirst(current.zombies, ({ id }) => id === victim.id).pipe(
-            Option.map(({ hp }) => hp),
-          ),
-        ).toEqual(Option.some(victim.hp))
-      }),
+      steps(
+        tick(FRAME_MS),
+        checkModel(current => {
+          expect(
+            Array.some(current.frameEvents, GameEvent.guards.OvenBelched),
+          ).toBe(false)
+          expect(
+            Array.findFirst(current.zombies, ({ id }) => id === victim.id).pipe(
+              Option.map(({ hp }) => hp),
+            ),
+          ).toEqual(Option.some(victim.hp))
+        }),
+      ),
     ),
   )
 })
@@ -695,43 +716,46 @@ describe('slippery soup', () => {
 
   const walkingInto = (kind: 'Shambler' | 'Tank'): Model =>
     modifyFocus(
-      modifyFields(fightingInKitchen(base), {
+      UiStruct.evolve(fightingInKitchen(base), {
         zombies: () => [
           zombieOf(kind, 800, soupLeft.x, soupLeft.y, { speed: 40 }),
         ],
       }),
       {
-        player: player => modifyFields(player, { x: () => 110, y: () => -95 }),
+        player: player =>
+          UiStruct.evolve(player, { x: () => 110, y: () => -95 }),
       },
     )
 
   it.effect('a Groaner that steps into the soup slips and lies dazed', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(walkingInto('Shambler')),
-      ...ticks(30, FRAME_MS),
-      Story.model(current => {
-        expect(
-          Array.some(current.zombies, ({ action }) =>
-            ZombieAction.guards.Dazed(action),
-          ),
-        ).toBe(true)
-      }),
+    modelAfter(
+      walkingInto('Shambler'),
+      steps(
+        ticks(30, FRAME_MS),
+        checkModel(current => {
+          expect(
+            Array.some(current.zombies, ({ action }) =>
+              ZombieAction.guards.Dazed(action),
+            ),
+          ).toBe(true)
+        }),
+      ),
     ),
   )
 
   it.effect('a Big Lug keeps his feet in it', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(walkingInto('Tank')),
-      ...ticks(40, FRAME_MS),
-      Story.model(current => {
-        expect(
-          Array.some(current.zombies, ({ action }) =>
-            ZombieAction.guards.Dazed(action),
-          ),
-        ).toBe(false)
-      }),
+    modelAfter(
+      walkingInto('Tank'),
+      steps(
+        ticks(40, FRAME_MS),
+        checkModel(current => {
+          expect(
+            Array.some(current.zombies, ({ action }) =>
+              ZombieAction.guards.Dazed(action),
+            ),
+          ).toBe(false)
+        }),
+      ),
     ),
   )
 })

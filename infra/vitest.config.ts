@@ -33,9 +33,5 @@ export default defineConfig({
   plugins: [oneEffect],
   test: {
     include: ['worker/**/*.test.ts'],
-    // NOTE: foldkit's Schema helpers (foldkit/schema, which the World's
-    // Schemas use) go through the plugin too, so they build on infra's
-    // Effect like the Schemas they wrap.
-    server: { deps: { inline: [/foldkit/] } },
   },
 })

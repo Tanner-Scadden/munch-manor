@@ -1,36 +1,50 @@
-import { Array } from 'effect'
-import { Scene } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
+import { Array, Effect } from 'effect'
 
+import { Component, UiStruct } from '@effect/ui'
+import { HtmlLocator, HtmlScene } from '@effect/ui/html/testing'
+import { Locator } from '@effect/ui/testing'
 import { describe, it } from '@effect/vitest'
-import { Dialog, DialogBlock } from '@foldkit/ui'
 
 import { Message } from '../../../../../app/message'
 import type { Model } from '../../../../../app/model'
-import { WriteSave } from '../../../../../app/update/save'
+import { profilePropsOf } from '../../../../../app/profileView'
+import { FocusProfileElement } from '../../../../../app/update/profile'
+import { PROFILE_DIALOG_ID } from '../../../../../domain/clientSchema'
+import type { LookPart } from '../../../../../domain/looks'
 import { unlocksAt } from '../../../../../domain/unlocks'
 import { homeAfterRead } from '../../../../../test/model.fixture'
 import {
-  APPLICATION,
-  closeButton,
+  byClass,
   emitPressedKey,
   lookGroup,
-  lookOptionIn,
   lookSection,
   measureSurface,
-  openLookSection,
-  resolveFocusOptionInScene,
-  showDialogInScene,
-} from '../../../../../test/testing'
+  showDialog,
+  withAttrs,
+} from '../../../../../test/sceneTesting'
+import { sceneOf, send, steps, writeSave } from '../../../../../test/testing'
 import { noRank, pointsForRank } from '../../../../../world/heroes/rank'
-import { FocusLookOption } from '../../../inMessageUpdate'
-import { Message as ProfileMessage } from '../../../message'
+import {
+  type LookDesk,
+  atLookRoot,
+  inLook,
+  lookDeskOf,
+  lookOption,
+  openLookSection,
+  seeLook,
+  settleLook,
+} from '../../../__tests__/profile.fixture'
+import { Profile } from '../../../block'
 
 // The Look tab's rows of earned looks (src/features/profile/blocks/look/view.ts,
-// src/features/profile/blocks/look/lookGearView.ts): an option in one of four states, a pick that wears
-// or buys, the arrow keys that only move, and the NEW badges.
+// src/features/profile/blocks/look/lookGearView.ts): an option in one of four
+// states, a pick that wears or buys, the arrow keys that only move, and the
+// NEW badges. The Look tab is a child of the Profile, of the root, so its
+// rows are drawn in a Scene of their own, each event taken up to a Story of
+// the root (profile.fixture.ts); the Bones on the rank plate and the home
+// menu's pips are the root's, read in the root's Scene.
 
-const closet: Model = modifyFields(homeAfterRead, {
+const closet: Model = UiStruct.evolve(homeAfterRead, {
   rank: () => ({
     ...noRank,
     earnedPoints: pointsForRank(5),
@@ -42,427 +56,374 @@ const closet: Model = modifyFields(homeAfterRead, {
   appearance: look => ({ ...look, hat: 'Fez' }),
 })
 
-const closeLook = () => [
-  Scene.click(closeButton),
-  Scene.Command.resolve(
-    Dialog.test.CloseDialog,
-    DialogBlock.Message.CompletedCloseDialog(),
-  ),
-]
+// NOTE: the Look tab opened by C, as the root hears it.
+const openLook = send(Message.PressedKey({ code: 'KeyC' }))
 
-const openLook = () => [emitPressedKey('KeyC'), ...showDialogInScene()]
+const lookOpenedFrom = (model: Model) =>
+  Effect.map(lookDeskOf(model), atLookRoot(openLook))
 
-const balance = Scene.selector('.profile-rank .rank-bones-count')
+// NOTE: the Profile shut by its close, as its Dialog asks.
+const closeLook = send(Message.ClosedDialog({ dialog: 'Profile' }))
 
-const buyPill = Scene.selector('.look-buy')
+const buyPill = byClass('look-buy')
+
+const optionsIn = (groupName: string) =>
+  Locator.inside(lookGroup(groupName), HtmlLocator.role('radio'))
+
+const newBadge = (part: LookPart, value: string) =>
+  Locator.inside(lookOption(part, value), byClass('look-new'))
+
+const has = (
+  locator: Locator.Locator,
+  attrs: Readonly<Record<string, string>>,
+) => seeLook(s => s.expect(withAttrs(attrs)(locator)).toExist())
+
+const standing = (part: LookPart, value: string, name: string) =>
+  has(lookOption(part, value), { 'data-standing': name })
+
+const checked = (part: LookPart, value: string, isChecked: boolean) =>
+  has(lookOption(part, value), { 'aria-checked': isChecked ? 'true' : 'false' })
+
+const lacks = (locator: Locator.Locator, name: string) =>
+  seeLook(s =>
+    s.check(() => {
+      if (s.get(locator).attrs?.[name] !== undefined) {
+        throw new Error(`${locator.description} has ${name}`)
+      }
+    }),
+  )
+
+const click = (locator: Locator.Locator) => inLook(s => s.click(locator))
+
+// NOTE: a buy moves focus to the look bought, its BUY pill gone.
+const focusedBought = (part: LookPart, value: string) =>
+  atLookRoot(s =>
+    s.resolve(
+      FocusProfileElement.make({
+        selector: `[data-look-option="${part}.${value}"]`,
+      }),
+      Component.noop,
+    ),
+  )
+
+// NOTE: the Bones the rank plate over the Profile's tabs shows, drawn by the
+// root's Scene from the Model the desk's root holds.
+const balanceShown = (desk: LookDesk, count: string) =>
+  Effect.gen(function* () {
+    const s = yield* sceneOf(desk.root.model)
+    s.pipe(measureSurface, showDialog(PROFILE_DIALOG_ID))
+      .expect(
+        Locator.inside(byClass('profile-rank'), byClass('rank-bones-count')),
+      )
+      .toHaveText(count)
+  })
 
 describe('the gear rows', () => {
   it.effect(
     'every hat is an option: worn, owned, for sale, or a locked gift',
     () =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(closet),
-        measureSurface,
-        ...openLook(),
-        ...openLookSection('Gear'),
-        Scene.expectAll(
-          Scene.all.selector('[role="radio"][id^="look-hat-option-"]'),
-        ).toHaveCount(17),
-        Scene.expect(lookOptionIn('Hat', 'Fez')).toHaveAttr(
-          'data-standing',
-          'Worn',
-        ),
-        Scene.expect(lookOptionIn('Hat', 'Fez')).toHaveAttr(
-          'aria-checked',
-          'true',
-        ),
-        Scene.expect(lookOptionIn('Hat', 'No hat')).toHaveAttr(
-          'data-standing',
-          'Owned',
-        ),
-        Scene.expect(lookOptionIn('Hat', 'Party Hat')).toHaveAttr(
-          'data-standing',
-          'Owned',
-        ),
-        Scene.expect(lookOptionIn('Hat', 'Colander')).toHaveAttr(
-          'data-standing',
-          'ForSale',
-        ),
-        Scene.expect(lookOptionIn('Hat', 'Top Hat')).toHaveAttr(
-          'data-standing',
-          'Locked',
-        ),
-        Scene.expect(lookOptionIn('Hat', 'Top Hat')).toHaveAttr(
-          'aria-checked',
-          'false',
-        ),
-        Scene.expectAll(
-          Scene.all.selector('[role="radio"][id^="look-gun-skin-option-"]'),
-        ).toHaveCount(8),
-        Scene.expect(lookOptionIn('Gun skin', 'Stock')).toHaveAttr(
-          'data-standing',
-          'Worn',
-        ),
-        Scene.expect(lookOptionIn('Gun skin', 'Candy')).toHaveAttr(
-          'data-standing',
-          'ForSale',
-        ),
-        Scene.expect(lookOptionIn('Gun skin', 'Gold')).toHaveAttr(
-          'data-standing',
-          'Locked',
-        ),
-        Scene.expect(lookOptionIn('Gun skin', 'Ember')).toHaveAttr(
-          'data-standing',
-          'Locked',
-        ),
-      ),
+      Effect.gen(function* () {
+        const desk = yield* lookOpenedFrom(closet)
+        steps<LookDesk>(
+          openLookSection('Gear'),
+          seeLook(s => s.expect(optionsIn('Hat')).toHaveCount(17)),
+          standing('Hat', 'Fez', 'Worn'),
+          checked('Hat', 'Fez', true),
+          standing('Hat', 'None', 'Owned'),
+          standing('Hat', 'PartyHat', 'Owned'),
+          standing('Hat', 'Colander', 'ForSale'),
+          standing('Hat', 'TopHat', 'Locked'),
+          checked('Hat', 'TopHat', false),
+          seeLook(s => s.expect(optionsIn('Gun skin')).toHaveCount(8)),
+          standing('GunSkin', 'Stock', 'Worn'),
+          standing('GunSkin', 'Candy', 'ForSale'),
+          standing('GunSkin', 'Gold', 'Locked'),
+          standing('GunSkin', 'Ember', 'Locked'),
+          settleLook,
+        )(desk)
+      }),
   )
 
   it.effect(
     'the colors and prints show the earned ones beside the free ones',
     () =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(closet),
-        measureSurface,
-        ...openLook(),
-        ...openLookSection('Outfit'),
-        Scene.expectAll(
-          Scene.all.selector('[role="radio"][id^="look-shirt-color-option-"]'),
-        ).toHaveCount(12),
-        Scene.expect(lookOptionIn('Outfit color', 'Blue')).toHaveAttr(
-          'aria-checked',
-          'true',
-        ),
-        Scene.expect(lookOptionIn('Outfit color', 'Red')).toHaveAttr(
-          'data-standing',
-          'Owned',
-        ),
-        Scene.expect(lookOptionIn('Outfit color', 'Midnight')).toHaveAttr(
-          'data-standing',
-          'ForSale',
-        ),
-        Scene.expect(lookOptionIn('Outfit color', 'Gold')).toHaveAttr(
-          'data-standing',
-          'Locked',
-        ),
-        Scene.expect(lookOptionIn('Outfit color', 'Frost')).toHaveAttr(
-          'data-standing',
-          'Locked',
-        ),
-        Scene.expectAll(
-          Scene.all.selector('[role="radio"][id^="look-print-option-"]'),
-        ).toHaveCount(7),
-        Scene.expect(lookOptionIn('Print', 'Skull')).toHaveAttr(
-          'data-standing',
-          'ForSale',
-        ),
-        Scene.expect(lookOptionIn('Print', 'Polka')).toHaveAttr(
-          'data-standing',
-          'Locked',
-        ),
-      ),
+      Effect.gen(function* () {
+        const desk = yield* lookOpenedFrom(closet)
+        steps<LookDesk>(
+          openLookSection('Outfit'),
+          seeLook(s => s.expect(optionsIn('Outfit color')).toHaveCount(12)),
+          checked('ShirtColor', 'Blue', true),
+          standing('ShirtColor', 'Red', 'Owned'),
+          standing('ShirtColor', 'Midnight', 'ForSale'),
+          standing('ShirtColor', 'Gold', 'Locked'),
+          standing('ShirtColor', 'Frost', 'Locked'),
+          seeLook(s => s.expect(optionsIn('Print')).toHaveCount(7)),
+          standing('Print', 'Skull', 'ForSale'),
+          standing('Print', 'Polka', 'Locked'),
+          settleLook,
+        )(desk)
+      }),
   )
 
   it.effect(
     'a pick tries the look for sale on, and the BUY pill buys and wears it',
     () =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(closet),
-        measureSurface,
-        ...openLook(),
-        ...openLookSection('Gear'),
-        Scene.expect(balance).toHaveText('90'),
-        Scene.expect(buyPill).toBeAbsent(),
-        Scene.click(lookOptionIn('Hat', 'Colander')),
-        Scene.expect(lookOptionIn('Hat', 'Colander')).toHaveAttr(
-          'aria-checked',
-          'false',
-        ),
-        Scene.expect(lookOptionIn('Hat', 'Fez')).toHaveAttr(
-          'aria-checked',
-          'true',
-        ),
-        Scene.expect(Scene.selector('.look-preview')).toHaveAttr(
-          'aria-label',
-          'Preview: broad build, light skin, brown short hair, blue tee, colander',
-        ),
-        Scene.expect(buyPill).toHaveText('BUY40'),
-        Scene.expect(balance).toHaveText('90'),
-        Scene.click(buyPill),
-        Scene.Command.resolve(
-          FocusLookOption,
-          ProfileMessage.CompletedFocusLookOption(),
-        ),
-        Scene.Command.resolve(WriteSave, Message.CompletedWriteSave()),
-        Scene.expect(buyPill).toBeAbsent(),
-        Scene.expect(lookOptionIn('Hat', 'Colander')).toHaveAttr(
-          'aria-checked',
-          'true',
-        ),
-        Scene.expect(lookOptionIn('Hat', 'Colander')).toHaveAttr(
-          'data-cue',
-          'Bought',
-        ),
-        Scene.expect(lookOptionIn('Hat', 'Fez')).toHaveAttr(
-          'data-standing',
-          'Owned',
-        ),
-        Scene.expect(balance).toHaveText('50'),
-      ),
+      Effect.gen(function* () {
+        const desk = yield* lookOpenedFrom(closet)
+        steps<LookDesk>(
+          settleLook,
+          openLookSection('Gear'),
+          seeLook(s => s.expect(buyPill).toBeAbsent()),
+        )(desk)
+        yield* balanceShown(desk, '90')
+        steps<LookDesk>(
+          click(lookOption('Hat', 'Colander')),
+          checked('Hat', 'Colander', false),
+          checked('Hat', 'Fez', true),
+          has(byClass('look-preview'), {
+            'aria-label':
+              'Preview: broad build, light skin, brown short hair, blue tee, colander',
+          }),
+          seeLook(s => s.expect(buyPill).toHaveText('BUY40')),
+        )(desk)
+        yield* balanceShown(desk, '90')
+        steps<LookDesk>(
+          click(buyPill),
+          focusedBought('Hat', 'Colander'),
+          settleLook,
+          seeLook(s => s.expect(buyPill).toBeAbsent()),
+          checked('Hat', 'Colander', true),
+          has(lookOption('Hat', 'Colander'), { 'data-cue': 'Bought' }),
+          standing('Hat', 'Fez', 'Owned'),
+        )(desk)
+        yield* balanceShown(desk, '50')
+      }),
   )
 
   it.effect(
     'a hero shows the hat tried on, and the BUY pill gives the gun skin for 60',
     () =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(modifyFields(closet, { calling: () => 'Handyman' })),
-        measureSurface,
-        ...openLook(),
-        ...openLookSection('Gear'),
-        Scene.click(lookOptionIn('Gun skin', 'Candy')),
-        Scene.expect(lookOptionIn('Gun skin', 'Candy')).toHaveAttr(
-          'data-previewed',
-          'true',
-        ),
-        Scene.click(lookOptionIn('Hat', 'Colander')),
-        Scene.expect(lookOptionIn('Gun skin', 'Candy')).not.toHaveAttr(
-          'data-previewed',
-          'true',
-        ),
-        Scene.expect(buyPill).toHaveText('BUY40'),
-        Scene.click(lookOptionIn('Hat', 'Fez')),
-        Scene.expect(buyPill).toBeAbsent(),
-        Scene.click(lookOptionIn('Gun skin', 'Candy')),
-        Scene.expect(buyPill).toHaveText('BUY60'),
-        Scene.click(buyPill),
-        Scene.Command.resolve(
-          FocusLookOption,
-          ProfileMessage.CompletedFocusLookOption(),
-        ),
-        Scene.Command.resolve(WriteSave, Message.CompletedWriteSave()),
-        Scene.expect(lookOptionIn('Gun skin', 'Candy')).toHaveAttr(
-          'aria-checked',
-          'true',
-        ),
-        Scene.expect(balance).toHaveText('30'),
-      ),
+      Effect.gen(function* () {
+        const desk = yield* lookOpenedFrom(
+          UiStruct.evolve(closet, { calling: () => 'Handyman' }),
+        )
+        steps<LookDesk>(
+          settleLook,
+          openLookSection('Gear'),
+          click(lookOption('GunSkin', 'Candy')),
+          has(lookOption('GunSkin', 'Candy'), { 'data-previewed': 'true' }),
+          click(lookOption('Hat', 'Colander')),
+          lacks(lookOption('GunSkin', 'Candy'), 'data-previewed'),
+          seeLook(s => s.expect(buyPill).toHaveText('BUY40')),
+          click(lookOption('Hat', 'Fez')),
+          seeLook(s => s.expect(buyPill).toBeAbsent()),
+          click(lookOption('GunSkin', 'Candy')),
+          seeLook(s => s.expect(buyPill).toHaveText('BUY60')),
+          click(buyPill),
+          focusedBought('GunSkin', 'Candy'),
+          settleLook,
+          checked('GunSkin', 'Candy', true),
+        )(desk)
+        yield* balanceShown(desk, '30')
+      }),
   )
 
   it.effect(
     'a look the Bones do not cover is tried on, and BUY waits disabled',
     () =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(
-          modifyFields(closet, {
+      Effect.gen(function* () {
+        const desk = yield* lookOpenedFrom(
+          UiStruct.evolve(closet, {
             rank: rank => ({ ...rank, earnedBones: 60 }),
           }),
-        ),
-        measureSurface,
-        ...openLook(),
-        ...openLookSection('Gear'),
-        Scene.click(lookOptionIn('Hat', 'Plunger')),
-        Scene.expect(lookOptionIn('Hat', 'Plunger')).toHaveAttr(
-          'aria-checked',
-          'false',
-        ),
-        Scene.expect(buyPill).toHaveAttr('data-short', 'true'),
-        Scene.expect(buyPill).toHaveText('BUY60'),
-        Scene.expect(lookOptionIn('Hat', 'Fez')).toHaveAttr(
-          'aria-checked',
-          'true',
-        ),
-        Scene.expect(balance).toHaveText('10'),
-      ),
+        )
+        steps<LookDesk>(
+          settleLook,
+          openLookSection('Gear'),
+          click(lookOption('Hat', 'Plunger')),
+          checked('Hat', 'Plunger', false),
+          has(buyPill, { 'data-short': 'true' }),
+          seeLook(s => s.expect(buyPill).toHaveText('BUY60')),
+          checked('Hat', 'Fez', true),
+        )(desk)
+        yield* balanceShown(desk, '10')
+      }),
   )
 
   it.effect('a locked gift shakes and is not selected', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(closet),
-      measureSurface,
-      ...openLook(),
-      ...openLookSection('Gear'),
-      Scene.click(lookOptionIn('Hat', 'Top Hat')),
-      Scene.expect(lookOptionIn('Hat', 'Top Hat')).toHaveAttr(
-        'aria-checked',
-        'false',
-      ),
-      Scene.expect(lookOptionIn('Hat', 'Top Hat')).toHaveAttr(
-        'data-cue',
-        'Short',
-      ),
-      Scene.expect(lookOptionIn('Hat', 'Fez')).toHaveAttr(
-        'aria-checked',
-        'true',
-      ),
-    ),
+    Effect.gen(function* () {
+      const desk = yield* lookOpenedFrom(closet)
+      steps<LookDesk>(
+        settleLook,
+        openLookSection('Gear'),
+        click(lookOption('Hat', 'TopHat')),
+        checked('Hat', 'TopHat', false),
+        has(lookOption('Hat', 'TopHat'), { 'data-cue': 'Short' }),
+        checked('Hat', 'Fez', true),
+      )(desk)
+    }),
   )
 
+  // NOTE: the kit's RadioGroup moves focus on an arrow key and picks only in
+  // a group that is not read only; its keys run in its own update, which a
+  // Scene does not run. What the Look tab decides is that an earned row is
+  // read only, so walking it never tries on or buys.
   it.effect('the arrow keys only move between the options, and never buy', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(closet),
-      measureSurface,
-      ...openLook(),
-      ...openLookSection('Gear'),
-      Scene.keydown(lookOptionIn('Hat', 'Fez'), 'ArrowRight'),
-      resolveFocusOptionInScene(),
-      Scene.keydown(lookOptionIn('Hat', 'Fez'), 'ArrowRight'),
-      resolveFocusOptionInScene(),
-      Scene.keydown(lookOptionIn('Hat', 'Fez'), 'End'),
-      resolveFocusOptionInScene(),
-      Scene.expect(lookOptionIn('Hat', 'Fez')).toHaveAttr(
-        'aria-checked',
-        'true',
-      ),
-      Scene.expect(lookOptionIn('Hat', 'Pumpkin Head')).toHaveAttr(
-        'data-standing',
-        'ForSale',
-      ),
-      Scene.expect(balance).toHaveText('90'),
-    ),
+    Effect.gen(function* () {
+      const desk = yield* lookOpenedFrom(closet)
+      steps<LookDesk>(
+        settleLook,
+        openLookSection('Gear'),
+        has(lookGroup('Hat'), { 'aria-readonly': 'true' }),
+        has(lookGroup('Gun skin'), { 'aria-readonly': 'true' }),
+        checked('Hat', 'Fez', true),
+        standing('Hat', 'PumpkinHead', 'ForSale'),
+      )(desk)
+      yield* balanceShown(desk, '90')
+    }),
   )
 
   it.effect('works by touch and mouse: a pick is a click', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(modifyFields(closet, { lastDevice: () => 'Touch' })),
-      measureSurface,
-      ...openLook(),
-      ...openLookSection('Gear'),
-      Scene.click(lookOptionIn('Hat', 'No hat')),
-      Scene.Command.resolve(WriteSave, Message.CompletedWriteSave()),
-      Scene.expect(lookOptionIn('Hat', 'No hat')).toHaveAttr(
-        'aria-checked',
-        'true',
-      ),
-      ...closeLook(),
-    ),
+    Effect.gen(function* () {
+      const desk = yield* lookOpenedFrom(
+        UiStruct.evolve(closet, { lastDevice: () => 'Touch' }),
+      )
+      steps<LookDesk>(
+        settleLook,
+        openLookSection('Gear'),
+        click(lookOption('Hat', 'None')),
+        atLookRoot(writeSave),
+        checked('Hat', 'None', true),
+        atLookRoot(closeLook),
+      )(desk)
+    }),
   )
 })
 
 describe('NEW badges', () => {
-  const reached = modifyFields(homeAfterRead, {
+  const reached = UiStruct.evolve(homeAfterRead, {
     rank: () => ({ ...noRank, earnedPoints: pointsForRank(16) }),
     seenUnlocks: () => ['hat:PartyHat'],
   })
 
-  const newBadge = (groupName: string, name: string) =>
-    Scene.within(lookOptionIn(groupName, name), Scene.selector('.look-new'))
+  const characterPip = withAttrs({ 'data-card': 'Character' })(
+    byClass('manor-pip'),
+  )
 
   it.effect(
     'the MORE button pips the Character card until the Look tab opens',
     () =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(reached),
-        measureSurface,
-        Scene.expect(
-          Scene.selector('.manor-pip[data-card="Character"]'),
-        ).toExist(),
-        ...openLook(),
-        Scene.expect(
-          Scene.selector('.manor-pip[data-card="Character"]'),
-        ).toBeAbsent(),
-        Scene.Command.resolve(WriteSave, Message.CompletedWriteSave()),
-        Scene.expect(
-          Scene.within(
-            Scene.role('tab', { name: 'Look' }),
-            Scene.selector('.new-pip'),
-          ),
-        ).toBeAbsent(),
-      ),
+      Effect.gen(function* () {
+        const s = yield* sceneOf(reached)
+        s.pipe(measureSurface)
+          .expect(characterPip)
+          .toExist()
+          .pipe(emitPressedKey('KeyC'), showDialog(PROFILE_DIALOG_ID))
+          .expect(characterPip)
+          .toBeAbsent()
+          .pipe(writeSave)
+        const desk = yield* lookOpenedFrom(reached)
+        atLookRoot(writeSave)(desk)
+        const profile = yield* HtmlScene.make(
+          Profile,
+          profilePropsOf(desk.root.model),
+        )
+        profile
+          .expect(
+            Locator.inside(
+              HtmlLocator.role('tab', { name: 'Look' }),
+              byClass('new-pip'),
+            ),
+          )
+          .toBeAbsent()
+      }),
   )
 
   it.effect(
     'opening the Look tab shows the badge on what was unlocked, once',
     () =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(reached),
-        measureSurface,
-        ...openLook(),
-        Scene.Command.resolve(WriteSave, Message.CompletedWriteSave()),
-        ...openLookSection('Outfit'),
-        Scene.expect(newBadge('Outfit color', 'Gold')).toExist(),
-        Scene.expect(newBadge('Outfit color', 'Blue')).toBeAbsent(),
-        Scene.expect(newBadge('Outfit color', 'Glow')).toBeAbsent(),
-        ...openLookSection('Gear'),
-        Scene.expect(newBadge('Hat', 'Bucket Hat')).toExist(),
-        Scene.expect(newBadge('Hat', 'Party Hat')).toBeAbsent(),
-        Scene.expect(newBadge('Hat', 'Fez')).toBeAbsent(),
-        ...closeLook(),
-        ...openLook(),
-        ...openLookSection('Outfit'),
-        Scene.expect(newBadge('Outfit color', 'Gold')).toBeAbsent(),
-        ...openLookSection('Gear'),
-        Scene.expect(newBadge('Hat', 'Bucket Hat')).toBeAbsent(),
-      ),
+      Effect.gen(function* () {
+        const desk = yield* lookOpenedFrom(reached)
+        steps<LookDesk>(
+          atLookRoot(writeSave),
+          openLookSection('Outfit'),
+          seeLook(s =>
+            s
+              .expect(newBadge('ShirtColor', 'Gold'))
+              .toExist()
+              .expect(newBadge('ShirtColor', 'Blue'))
+              .toBeAbsent()
+              .expect(newBadge('ShirtColor', 'Glow'))
+              .toBeAbsent(),
+          ),
+          openLookSection('Gear'),
+          seeLook(s =>
+            s
+              .expect(newBadge('Hat', 'BucketHat'))
+              .toExist()
+              .expect(newBadge('Hat', 'PartyHat'))
+              .toBeAbsent()
+              .expect(newBadge('Hat', 'Fez'))
+              .toBeAbsent(),
+          ),
+          atLookRoot(closeLook),
+          atLookRoot(openLook),
+          openLookSection('Outfit'),
+          seeLook(s => s.expect(newBadge('ShirtColor', 'Gold')).toBeAbsent()),
+          openLookSection('Gear'),
+          seeLook(s => s.expect(newBadge('Hat', 'BucketHat')).toBeAbsent()),
+          settleLook,
+        )(desk)
+      }),
   )
 })
 
 describe('a NEW badge', () => {
-  const reachedGold = modifyFields(homeAfterRead, {
+  const reachedGold = UiStruct.evolve(homeAfterRead, {
     rank: () => ({ ...noRank, earnedPoints: pointsForRank(16) }),
     seenUnlocks: () => ['hat:PartyHat'],
   })
 
   it.effect('goes at once when its look is picked, the others stay', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(reachedGold),
-      measureSurface,
-      ...openLook(),
-      Scene.Command.resolve(WriteSave, Message.CompletedWriteSave()),
-      ...openLookSection('Outfit'),
-      Scene.expect(
-        Scene.within(
-          lookOptionIn('Outfit color', 'Gold'),
-          Scene.selector('.look-new'),
-        ),
-      ).toExist(),
-      Scene.click(lookOptionIn('Outfit color', 'Gold')),
-      Scene.Command.resolve(WriteSave, Message.CompletedWriteSave()),
-      Scene.expect(
-        Scene.within(
-          lookOptionIn('Outfit color', 'Gold'),
-          Scene.selector('.look-new'),
-        ),
-      ).toBeAbsent(),
-      Scene.expect(lookOptionIn('Outfit color', 'Gold')).toHaveAttr(
-        'aria-checked',
-        'true',
-      ),
-      ...openLookSection('Gear'),
-      Scene.expect(
-        Scene.within(
-          lookOptionIn('Hat', 'Bucket Hat'),
-          Scene.selector('.look-new'),
-        ),
-      ).toExist(),
-    ),
+    Effect.gen(function* () {
+      const desk = yield* lookOpenedFrom(reachedGold)
+      steps<LookDesk>(
+        atLookRoot(writeSave),
+        openLookSection('Outfit'),
+        seeLook(s => s.expect(newBadge('ShirtColor', 'Gold')).toExist()),
+        click(lookOption('ShirtColor', 'Gold')),
+        atLookRoot(writeSave),
+        seeLook(s => s.expect(newBadge('ShirtColor', 'Gold')).toBeAbsent()),
+        checked('ShirtColor', 'Gold', true),
+        openLookSection('Gear'),
+        seeLook(s => s.expect(newBadge('Hat', 'BucketHat')).toExist()),
+      )(desk)
+    }),
   )
 })
 
 describe('the sections', () => {
   it.effect('there are four, and the Gear one holds the hat and the gun', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(closet),
-      measureSurface,
-      ...openLook(),
-      ...Array.map(['Body', 'Hair', 'Outfit', 'Gear'], name =>
-        Scene.expect(lookSection(name)).toExist(),
-      ),
-      Scene.expect(lookGroup('Hat')).toBeAbsent(),
-      ...openLookSection('Gear'),
-      Scene.expect(lookGroup('Hat')).toExist(),
-      Scene.expect(lookGroup('Gun skin')).toExist(),
-    ),
+    Effect.gen(function* () {
+      const desk = yield* lookOpenedFrom(closet)
+      steps<LookDesk>(
+        settleLook,
+        seeLook(s =>
+          Array.reduce(['Body', 'Hair', 'Outfit', 'Gear'], s, (scene, name) =>
+            scene.expect(lookSection(name)).toExist(),
+          )
+            .expect(lookGroup('Hat'))
+            .toBeAbsent(),
+        ),
+        openLookSection('Gear'),
+        seeLook(s =>
+          s
+            .expect(lookGroup('Hat'))
+            .toExist()
+            .expect(lookGroup('Gun skin'))
+            .toExist(),
+        ),
+      )(desk)
+    }),
   )
 })

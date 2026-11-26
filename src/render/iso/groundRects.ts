@@ -9,17 +9,17 @@
 // changes (painter.ts).
 
 import { Array } from 'effect'
-import type { Canvas } from 'foldkit'
 
 import { FlatMaterial, Geometry3D, Mesh3D, srgbToLinear } from '@pixi/3d'
 
+import type * as Draw from '../draw'
 import { type Leaf, isSameLeaves } from './flatten'
 import { UNIT, zOf } from './space'
 import { colorOf } from './textures'
 
 // NOTE: a flat filled rectangle, with no outline and not turned or skewed:
 // a box of game pixels on the floor.
-type RectLeaf = Leaf & Readonly<{ shape: Canvas.Rect }>
+type RectLeaf = Leaf & Readonly<{ shape: Draw.Rect }>
 
 const isRectLeaf = (leaf: Leaf): leaf is RectLeaf =>
   leaf.shape._tag === 'Rect' &&

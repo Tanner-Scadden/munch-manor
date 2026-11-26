@@ -1,29 +1,25 @@
 import { Array, Effect, Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
 import { type Difficulty, type Model, Phase } from '../../../app/model'
 import { FIXED_STEP_MS } from '../../../shared/constants'
 import { breakSpawns, home, pastTimedBreaks } from '../../../test/model.fixture'
-import { APPLICATION, tick } from '../../../test/testing'
+import { modelAfter, tick } from '../../../test/testing'
 import { DIFFICULTIES } from '../difficulty'
 
 // NOTE: wave 4 cleared on `difficulty`, so the next frame rolls wave 5's
 // break from the same seed on every level.
 const clearingOn = (difficulty: Difficulty): Model =>
-  modifyFields(pastTimedBreaks(home), {
-    difficulty: setting => modifyFields(setting, { chosen: () => difficulty }),
+  UiStruct.evolve(pastTimedBreaks(home), {
+    difficulty: setting =>
+      UiStruct.evolve(setting, { chosen: () => difficulty }),
     phase: () => Phase.Wave({ wave: 4, elapsedMs: 0, spawns: [] }),
   })
 
 const breakRolledOn = (difficulty: Difficulty) =>
-  Story.story(
-    APPLICATION,
-    Story.given(clearingOn(difficulty)),
-    tick(FIXED_STEP_MS),
-  )
+  modelAfter(clearingOn(difficulty), tick(FIXED_STEP_MS))
 
 const times = (model: Model): ReadonlyArray<number> =>
   Array.map(breakSpawns(model), ({ atMs }) => atMs)

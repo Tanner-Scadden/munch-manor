@@ -1,10 +1,9 @@
-import { Array } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
+import { Array, Effect } from 'effect'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { ClocheLift, type Model, Phase } from '../../../app/model'
+import { BreakClock, ClocheLift, type Model, Phase } from '../../../app/model'
 import { FIXED_STEP_MS } from '../../../shared/constants'
 import {
   DISTANT_SPAWN,
@@ -13,11 +12,12 @@ import {
   withKeys,
 } from '../../../test/model.fixture'
 import {
-  APPLICATION,
   BELOW_KITCHEN_DOOR,
   HOLD_TICKS,
+  checkModel,
   press,
   release,
+  storyOf,
   ticks,
 } from '../../../test/testing'
 import { startingLevelFor } from '../../../world/level/arena'
@@ -45,10 +45,11 @@ const atBoards = (
   keys: number,
 ): Model =>
   modifyFocus(
-    modifyFields(withKeys(pastTimedBreaks(freshRunModel()), keys), {
+    UiStruct.evolve(withKeys(pastTimedBreaks(freshRunModel()), keys), {
       level: () => startingLevelFor(arrangement),
       phase: () =>
         Phase.Preparation({
+          clock: BreakClock.Counting(),
           wave: 3,
           remainingMs: 15_000,
           durationMs: 20_000,
@@ -57,7 +58,7 @@ const atBoards = (
     }),
     {
       player: player =>
-        modifyFields(player, { x: () => spot.x, y: () => spot.y }),
+        UiStruct.evolve(player, { x: () => spot.x, y: () => spot.y }),
     },
   )
 
@@ -67,43 +68,47 @@ describe('the cloche over the boards', () => {
   it.effect.each(ARRANGEMENTS)(
     'lifts on the room this house rolled behind the west boards: %o',
     arrangement =>
-      Story.story(
-        APPLICATION,
-        Story.given(atBoards(arrangement, BY_WEST_BOARDS, PLENTY)),
-        press('Enter'),
-        ...ticks(HOLD_TICKS + 2, FRAME_MS),
-        release('Enter'),
-        Story.model(current => {
-          expect(current.level.openExits).toContain(WEST_EXIT)
-          expect(
-            ClocheLift.isAnyOf(['Lifting'])(current.cosmetics.clocheLift),
-          ).toBe(true)
-          if (ClocheLift.isAnyOf(['Lifting'])(current.cosmetics.clocheLift)) {
-            expect(current.cosmetics.clocheLift.room).toBe(arrangement.West)
-            expect(Math.abs(current.cosmetics.clocheLift.at.x)).toBeLessThan(10)
-          }
-        }),
-        ...ticks(TOTAL_TICKS, FRAME_MS),
-        Story.model(current => {
-          expect(current.cosmetics.clocheLift).toEqual(ClocheLift.Resting())
-        }),
-      ),
+      Effect.gen(function* () {
+        const s = yield* storyOf(atBoards(arrangement, BY_WEST_BOARDS, PLENTY))
+        s.pipe(
+          press('Enter'),
+          ticks(HOLD_TICKS + 2, FRAME_MS),
+          release('Enter'),
+          checkModel(current => {
+            expect(current.level.openExits).toContain(WEST_EXIT)
+            expect(
+              ClocheLift.isAnyOf(['Lifting'])(current.cosmetics.clocheLift),
+            ).toBe(true)
+            if (ClocheLift.isAnyOf(['Lifting'])(current.cosmetics.clocheLift)) {
+              expect(current.cosmetics.clocheLift.room).toBe(arrangement.West)
+              expect(Math.abs(current.cosmetics.clocheLift.at.x)).toBeLessThan(
+                10,
+              )
+            }
+          }),
+          ticks(TOTAL_TICKS, FRAME_MS),
+          checkModel(current => {
+            expect(current.cosmetics.clocheLift).toEqual(ClocheLift.Resting())
+          }),
+        )
+      }),
   )
 
   it.effect('stays down for the kitchen, which never rolls', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
+    Effect.gen(function* () {
+      const s = yield* storyOf(
         atBoards(Array.headNonEmpty(ARRANGEMENTS), BELOW_KITCHEN_DOOR, PLENTY),
-      ),
-      press('Enter'),
-      ...ticks(HOLD_TICKS + 2, FRAME_MS),
-      release('Enter'),
-      Story.model(current => {
-        expect(current.level.openExits).toContain('Kitchen')
-        expect(current.keys.held).toBeLessThan(PLENTY)
-        expect(current.cosmetics.clocheLift).toEqual(ClocheLift.Resting())
-      }),
-    ),
+      )
+      s.pipe(
+        press('Enter'),
+        ticks(HOLD_TICKS + 2, FRAME_MS),
+        release('Enter'),
+        checkModel(current => {
+          expect(current.level.openExits).toContain('Kitchen')
+          expect(current.keys.held).toBeLessThan(PLENTY)
+          expect(current.cosmetics.clocheLift).toEqual(ClocheLift.Resting())
+        }),
+      )
+    }),
   )
 })

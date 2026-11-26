@@ -1,6 +1,6 @@
 import { Array, Function, Option, Result, pipe } from 'effect'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import {
   type ClientFrame,
   NEUTRAL_INPUT,
@@ -157,7 +157,7 @@ const withHearts = (hearts: number) => ({
       ...room,
       world: Array.reduce(slots, room.world, (world, slot) =>
         modifySeat(world, slot, {
-          player: player => modifyFields(player, { hp: () => hearts }),
+          player: player => UiStruct.evolve(player, { hp: () => hearts }),
         }),
       ),
     }

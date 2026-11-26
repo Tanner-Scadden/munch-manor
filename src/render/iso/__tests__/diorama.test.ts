@@ -1,6 +1,6 @@
-import { Canvas } from 'foldkit'
 import { describe, expect, test } from 'vitest'
 
+import * as Draw from '../../draw'
 import { dioramaCameraOf, dioramaStepOf } from '../diorama'
 import { plinthFrameOf } from '../plinthPose'
 import { PITCH, UNIT } from '../space'
@@ -62,7 +62,7 @@ describe('the diorama', () => {
 
 describe('the plinth', () => {
   const image = (width: number, height: number) =>
-    Canvas.Image({
+    Draw.Image({
       src: 'a.png',
       x: -width / 2,
       y: -height,

@@ -24,8 +24,8 @@
 // `voxelsOf`).
 
 import { Array, Option, Record, String } from 'effect'
-import type { Canvas } from 'foldkit'
 
+import type * as Draw from '../render/draw'
 import { parseColor } from './png'
 import { type Palette, TRANSPARENT } from './sprite'
 
@@ -782,7 +782,7 @@ export const pixelViewOfShapes = ({
   shapes,
   box,
 }: Readonly<{
-  shapes: ReadonlyArray<Canvas.Shape>
+  shapes: ReadonlyArray<Draw.Shape>
   box: Readonly<{ left: number; top: number; width: number; height: number }>
 }>): PixelView => {
   const colors = new Map<number, string>()

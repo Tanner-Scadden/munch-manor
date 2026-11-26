@@ -1,5 +1,6 @@
 import { Function } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import type { Calling } from '../../shared/playerData'
 import { freshGun } from '../gear/weapons'
@@ -15,7 +16,7 @@ export const seatedAs: {
   (calling: Calling): (player: Player) => Player
   (player: Player, calling: Calling): Player
 } = Function.dual(2, (player: Player, calling: Calling): Player =>
-  modifyFields(player, {
+  UiStruct.evolve(player, {
     calling: () => calling,
     hp: () => maxHpOf({ calling }),
     arsenal: () =>

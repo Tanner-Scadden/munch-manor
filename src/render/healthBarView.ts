@@ -1,7 +1,7 @@
 import { Array, Function } from 'effect'
-import { Canvas } from 'foldkit'
 
 import { bakeShapes, placeAt } from '../art/sprite'
+import * as Draw from './draw'
 
 // NOTE: the family of health bars: zombies, the boss, and a downed teammate's
 // bleed bar. Each is a dark outline around a dark track, a fill in chunks cut
@@ -41,7 +41,7 @@ const solid = (
   width: number,
   height: number,
   fill: string,
-) => Canvas.Rect({ x, y, width, height, fill })
+) => Draw.Rect({ x, y, width, height, fill })
 
 // NOTE: a tick sits on the last column of each chunk but the final one, so
 // every chunk is at least two pixels wide.
@@ -88,7 +88,7 @@ const smallBarsOf = (colors: BarColors) =>
   )
 
 const SMALL_BARS: Readonly<
-  Record<BarTone, ReadonlyArray<ReadonlyArray<Canvas.Shape>>>
+  Record<BarTone, ReadonlyArray<ReadonlyArray<Draw.Shape>>>
 > = {
   Zombie: smallBarsOf(BAR_COLORS.Zombie),
   Ally: smallBarsOf(BAR_COLORS.Ally),
@@ -107,14 +107,14 @@ export const healthBarShapes: {
     left: number,
     top: number,
     share: number,
-  ): (size: BarSize) => ReadonlyArray<Canvas.Shape>
+  ): (size: BarSize) => ReadonlyArray<Draw.Shape>
   (
     size: BarSize,
     tone: BarTone,
     left: number,
     top: number,
     share: number,
-  ): ReadonlyArray<Canvas.Shape>
+  ): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   5,
   (
@@ -123,7 +123,7 @@ export const healthBarShapes: {
     left: number,
     top: number,
     share: number,
-  ): ReadonlyArray<Canvas.Shape> => {
+  ): ReadonlyArray<Draw.Shape> => {
     const { width } = BAR_SPECS[size]
     const clamped = Math.min(1, Math.max(0, share))
     const filled = Math.min(

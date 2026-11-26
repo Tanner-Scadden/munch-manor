@@ -1,5 +1,6 @@
 import { Array, Function, pipe } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import type { Model } from '../app/model'
 import {
@@ -219,8 +220,8 @@ const tellsAfter = (model: Model, worldMs: number): Model => {
     model.cosmetics.cosmeticRngState,
     batches,
   )
-  return modifyFields(model, {
-    cosmetics: modifyFields({
+  return UiStruct.evolve(model, {
+    cosmetics: UiStruct.evolve({
       particles: current =>
         Array.isReadonlyArrayEmpty(particles)
           ? current

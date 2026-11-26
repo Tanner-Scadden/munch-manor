@@ -1,5 +1,4 @@
 import { Array, Function, Option, Record, String, pipe } from 'effect'
-import { Canvas } from 'foldkit'
 
 import { type BakedText, GLYPH_HEIGHT, bakeText, placeBaked } from '../art/font'
 import { TOP_LEFT, group, placeAt, spriteShapes } from '../art/sprite'
@@ -35,6 +34,7 @@ import type { WeaponKind } from '../world/schema/worldSchema'
 import { levelUpChange } from '../world/shop/shopUpgrades'
 import { clamp } from '../world/step/geometry'
 import { type Camera, viewBoxOf, worldToView } from './camera'
+import * as Draw from './draw'
 import { FULL_TURN } from './drawing'
 import { pixelRingSpans } from './pixelCircle'
 
@@ -97,7 +97,7 @@ const popScale = (ageMs: number): number => {
 export const pickupFootY = (pickup: Pickup): number =>
   pickup.y + PICKUP_FOOT_DROP
 
-export const pickupShapes = (pickup: Pickup): ReadonlyArray<Canvas.Shape> => {
+export const pickupShapes = (pickup: Pickup): ReadonlyArray<Draw.Shape> => {
   const turn = (pickup.ageMs / PICKUP_BOB_MS) * FULL_TURN
   const x = Math.round(pickup.x)
   const y = Math.round(pickup.y)
@@ -107,7 +107,7 @@ export const pickupShapes = (pickup: Pickup): ReadonlyArray<Canvas.Shape> => {
     group({
       opacity: isBlinkedOut(pickup) ? PICKUP_DIM_OPACITY : undefined,
       shapes: [
-        Canvas.Circle({
+        Draw.Circle({
           x,
           y: floatY,
           radius: Math.round(
@@ -137,7 +137,7 @@ const GOODIE_ARROW_BOUNCE_MS = 260
 
 export const goodieArrowShapes = (
   pickup: Pickup,
-): ReadonlyArray<Canvas.Shape> => [
+): ReadonlyArray<Draw.Shape> => [
   placeAt(
     Math.round(pickup.x) - 3,
     Math.round(pickup.y) -
@@ -153,17 +153,17 @@ export const goodieArrowShapes = (
 export const doorArrowShapes: {
   (
     elapsedMs: number,
-  ): (point: Readonly<{ x: number; y: number }>) => ReadonlyArray<Canvas.Shape>
+  ): (point: Readonly<{ x: number; y: number }>) => ReadonlyArray<Draw.Shape>
   (
     point: Readonly<{ x: number; y: number }>,
     elapsedMs: number,
-  ): ReadonlyArray<Canvas.Shape>
+  ): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   2,
   (
     point: Readonly<{ x: number; y: number }>,
     elapsedMs: number,
-  ): ReadonlyArray<Canvas.Shape> => [
+  ): ReadonlyArray<Draw.Shape> => [
     placeAt(
       Math.round(point.x) - 3,
       Math.round(point.y) -
@@ -265,7 +265,7 @@ const centerWithin = (
 const explainedShapes = (
   frame: CalloutFrame,
   { title, blurb }: CalloutText,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const { scale, opacity } = frame
   const { x, y } = centerWithin(
     frame,
@@ -289,7 +289,7 @@ const namedShapes = (
   frame: CalloutFrame,
   kind: PickupKind,
   { title }: CalloutText,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const { scale, opacity } = frame
   const iconWidth = CALLOUT_ICON_WIDTH * scale
   const width = iconWidth + CALLOUT_ICON_GAP * scale + title.width * scale
@@ -320,7 +320,7 @@ const namedShapes = (
 // whole steps instead of drifting every frame.
 export const calloutShapes =
   (camera: Camera) =>
-  (callout: Callout): ReadonlyArray<Canvas.Shape> => {
+  (callout: Callout): ReadonlyArray<Draw.Shape> => {
     const frame = calloutFrameOf(
       camera,
       callout,
@@ -376,7 +376,7 @@ const levelShapes = (
   frame: CalloutFrame,
   { word, name, change }: LevelText,
   ageMs: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const { opacity } = frame
   const scale = ageMs < CALLOUT_POP_MS ? LEVEL_POP_SCALE : LEVEL_SCALE
   const widest = Math.max(word.width * scale, name.width, change.width)
@@ -397,7 +397,7 @@ const levelShapes = (
 
 export const levelCalloutShapes =
   (camera: Camera) =>
-  (callout: LevelCallout): ReadonlyArray<Canvas.Shape> =>
+  (callout: LevelCallout): ReadonlyArray<Draw.Shape> =>
     Option.match(Array.get(LEVEL_TEXTS[callout.weapon], callout.tier - 1), {
       onNone: () => [],
       onSome: texts =>
@@ -412,9 +412,7 @@ const BURP_RING_MS = 420
 const BURP_RING_COLOR = PICKUP_TINTS.Burp
 const BURP_RING_INNER_COLOR = translucent(PICKUP_TINTS.Burp, 0.45)
 
-export const burpRingShapes = (
-  callout: Callout,
-): ReadonlyArray<Canvas.Shape> => {
+export const burpRingShapes = (callout: Callout): ReadonlyArray<Draw.Shape> => {
   if (callout.kind !== 'Burp' || callout.ageMs >= BURP_RING_MS) {
     return []
   }
@@ -472,19 +470,15 @@ export const auraShapes: {
   (
     boosts: Boosts,
     elapsedMs: number,
-  ): (player: Player) => ReadonlyArray<Canvas.Shape>
-  (
-    player: Player,
-    boosts: Boosts,
-    elapsedMs: number,
-  ): ReadonlyArray<Canvas.Shape>
+  ): (player: Player) => ReadonlyArray<Draw.Shape>
+  (player: Player, boosts: Boosts, elapsedMs: number): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   3,
   (
     player: Player,
     boosts: Boosts,
     elapsedMs: number,
-  ): ReadonlyArray<Canvas.Shape> => {
+  ): ReadonlyArray<Draw.Shape> => {
     if (!Array.some(BOOST_KIND_ORDER, kind => isOn(boosts[kind]))) {
       return []
     }
@@ -538,7 +532,7 @@ const chipShapes =
   (
     { kind, remainingMs, durationMs }: ActiveBoost,
     index: number,
-  ): ReadonlyArray<Canvas.Shape> => {
+  ): ReadonlyArray<Draw.Shape> => {
     const x = left + (index % columns) * (CHIP_WIDTH + CHIP_GAP)
     const top = gridTop + Math.floor(index / columns) * (CHIP_HEIGHT + CHIP_GAP)
     const share = durationMs > 0 ? clamp(remainingMs / durationMs, 0, 1) : 0
@@ -546,14 +540,14 @@ const chipShapes =
       group({
         opacity: isWarningOff(remainingMs) ? CHIP_DIM_OPACITY : undefined,
         shapes: [
-          Canvas.Rect({
+          Draw.Rect({
             x,
             y: top,
             width: CHIP_WIDTH,
             height: CHIP_HEIGHT,
             fill: PICKUP_TINTS[kind],
           }),
-          Canvas.Rect({
+          Draw.Rect({
             x: x + 1,
             y: top + 1,
             width: CHIP_WIDTH - 2,
@@ -564,7 +558,7 @@ const chipShapes =
             translate: { x: x + CHIP_ICON_X, y: top + CHIP_ICON_Y },
             shapes: PICKUP_SPRITES[kind],
           }),
-          Canvas.Rect({
+          Draw.Rect({
             x: x + 1,
             y: top + CHIP_HEIGHT - 1 - CHIP_BAR_HEIGHT,
             width: Math.max(1, Math.round((CHIP_WIDTH - 2) * share)),
@@ -581,13 +575,13 @@ export const boostChipShapes: {
     left: number,
     top: number,
     columns: number,
-  ): (boosts: Boosts) => ReadonlyArray<Canvas.Shape>
+  ): (boosts: Boosts) => ReadonlyArray<Draw.Shape>
   (
     boosts: Boosts,
     left: number,
     top: number,
     columns: number,
-  ): ReadonlyArray<Canvas.Shape>
+  ): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   4,
   (
@@ -595,6 +589,6 @@ export const boostChipShapes: {
     left: number,
     top: number,
     columns: number,
-  ): ReadonlyArray<Canvas.Shape> =>
+  ): ReadonlyArray<Draw.Shape> =>
     Array.flatMap(activeBoosts(boosts), chipShapes(left, top, columns)),
 )

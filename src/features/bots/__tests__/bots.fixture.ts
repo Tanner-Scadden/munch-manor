@@ -1,4 +1,4 @@
-import { type Bot, Phase } from '../../../app/model'
+import { type Bot, BreakClock, Phase } from '../../../app/model'
 import { DISTANT_SPAWN, crewInWave } from '../../../test/model.fixture'
 
 // What the teammate bots' tests start from: the bot seated beside the human,
@@ -11,6 +11,7 @@ export const BOT: Bot = {
 }
 
 export const BREAK = Phase.Preparation({
+  clock: BreakClock.Counting(),
   wave: 3,
   remainingMs: 60_000,
   durationMs: 60_000,

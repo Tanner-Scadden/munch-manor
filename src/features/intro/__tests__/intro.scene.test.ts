@@ -1,19 +1,23 @@
-import { Scene } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
+import { Effect } from 'effect'
 
+import { UiStruct } from '@effect/ui'
+import { HtmlLocator } from '@effect/ui/html/testing'
+import { Locator } from '@effect/ui/testing'
 import { describe, it } from '@effect/vitest'
 
 import type { Model } from '../../../app/model'
 import { initialModel } from '../../../app/pureApp'
 import {
-  APPLICATION,
+  ackHudSlots,
   measureSurface,
   pauseButton,
   readDareCardByTapInScene,
   startIntoIntroInScene,
   statusLine,
   throughIntroByTapInScene,
-} from '../../../test/testing'
+  withAttrs,
+} from '../../../test/sceneTesting'
+import { sceneOf } from '../../../test/testing'
 import { asVeteran } from '../../../test/veteran'
 
 // The intro on screen (src/features/intro/introView.ts): nothing of the
@@ -21,28 +25,37 @@ import { asVeteran } from '../../../test/veteran'
 // and the run's first break comes up after it.
 
 const ARRIVING_STATUS = 'Arriving at the manor. Press any key or tap to skip.'
-const startWave = Scene.role('button', { name: 'Start wave 1 now' })
+const startWave = HtmlLocator.role('button', { name: 'Start wave 1 now' })
 
-const onTouch: Model = modifyFields(asVeteran(initialModel), {
+const moveStick: Locator.Locator = withAttrs({ 'data-stick': 'move' })({
+  description: 'any element',
+  all: root => Locator.elements(root),
+})
+
+const onTouch: Model = UiStruct.evolve(asVeteran(initialModel), {
   lastDevice: () => 'Touch',
 })
 
 describe('the intro on screen', () => {
   it.effect('shows no HUD or buttons, and a tap skips to the slam', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(onTouch),
-      measureSurface,
-      ...startIntoIntroInScene(),
-      Scene.expect(statusLine).toHaveText(ARRIVING_STATUS),
-      Scene.expect(pauseButton).toBeAbsent(),
-      Scene.expect(startWave).toBeAbsent(),
-      Scene.expect(Scene.selector('[data-stick="move"]')).toBeAbsent(),
-      ...throughIntroByTapInScene(),
-      ...readDareCardByTapInScene(),
-      Scene.expect(statusLine).toContainText('Get ready for wave 1.'),
-      Scene.expect(pauseButton).toExist(),
-      Scene.expect(startWave).toExist(),
-    ),
+    Effect.gen(function* () {
+      const s = yield* sceneOf(onTouch)
+      s.pipe(measureSurface, startIntoIntroInScene)
+        .expect(statusLine)
+        .toHaveText(ARRIVING_STATUS)
+        .expect(pauseButton)
+        .toBeAbsent()
+        .expect(startWave)
+        .toBeAbsent()
+        .expect(moveStick)
+        .toBeAbsent()
+        .pipe(throughIntroByTapInScene, readDareCardByTapInScene, ackHudSlots)
+        .expect(statusLine)
+        .toHaveText(/Get ready for wave 1\./)
+        .expect(pauseButton)
+        .toExist()
+        .expect(startWave)
+        .toExist()
+    }),
   )
 })

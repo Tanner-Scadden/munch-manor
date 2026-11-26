@@ -1,10 +1,10 @@
 import { Array, Function, Option, Result, Schema } from 'effect'
-import { modifyFields } from 'foldkit/struct'
 
+import { Command, UiStruct } from '@effect/ui'
 import { Message } from '@game/app/message'
 import { AudioState, type Model, type Vector } from '@game/app/model'
 import { update } from '@game/app/pureApp'
-import { CueMusic, cueMusicFrom } from '@game/app/update/music'
+import { CueMusic } from '@game/app/update/music'
 import { PlaySound } from '@game/app/update/sound'
 import * as CoopModel from '@game/domain/coopRoom'
 import { type WorldState, coopWorld } from '@game/domain/coopRoom'
@@ -147,7 +147,7 @@ export type AudioCue =
     }>
 
 // NOTE: one Command the game's update gives back.
-type GameCommand = NonNullable<ReturnType<typeof update>['commands']>[number]
+type GameCommand = ReturnType<typeof update>['commands'][number]
 export type Return = Readonly<{
   model: Model
   commands?: ReadonlyArray<GameCommand> | undefined
@@ -233,10 +233,10 @@ const logAudio = (
   atTick: number,
 ): void =>
   Array.forEach(commands, command => {
-    if (command.name === PlaySound.name) {
+    if (command.name === Command.nameOf(PlaySound)) {
       const { sound, variation } = decodeSoundArgs(command.args)
       cues.push({ tick: atTick, _tag: 'Sound', sound, variation })
-    } else if (command.name === CueMusic.name) {
+    } else if (command.name === Command.nameOf(CueMusic)) {
       cues.push({
         tick: atTick,
         _tag: 'Music',
@@ -265,13 +265,26 @@ export const logMusic = (
   }
 }
 
+// NOTE: the music the scene's phase plays, as the game cues it once the
+// audio engine runs: the music the update asks for when a muted engine
+// resumes on this Model (the music Step reads only the change). Only the
+// music is kept, not the start sound the same update may ask for.
+const musicCuesOf = (heard: Model) =>
+  Array.filter(
+    update(
+      UiStruct.evolve(heard, { audio: () => AudioState.Suspended() }),
+      Message.CompletedResumeAudio({ playback: 'Running' }),
+    ).commands,
+    command => command.name === Command.nameOf(CueMusic),
+  )
+
 // NOTE: audible, so update asks for every sound and music change; the
 // Commands never reach the page's audio engine.
 const audible = (model: Model): Model =>
-  modifyFields(model, {
+  UiStruct.evolve(model, {
     audio: () => AudioState.Ready(),
     pageVisibility: () => 'Visible' as const,
-    settings: modifyFields({
+    settings: UiStruct.evolve({
       soundSetting: () => 'On' as const,
       musicSetting: () => 'On' as const,
     }),
@@ -293,7 +306,7 @@ export const startShot: {
   scriptedKeys.clear()
   cues = []
   const heard = audible(model)
-  logAudio(cueMusicFrom(model)(heard).commands ?? [], 0)
+  logAudio(musicCuesOf(heard), 0)
   const maybeCoop = Option.fromNullishOr(next.coop)
   maybeRoom = Option.map(maybeCoop, coop => ({
     world: roomWorldFor({
@@ -449,7 +462,7 @@ const withAim = (model: Model, segments: ReadonlyArray<Segment>): Model => {
     Option.fromNullishOr(segment.move),
   )
   if (isTouch) {
-    return modifyFields(model, {
+    return UiStruct.evolve(model, {
       input: input => ({
         ...input,
         moveStick: Option.match(maybeMove, {
@@ -479,7 +492,7 @@ const withAim = (model: Model, segments: ReadonlyArray<Segment>): Model => {
       }),
     })
   }
-  return modifyFields(model, {
+  return UiStruct.evolve(model, {
     input: input => ({
       ...input,
       mouseButton: firing
@@ -570,7 +583,7 @@ const withRoomOf = (
   Option.match(roomOf(model), {
     onNone: () => model,
     onSome: room =>
-      modifyFields(model, {
+      UiStruct.evolve(model, {
         coop: coop => ({
           ...coop,
           screen: CoopModel.Screen.InRoom({ room: change(room) }),
@@ -714,13 +727,13 @@ const scripted = (
   let world = held.world
   if (revive !== undefined && isPrerolled && tick === revive.at) {
     world = modifySeat(world, revive.down, {
-      player: player => modifyFields(player, { hp: () => 0 }),
+      player: player => UiStruct.evolve(player, { hp: () => 0 }),
     })
   }
   if (revive !== undefined && isPrerolled && tick === revive.at + 1) {
     world = isDowned(seatStateAt(world, revive.down).seat)
       ? modifySeatRecord(world, revive.down, seat =>
-          modifyFields(seat, {
+          UiStruct.evolve(seat, {
             life: () =>
               Life.Downed({ bleedMs: revive.bleedMs, reviveMs: 0, callMs: 0 }),
           }),
@@ -736,7 +749,7 @@ const scripted = (
           ? current
           : modifySeat(current, slot, {
               player: player =>
-                modifyFields(player, { hp: () => PLAYER_MAX_HP }),
+                UiStruct.evolve(player, { hp: () => PLAYER_MAX_HP }),
             }),
     )
   }

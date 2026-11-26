@@ -1,5 +1,4 @@
 import { Array, Option, String } from 'effect'
-import { Story } from 'foldkit'
 
 import { describe, expect, it, test } from '@effect/vitest'
 
@@ -7,7 +6,13 @@ import { levelPopLines } from '../../../render/powerupView'
 import { FIXED_STEP_MS } from '../../../shared/constants'
 import { gunAt, holdingSecond } from '../../../test/arsenals'
 import { killShot, spareGunOf } from '../../../test/model.fixture'
-import { APPLICATION, tick, ticks } from '../../../test/testing'
+import {
+  checkModel,
+  modelAfter,
+  steps,
+  tick,
+  ticks,
+} from '../../../test/testing'
 import { isJustLeveled, maybeLevelBarOf } from '../hud'
 
 // The gun slots on the HUD (src/screens/game/hud.ts): a bar under each gun
@@ -32,36 +37,38 @@ describe("a gun slot's level bar", () => {
   })
 
   it.effect('a kill moves the bar of the gun that made it', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(killShot(holdingSecond(gunAt('Smg', 0, 19)), 'Smg')),
-      tick(FIXED_STEP_MS),
-      Story.model(current => {
-        expect(maybeLevelBarOf(spareGunOf(current))).toEqual(
-          Option.some({ share: 0.5, isMaxed: false }),
-        )
-      }),
+    modelAfter(
+      killShot(holdingSecond(gunAt('Smg', 0, 19)), 'Smg'),
+      steps(
+        tick(FIXED_STEP_MS),
+        checkModel(current => {
+          expect(maybeLevelBarOf(spareGunOf(current))).toEqual(
+            Option.some({ share: 0.5, isMaxed: false }),
+          )
+        }),
+      ),
     ),
   )
 })
 
 describe('the level up', () => {
   it.effect('the 40th kill flashes the slot, then the flash stops', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(killShot(holdingSecond(gunAt('Smg', 0, 39)), 'Smg')),
-      tick(FIXED_STEP_MS),
-      Story.model(current => {
-        expect(spareGunOf(current).tier).toBe(1)
-        expect(isJustLeveled(current, spareGunOf(current))).toBe(true)
-        expect(maybeLevelBarOf(spareGunOf(current))).toEqual(
-          Option.some({ share: 0, isMaxed: false }),
-        )
-      }),
-      ...ticks(60, FIXED_STEP_MS),
-      Story.model(current => {
-        expect(isJustLeveled(current, spareGunOf(current))).toBe(false)
-      }),
+    modelAfter(
+      killShot(holdingSecond(gunAt('Smg', 0, 39)), 'Smg'),
+      steps(
+        tick(FIXED_STEP_MS),
+        checkModel(current => {
+          expect(spareGunOf(current).tier).toBe(1)
+          expect(isJustLeveled(current, spareGunOf(current))).toBe(true)
+          expect(maybeLevelBarOf(spareGunOf(current))).toEqual(
+            Option.some({ share: 0, isMaxed: false }),
+          )
+        }),
+        ticks(60, FIXED_STEP_MS),
+        checkModel(current => {
+          expect(isJustLeveled(current, spareGunOf(current))).toBe(false)
+        }),
+      ),
     ),
   )
 

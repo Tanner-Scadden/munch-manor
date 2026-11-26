@@ -1,9 +1,9 @@
 import { Array, Option } from 'effect'
-import type { Canvas } from 'foldkit'
 import { describe, expect, test } from 'vitest'
 
 import { AURA_FRAME_COUNT, AURA_SPRITES } from '../../../art/sprites/auras'
 import { PICKUP_SPRITES } from '../../../art/sprites/pickups'
+import type * as Draw from '../../draw'
 import {
   auraCubesOf,
   auraFrameOf,
@@ -19,11 +19,11 @@ import {
 const FEET = { x: 160, y: 120 }
 
 const imageOf = (
-  sprite: ReadonlyArray<Canvas.Shape>,
-): Option.Option<Canvas.Image> =>
+  sprite: ReadonlyArray<Draw.Shape>,
+): Option.Option<Draw.Image> =>
   Array.findFirst(
     sprite,
-    (shape): shape is Canvas.Image => shape._tag === 'Image',
+    (shape): shape is Draw.Image => shape._tag === 'Image',
   )
 
 describe('the aura in 3D', () => {

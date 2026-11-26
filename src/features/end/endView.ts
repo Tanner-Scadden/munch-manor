@@ -1,6 +1,6 @@
 import { Array, Function, Option, Record, Result, String } from 'effect'
-import type { Canvas } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import type { Model } from '../../app/model'
 import { CHICKEN_FRAMES, CHICKEN_WIDTH_PX, FEATHER } from '../../art/chickenArt'
@@ -26,6 +26,7 @@ import { type Sprite, group, placeAt, spriteShapes } from '../../art/sprite'
 import { ZOMBIE_SPRITES } from '../../art/sprites/zombies'
 import { effectiveModifiersOf, playedMarkOf } from '../../domain/onlineRun'
 import { isAskingForFeedback } from '../../domain/run'
+import type * as Draw from '../../render/draw'
 import { QUARTER_TURN, rect } from '../../render/drawing'
 import { playerFootY } from '../../render/playerView'
 import {
@@ -209,7 +210,7 @@ const SKULL_SLOTS = 4
 
 // NOTE: reaches well past the landscape screen, so in portrait it covers
 // the HUD band and the thumb area too. The canvas clips the rest.
-const wash = (fill: string, opacity: number): Canvas.Shape =>
+const wash = (fill: string, opacity: number): Draw.Shape =>
   group({
     opacity,
     shapes: [
@@ -233,14 +234,14 @@ const FLASHES: Readonly<
   Won: { fill: '#fff6d0', opacity: 0.3 },
 }
 
-const flashShapes = (kind: EndKind, ms: number): ReadonlyArray<Canvas.Shape> =>
+const flashShapes = (kind: EndKind, ms: number): ReadonlyArray<Draw.Shape> =>
   ms < FLASH_MS
     ? [wash(FLASHES[kind].fill, FLASHES[kind].opacity * (1 - ms / FLASH_MS))]
     : []
 
 const DIM_MAX = 0.72
 
-const dimShapes = (kind: EndKind, ms: number): ReadonlyArray<Canvas.Shape> => {
+const dimShapes = (kind: EndKind, ms: number): ReadonlyArray<Draw.Shape> => {
   const { stampAtMs, cardAtMs } = TIMELINES[kind]
   const opacity =
     DIM_MAX * progressOf(ms, stampAtMs - 120, cardAtMs - stampAtMs)
@@ -253,7 +254,7 @@ const stampShapes = (
   kind: EndKind,
   ms: number,
   layout: Layout,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const t = progressOf(ms, TIMELINES[kind].stampAtMs, STAMP_MS)
   if (ms < TIMELINES[kind].stampAtMs) {
     return []
@@ -286,7 +287,7 @@ const chickenShapes = (
   kind: EndKind,
   ms: number,
   layout: Layout,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const atMs = TIMELINES[kind].stampAtMs
   if (kind !== 'Chicken' || ms < atMs) {
     return []
@@ -331,7 +332,7 @@ const trophyShapes = (
   kind: EndKind,
   ms: number,
   layout: Layout,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const atMs = TIMELINES[kind].trophyAtMs
   if (ms < atMs) {
     return []
@@ -355,7 +356,7 @@ const skullShapes = (
   kind: EndKind,
   ms: number,
   layout: Layout,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const lit = skullCountOf(model.difficulty.chosen)
   const left = CENTER_X - ((SKULL_SLOTS - 1) * SKULL_STRIDE) / 2
   return Array.filterMap(Array.range(0, SKULL_SLOTS - 1), index => {
@@ -388,7 +389,7 @@ const modifierShapes = (
   kind: EndKind,
   ms: number,
   layout: Layout,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const left =
     CENTER_X + ((SKULL_SLOTS - 1) * SKULL_STRIDE) / 2 + MODIFIERS_GAP_PX
   const atMs =
@@ -421,7 +422,7 @@ const markShapes = (
   kind: EndKind,
   ms: number,
   layout: Layout,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const mark = playedMarkOf(model)
   const atMs = kind === 'Won' ? skullAtMs(0) : TIMELINES[kind].stampAtMs
   if (mark <= 0 || ms < atMs) {
@@ -454,7 +455,7 @@ const bestShapes = (
   ms: number,
   right: number,
   y: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const landMs = rowLandMs(kind, index)
   if (!row.isBest || ms < landMs) {
     return []
@@ -483,7 +484,7 @@ const VALUE_TONES: Readonly<Record<TallyIcon, TextTone>> = {
 
 const rowShapes =
   (kind: EndKind, ms: number, top: number, rowPx: number) =>
-  (row: TallyRow, index: number): ReadonlyArray<Canvas.Shape> => {
+  (row: TallyRow, index: number): ReadonlyArray<Draw.Shape> => {
     const startMs = rowStartMs(kind, index)
     if (ms < startMs) {
       return []
@@ -529,7 +530,7 @@ const KILL_SLOT_PX = 26
 const KILL_ICON_PX = 7
 const KILL_ICON_GAP = 2
 
-const kindShapes = (model: Model, y: number): ReadonlyArray<Canvas.Shape> => {
+const kindShapes = (model: Model, y: number): ReadonlyArray<Draw.Shape> => {
   const left = Math.round(
     CENTER_X - (ZOMBIE_KIND_ORDER.length * KILL_SLOT_PX) / 2,
   )
@@ -582,7 +583,7 @@ export const END_BUTTONS_TOP_PX = 133
 const crewStripPanel = (
   top: number,
   span: Readonly<{ left: number; width: number }>,
-): ReadonlyArray<Canvas.Shape> => [
+): ReadonlyArray<Draw.Shape> => [
   rect(span.left - 1, top - 1, span.width + 2, STRIP_PX + 4, PANEL_EDGE),
   rect(span.left, top, span.width, STRIP_PX + 2, PANEL_FILL),
 ]
@@ -675,13 +676,13 @@ const cardShapes = (
   ms: number,
   layout: Layout,
   screen: Screen,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const cardAtMs = TIMELINES[kind].cardAtMs
   if (ms < cardAtMs) {
     return []
   }
   const t = easeOut(progressOf(ms, cardAtMs, CARD_FADE_MS))
-  const rise = (shapes: ReadonlyArray<Canvas.Shape>): Canvas.Shape =>
+  const rise = (shapes: ReadonlyArray<Draw.Shape>): Draw.Shape =>
     group({
       translate: { x: 0, y: Math.round(CARD_RISE_PX * (1 - t)) },
       opacity: t >= 1 ? undefined : t,
@@ -793,7 +794,7 @@ const ghostRowShapes = (
   rows: ReadonlyArray<TallyRow>,
   top: number,
   rowPx: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const rowY = (index: number): Option.Option<number> =>
     ms < rowLandMs(kind, index)
       ? Option.none()
@@ -836,7 +837,7 @@ const lineShapes = (
   kind: EndKind,
   ms: number,
   y: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const comparison = maybeBeatComparisonOf(model)
   if (Option.isSome(comparison)) {
     return beatVerdictShapes(comparison.value, CENTER_X, y)
@@ -859,7 +860,7 @@ const noteShapes = (
   model: Model,
   ms: number,
   y: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   if (model.difficulty.nightmare === 'JustUnlocked') {
     return [
       placeBaked(
@@ -901,7 +902,7 @@ const scatter = (index: number, salt: number): number => {
 const confettiShapes = (
   span: FrameSpan,
   ms: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   if (ms >= CONFETTI_MS) {
     return []
   }
@@ -944,18 +945,15 @@ const confettiShapes = (
 // feet with a little bounce, the way they face.
 export const toppleShapes: {
   (
-    shapes: ReadonlyArray<Canvas.Shape>,
-  ): (model: Model) => ReadonlyArray<Canvas.Shape>
-  (
-    model: Model,
-    shapes: ReadonlyArray<Canvas.Shape>,
-  ): ReadonlyArray<Canvas.Shape>
+    shapes: ReadonlyArray<Draw.Shape>,
+  ): (model: Model) => ReadonlyArray<Draw.Shape>
+  (model: Model, shapes: ReadonlyArray<Draw.Shape>): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   2,
   (
     model: Model,
-    shapes: ReadonlyArray<Canvas.Shape>,
-  ): ReadonlyArray<Canvas.Shape> => {
+    shapes: ReadonlyArray<Draw.Shape>,
+  ): ReadonlyArray<Draw.Shape> => {
     if (!Phase.isAnyOf(['GameOver'])(model.phase)) {
       return shapes
     }
@@ -984,7 +982,7 @@ export const fallenOf = (model: Model): Model =>
   Phase.isAnyOf(['GameOver'])(model.phase) && model.screenMs >= FLASH_MS
     ? modifyFocus(model, {
         player: player =>
-          modifyFields(player, {
+          UiStruct.evolve(player, {
             invulnerability: () => Invulnerability.Vulnerable(),
           }),
       })
@@ -999,20 +997,20 @@ const CHOMP_MS = 180
 export const chompShapes: {
   (
     zombie: Zombie,
-    shapes: ReadonlyArray<Canvas.Shape>,
-  ): (model: Model) => ReadonlyArray<Canvas.Shape>
+    shapes: ReadonlyArray<Draw.Shape>,
+  ): (model: Model) => ReadonlyArray<Draw.Shape>
   (
     model: Model,
     zombie: Zombie,
-    shapes: ReadonlyArray<Canvas.Shape>,
-  ): ReadonlyArray<Canvas.Shape>
+    shapes: ReadonlyArray<Draw.Shape>,
+  ): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   3,
   (
     model: Model,
     zombie: Zombie,
-    shapes: ReadonlyArray<Canvas.Shape>,
-  ): ReadonlyArray<Canvas.Shape> => {
+    shapes: ReadonlyArray<Draw.Shape>,
+  ): ReadonlyArray<Draw.Shape> => {
     const dx = focusOf(model).player.x - zombie.x
     const dy = focusOf(model).player.y - zombie.y
     const distance = Math.hypot(dx, dy)
@@ -1038,11 +1036,11 @@ export const isChomping = Phase.isAnyOf(['GameOver'])
 // THE END
 
 export const endOverlayShapes: {
-  (screen: Screen): (model: Model) => ReadonlyArray<Canvas.Shape>
-  (model: Model, screen: Screen): ReadonlyArray<Canvas.Shape>
+  (screen: Screen): (model: Model) => ReadonlyArray<Draw.Shape>
+  (model: Model, screen: Screen): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   2,
-  (model: Model, screen: Screen): ReadonlyArray<Canvas.Shape> =>
+  (model: Model, screen: Screen): ReadonlyArray<Draw.Shape> =>
     Option.match(endKindOf(model), {
       onNone: () => [],
       onSome: kind => {

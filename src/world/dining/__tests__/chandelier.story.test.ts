@@ -1,10 +1,15 @@
 import { Array, Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { type Bullet, GameEvent, type Model, Phase } from '../../../app/model'
+import {
+  BreakClock,
+  type Bullet,
+  GameEvent,
+  type Model,
+  Phase,
+} from '../../../app/model'
 import { FIXED_STEP_MS, PLAYER_RADIUS } from '../../../shared/constants'
 import {
   DISTANT_SPAWN,
@@ -12,7 +17,14 @@ import {
   withActors,
   withPlayerAt,
 } from '../../../test/model.fixture'
-import { APPLICATION, bulletInto, ticks, zombieAt } from '../../../test/testing'
+import {
+  bulletInto,
+  checkModel,
+  modelAfter,
+  steps,
+  ticks,
+  zombieAt,
+} from '../../../test/testing'
 import { MANOR, levelFor, levelOf } from '../../level/arena'
 import { CHANDELIER_DROP, MANOR_SPEC } from '../../level/plan'
 import { findStrike, isWalkableTile } from '../../level/tileQueries'
@@ -41,7 +53,7 @@ const GAP_ROW = Math.floor(GAP.top / 10)
 
 // NOTE: a shot flying north up the gap from the start spot's side of the
 // table, toward the chandelier hung over it.
-const shotUpTheGap: Bullet = modifyFields(
+const shotUpTheGap: Bullet = UiStruct.evolve(
   bulletInto(500, zombieAt(0, GAP_MIDDLE.x, GAP.bottom + 6)),
   {
     velocityX: () => 0,
@@ -50,7 +62,7 @@ const shotUpTheGap: Bullet = modifyFields(
 )
 
 // NOTE: a shot already at the chain, so nothing in the gap stops it first.
-const shotAtTheChain: Bullet = modifyFields(shotUpTheGap, {
+const shotAtTheChain: Bullet = UiStruct.evolve(shotUpTheGap, {
   y: () => GAP.top - 2,
 })
 
@@ -87,18 +99,19 @@ describe('the chandelier', () => {
   })
 
   it.effect('a shot through it in a wave drops it into the gap', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(withActors(wave(quietWave(2)), [], [shotUpTheGap])),
-      ...ticks(8, FRAME_MS),
-      Story.model(current => {
-        expect(isChandelierDown(current)).toBe(true)
-        expect(levelOf(current).dropped).toEqual([CHANDELIER_DROP])
-        expect(isWalkableTile(levelOf(current), GAP_COLUMN, GAP_ROW)).toBe(
-          false,
-        )
-        expect(current.bullets).toEqual([])
-      }),
+    modelAfter(
+      withActors(wave(quietWave(2)), [], [shotUpTheGap]),
+      steps(
+        ticks(8, FRAME_MS),
+        checkModel(current => {
+          expect(isChandelierDown(current)).toBe(true)
+          expect(levelOf(current).dropped).toEqual([CHANDELIER_DROP])
+          expect(isWalkableTile(levelOf(current), GAP_COLUMN, GAP_ROW)).toBe(
+            false,
+          )
+          expect(current.bullets).toEqual([])
+        }),
+      ),
     ),
   )
 
@@ -107,45 +120,46 @@ describe('the chandelier', () => {
     () => {
       const under = zombieAt(1, GAP_MIDDLE.x, GAP.top + 4, { hp: 100 })
       const beside = zombieAt(2, 40, 60, { hp: 100 })
-      return Story.story(
-        APPLICATION,
-        Story.given(
-          withActors(wave(quietWave(2)), [under, beside], [shotAtTheChain]),
+      return modelAfter(
+        withActors(wave(quietWave(2)), [under, beside], [shotAtTheChain]),
+        steps(
+          ticks(1, FRAME_MS),
+          checkModel(current => {
+            expect(zombieIn(current, 1)).toEqual(
+              Option.some(100 - CHANDELIER_RULES.damage),
+            )
+            expect(zombieIn(current, 2)).toEqual(Option.some(100))
+            const crushed = Array.findFirst(
+              current.zombies,
+              zombie => zombie.id === 1,
+            )
+            expect(
+              Option.exists(crushed, ({ y }) => y < GAP.top || y > GAP.bottom),
+            ).toBe(true)
+          }),
         ),
-        ...ticks(1, FRAME_MS),
-        Story.model(current => {
-          expect(zombieIn(current, 1)).toEqual(
-            Option.some(100 - CHANDELIER_RULES.damage),
-          )
-          expect(zombieIn(current, 2)).toEqual(Option.some(100))
-          const crushed = Array.findFirst(
-            current.zombies,
-            zombie => zombie.id === 1,
-          )
-          expect(
-            Option.exists(crushed, ({ y }) => y < GAP.top || y > GAP.bottom),
-          ).toBe(true)
-        }),
       )
     },
   )
 
   it.effect('kills a Groaner under it outright', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        withActors(
-          wave(quietWave(2)),
-          [zombieAt(1, GAP_MIDDLE.x, GAP.top + 4)],
-          [shotAtTheChain],
-        ),
+    modelAfter(
+      withActors(
+        wave(quietWave(2)),
+        [zombieAt(1, GAP_MIDDLE.x, GAP.top + 4)],
+        [shotAtTheChain],
       ),
-      ...ticks(1, FRAME_MS),
-      Story.model(current => {
-        expect(
-          Array.some(current.frameEvents, GameEvent.isAnyOf(['ZombieKilled'])),
-        ).toBe(true)
-      }),
+      steps(
+        ticks(1, FRAME_MS),
+        checkModel(current => {
+          expect(
+            Array.some(
+              current.frameEvents,
+              GameEvent.isAnyOf(['ZombieKilled']),
+            ),
+          ).toBe(true)
+        }),
+      ),
     ),
   )
 
@@ -157,84 +171,87 @@ describe('the chandelier', () => {
         [],
         [shotAtTheChain],
       )
-      return Story.story(
-        APPLICATION,
-        Story.given(start),
-        ...ticks(2, FRAME_MS),
-        Story.model(current => {
-          expect(isChandelierDown(current)).toBe(true)
-          const { player } = focusOf(current)
-          expect(player.hp).toBe(focusOf(start).player.hp)
-          expect(player.y).toBeGreaterThanOrEqual(
-            GAP.bottom + PLAYER_RADIUS - 1,
-          )
-        }),
+      return modelAfter(
+        start,
+        steps(
+          ticks(2, FRAME_MS),
+          checkModel(current => {
+            expect(isChandelierDown(current)).toBe(true)
+            const { player } = focusOf(current)
+            expect(player.hp).toBe(focusOf(start).player.hp)
+            expect(player.y).toBeGreaterThanOrEqual(
+              GAP.bottom + PLAYER_RADIUS - 1,
+            )
+          }),
+        ),
       )
     },
   )
 
   it.effect('stays hung when shot in a break', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        withActors(
-          wave(
-            modifyFields(quietWave(2), {
-              phase: () =>
-                Phase.Preparation({
-                  wave: 2,
-                  remainingMs: 1e9,
-                  durationMs: 1e9,
-                  spawns: [DISTANT_SPAWN],
-                }),
-            }),
-          ),
-          [],
-          [shotUpTheGap],
+    modelAfter(
+      withActors(
+        wave(
+          UiStruct.evolve(quietWave(2), {
+            phase: () =>
+              Phase.Preparation({
+                clock: BreakClock.Counting(),
+                wave: 2,
+                remainingMs: 1e9,
+                durationMs: 1e9,
+                spawns: [DISTANT_SPAWN],
+              }),
+          }),
         ),
+        [],
+        [shotUpTheGap],
       ),
-      ...ticks(8, FRAME_MS),
-      Story.model(current => {
-        expect(isChandelierDown(current)).toBe(false)
-      }),
+      steps(
+        ticks(8, FRAME_MS),
+        checkModel(current => {
+          expect(isChandelierDown(current)).toBe(false)
+        }),
+      ),
     ),
   )
 
   it.effect('is hung again when the wave ends and the break begins', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        modifyFields(wave(quietWave(2)), {
-          phase: () => Phase.Wave({ wave: 2, elapsedMs: 0, spawns: [] }),
-          level: level =>
-            modifyFields(level, { dropped: () => [CHANDELIER_DROP] }),
+    modelAfter(
+      UiStruct.evolve(wave(quietWave(2)), {
+        phase: () => Phase.Wave({ wave: 2, elapsedMs: 0, spawns: [] }),
+        level: level =>
+          UiStruct.evolve(level, { dropped: () => [CHANDELIER_DROP] }),
+      }),
+      steps(
+        checkModel(current => {
+          expect(isChandelierDown(current)).toBe(true)
+        }),
+        ticks(30, FRAME_MS),
+        checkModel(current => {
+          expect(Phase.isAnyOf(['Preparation'])(current.phase)).toBe(true)
+          expect(isChandelierDown(current)).toBe(false)
+          expect(isWalkableTile(levelOf(current), GAP_COLUMN, GAP_ROW)).toBe(
+            true,
+          )
         }),
       ),
-      Story.model(current => {
-        expect(isChandelierDown(current)).toBe(true)
-      }),
-      ...ticks(30, FRAME_MS),
-      Story.model(current => {
-        expect(Phase.isAnyOf(['Preparation'])(current.phase)).toBe(true)
-        expect(isChandelierDown(current)).toBe(false)
-        expect(isWalkableTile(levelOf(current), GAP_COLUMN, GAP_ROW)).toBe(true)
-      }),
     ),
   )
 
   it.effect('says so with ChandelierFell in the gap the frame it lands', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(withActors(wave(quietWave(2)), [], [shotAtTheChain])),
-      ...ticks(1, FRAME_MS),
-      Story.model(current => {
-        expect(
-          Array.filter(
-            current.frameEvents,
-            GameEvent.isAnyOf(['ChandelierFell']),
-          ),
-        ).toEqual([GameEvent.ChandelierFell(GAP_MIDDLE)])
-      }),
+    modelAfter(
+      withActors(wave(quietWave(2)), [], [shotAtTheChain]),
+      steps(
+        ticks(1, FRAME_MS),
+        checkModel(current => {
+          expect(
+            Array.filter(
+              current.frameEvents,
+              GameEvent.isAnyOf(['ChandelierFell']),
+            ),
+          ).toEqual([GameEvent.ChandelierFell(GAP_MIDDLE)])
+        }),
+      ),
     ),
   )
 })

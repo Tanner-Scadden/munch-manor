@@ -1,5 +1,4 @@
 import { Array, Function, Option, Record, Result, pipe } from 'effect'
-import type { Canvas } from 'foldkit'
 
 import { type Palette, pixelRuns } from '../../art/sprite'
 import { TILE_SIZE } from '../../shared/constants'
@@ -13,6 +12,7 @@ import {
 } from '../../world/level/tileGrid'
 import { isWalkableTile } from '../../world/level/tileQueries'
 import type { DoorId } from '../../world/schema/entitySchema'
+import type * as Draw from '../draw'
 import { pixelArt, rect } from '../drawing'
 import { isFacedExit, leakSpillShapes, leakStillShapes } from './kitchenLeak'
 import { backDoorShapes, windowShapes } from './kitchenView'
@@ -113,7 +113,7 @@ const runShapes = (
   grid: ReadonlyArray<string>,
   fill: string,
   inset: Inset,
-): ReadonlyArray<Canvas.Shape> =>
+): ReadonlyArray<Draw.Shape> =>
   Array.map(pixelRuns(grid, { [MARK]: fill }), run =>
     rect(
       runLeft(level, run.x) + inset.dx,
@@ -183,7 +183,7 @@ export const spansWithin: {
 
 const WAINSCOT_PANEL_PX = 12
 
-const faceShapes = ({ x, y, width }: Span): ReadonlyArray<Canvas.Shape> => {
+const faceShapes = ({ x, y, width }: Span): ReadonlyArray<Draw.Shape> => {
   const top = y - TILE_SIZE * 2 + FACE_TOP
   const railY = y - TILE_SIZE * 2 + CHAIR_RAIL_Y
   const baseY = y - TILE_SIZE * 2 + BASEBOARD_Y
@@ -234,7 +234,7 @@ const faceShapes = ({ x, y, width }: Span): ReadonlyArray<Canvas.Shape> => {
   ]
 }
 
-export const wallShapes = (level: Level): ReadonlyArray<Canvas.Shape> => {
+export const wallShapes = (level: Level): ReadonlyArray<Draw.Shape> => {
   const spans = northFaceSpans(level)
   return [
     ...runShapes(
@@ -283,7 +283,7 @@ export const wallShapes = (level: Level): ReadonlyArray<Canvas.Shape> => {
   ]
 }
 
-export const wallShadowShapes = (level: Level): ReadonlyArray<Canvas.Shape> => [
+export const wallShadowShapes = (level: Level): ReadonlyArray<Draw.Shape> => [
   ...Array.map(northFaceSpans(level), ({ x, y, width }) =>
     rect(x, y, width, 2, WALL_SHADOW_COLOR),
   ),
@@ -367,7 +367,7 @@ export const PARLOUR_WINDOW_GAPS: ReadonlyArray<Box> = [
   { x: 238, y: 16, width: 13, height: 1 },
 ]
 
-const BOARDED_WINDOW: ReadonlyArray<Canvas.Shape> = [
+const BOARDED_WINDOW: ReadonlyArray<Draw.Shape> = [
   rect(236, 5, 17, 13, CASING_COLOR),
   rect(238, 7, 13, 9, '#1c2a44'),
   rect(239, 8, 3, 1, '#5a7ab0'),
@@ -411,7 +411,7 @@ const KITCHEN_SIGN_PALETTE: Palette = {
   h: '#5a3a22',
 }
 
-const kitchenExitShapes = (exit: Box): ReadonlyArray<Canvas.Shape> => {
+const kitchenExitShapes = (exit: Box): ReadonlyArray<Draw.Shape> => {
   const x = exit.x
   const right = exit.x + exit.width
   const middle = x + exit.width / 2
@@ -455,7 +455,7 @@ const EXIT_BOARD_STEP_PX = 5
 
 // NOTE: a closed exit is a doorway nailed shut: the dark gap with boards
 // across it the long way. An open exit draws nothing, so the floor shows.
-const boardedShapes = (box: Box): ReadonlyArray<Canvas.Shape> => {
+const boardedShapes = (box: Box): ReadonlyArray<Draw.Shape> => {
   const isAcross = box.width >= box.height
   const span = isAcross ? box.height : box.width
   const boards = Math.max(1, Math.floor(span / EXIT_BOARD_STEP_PX))
@@ -505,7 +505,7 @@ const boardedShapes = (box: Box): ReadonlyArray<Canvas.Shape> => {
 
 // NOTE: an exit in the top wall shows its face, so it gets a boarded double
 // door with a sign. One anywhere else is the plain boarded gap.
-const exitShapes = (exit: Exit): ReadonlyArray<Canvas.Shape> => {
+const exitShapes = (exit: Exit): ReadonlyArray<Draw.Shape> => {
   if (!Array.isReadonlyArrayNonEmpty(exit.tiles)) {
     return []
   }
@@ -515,7 +515,7 @@ const exitShapes = (exit: Exit): ReadonlyArray<Canvas.Shape> => {
 
 // NOTE: the library's secret shelf is drawn by its own art (libraryArt.ts),
 // never as boards.
-export const closedExitShapes = (level: Level): ReadonlyArray<Canvas.Shape> =>
+export const closedExitShapes = (level: Level): ReadonlyArray<Draw.Shape> =>
   Array.flatMap(
     Array.filter(closedExits(level), ({ opener }) => opener === 'Boards'),
     exitShapes,
@@ -523,7 +523,7 @@ export const closedExitShapes = (level: Level): ReadonlyArray<Canvas.Shape> =>
 
 // NOTE: the portrait, the skull, and the window are placed by hand on the
 // parlour's north wall, in the gaps between its doors and furniture.
-export const PARLOUR_WALL_DECOR: ReadonlyArray<Canvas.Shape> = [
+export const PARLOUR_WALL_DECOR: ReadonlyArray<Draw.Shape> = [
   ...pixelArt(86, 5, PORTRAIT_PIXELS, PORTRAIT_PALETTE),
   ...pixelArt(47, 6, SKULL_OVAL_PIXELS, SKULL_OVAL_PALETTE),
   ...BOARDED_WINDOW,
@@ -544,7 +544,7 @@ const splinters = (
   spreadX: number,
   spreadY: number,
   seed: number,
-): ReadonlyArray<Canvas.Shape> =>
+): ReadonlyArray<Draw.Shape> =>
   Array.makeBy(7, index => {
     const isLong = roll(seed, index) < 0.5
     return rect(
@@ -562,7 +562,7 @@ const splinters = (
 // and a lintel spans it, so the casing runs down the walls on each side,
 // on their tops and down the jambs (house.ts), and nothing of a door seen
 // from the front (its head, its hanging leaf, a nail) lies on that floor.
-const northDoorShapes = ({ x, y, width }: Box): ReadonlyArray<Canvas.Shape> => {
+const northDoorShapes = ({ x, y, width }: Box): ReadonlyArray<Draw.Shape> => {
   const right = x + width
   const face = y + FACE_TOP
   return [
@@ -582,7 +582,7 @@ const northDoorShapes = ({ x, y, width }: Box): ReadonlyArray<Canvas.Shape> => {
 const sideDoorShapes = (
   { x, y, width, height }: Box,
   facesEast: boolean,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const inner = facesEast ? x + width : x
   const fromHinge = (offset: number, size: number): number =>
     facesEast ? x + offset : x + width - offset - size
@@ -607,7 +607,7 @@ const sideDoorShapes = (
 // low front wall stands on each side of the opening in 3D, so the casing
 // runs on its tops and down its jambs (house.ts), and the leaves' stumps a
 // front-on door would show are left out: on this floor they lay flat.
-const southDoorShapes = ({ x, y, width }: Box): ReadonlyArray<Canvas.Shape> => {
+const southDoorShapes = ({ x, y, width }: Box): ReadonlyArray<Draw.Shape> => {
   const right = x + width
   return [
     rect(x, y, width, TILE_SIZE, DOOR_DARK_COLOR),
@@ -621,7 +621,7 @@ const southDoorShapes = ({ x, y, width }: Box): ReadonlyArray<Canvas.Shape> => {
 }
 
 const DOOR_DRAWINGS: Readonly<
-  Record<DoorId, (box: Box) => ReadonlyArray<Canvas.Shape>>
+  Record<DoorId, (box: Box) => ReadonlyArray<Draw.Shape>>
 > = {
   North: northDoorShapes,
   West: box => sideDoorShapes(box, true),
@@ -640,5 +640,5 @@ const DOOR_DRAWINGS: Readonly<
   Front: southDoorShapes,
 }
 
-export const doorwayShapes = (level: Level): ReadonlyArray<Canvas.Shape> =>
+export const doorwayShapes = (level: Level): ReadonlyArray<Draw.Shape> =>
   Array.flatMap(level.doorIds, id => DOOR_DRAWINGS[id](doorBox(level, id)))

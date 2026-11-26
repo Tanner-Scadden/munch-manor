@@ -1,6 +1,6 @@
 import { Function } from 'effect'
-import { makeModifyFieldsFor } from 'foldkit/struct'
 
+import { evolveFor } from '../../shared/evolve'
 import { World } from './worldSchema'
 
 export { World }
@@ -72,7 +72,7 @@ export const withWorld: {
 // NOTE: a rule that changes only World fields, typed over any Model that
 // holds them, so single player and the room share it and each gets its own
 // type back.
-const modifyWorld = makeModifyFieldsFor<World>()
+const modifyWorld = evolveFor<World>()
 
 type WorldTransforms = Parameters<typeof modifyWorld>[1]
 

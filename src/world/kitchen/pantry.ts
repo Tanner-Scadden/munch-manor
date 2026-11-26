@@ -1,5 +1,6 @@
 import { Array, Option, Record, pipe } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import { nextRandom } from '../../shared/prng'
 import type { SoundEffect } from '../../shared/soundEffect'
@@ -121,7 +122,7 @@ const stock = (world: World, wave: number): World => {
     Array.get(GOODIES, Math.floor(kindDraw.value * GOODIES.length)),
     () => GOODIES[0],
   )
-  return modifyFields(world, {
+  return UiStruct.evolve(world, {
     pantry: () => Pantry.Stocked({ round: wave, goodie }),
   })
 }
@@ -149,10 +150,10 @@ const give = (
   spot: Vector,
 ): World =>
   goodie === 'Heart'
-    ? modifyFields(world, {
+    ? UiStruct.evolve(world, {
         seats: atSeat(slot, {
           player: player =>
-            modifyFields(player, {
+            UiStruct.evolve(player, {
               hp: hp => Math.min(maxHpOf(player), hp + 1),
             }),
         }),
@@ -175,7 +176,7 @@ const takeFor = (world: World, slot: PlayerSlot): World => {
       onNone: () => world,
       onSome: ({ stash, spot }) => {
         const goodie = goodieFor(world, player, stash.goodie)
-        return modifyFields(give(world, slot, goodie, spot), {
+        return UiStruct.evolve(give(world, slot, goodie, spot), {
           pantry: () => Pantry.Bare({ round: stash.round }),
           frameEvents: frameEvents => [
             ...frameEvents,

@@ -1,5 +1,6 @@
 import { Array, Function, Option } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import { MS_PER_SECOND, PLAYER_RADIUS } from '../../shared/constants'
 import type { Difficulty } from '../../shared/playerData'
@@ -185,7 +186,7 @@ export const summonAtFrontDoor: {
   2,
   (world: World, spawns: ReadonlyArray<PlannedSpawn>): World =>
     isChunkDue(world)
-      ? modifyFields(world, {
+      ? UiStruct.evolve(world, {
           boss: () =>
             Boss.Waiting({
               door: 'Front',
@@ -201,7 +202,7 @@ export const summonAtFrontDoor: {
 
 const setFinale = (world: World, finale: Finale): World =>
   modifyWorldFields(world, {
-    dare: dare => modifyFields(dare, { finale: () => finale }),
+    dare: dare => UiStruct.evolve(dare, { finale: () => finale }),
   })
 
 const frontDoorOf = (level: Level): Vector => level.doors.Front.center
@@ -240,7 +241,7 @@ const burstKeyWhereChunkFalls = (world: World): World =>
 // in a break or a wave alike.
 const flyKey = (
   world: World,
-  flight: typeof Finale.KeyFlying.Type,
+  flight: typeof Finale.cases.KeyFlying.Type,
   worldMs: number,
 ): World =>
   flight.remainingMs > worldMs
@@ -288,7 +289,7 @@ const stepOutFor = (world: World, slot: PlayerSlot): World => {
   return isStanding(seat) && isAtFrontDoor(levelOf(world), player)
     ? withEvent(
         modifySeatRecord(world, slot, out =>
-          modifyFields(out, { life: () => Life.Out() }),
+          UiStruct.evolve(out, { life: () => Life.Out() }),
         ),
         GameEvent.SteppedOut({ x: player.x, y: player.y, slot }),
       )
@@ -306,7 +307,7 @@ export const isCrewOut = (world: World): boolean => {
 
 const escapeWhenOut = (world: World): World =>
   isCrewOut(world)
-    ? modifyFields(world, {
+    ? UiStruct.evolve(world, {
         phase: () => Phase.Escaped({ wave: roundWaveOf(world.phase) }),
       })
     : world

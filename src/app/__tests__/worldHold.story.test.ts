@@ -1,7 +1,6 @@
 import { Array, Effect, Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
 import { worldCameraFor } from '../../render/camera'
@@ -10,9 +9,13 @@ import { screenOf } from '../../render/screen'
 import { shakeOffset } from '../../screens/game/worldView'
 import { playingModel, withZombies } from '../../test/model.fixture'
 import {
-  APPLICATION,
   FRAME_MS,
+  checkModel,
+  modelAfter,
   press,
+  send,
+  settleRunCommands,
+  steps,
   tick,
   ticks,
   zombieAt,
@@ -39,7 +42,7 @@ const isHeldFrom = (drawn: Model, next: Model): boolean =>
 
 const lastHeart = withZombies(
   modifyFocus(playingModel, {
-    player: player => modifyFields(player, { hp: () => 1 }),
+    player: player => UiStruct.evolve(player, { hp: () => 1 }),
   }),
   [
     zombieAt(100, START_LEVEL.start.x, START_LEVEL.start.y + 3, {
@@ -61,25 +64,29 @@ describe('the world held behind a menu', () => {
     'the pause screen holds the picture through what it renders, and resuming draws again',
     () =>
       Effect.gen(function* () {
-        const paused = yield* Story.story(
-          APPLICATION,
-          Story.given(playingModel),
-          press('Escape'),
-          Story.model(({ phase }) => {
-            expect(Phase.isAnyOf(['Paused'])(phase)).toBe(true)
-          }),
+        const paused = yield* modelAfter(
+          playingModel,
+          steps(
+            press('Escape'),
+            settleRunCommands,
+            checkModel(({ phase }) => {
+              expect(Phase.isAnyOf(['Paused'])(phase)).toBe(true)
+            }),
+          ),
         )
-        const moved = yield* Story.story(
-          APPLICATION,
-          Story.given(paused),
-          Story.message(Message.SuppressedContextMenu()),
+        const moved = yield* modelAfter(
+          paused,
+          send(Message.SuppressedContextMenu()),
         )
         expect(isHeldFrom(paused, moved)).toBe(true)
-        const resumed = yield* Story.story(
-          APPLICATION,
-          Story.given(moved),
-          press('Escape'),
-          tick(FRAME_MS),
+        const resumed = yield* modelAfter(
+          moved,
+          steps(
+            press('Escape'),
+            settleRunCommands,
+            tick(FRAME_MS),
+            settleRunCommands,
+          ),
         )
         expect(isHeldFrom(moved, resumed)).toBe(false)
       }),
@@ -89,19 +96,21 @@ describe('the world held behind a menu', () => {
     'the end card draws its beat, then holds the picture while its own animations go on',
     () =>
       Effect.gen(function* () {
-        const ended = yield* Story.story(
-          APPLICATION,
-          Story.given(lastHeart),
-          tick(FRAME_MS),
-          Story.model(({ phase }) => {
-            expect(phase).toEqual(Phase.GameOver({ wave: 1 }))
-          }),
-          ...ticks(SETTLE_FRAMES, FRAME_MS),
+        const ended = yield* modelAfter(
+          lastHeart,
+          steps(
+            tick(FRAME_MS),
+            settleRunCommands,
+            checkModel(({ phase }) => {
+              expect(phase).toEqual(Phase.GameOver({ wave: 1 }))
+            }),
+            ticks(SETTLE_FRAMES, FRAME_MS),
+            settleRunCommands,
+          ),
         )
-        const later = yield* Story.story(
-          APPLICATION,
-          Story.given(ended),
-          ...ticks(3, FRAME_MS),
+        const later = yield* modelAfter(
+          ended,
+          steps(ticks(3, FRAME_MS), settleRunCommands),
         )
         expect(later.screenMs).toBeGreaterThan(ended.screenMs)
         expect(isHeldFrom(ended, later)).toBe(true)

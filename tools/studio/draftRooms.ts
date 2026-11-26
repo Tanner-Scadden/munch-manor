@@ -3,9 +3,9 @@
 // and exit drawing and the room's art (src/render/room/), so the owner can
 // review a room's shape up close.
 import { Array, Function, Option, String, pipe } from 'effect'
-import type { Canvas } from 'foldkit'
 
 import { bakeShapes, placeAt } from '../../src/art/sprite'
+import type * as Draw from '../../src/render/draw'
 import {
   CELLAR_BULB_SHAPES,
   cellarFloorShapes,
@@ -224,7 +224,7 @@ const roomBoxOf = (level: Level): Box => ({
   height: level.height,
 })
 
-const cornerCobwebs = (room: Box): ReadonlyArray<Canvas.Shape> => [
+const cornerCobwebs = (room: Box): ReadonlyArray<Draw.Shape> => [
   ...cobweb(room.x + TILE_SIZE, room.y + FACE_TOP + 1, true, true),
   ...cobweb(
     room.x + room.width - TILE_SIZE,
@@ -252,17 +252,17 @@ const symbolBoxOf = (
     Option.map(boundingBox),
   )
 
-const walls = (level: Level): ReadonlyArray<Canvas.Shape> => [
+const walls = (level: Level): ReadonlyArray<Draw.Shape> => [
   ...wallShadowShapes(level),
   ...wallShapes(level),
 ]
 
-const doors = (level: Level): ReadonlyArray<Canvas.Shape> => [
+const doors = (level: Level): ReadonlyArray<Draw.Shape> => [
   ...closedExitShapes(level),
   ...doorwayShapes(level),
 ]
 
-const diningShapes = (isFallen: boolean): ReadonlyArray<Canvas.Shape> => {
+const diningShapes = (isFallen: boolean): ReadonlyArray<Draw.Shape> => {
   const level = levelFor(DINING_SPEC)
   const room = roomBoxOf(level)
   return [
@@ -293,7 +293,7 @@ const diningShapes = (isFallen: boolean): ReadonlyArray<Canvas.Shape> => {
   ]
 }
 
-const parlourShapes = (): ReadonlyArray<Canvas.Shape> => {
+const parlourShapes = (): ReadonlyArray<Draw.Shape> => {
   const level = levelFor(PARLOUR_SPEC)
   const room = roomBoxOf(level)
   return [
@@ -313,7 +313,7 @@ const parlourShapes = (): ReadonlyArray<Canvas.Shape> => {
   ]
 }
 
-const libraryShapes = (isOpen: boolean): ReadonlyArray<Canvas.Shape> => {
+const libraryShapes = (isOpen: boolean): ReadonlyArray<Draw.Shape> => {
   const level = levelFor(LIBRARY_SPEC)
   const room = roomBoxOf(level)
   const shelves = tilesWithSymbol(makeLevel(LIBRARY_MAP), '%')
@@ -365,7 +365,7 @@ const libraryShapes = (isOpen: boolean): ReadonlyArray<Canvas.Shape> => {
   ]
 }
 
-const cellarShapes = (): ReadonlyArray<Canvas.Shape> => {
+const cellarShapes = (): ReadonlyArray<Draw.Shape> => {
   const level = levelFor(CELLAR_SPEC)
   const room = roomBoxOf(level)
   return [
@@ -387,7 +387,7 @@ const cellarShapes = (): ReadonlyArray<Canvas.Shape> => {
 }
 
 const ROOM_DRAWINGS: Readonly<
-  Record<DraftRoomId, (isTwistOn: boolean) => ReadonlyArray<Canvas.Shape>>
+  Record<DraftRoomId, (isTwistOn: boolean) => ReadonlyArray<Draw.Shape>>
 > = {
   Dining: diningShapes,
   Parlour: parlourShapes,
@@ -395,16 +395,16 @@ const ROOM_DRAWINGS: Readonly<
   Cellar: cellarShapes,
 }
 
-const builtRooms = new Map<string, ReadonlyArray<Canvas.Shape>>()
+const builtRooms = new Map<string, ReadonlyArray<Draw.Shape>>()
 
 // NOTE: a drafted room as one baked image, with its twist one way or the
 // other, built once and kept.
 export const draftRoomShapes: {
-  (isTwistOn: boolean): (room: DraftRoom) => ReadonlyArray<Canvas.Shape>
-  (room: DraftRoom, isTwistOn: boolean): ReadonlyArray<Canvas.Shape>
+  (isTwistOn: boolean): (room: DraftRoom) => ReadonlyArray<Draw.Shape>
+  (room: DraftRoom, isTwistOn: boolean): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   2,
-  (room: DraftRoom, isTwistOn: boolean): ReadonlyArray<Canvas.Shape> => {
+  (room: DraftRoom, isTwistOn: boolean): ReadonlyArray<Draw.Shape> => {
     const key = `${room.id}:${isTwistOn ? 'on' : 'off'}`
     const cached = builtRooms.get(key)
     if (cached !== undefined) {

@@ -1,6 +1,6 @@
 import { Array } from 'effect'
-import { Canvas } from 'foldkit'
 
+import * as Draw from '../render/draw'
 import { type Sprite, TOP_LEFT, bakeShapes, spriteShapes } from './sprite'
 
 // The intro's pictures (src/features/intro/introView.ts): each beat is a
@@ -36,9 +36,9 @@ const TABLE = '#4a2a1c'
 
 type Rect = Readonly<[x: number, y: number, w: number, h: number, c: string]>
 
-const rects = (list: ReadonlyArray<Rect>): ReadonlyArray<Canvas.Shape> =>
+const rects = (list: ReadonlyArray<Rect>): ReadonlyArray<Draw.Shape> =>
   Array.map(list, ([x, y, width, height, fill]) =>
-    Canvas.Rect({ x, y, width, height, fill }),
+    Draw.Rect({ x, y, width, height, fill }),
   )
 
 const STARS: ReadonlyArray<Rect> = Array.map(

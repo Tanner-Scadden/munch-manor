@@ -1,5 +1,4 @@
 import { Array, Function, Result, pipe } from 'effect'
-import { Canvas } from 'foldkit'
 
 import { GLYPH_HEIGHT, type TextTone, textShapes } from '../art/font'
 import {
@@ -13,6 +12,7 @@ import {
 import { SHADOW_HEIGHT } from '../shared/constants'
 import type { Vector } from '../world/schema/entitySchema'
 import { clamp } from '../world/step/geometry'
+import * as Draw from './draw'
 
 // SHARED SHAPE HELPERS
 
@@ -32,11 +32,11 @@ export const tellAlpha: {
 )
 
 export const placeSprite: {
-  (y: number, sprite: ReadonlyArray<Canvas.Shape>): (x: number) => Canvas.Shape
-  (x: number, y: number, sprite: ReadonlyArray<Canvas.Shape>): Canvas.Shape
+  (y: number, sprite: ReadonlyArray<Draw.Shape>): (x: number) => Draw.Shape
+  (x: number, y: number, sprite: ReadonlyArray<Draw.Shape>): Draw.Shape
 } = Function.dual(
   3,
-  (x: number, y: number, sprite: ReadonlyArray<Canvas.Shape>): Canvas.Shape =>
+  (x: number, y: number, sprite: ReadonlyArray<Draw.Shape>): Draw.Shape =>
     placeAt(Math.round(x), Math.round(y), sprite),
 )
 
@@ -46,14 +46,14 @@ export const rect: {
     width: number,
     height: number,
     fill: string,
-  ): (x: number) => Canvas.Shape
+  ): (x: number) => Draw.Shape
   (
     x: number,
     y: number,
     width: number,
     height: number,
     fill: string,
-  ): Canvas.Shape
+  ): Draw.Shape
 } = Function.dual(
   5,
   (
@@ -62,7 +62,7 @@ export const rect: {
     width: number,
     height: number,
     fill: string,
-  ): Canvas.Shape => Canvas.Rect({ x, y, width, height, fill }),
+  ): Draw.Shape => Draw.Rect({ x, y, width, height, fill }),
 )
 
 // NOTE: a small four-pointed glint that winks on something worth taking:
@@ -85,14 +85,14 @@ export const centeredRect: {
     width: number,
     height: number,
     fill: string,
-  ): (x: number) => Canvas.Shape
+  ): (x: number) => Draw.Shape
   (
     x: number,
     y: number,
     width: number,
     height: number,
     fill: string,
-  ): Canvas.Shape
+  ): Draw.Shape
 } = Function.dual(
   5,
   (
@@ -101,8 +101,8 @@ export const centeredRect: {
     width: number,
     height: number,
     fill: string,
-  ): Canvas.Shape =>
-    Canvas.Rect({
+  ): Draw.Shape =>
+    Draw.Rect({
       x: x - Math.floor(width / 2),
       y: y - Math.floor(height / 2),
       width,
@@ -118,13 +118,13 @@ export const pixelArt: {
     y: number,
     pixels: ReadonlyArray<string>,
     palette: Palette,
-  ): (x: number) => ReadonlyArray<Canvas.Shape>
+  ): (x: number) => ReadonlyArray<Draw.Shape>
   (
     x: number,
     y: number,
     pixels: ReadonlyArray<string>,
     palette: Palette,
-  ): ReadonlyArray<Canvas.Shape>
+  ): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   4,
   (
@@ -132,18 +132,18 @@ export const pixelArt: {
     y: number,
     pixels: ReadonlyArray<string>,
     palette: Palette,
-  ): ReadonlyArray<Canvas.Shape> =>
+  ): ReadonlyArray<Draw.Shape> =>
     spriteRects(pixels, palette, { x: -x, y: -y }),
 )
 
 const GLYPHS_TOP = -Math.floor(GLYPH_HEIGHT / 2)
 
 export const centeredGlyphs: {
-  (tone: TextTone): (text: string) => ReadonlyArray<Canvas.Shape>
-  (text: string, tone: TextTone): ReadonlyArray<Canvas.Shape>
+  (tone: TextTone): (text: string) => ReadonlyArray<Draw.Shape>
+  (text: string, tone: TextTone): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   2,
-  (text: string, tone: TextTone): ReadonlyArray<Canvas.Shape> =>
+  (text: string, tone: TextTone): ReadonlyArray<Draw.Shape> =>
     textShapes(text, tone, 0, GLYPHS_TOP, 'Center'),
 )
 
@@ -200,13 +200,13 @@ export const footShadow: {
     footOffset: number,
     width: number,
     fill: string,
-  ): (position: Vector) => Canvas.Shape
+  ): (position: Vector) => Draw.Shape
   (
     position: Vector,
     footOffset: number,
     width: number,
     fill: string,
-  ): Canvas.Shape
+  ): Draw.Shape
 } = Function.dual(
   4,
   (
@@ -214,7 +214,7 @@ export const footShadow: {
     footOffset: number,
     width: number,
     fill: string,
-  ): Canvas.Shape => {
+  ): Draw.Shape => {
     const foot = footPosition(position, footOffset)
     return centeredRect(foot.x, foot.y, width, SHADOW_HEIGHT, fill)
   },

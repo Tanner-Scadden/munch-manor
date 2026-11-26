@@ -1,5 +1,4 @@
 import { Array, Function, Match, String } from 'effect'
-import { Canvas } from 'foldkit'
 
 import { playerSprites } from '@game/art/appearance'
 import { SEAT_LOOKS } from '@game/art/seatLooks'
@@ -7,6 +6,7 @@ import { frameAt, group } from '@game/art/sprite'
 import { rect } from '@game/render/drawing'
 import { logoShapes } from '@game/screens/game/overlay'
 
+import * as Draw from '../../../src/render/draw'
 import { BIG_HEAD, PALETTE } from '../zombieHead'
 
 // THE DIRECTOR'S CARDS
@@ -35,8 +35,8 @@ const logoAt = (
   y: number,
   scale: number,
   age: number,
-  under: ReadonlyArray<Canvas.Shape> = [],
-): Canvas.Shape =>
+  under: ReadonlyArray<Draw.Shape> = [],
+): Draw.Shape =>
   group({
     translate: { x, y },
     scale: { x: scale, y: scale },
@@ -83,7 +83,7 @@ const DRIPS: ReadonlyArray<
 ]
 const DRIP_MAX = 16
 
-const dripShapes = (age: number): ReadonlyArray<Canvas.Shape> =>
+const dripShapes = (age: number): ReadonlyArray<Draw.Shape> =>
   Array.flatMap(DRIPS, drip => {
     const runs = Math.max(0, age - SLAM_TICKS - drip.delay) * drip.speed
     const length = Math.min(DRIP_MAX, Math.floor(runs))
@@ -104,7 +104,7 @@ const dripShapes = (age: number): ReadonlyArray<Canvas.Shape> =>
 const titleShapes = (
   screen: CardScreen,
   age: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const isWide = screen.width > screen.height
   const x = screen.width / 2
   const y = isWide ? 66 : 112
@@ -163,7 +163,7 @@ const headShapes = (
   top: number,
   scale: number,
   age: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const isOpen = Math.floor(age / CHOMP_TICKS) % 2 === 1
   const drop = isOpen ? JAW_DROP : 0
   const mouthRow = BIG_HEAD[JAW_ROW] ?? ''
@@ -190,8 +190,8 @@ const headShapes = (
   ]
 }
 
-const runShapes = (row: string, y: number): ReadonlyArray<Canvas.Shape> => {
-  const shapes: Array<Canvas.Shape> = []
+const runShapes = (row: string, y: number): ReadonlyArray<Draw.Shape> => {
+  const shapes: Array<Draw.Shape> = []
   let start = 0
   for (let x = 1; x <= row.length; x++) {
     if (x === row.length || row[x] !== row[start]) {
@@ -208,7 +208,7 @@ const runShapes = (row: string, y: number): ReadonlyArray<Canvas.Shape> => {
 const endShapes = (
   screen: CardScreen,
   age: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const isWide = screen.width > screen.height
   // NOTE: side by side on a wide frame, the logo over the head upright.
   const headScale = 3
@@ -223,7 +223,7 @@ const endShapes = (
   return [
     rect(0, 0, screen.width, screen.height, END_BACK),
     ...Array.map(GLOW_RINGS, ([radius, fill]) =>
-      Canvas.Circle({ x: headX, y: headTop + headHeight / 2, radius, fill }),
+      Draw.Circle({ x: headX, y: headTop + headHeight / 2, radius, fill }),
     ),
     ...headShapes(Math.round(headX - headWidth / 2), headTop, headScale, age),
     logoAt(Math.round(logoX), logoY, logoScale, age),
@@ -262,7 +262,7 @@ const sitterShapes = (
   feetY: number,
   scale: number,
   age: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const look = SEAT_LOOKS[seat % SEAT_LOOKS.length] ?? SEAT_LOOKS[0]
   const mood = moodAt(age)
   const hop = Match.value(mood).pipe(
@@ -306,7 +306,7 @@ const sitterShapes = (
 const couchShapes = (
   screen: CardScreen,
   age: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const isWide = screen.width > screen.height
   const scale = isWide ? 5 : 3
   const floorY = Math.round(screen.height * (isWide ? 0.88 : 0.56))
@@ -387,15 +387,15 @@ export const cardShapes: {
   (
     screen: CardScreen,
     age: number,
-  ): (card: CardName) => ReadonlyArray<Canvas.Shape>
-  (card: CardName, screen: CardScreen, age: number): ReadonlyArray<Canvas.Shape>
+  ): (card: CardName) => ReadonlyArray<Draw.Shape>
+  (card: CardName, screen: CardScreen, age: number): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   3,
   (
     card: CardName,
     screen: CardScreen,
     age: number,
-  ): ReadonlyArray<Canvas.Shape> =>
+  ): ReadonlyArray<Draw.Shape> =>
     Match.value(card).pipe(
       Match.when('Title', () => titleShapes(screen, age)),
       Match.when('End', () => endShapes(screen, age)),

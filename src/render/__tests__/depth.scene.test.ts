@@ -1,7 +1,7 @@
 import { Array, Option } from 'effect'
-import { Canvas } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
+
+import { UiStruct } from '@effect/ui'
 
 import { sceneShapes } from '../../app/layers'
 import { type Model, Phase, type Zombie } from '../../app/model'
@@ -18,33 +18,34 @@ import {
 import { focusOf, modifyFocus } from '../../world/party/party'
 import { type Drawable, depthSortedShapes } from '../depth'
 import { doorwaysOf, isBehindWall } from '../doorways'
+import * as Draw from '../draw'
 import { playerShapes } from '../playerView'
 import { zombieHealthBarShapes, zombieShapes } from '../zombieView'
 
-const marker = (id: number): Canvas.Shape =>
-  Canvas.Rect({ x: id, y: 0, width: 1, height: 1, fill: '#fff' })
+const marker = (id: number): Draw.Shape =>
+  Draw.Rect({ x: id, y: 0, width: 1, height: 1, fill: '#fff' })
 
 const fightingModel = (
   player: Readonly<{ x: number; y: number }>,
   zombies: ReadonlyArray<Zombie>,
 ): Model =>
   modifyFocus(
-    modifyFields(initialModel, {
+    UiStruct.evolve(initialModel, {
       phase: () => Phase.Wave({ wave: 1, elapsedMs: 0, spawns: [] }),
       zombies: () => zombies,
     }),
     { player: current => ({ ...current, ...player }) },
   )
 
-const worldShapesOf = (current: Model): ReadonlyArray<Canvas.Shape> =>
+const worldShapesOf = (current: Model): ReadonlyArray<Draw.Shape> =>
   Option.match(Array.head(sceneShapes(current)), {
     onNone: () => [],
     onSome: world => (world._tag === 'Group' ? world.shapes : []),
   })
 
 const indexOf = (
-  shapes: ReadonlyArray<Canvas.Shape>,
-  shape: Canvas.Shape,
+  shapes: ReadonlyArray<Draw.Shape>,
+  shape: Draw.Shape,
 ): number => {
   const wanted = jsonOf(shape)
   return Option.getOrElse(

@@ -1,5 +1,4 @@
 import { Array, Function } from 'effect'
-import type { Canvas } from 'foldkit'
 
 import type { Model } from '../../app/model'
 import { textShapes, textWidth } from '../../art/font'
@@ -7,6 +6,7 @@ import { HOUSE_PALETTE, HOUSE_PIXELS } from '../../art/icons'
 import { TOP_LEFT, spriteShapes } from '../../art/sprite'
 import { KitchenCall } from '../../domain/clientSchema'
 import { roomsOf } from '../../domain/run'
+import type * as Draw from '../../render/draw'
 import { placeSprite, rect } from '../../render/drawing'
 import { levelOf } from '../../world/level/arena'
 import { Phase } from '../../world/schema/worldSchema'
@@ -39,7 +39,7 @@ const sparklesOf = (
   x: number,
   y: number,
   ageMs: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const step = Math.floor(ageMs / SPARKLE_STEP_MS)
   return ageMs >= SPARKLE_MS
     ? []
@@ -57,11 +57,11 @@ const sparklesOf = (
 // NOTE: laid out from the right edge: the icon, then "1/2" in gold once
 // every room is found. `right` is the text's right edge, `y` its top.
 export const roomsCounterShapes: {
-  (right: number, y: number): (model: Model) => ReadonlyArray<Canvas.Shape>
-  (model: Model, right: number, y: number): ReadonlyArray<Canvas.Shape>
+  (right: number, y: number): (model: Model) => ReadonlyArray<Draw.Shape>
+  (model: Model, right: number, y: number): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   3,
-  (model: Model, right: number, y: number): ReadonlyArray<Canvas.Shape> => {
+  (model: Model, right: number, y: number): ReadonlyArray<Draw.Shape> => {
     if (!isRoomsCounterShown(model)) {
       return []
     }

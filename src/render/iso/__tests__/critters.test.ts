@@ -1,6 +1,7 @@
 import { Array } from 'effect'
-import { modifyFields } from 'foldkit/struct'
 import { expect, test } from 'vitest'
+
+import { UiStruct } from '@effect/ui'
 
 import type { Model } from '../../../app/model'
 import { atClock, quietWave } from '../../../test/model.fixture'
@@ -26,7 +27,7 @@ test('moths circle the lit flames, the same for the same clock', () => {
 
 test('the chandelier brought down takes its moths with it', () => {
   const wave = quietWave(3)
-  const fallen = modifyFields(wave, {
+  const fallen = UiStruct.evolve(wave, {
     level: state => ({
       ...state,
       dropped: Array.append(state.dropped, CHANDELIER_DROP),

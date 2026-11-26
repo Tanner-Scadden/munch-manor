@@ -2,13 +2,13 @@
 // the notes about it with Claude's answers and their before pictures, and
 // every other note, a tap away.
 import { Array, Function, Option, String } from 'effect'
-import type { Html } from 'foldkit/html'
 
 import {
   Message,
   type Model,
   type SendStatus,
-  type StudioViewBuilder,
+  type StudioH,
+  type StudioHtml,
   notesFor,
 } from './block'
 import { entryById } from './catalog'
@@ -97,134 +97,112 @@ const hasDraftSpot = (model: Model): boolean =>
     ? Option.isSome(model.maybeDraftArea)
     : Option.isSome(model.maybeDraftPin)
 
-const composerView = (model: Model, h: StudioViewBuilder): Html =>
-  h.section(
-    [h.Class('composer')],
-    [
-      h.h3([], ['Ask Claude for a change']),
-      h.div(
-        [h.Class('segmented kinds'), h.Role('group')],
+const composerView = (model: Model, h: StudioH): StudioHtml =>
+  h.section.class('composer').children(
+    h.h3.children('Ask Claude for a change'),
+    h.div
+      .class('segmented kinds')
+      .attr('role', 'group')
+      .children(
         Array.map(NoteKind.literals, kind =>
-          h.button(
-            [
-              h.Class(model.draftKind === kind ? 'segment on' : 'segment'),
-              h.AriaPressed(model.draftKind === kind ? 'true' : 'false'),
-              h.OnClick(Message.ClickedKind({ kind })),
-            ],
-            [KIND_LABELS[kind]],
-          ),
+          h.button
+            .class(model.draftKind === kind ? 'segment on' : 'segment')
+            .attr('aria-pressed', model.draftKind === kind ? 'true' : 'false')
+            .on('click', Message.ClickedKind({ kind }))
+            .children(KIND_LABELS[kind]),
         ),
       ),
-      h.p(
-        [h.Class('pin-line')],
-        [
-          pinLine(model),
-          ...(hasDraftSpot(model)
-            ? [
-                h.button(
-                  [h.Class('link'), h.OnClick(Message.ClickedClearPin())],
-                  [model.tab === 'Rooms' ? 'Clear tiles' : 'Remove pin'],
-                ),
-              ]
-            : []),
-        ],
-      ),
-      h.textarea([
-        h.Rows(4),
-        h.Placeholder(PLACEHOLDERS[model.draftKind]),
-        h.Value(model.note),
-        h.OnInput(value => Message.UpdatedNote({ value })),
-      ]),
-      h.button(
-        [
-          h.Class(`send ${model.sendStatus === 'Sent' ? 'sent-ok' : ''}`),
-          h.Disabled(
-            String.isEmpty(String.trim(model.note)) ||
-              model.sendStatus === 'Sending',
-          ),
-          h.OnClick(Message.ClickedSend()),
-        ],
-        [SEND_LABELS[model.sendStatus]],
-      ),
-    ],
+    h.p.class('pin-line').children(
+      pinLine(model),
+      ...(hasDraftSpot(model)
+        ? [
+            h.button
+              .class('link')
+              .on('click', Message.ClickedClearPin())
+              .children(model.tab === 'Rooms' ? 'Clear tiles' : 'Remove pin'),
+          ]
+        : []),
+    ),
+    h.textarea
+      .attr('rows', '4')
+      .attr('placeholder', PLACEHOLDERS[model.draftKind])
+      .value(model.note)
+      .on('input', ({ value }) => Message.UpdatedNote({ value })),
+    h.button
+      .class(`send ${model.sendStatus === 'Sent' ? 'sent-ok' : ''}`)
+      .disabled(
+        String.isEmpty(String.trim(model.note)) ||
+          model.sendStatus === 'Sending',
+      )
+      .on('click', Message.ClickedSend())
+      .children(SEND_LABELS[model.sendStatus]),
   )
 
-const statusChip = (note: StoredNote, h: StudioViewBuilder): Html =>
+const statusChip = (note: StoredNote, h: StudioH): StudioHtml =>
   note.status === 'Done'
-    ? h.span([h.Class('chip done')], ['Done'])
-    : h.span([h.Class('chip waiting')], ['Waiting for Claude'])
+    ? h.span.class('chip done').children('Done')
+    : h.span.class('chip waiting').children('Waiting for Claude')
 
-const noteCard = (
-  number: number,
-  note: StoredNote,
-  h: StudioViewBuilder,
-): Html =>
-  h.li(
-    [
-      h.Key(note.noteId),
-      h.Class(`note ${note.status === 'Done' ? 'is-done' : ''}`),
-    ],
-    [
-      h.div(
-        [h.Class('note-head')],
-        [
-          h.span([h.Class('note-number')], [`${number}`]),
-          h.span([], [KIND_ICONS[note.kind]]),
+const noteCard = (number: number, note: StoredNote, h: StudioH): StudioHtml =>
+  h.li
+    .key(note.noteId)
+    .class(`note ${note.status === 'Done' ? 'is-done' : ''}`)
+    .children(
+      h.div
+        .class('note-head')
+        .children(
+          h.span.class('note-number').children(`${number}`),
+          h.span.children(KIND_ICONS[note.kind]),
           statusChip(note, h),
-        ],
-      ),
-      h.p([h.Class('note-text')], [note.note]),
+        ),
+      h.p.class('note-text').children(note.note),
       ...(note.status === 'Done'
         ? [
-            h.p(
-              [h.Class('reply')],
-              [h.span([h.Class('reply-from')], ['Claude']), note.reply],
-            ),
+            h.p
+              .class('reply')
+              .children(
+                h.span.class('reply-from').children('Claude'),
+                note.reply,
+              ),
             ...(note.hasBefore
               ? [
-                  h.div(
-                    [h.Class('before-now')],
-                    [
-                      h.figure(
-                        [],
-                        [
-                          h.img([
-                            h.Src(`${BEFORE_PATH}${note.noteId}.png`),
-                            h.Alt('How it looked before'),
-                          ]),
-                          h.figcaption([], ['Before']),
-                        ],
+                  h.div
+                    .class('before-now')
+                    .children(
+                      h.figure.children(
+                        h.img
+                          .attr('src', `${BEFORE_PATH}${note.noteId}.png`)
+                          .attr('alt', 'How it looked before'),
+                        h.figcaption.children('Before'),
                       ),
-                      h.p([h.Class('now-hint')], ['Now: shown above']),
-                    ],
-                  ),
+                      h.p.class('now-hint').children('Now: shown above'),
+                    ),
                 ]
               : []),
           ]
         : []),
-    ],
-  )
+    )
 
 const notesHereView = (
   model: Model,
   targetId: string,
-  h: StudioViewBuilder,
-): Html => {
+  h: StudioH,
+): StudioHtml => {
   const notes = notesFor(model, targetId)
-  return h.section(
-    [h.Class('notes-here')],
-    [
-      h.h3([], ['Notes about this']),
+  return h.section
+    .class('notes-here')
+    .children(
+      h.h3.children('Notes about this'),
       Array.isReadonlyArrayEmpty(notes)
-        ? h.p([h.Class('quiet')], ['No notes yet.'])
-        : h.ol(
-            [h.Class('notes')],
-            Array.map(Array.reverse(numberedNotes(notes)), ([number, note]) =>
-              noteCard(number, note, h),
+        ? h.p.class('quiet').children('No notes yet.')
+        : h.ol
+            .class('notes')
+            .children(
+              Array.map(Array.reverse(numberedNotes(notes)), ([number, note]) =>
+                noteCard(number, note, h),
+              ),
             ),
-          ),
-    ],
-  )
+    )
 }
 
 const titleOfTarget = (targetId: string): string =>
@@ -237,116 +215,87 @@ const titleOfTarget = (targetId: string): string =>
       }),
   })
 
-const allNotesView = (model: Model, h: StudioViewBuilder): Html => {
+const allNotesView = (model: Model, h: StudioH): StudioHtml => {
   const waiting = Array.filter(
     model.notes,
     note => note.status === 'Open',
   ).length
   const done = model.notes.length - waiting
-  return h.section(
-    [h.Class('all-notes')],
-    [
-      h.h3([], ['All your notes']),
-      h.p(
-        [h.Class('quiet')],
-        [
-          Array.isReadonlyArrayEmpty(model.notes)
-            ? 'Notes you send show up here, and turn green when Claude has done them.'
-            : `${waiting} waiting · ${done} done`,
-        ],
+  return h.section.class('all-notes').children(
+    h.h3.children('All your notes'),
+    h.p
+      .class('quiet')
+      .children(
+        Array.isReadonlyArrayEmpty(model.notes)
+          ? 'Notes you send show up here, and turn green when Claude has done them.'
+          : `${waiting} waiting · ${done} done`,
       ),
-      h.ul(
-        [h.Class('all-list')],
-        Array.map(Array.reverse(model.notes), note =>
-          h.li(
-            [h.Key(note.noteId)],
-            [
-              h.button(
-                [
-                  h.Class('all-row'),
-                  h.OnClick(
-                    Message.ClickedNote({
-                      tab: model.tab,
-                      targetId: note.targetId,
-                    }),
-                  ),
-                ],
-                [
-                  h.span([
-                    h.Class(
-                      note.status === 'Done' ? 'dot done' : 'dot waiting',
-                    ),
-                  ]),
-                  h.span(
-                    [h.Class('all-title')],
-                    [titleOfTarget(note.targetId)],
-                  ),
-                  h.span([h.Class('all-text')], [note.note]),
-                ],
-              ),
-            ],
-          ),
+    h.ul.class('all-list').children(
+      Array.map(Array.reverse(model.notes), note =>
+        h.li.key(note.noteId).children(
+          h.button
+            .class('all-row')
+            .on(
+              'click',
+              Message.ClickedNote({
+                tab: model.tab,
+                targetId: note.targetId,
+              }),
+            )
+            .children(
+              h.span.class(note.status === 'Done' ? 'dot done' : 'dot waiting'),
+              h.span.class('all-title').children(titleOfTarget(note.targetId)),
+              h.span.class('all-text').children(note.note),
+            ),
         ),
       ),
-    ],
+    ),
   )
 }
 
 export const inspectorView: {
-  (h: StudioViewBuilder): (model: Model) => Html
-  (model: Model, h: StudioViewBuilder): Html
-} = Function.dual(2, (model: Model, h: StudioViewBuilder): Html =>
-  h.aside(
-    [h.Class('inspector')],
-    [
-      ...(model.isInboxOnline
-        ? []
-        : [
-            h.p(
-              [h.Class('offline')],
-              [
-                'Can’t reach the studio. Is `bun dev` still running? Notes will send once it’s back.',
-              ],
+  (model: Model): (h: StudioH) => StudioHtml
+  (h: StudioH, model: Model): StudioHtml
+} = Function.dual(2, (h: StudioH, model: Model): StudioHtml =>
+  h.aside.class('inspector').children(
+    ...(model.isInboxOnline
+      ? []
+      : [
+          h.p
+            .class('offline')
+            .children(
+              'Can’t reach the studio. Is `bun dev` still running? Notes will send once it’s back.',
             ),
-          ]),
-      ...Option.match(pickedOf(model), {
-        onNone: () => [
-          h.section(
-            [h.Class('empty-pick')],
-            [
-              h.h2([], ['Pick something to look at']),
-              h.p(
-                [],
-                [
-                  'Tap any picture to see it big, then tell Claude what you’d like changed.',
-                ],
-              ),
-            ],
+        ]),
+    ...Option.match(pickedOf(model), {
+      onNone: () => [
+        h.section
+          .class('empty-pick')
+          .children(
+            h.h2.children('Pick something to look at'),
+            h.p.children(
+              'Tap any picture to see it big, then tell Claude what you’d like changed.',
+            ),
           ),
-        ],
-        onSome: picked => [
-          h.section(
-            [h.Class('picked')],
-            [
-              h.h2([], [picked.title]),
-              h.details(
-                [],
-                [
-                  h.summary([], ['Details for Claude']),
-                  h.p([h.Class('quiet')], [picked.id]),
-                  h.p([h.Class('quiet')], [picked.source]),
-                ],
-              ),
-            ],
+      ],
+      onSome: picked => [
+        h.section
+          .class('picked')
+          .children(
+            h.h2.children(picked.title),
+            h.details.children(
+              h.summary.children('Details for Claude'),
+              h.p.class('quiet').children(picked.id),
+              h.p.class('quiet').children(picked.source),
+            ),
           ),
-          composerView(model, h),
-          ...Option.match(targetIdOf(model), {
-            onNone: () => [],
-            onSome: targetId => [notesHereView(model, targetId, h)],
-          }),
-        ],
-      }),
-      allNotesView(model, h),
-    ],
+        composerView(model, h),
+        ...Option.match(targetIdOf(model), {
+          onNone: () => [],
+          onSome: targetId => [notesHereView(model, targetId, h)],
+        }),
+      ],
+    }),
+    allNotesView(model, h),
   ),
 )

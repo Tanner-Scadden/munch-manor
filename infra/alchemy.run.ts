@@ -40,8 +40,8 @@ const apiDomain = (stage: string) =>
   stage === PRODUCTION_STAGE ? { domain: `api.${DOMAIN}` } : {}
 
 // NOTE: the Worker imports src/platform/analytics.ts, which the game shares, so its
-// `effect` import would resolve from the game's node_modules (Foldkit pins an
-// older Effect). The alias bundles infra's one copy of Effect for the shared
+// `effect` import would resolve from the game's node_modules (a second copy
+// of Effect). The alias bundles infra's one copy of Effect for the shared
 // Schema and the HttpApi alike. It points at the built files, since an alias
 // skips the package's exports map: `effect/Schema` becomes `dist/Schema`.
 const infraEffect = Effect.map(Path.Path, path =>
@@ -176,7 +176,7 @@ const Website = (apiUrl: Output.Output<string | undefined>) =>
     const stage = yield* Alchemy.Stage
     const path = yield* Path.Path
 
-    return yield* Cloudflare.Website.Foldkit('Website', {
+    return yield* Cloudflare.Website.Vite('Website', {
       name: workerName(stage),
       ...gameDomain(stage),
       rootDir: path.resolve(import.meta.dirname, '..'),

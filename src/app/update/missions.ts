@@ -1,5 +1,4 @@
 import { Option } from 'effect'
-import { Update } from 'foldkit'
 
 import { maybeRerollFor, rerollMission } from '../../features/missions/missions'
 import { stepWhen } from '../../shared/stepWhen'
@@ -17,16 +16,11 @@ const canReroll = (model: Model, slot: number): boolean =>
 // NOTE: the day's missions (src/features/missions/message.ts): the home
 // card opens their panel, and a slot's dice spends the day's one reroll.
 export const missionHandlers = defineHandlers({
-  ClickedMissionsButton: model =>
-    Update.combineSteps(model, [unlockAudio, tapSound, openMissions]),
+  ClickedMissionsButton: combine([unlockAudio, tapSound, openMissions]),
 
-  ClickedRerollButton: (model, { slot }) =>
+  ClickedRerollButton: ($, { slot }) =>
     stepWhen(
-      (stepModel: Model) => canReroll(stepModel, slot),
-      stepModel =>
-        combine(stepModel, [
-          modelStep(rolled => rerollMission(rolled, slot)),
-          tapSound,
-        ]),
-    )(model),
+      (model: Model) => canReroll(model, slot),
+      combine([modelStep(model => rerollMission(model, slot)), tapSound]),
+    )($),
 })

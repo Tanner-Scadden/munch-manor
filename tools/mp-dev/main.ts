@@ -17,6 +17,7 @@ import {
   Effect,
   Match,
   Option,
+  Record,
   Ref,
   Result,
   Schema,
@@ -101,6 +102,16 @@ const byId = <T extends HTMLElement>(id: string, type: new () => T): T => {
   return found
 }
 
+// NOTE: the room's picture is an SVG over the arena's own units, stretched
+// to its box as the page's CSS sizes it.
+const worldSvg = (): SVGSVGElement => {
+  const found = document.getElementById('world')
+  if (!(found instanceof SVGSVGElement)) {
+    throw new Error('No #world')
+  }
+  return found
+}
+
 const ui = {
   name: byId('name', HTMLInputElement),
   quick: byId('quick', HTMLButtonElement),
@@ -119,7 +130,7 @@ const ui = {
   ready: byId('ready', HTMLButtonElement),
   end: byId('end', HTMLButtonElement),
   leave: byId('leave', HTMLButtonElement),
-  canvas: byId('world', HTMLCanvasElement),
+  world: worldSvg(),
   stats: byId('stats', HTMLPreElement),
   status: byId('status', HTMLPreElement),
   debug: byId('debug', HTMLPreElement),
@@ -389,17 +400,17 @@ const listenToControls = (): Controls => {
   })
   window.addEventListener('blur', () => controls.keys.clear())
   const toArena = (event: PointerEvent) => {
-    const box = ui.canvas.getBoundingClientRect()
+    const box = ui.world.getBoundingClientRect()
     return {
       x: ((event.clientX - box.left) / box.width) * ARENA_WIDTH + ARENA_LEFT,
       y: ((event.clientY - box.top) / box.height) * ARENA_HEIGHT + ARENA_TOP,
     }
   }
-  ui.canvas.addEventListener('pointerdown', event => {
-    ui.canvas.setPointerCapture(event.pointerId)
+  ui.world.addEventListener('pointerdown', event => {
+    ui.world.setPointerCapture(event.pointerId)
     controls.pointer.at = Option.some(toArena(event))
   })
-  ui.canvas.addEventListener('pointermove', event => {
+  ui.world.addEventListener('pointermove', event => {
     if (Option.isSome(controls.pointer.at)) {
       controls.pointer.at = Option.some(toArena(event))
     }
@@ -407,8 +418,8 @@ const listenToControls = (): Controls => {
   const release = () => {
     controls.pointer.at = Option.none()
   }
-  ui.canvas.addEventListener('pointerup', release)
-  ui.canvas.addEventListener('pointercancel', release)
+  ui.world.addEventListener('pointerup', release)
+  ui.world.addEventListener('pointercancel', release)
   return controls
 }
 
@@ -472,96 +483,162 @@ const nameOfSlot = (lobby: Option.Option<Lobby>, slot: number): string =>
     { onNone: () => `Player ${slot + 1}`, onSome: member => member.name },
   )
 
+const SVG_NS = 'http://www.w3.org/2000/svg'
+
+// NOTE: one SVG element with its attributes, and its text if any.
+const svgOf = (
+  tag: string,
+  attributes: Readonly<Record<string, string | number>>,
+  text?: string,
+): SVGElement => {
+  const element = document.createElementNS(SVG_NS, tag)
+  Array.forEach(Record.toEntries(attributes), ([name, value]) => {
+    element.setAttribute(name, `${value}`)
+  })
+  if (text !== undefined) {
+    element.textContent = text
+  }
+  return element
+}
+
 const draw = (
   world: Option.Option<RoomWorld>,
   play: Play,
   lobby: Option.Option<Lobby>,
 ) => {
-  const context = ui.canvas.getContext('2d')
-  if (context === null) {
-    return
-  }
-  context.fillStyle = '#1d1a26'
-  context.fillRect(0, 0, ARENA_WIDTH, ARENA_HEIGHT)
-  context.strokeStyle = '#3b3350'
-  context.strokeRect(0.5, 0.5, ARENA_WIDTH - 1, ARENA_HEIGHT - 1)
+  ui.world.setAttribute('viewBox', `0 0 ${ARENA_WIDTH} ${ARENA_HEIGHT}`)
+  ui.world.setAttribute('preserveAspectRatio', 'none')
+  const shapes: Array<SVGElement> = [
+    svgOf('rect', {
+      x: 0,
+      y: 0,
+      width: ARENA_WIDTH,
+      height: ARENA_HEIGHT,
+      fill: '#1d1a26',
+    }),
+    svgOf('rect', {
+      x: 0.5,
+      y: 0.5,
+      width: ARENA_WIDTH - 1,
+      height: ARENA_HEIGHT - 1,
+      fill: 'none',
+      stroke: '#3b3350',
+    }),
+  ]
+  const text = (
+    content: string,
+    x: number,
+    y: number,
+    size: number,
+    fill: string,
+    anchor: 'start' | 'middle' = 'start',
+  ): SVGElement =>
+    svgOf(
+      'text',
+      {
+        x,
+        y,
+        fill,
+        'font-family': 'monospace',
+        'font-size': size,
+        'text-anchor': anchor,
+      },
+      content,
+    )
   Option.match(world, {
     onNone: () => {
-      context.fillStyle = '#a99cc4'
-      context.font = '16px monospace'
-      context.fillText(
-        Option.match(lobby, {
-          onNone: () => 'Create or join a room',
-          onSome: current =>
-            current.status === 'Playing'
-              ? 'Connecting to the game...'
-              : `Room ${current.code}: the run starts when everyone is READY.`,
-        }),
-        20,
-        30,
+      shapes.push(
+        text(
+          Option.match(lobby, {
+            onNone: () => 'Create or join a room',
+            onSome: current =>
+              current.status === 'Playing'
+                ? 'Connecting to the game...'
+                : `Room ${current.code}: the run starts when everyone is READY.`,
+          }),
+          20,
+          30,
+          16,
+          '#a99cc4',
+        ),
       )
     },
     onSome: drawn => {
       const level = levelOf(drawn.world)
-      context.save()
-      context.translate(-ARENA_LEFT, -ARENA_TOP)
-      context.strokeStyle = '#3b3350'
-      context.strokeRect(
-        level.bounds.left,
-        level.bounds.top,
-        level.bounds.right - level.bounds.left,
-        level.bounds.bottom - level.bounds.top,
+      const room = svgOf('g', {
+        transform: `translate(${-ARENA_LEFT} ${-ARENA_TOP})`,
+      })
+      room.append(
+        svgOf('rect', {
+          x: level.bounds.left,
+          y: level.bounds.top,
+          width: level.bounds.right - level.bounds.left,
+          height: level.bounds.bottom - level.bounds.top,
+          fill: 'none',
+          stroke: '#3b3350',
+        }),
       )
       Array.forEach(drawn.world.zombies, zombie => {
-        context.fillStyle = '#5f8f3e'
-        context.beginPath()
-        context.arc(zombie.x, zombie.y, WALKER_RADIUS, 0, Math.PI * 2)
-        context.fill()
+        room.append(
+          svgOf('circle', {
+            cx: zombie.x,
+            cy: zombie.y,
+            r: WALKER_RADIUS,
+            fill: '#5f8f3e',
+          }),
+        )
       })
       Array.forEach(drawn.world.bullets, bullet => {
-        context.fillStyle = '#ffe9a8'
-        context.fillRect(bullet.x - 1, bullet.y - 1, 2, 2)
+        room.append(
+          svgOf('rect', {
+            x: bullet.x - 1,
+            y: bullet.y - 1,
+            width: 2,
+            height: 2,
+            fill: '#ffe9a8',
+          }),
+        )
       })
       Array.forEach(playersOf(drawn.world), ({ seat, player }) => {
         const { slot } = seat
         const mine = Option.exists(play.slot, own => own === slot)
         const away = seat.presence === 'Away'
-        context.globalAlpha = away ? 0.35 : 1
-        context.fillStyle = SLOT_COLORS[slot] ?? '#fff'
-        context.beginPath()
-        context.arc(player.x, player.y, DOT_RADIUS, 0, Math.PI * 2)
-        context.fill()
-        if (mine) {
-          context.strokeStyle = '#fff'
-          context.lineWidth = 2
-          context.stroke()
-        }
-        context.fillStyle = '#e8e2f0'
-        context.font = '9px monospace'
-        context.textAlign = 'center'
-        context.fillText(
-          `${nameOfSlot(lobby, slot)} ${seat.kills}${away ? ' away' : ''}`,
-          player.x,
-          player.y - DOT_RADIUS - 3,
+        const body = svgOf('g', { opacity: away ? 0.35 : 1 })
+        body.append(
+          svgOf('circle', {
+            cx: player.x,
+            cy: player.y,
+            r: DOT_RADIUS,
+            fill: SLOT_COLORS[slot] ?? '#fff',
+            ...(mine ? { stroke: '#fff', 'stroke-width': 2 } : {}),
+          }),
+          text(
+            `${nameOfSlot(lobby, slot)} ${seat.kills}${away ? ' away' : ''}`,
+            player.x,
+            player.y - DOT_RADIUS - 3,
+            9,
+            '#e8e2f0',
+            'middle',
+          ),
         )
-        context.textAlign = 'start'
-        context.globalAlpha = 1
+        room.append(body)
       })
-      context.restore()
-      context.fillStyle = '#a99cc4'
-      context.font = '10px monospace'
-      context.fillText(
-        `tick ${drawn.tick}  ${drawn.world.phase._tag}${'wave' in drawn.world.phase ? ` ${drawn.world.phase.wave}` : ''}`,
-        6,
-        ARENA_HEIGHT - 6,
+      shapes.push(
+        room,
+        text(
+          `tick ${drawn.tick}  ${drawn.world.phase._tag}${'wave' in drawn.world.phase ? ` ${drawn.world.phase.wave}` : ''}`,
+          6,
+          ARENA_HEIGHT - 6,
+          10,
+          '#a99cc4',
+        ),
       )
     },
   })
   if (play.phase._tag === 'Ended') {
-    context.fillStyle = '#ffd36e'
-    context.font = '16px monospace'
-    context.fillText(`Game over: ${play.phase.reason}`, 20, 54)
+    shapes.push(text(`Game over: ${play.phase.reason}`, 20, 54, 16, '#ffd36e'))
   }
+  ui.world.replaceChildren(...shapes)
 }
 
 const shortId = (playerId: string) => String.slice(0, 6)(playerId)

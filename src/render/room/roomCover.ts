@@ -1,5 +1,4 @@
 import { Array, Function, Option, Record, Result, pipe } from 'effect'
-import type { Canvas } from 'foldkit'
 
 import { type Palette, mirrorRows } from '../../art/sprite'
 import { TILE_SIZE } from '../../shared/constants'
@@ -11,6 +10,7 @@ import {
   symbolAt,
   tilesWithSymbol,
 } from '../../world/level/tileGrid'
+import type * as Draw from '../draw'
 import { pixelArt, rect } from '../drawing'
 import {
   fridgeShapes,
@@ -81,7 +81,7 @@ const blockAt = (level: Level, symbol: string, { column, row }: Tile): Box => ({
   height: runLength(level, symbol, column, row, 0, 1) * TILE_SIZE,
 })
 
-export const coverShadow = ({ x, y, width, height }: Box): Canvas.Shape =>
+export const coverShadow = ({ x, y, width, height }: Box): Draw.Shape =>
   rect(x + 2, y + height, width - 2, 2, COVER_SHADOW_COLOR)
 
 // NOTE: west of the middle of the room the box stands in, or of the whole
@@ -113,7 +113,7 @@ const pianoShapes = ({
   y,
   width,
   height,
-}: Box): ReadonlyArray<Canvas.Shape> => {
+}: Box): ReadonlyArray<Draw.Shape> => {
   const bottom = y + height
   const keysY = bottom - 13
   const keyCount = Math.floor((width - 4) / 2)
@@ -162,7 +162,7 @@ const pianoShapes = ({
 }
 
 // NOTE: a sconce on the hearth's wall, y the top of that wall.
-const sconce = (x: number, y: number): ReadonlyArray<Canvas.Shape> => [
+const sconce = (x: number, y: number): ReadonlyArray<Draw.Shape> => [
   rect(x - 4, y + 4, 10, 11, 'rgba(255, 200, 90, 0.08)'),
   rect(x - 2, y + 5, 6, 8, 'rgba(255, 200, 90, 0.1)'),
   rect(x, y + 6, 2, 2, FLAME_COLOR),
@@ -181,7 +181,7 @@ const hearthShapes = ({
   y,
   width,
   height,
-}: Box): ReadonlyArray<Canvas.Shape> => {
+}: Box): ReadonlyArray<Draw.Shape> => {
   const centerX = x + width / 2
   const bottom = y + height
   // NOTE: the hearth stands against its room's north wall, so its chimney
@@ -289,7 +289,7 @@ const booksOnShelf = (
   floorY: number,
   room: number,
   shelf: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const widths = Array.makeBy(Math.floor((right - left) / 2), index =>
     roll(shelf, index + 300) < 0.15
       ? 0
@@ -325,7 +325,7 @@ const bookshelfShapes = ({
   y,
   width,
   height,
-}: Box): ReadonlyArray<Canvas.Shape> => {
+}: Box): ReadonlyArray<Draw.Shape> => {
   // NOTE: the bookshelf stands against its room's north wall and rises up
   // it, so it is drawn from the top of that wall, two rows above.
   const wallTop = y - TILE_SIZE * 2
@@ -402,7 +402,7 @@ const ARMCHAIR_PALETTE: Palette = {
   l: '#1a120e',
 }
 
-const armchairShapes = (box: Box, level: Level): ReadonlyArray<Canvas.Shape> =>
+const armchairShapes = (box: Box, level: Level): ReadonlyArray<Draw.Shape> =>
   pixelArt(
     box.x,
     box.y - 1,
@@ -412,7 +412,7 @@ const armchairShapes = (box: Box, level: Level): ReadonlyArray<Canvas.Shape> =>
 
 // NOTE: the sofa faces the fire, so the room sees its tufted back, with a
 // pillow and a rip that spills stuffing.
-const couchShapes = ({ x, y, width }: Box): ReadonlyArray<Canvas.Shape> => {
+const couchShapes = ({ x, y, width }: Box): ReadonlyArray<Draw.Shape> => {
   const cushion = Math.floor((width - 8) / 3)
   return [
     rect(x + 3, y - 2, width - 6, 4, '#a33a52'),
@@ -444,10 +444,7 @@ const couchShapes = ({ x, y, width }: Box): ReadonlyArray<Canvas.Shape> => {
   ]
 }
 
-const teaTableShapes = (
-  box: Box,
-  level: Level,
-): ReadonlyArray<Canvas.Shape> => {
+const teaTableShapes = (box: Box, level: Level): ReadonlyArray<Draw.Shape> => {
   const { x, y } = box
   const setting = isWestHalf(box, level)
     ? [
@@ -522,7 +519,7 @@ const FERN_PALETTE: Palette = {
   o: '#6a3820',
 }
 
-const fernShapes = ({ x, y }: Box): ReadonlyArray<Canvas.Shape> =>
+const fernShapes = ({ x, y }: Box): ReadonlyArray<Draw.Shape> =>
   pixelArt(x, y - 2, FERN_PIXELS, FERN_PALETTE)
 
 // NOTE: the coffin's lid has slid down, and something inside is peeking out.
@@ -559,7 +556,7 @@ const COFFIN_PALETTE: Palette = {
   h: GOLD_COLOR,
 }
 
-const coffinShapes = ({ x, y }: Box): ReadonlyArray<Canvas.Shape> =>
+const coffinShapes = ({ x, y }: Box): ReadonlyArray<Draw.Shape> =>
   pixelArt(x, y, COFFIN_PIXELS, COFFIN_PALETTE)
 
 const trunkShapes = ({
@@ -567,7 +564,7 @@ const trunkShapes = ({
   y,
   width,
   height,
-}: Box): ReadonlyArray<Canvas.Shape> => [
+}: Box): ReadonlyArray<Draw.Shape> => [
   rect(x, y, width, height - 1, '#6b4423'),
   rect(x, y - 1, width, 4, '#7a5232'),
   rect(x, y - 1, width, 1, '#9a6a42'),
@@ -588,7 +585,7 @@ const crateShapes = ({
   y,
   width,
   height,
-}: Box): ReadonlyArray<Canvas.Shape> => [
+}: Box): ReadonlyArray<Draw.Shape> => [
   ...Array.flatMap(
     Array.makeBy((width / TILE_SIZE) * (height / TILE_SIZE), index => index),
     index => {
@@ -612,7 +609,7 @@ const crateShapes = ({
 ]
 
 export const COVER_DRAWINGS: Readonly<
-  Record<CoverKind, (box: Box, level: Level) => ReadonlyArray<Canvas.Shape>>
+  Record<CoverKind, (box: Box, level: Level) => ReadonlyArray<Draw.Shape>>
 > = {
   Piano: pianoShapes,
   Hearth: hearthShapes,
@@ -672,7 +669,7 @@ const coverShapes = (
   level: Level,
   symbol: string,
   kind: CoverKind,
-): ReadonlyArray<Canvas.Shape> =>
+): ReadonlyArray<Draw.Shape> =>
   Array.flatMap(coverBlocks(level, symbol), box => {
     const shapes = COVER_DRAWINGS[kind](box, level)
     return Array.isReadonlyArrayNonEmpty(shapes)
@@ -680,7 +677,7 @@ const coverShapes = (
       : []
   })
 
-export const allCoverShapes = (level: Level): ReadonlyArray<Canvas.Shape> =>
+export const allCoverShapes = (level: Level): ReadonlyArray<Draw.Shape> =>
   Array.flatMap(Record.toEntries(COVER_SYMBOLS), ([symbol, kind]) =>
     coverShapes(level, symbol, kind),
   )

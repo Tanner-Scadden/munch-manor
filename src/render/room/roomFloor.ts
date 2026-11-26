@@ -1,11 +1,11 @@
 import { Array, Function, Option, Result, pipe } from 'effect'
-import type { Canvas } from 'foldkit'
 
 import { type Palette, mirrorRows } from '../../art/sprite'
 import { SHAKE_MAX_PX, TILE_SIZE } from '../../shared/constants'
 import type { Level } from '../../world/level/arena'
 import { PARLOUR_ROOM_ID } from '../../world/level/plan'
 import { RATTLES_SYMBOL, tilesWithSymbol } from '../../world/level/tileGrid'
+import type * as Draw from '../draw'
 import { pixelArt, rect } from '../drawing'
 import {
   BLOOD_COLOR,
@@ -67,7 +67,7 @@ export const parlourFloorOf = (level: Level): Floor =>
     }),
   )
 
-const plankRow = (level: Floor, row: number): ReadonlyArray<Canvas.Shape> => {
+const plankRow = (level: Floor, row: number): ReadonlyArray<Draw.Shape> => {
   const y = row * PLANK_HEIGHT
   const joints = Array.sort(
     Array.makeBy(PLANK_JOINTS, index =>
@@ -98,7 +98,7 @@ const plankRowsOf = (level: Floor): number =>
 
 const FLOOR_MARKS_PER_TILE = 70 / (32 * 18)
 
-const floorMark = (level: Floor, index: number): Canvas.Shape => {
+const floorMark = (level: Floor, index: number): Draw.Shape => {
   const x = Math.floor(roll(index, 101) * level.width)
   const plank = Math.floor(roll(index, 102) * plankRowsOf(level))
   const isKnot = roll(index, 103) < 0.4
@@ -116,7 +116,7 @@ const floorMark = (level: Floor, index: number): Canvas.Shape => {
 const planksOf = (
   level: Floor,
   marginPx: number,
-): ReadonlyArray<Canvas.Shape> => [
+): ReadonlyArray<Draw.Shape> => [
   rect(
     -marginPx,
     -marginPx,
@@ -134,13 +134,13 @@ const planksOf = (
 ]
 
 // NOTE: a room alone on its level reaches past its edges by the shake.
-export const boardShapes = (level: Floor): ReadonlyArray<Canvas.Shape> =>
+export const boardShapes = (level: Floor): ReadonlyArray<Draw.Shape> =>
   planksOf(level, SHAKE_MAX_PX)
 
 // NOTE: a slot room's planks stop at its own block, so nothing of it shows
 // in a neighbour's picture and a neighbour's image is the same whichever
 // room rolls in beside it.
-export const slotBoardShapes = (level: Floor): ReadonlyArray<Canvas.Shape> =>
+export const slotBoardShapes = (level: Floor): ReadonlyArray<Draw.Shape> =>
   planksOf(level, 0)
 
 // RUG
@@ -159,14 +159,14 @@ const diamond = (
   centerY: number,
   radius: number,
   fill: string,
-): ReadonlyArray<Canvas.Shape> =>
+): ReadonlyArray<Draw.Shape> =>
   Array.makeBy(radius * 2 + 1, index => {
     const dy = index - radius
     const halfWidth = radius - Math.abs(dy)
     return rect(centerX - halfWidth, centerY + dy, halfWidth * 2 + 1, 1, fill)
   })
 
-export const rugShapes = (rug: Box): ReadonlyArray<Canvas.Shape> => {
+export const rugShapes = (rug: Box): ReadonlyArray<Draw.Shape> => {
   const { x, y, width, height } = rug
   const right = x + width
   const bottom = y + height
@@ -295,7 +295,7 @@ const GLOW_RINGS = 3
 
 // NOTE: the hearth's warm light: a row of nested strips for each pixel row
 // out from the fire, fainter and narrower the farther they are.
-export const fireGlow = (hearth: Box): ReadonlyArray<Canvas.Shape> => {
+export const fireGlow = (hearth: Box): ReadonlyArray<Draw.Shape> => {
   const centerX = Math.floor(hearth.x + hearth.width / 2)
   const top = hearth.y + hearth.height
   return Array.flatMap(
@@ -319,7 +319,7 @@ export const fireGlow = (hearth: Box): ReadonlyArray<Canvas.Shape> => {
 const STALL_MAT_COLOR = '#2c3d33'
 const STALL_MAT_EDGE_COLOR = '#1d2a22'
 
-export const stallMatShapes = (stall: Box): ReadonlyArray<Canvas.Shape> => {
+export const stallMatShapes = (stall: Box): ReadonlyArray<Draw.Shape> => {
   const x = stall.x - 8
   const y = stall.y - 10
   const width = stall.width + 16
@@ -343,7 +343,7 @@ export const stallBox = (level: Level): Option.Option<Box> =>
 
 export const bloodTrail = (
   points: ReadonlyArray<readonly [number, number, number, number]>,
-): ReadonlyArray<Canvas.Shape> =>
+): ReadonlyArray<Draw.Shape> =>
   Array.map(points, ([x, y, width, height]) =>
     rect(x, y, width, height, BLOOD_COLOR),
   )
@@ -351,7 +351,7 @@ export const bloodTrail = (
 // NOTE: slimy footprints walk in from the south door and wander off.
 const SLIME_STEPS = 9
 
-export const slimePrints = (door: Box): ReadonlyArray<Canvas.Shape> =>
+export const slimePrints = (door: Box): ReadonlyArray<Draw.Shape> =>
   Array.makeBy(SLIME_STEPS, index => {
     const isLeft = index % 2 === 0
     return rect(
@@ -381,13 +381,13 @@ export const cobweb: {
     y: number,
     facesRight: boolean,
     facesDown: boolean,
-  ): (x: number) => ReadonlyArray<Canvas.Shape>
+  ): (x: number) => ReadonlyArray<Draw.Shape>
   (
     x: number,
     y: number,
     facesRight: boolean,
     facesDown: boolean,
-  ): ReadonlyArray<Canvas.Shape>
+  ): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   4,
   (
@@ -395,7 +395,7 @@ export const cobweb: {
     y: number,
     facesRight: boolean,
     facesDown: boolean,
-  ): ReadonlyArray<Canvas.Shape> => {
+  ): ReadonlyArray<Draw.Shape> => {
     const flipped = facesRight ? COBWEB_PIXELS : mirrorRows(COBWEB_PIXELS)
     const pixels = facesDown ? flipped : Array.reverse(flipped)
     return pixelArt(

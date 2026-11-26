@@ -1,7 +1,10 @@
 import { Array, Clock, Effect, Option, Queue, Schema, Stream } from 'effect'
-import { Dom } from 'foldkit'
+
+import { Subscription } from '@effect/ui'
 
 import { isRoomFrameDue } from '../domain/onlineRun'
+import type { CoopNet } from '../features/coop/net'
+import { coopSubscriptions } from '../features/coop/subscriptions'
 import {
   MENU_REPEAT_DELAY_MS,
   MENU_REPEAT_MS,
@@ -35,9 +38,8 @@ import {
 import { DARE_LIST_BUTTON_CLASS } from '../screens/game/dareListButton'
 import { isRunUnderway } from '../world/run/arrival'
 import { isRoundActive } from '../world/waves/waves'
-import { makeSubscriptions } from './definition'
 import {
-  FramePace,
+  type FramePace,
   OPEN_GATE,
   framePaceOf,
   gateFor,
@@ -196,23 +198,57 @@ export const updateCheckActivity = (model: Model): Activity =>
     ? 'Active'
     : 'Idle'
 
+// NOTE: a stream of one event on the document or the window, each event
+// read in its own listener, so a handler that calls `preventDefault` does
+// so before the browser acts on the event.
+const listenerStream = <Msg>(
+  attach: (emit: (maybeMessage: Option.Option<Msg>) => void) => () => void,
+): Stream.Stream<Msg> =>
+  Stream.callback<Msg>(queue =>
+    Effect.acquireRelease(
+      Effect.sync(() =>
+        attach(maybeMessage => {
+          if (Option.isSome(maybeMessage)) {
+            Queue.offerUnsafe(queue, maybeMessage.value)
+          }
+        }),
+      ),
+      detach => Effect.sync(detach),
+    ).pipe(Effect.flatMap(() => Effect.never)),
+  )
+
+const documentEvents = <K extends keyof DocumentEventMap, Msg>(
+  type: K,
+  toMessage: (event: DocumentEventMap[K]) => Option.Option<Msg>,
+): Stream.Stream<Msg> =>
+  listenerStream<Msg>(emit => {
+    const listener = (event: DocumentEventMap[K]): void =>
+      emit(toMessage(event))
+    document.addEventListener(type, listener)
+    return () => document.removeEventListener(type, listener)
+  })
+
+const windowEvents = <K extends keyof WindowEventMap, Msg>(
+  type: K,
+  toMessage: (event: WindowEventMap[K]) => Option.Option<Msg>,
+  options?: AddEventListenerOptions,
+): Stream.Stream<Msg> =>
+  listenerStream<Msg>(emit => {
+    const listener = (event: WindowEventMap[K]): void => emit(toMessage(event))
+    window.addEventListener(type, listener, options)
+    return () => window.removeEventListener(type, listener, options)
+  })
+
 const updateCheckMessages = Stream.map(Stream.tick(UPDATE_CHECK_INTERVAL), () =>
   Message.TickedUpdateCheck(),
 )
 
-const keyboardMessages = () =>
-  Stream.merge(
-    Dom.streamFromEventFilterMap({
-      target: document,
-      type: 'keydown',
-      filterMapEvent: keyDownMessage,
-    }),
-    Dom.streamFromEvent({
-      target: document,
-      type: 'keyup',
-      mapEvent: event => Message.ReleasedKey({ code: event.code }),
-    }),
-  )
+const keyboardMessages = Stream.merge(
+  documentEvents('keydown', keyDownMessage),
+  documentEvents('keyup', event =>
+    Option.some(Message.ReleasedKey({ code: event.code })),
+  ),
+)
 
 // NOTE: the watch for a browser extension that grabs keys (src/input/keyGrab.ts).
 // It listens on the window in the capture phase, ahead of anything in the
@@ -229,20 +265,17 @@ const keyWatchMessages = Stream.suspend(() => {
   const capture = { capture: true }
   return Stream.mergeAll<MissedKeyDown, never, never>(
     [
-      Dom.streamFromEventFilterMap({
-        target: window,
-        type: 'keydown',
-        options: capture,
-        filterMapEvent: event => {
+      windowEvents(
+        'keydown',
+        event => {
           seenKeys.add(event.code)
           return Option.none()
         },
-      }),
-      Dom.streamFromEventFilterMap({
-        target: window,
-        type: 'keyup',
-        options: capture,
-        filterMapEvent: event => {
+        capture,
+      ),
+      windowEvents(
+        'keyup',
+        event => {
           const wasSeen = seenKeys.delete(event.code)
           return isGrabbedKeyUp({
             code: event.code,
@@ -255,42 +288,27 @@ const keyWatchMessages = Stream.suspend(() => {
             ? Option.some(Message.MissedKeyDown({ code: event.code }))
             : Option.none()
         },
-      }),
-      Dom.streamFromEventFilterMap({
-        target: window,
-        type: 'blur',
-        filterMapEvent: forget,
-      }),
-      Dom.streamFromEventFilterMap({
-        target: window,
-        type: 'focus',
-        filterMapEvent: forget,
-      }),
-      Dom.streamFromEventFilterMap({
-        target: document,
-        type: 'visibilitychange',
-        filterMapEvent: forget,
-      }),
+        capture,
+      ),
+      windowEvents('blur', forget),
+      windowEvents('focus', forget),
+      documentEvents('visibilitychange', forget),
     ],
     { concurrency: 'unbounded' },
   )
 })
 
-const pointerMoveMessages = () =>
-  Dom.streamFromEventFilterMap({
-    target: document,
-    type: 'pointermove',
-    filterMapEvent: event =>
-      event.pointerType === 'mouse'
-        ? Option.none()
-        : Option.some(
-            Message.MovedPointer({
-              pointerId: event.pointerId,
-              clientX: event.clientX,
-              clientY: event.clientY,
-            }),
-          ),
-  })
+const pointerMoveMessages = documentEvents('pointermove', event =>
+  event.pointerType === 'mouse'
+    ? Option.none()
+    : Option.some(
+        Message.MovedPointer({
+          pointerId: event.pointerId,
+          clientX: event.clientX,
+          clientY: event.clientY,
+        }),
+      ),
+)
 
 // NOTE: the fingers on the glass, so a stick held by a finger whose lift
 // never came (iOS Safari loses one now and then) lets go at the next touch.
@@ -306,58 +324,38 @@ const touchesMessage = (event: TouchEvent): ChangedTouches =>
 // A quick tap can lift its finger before a tracking-only listener is
 // attached, and a missed release leaves the stick held forever. Releasing a
 // pointer that is not tracked changes nothing.
-const pointerReleaseMessages = () =>
-  Stream.mergeAll<
-    ReleasedPointer | CancelledPointer | ChangedTouches,
-    never,
-    never
-  >(
-    [
-      Dom.streamFromEvent({
-        target: document,
-        type: 'pointerup',
-        mapEvent: event =>
-          Message.ReleasedPointer({ pointerId: event.pointerId }),
-      }),
-      Dom.streamFromEvent({
-        target: document,
-        type: 'pointercancel',
-        mapEvent: event =>
-          Message.CancelledPointer({ pointerId: event.pointerId }),
-      }),
-      Dom.streamFromEvent({
-        target: document,
-        type: 'touchstart',
-        mapEvent: touchesMessage,
-      }),
-      Dom.streamFromEvent({
-        target: document,
-        type: 'touchend',
-        mapEvent: touchesMessage,
-      }),
-      Dom.streamFromEvent({
-        target: document,
-        type: 'touchcancel',
-        mapEvent: touchesMessage,
-      }),
-    ],
-    { concurrency: 'unbounded' },
-  )
+const someTouches = (event: TouchEvent): Option.Option<ChangedTouches> =>
+  Option.some(touchesMessage(event))
 
-const mouseMessages = () =>
-  Dom.streamFromEventFilterMap({
-    target: document,
-    type: 'pointermove',
-    filterMapEvent: event =>
-      event.pointerType === 'mouse'
-        ? Option.some(
-            Message.MovedMouse({
-              clientX: event.clientX,
-              clientY: event.clientY,
-            }),
-          )
-        : Option.none(),
-  })
+const pointerReleaseMessages = Stream.mergeAll<
+  ReleasedPointer | CancelledPointer | ChangedTouches,
+  never,
+  never
+>(
+  [
+    documentEvents('pointerup', event =>
+      Option.some(Message.ReleasedPointer({ pointerId: event.pointerId })),
+    ),
+    documentEvents('pointercancel', event =>
+      Option.some(Message.CancelledPointer({ pointerId: event.pointerId })),
+    ),
+    documentEvents('touchstart', someTouches),
+    documentEvents('touchend', someTouches),
+    documentEvents('touchcancel', someTouches),
+  ],
+  { concurrency: 'unbounded' },
+)
+
+const mouseMessages = documentEvents('pointermove', event =>
+  event.pointerType === 'mouse'
+    ? Option.some(
+        Message.MovedMouse({
+          clientX: event.clientX,
+          clientY: event.clientY,
+        }),
+      )
+    : Option.none(),
+)
 
 // NOTE: what the store hears from sync: a save another device or the
 // server changed, the status line for SETTINGS, and how far the player
@@ -508,11 +506,6 @@ const padRepeats = Stream.callback<RepeatedPadDirection>(queue =>
   ).pipe(Effect.flatMap(() => Effect.never)),
 )
 
-const FrameActivity = Schema.Struct({
-  isActive: Schema.Boolean,
-  pace: FramePace,
-})
-
 // NOTE: the co-op room's frame clock, while its game is playing: the time
 // of each animation frame. The root ticks the room with it through the
 // co-op Binding (src/app/update/coop.ts).
@@ -536,229 +529,189 @@ const roomFrameTimes: Stream.Stream<number> = Stream.callback<number>(queue =>
   ).pipe(Effect.flatMap(() => Effect.never)),
 ).pipe(Stream.mapEffect(() => Clock.currentTimeMillis))
 
-export const subscriptions = makeSubscriptions(entry => ({
-  playerSync: entry('PlayerSync', {
-    messages: [
-      Message.UpdatedSyncedSave,
-      Message.UpdatedSyncStatus,
-      Message.UpdatedPlayerScopeStatus,
-    ],
-    handler: function* () {
+// THE SUBSCRIPTIONS
+
+// NOTE: what the store hears from sync, today's day, and what the browser
+// offers to install, each for the life of the page.
+const playerSync = Subscription.make(
+  'PlayerSync',
+  Stream.unwrap(
+    Effect.gen(function* () {
       const store = yield* PlayerStore
-      return () => Stream.map(store.events, syncMessageOf)
-    },
-  }),
-
-  // NOTE: today's day in UTC, from start, then each new day.
-  today: entry('Today', {
-    messages: [Message.ChangedToday],
-    handler: function* () {
-      return () => Stream.map(todays, day => Message.ChangedToday({ day }))
-    },
-  }),
-
-  // NOTE: what the browser offers to install, held by the InstallPrompt
-  // service from the moment the runtime starts.
-  installOffers: entry('InstallOffers', {
-    messages: [Message.ChangedInstallOffer],
-    handler: function* () {
-      const installPrompt = yield* InstallPrompt
-      return () =>
-        Stream.map(installPrompt.offers, installOffer =>
-          Message.ChangedInstallOffer({ installOffer }),
-        )
-    },
-  }),
-
-  frame: entry('Frame', FrameActivity.fields, {
-    messages: [Message.TickedFrame],
-    modelToDependencies: model => ({
-      isActive: isFrameActive(model),
-      pace: framePaceOf(model),
+      return Stream.map(store.events, syncMessageOf)
     }),
-    handler: function* () {
-      return ({ isActive, pace }) =>
-        Stream.when(
-          animationFrames(pace),
-          Effect.sync(() => isActive),
-        )
-    },
-  }),
-
-  roomFrame: entry(
-    'RoomFrame',
-    { isPlaying: Schema.Boolean },
-    {
-      messages: [Message.TickedRoomFrame],
-      modelToDependencies: model => ({ isPlaying: isRoomFrameDue(model) }),
-      handler: function* () {
-        return ({ isPlaying }) =>
-          isPlaying
-            ? Stream.map(roomFrameTimes, nowMs =>
-                Message.TickedRoomFrame({ nowMs }),
-              )
-            : Stream.empty
-      },
-    },
   ),
+)
 
-  gamepad: entry('Gamepad', {
-    messages: [Message.PolledGamepad, Message.DisconnectedGamepad],
-    handler: function* () {
-      return () => (hasGamepads() ? gamepadMessages : Stream.empty)
-    },
-  }),
+// NOTE: today's day in UTC, from start, then each new day.
+const today = Subscription.make(
+  'Today',
+  Stream.map(todays, day => Message.ChangedToday({ day })),
+)
 
-  padRepeat: entry(
-    'PadRepeat',
-    { isMenuUp: Schema.Boolean },
-    {
-      messages: [Message.RepeatedPadDirection],
-      modelToDependencies: model => ({ isMenuUp: isPadMenuUp(model) }),
-      handler: function* () {
-        return ({ isMenuUp }) =>
-          isMenuUp && hasGamepads() ? padRepeats : Stream.empty
-      },
-    },
+// NOTE: what the browser offers to install, held by the InstallPrompt
+// service from the moment the runtime starts.
+const installOffers = Subscription.make(
+  'InstallOffers',
+  Stream.unwrap(
+    Effect.gen(function* () {
+      const installPrompt = yield* InstallPrompt
+      return Stream.map(installPrompt.offers, installOffer =>
+        Message.ChangedInstallOffer({ installOffer }),
+      )
+    }),
   ),
+)
 
-  keyboard: entry('Keyboard', {
-    messages: [Message.PressedKey, Message.PressedMetaKey, Message.ReleasedKey],
-    handler: function* () {
-      return keyboardMessages
-    },
-  }),
+// NOTE: one Subscription per pace, keyed by it, so a change of pace closes
+// the old frame loop before the new one starts.
+const frames: {
+  readonly [Pace in FramePace]: Subscription.Subscription<TickedFrame>
+} = {
+  Play: Subscription.make('Frame', 'Play', animationFrames),
+  Menu: Subscription.make('Frame', 'Menu', animationFrames),
+}
 
-  keyWatch: entry('KeyWatch', {
-    messages: [Message.MissedKeyDown],
-    handler: function* () {
-      return () => keyWatchMessages
-    },
-  }),
+const roomFrame = Subscription.make(
+  'RoomFrame',
+  Stream.map(roomFrameTimes, nowMs => Message.TickedRoomFrame({ nowMs })),
+)
 
-  windowBlur: entry('WindowBlur', {
-    messages: [Message.BlurredWindow],
-    handler: function* () {
-      return () =>
-        Dom.streamFromEventFilterMap({
-          target: window,
-          type: 'blur',
-          filterMapEvent: maybeWindowBlurMessage,
-        })
-    },
-  }),
+const gamepad = Subscription.make(
+  'Gamepad',
+  Stream.suspend(() => (hasGamepads() ? gamepadMessages : Stream.empty)),
+)
 
-  pageVisibility: entry('PageVisibility', {
-    messages: [Message.ChangedPageVisibility],
-    handler: function* () {
-      return () =>
-        Dom.streamFromEvent({
-          target: document,
-          type: 'visibilitychange',
-          mapEvent: () => pageVisibilityMessage(document.visibilityState),
-        })
-    },
-  }),
+const padRepeat = Subscription.make(
+  'PadRepeat',
+  Stream.suspend(() => (hasGamepads() ? padRepeats : Stream.empty)),
+)
 
-  windowFocus: entry('WindowFocus', {
-    messages: [Message.FocusedWindow],
-    handler: function* () {
-      return () =>
-        Dom.streamFromEventFilterMap({
-          target: window,
-          type: 'focus',
-          filterMapEvent: maybeWindowFocusMessage,
-        })
-    },
-  }),
+const keyboard = Subscription.make('Keyboard', keyboardMessages)
 
-  pageRestores: entry('PageRestores', {
-    messages: [Message.RestoredPageFromCache],
-    handler: function* () {
-      return () =>
-        Dom.streamFromEventFilterMap({
-          target: window,
-          type: 'pageshow',
-          filterMapEvent: maybePageShowMessage,
-        })
-    },
-  }),
+const keyWatch = Subscription.make('KeyWatch', keyWatchMessages)
 
-  updateCheck: entry(
-    'UpdateCheck',
-    { activity: Activity },
-    {
-      messages: [Message.TickedUpdateCheck],
-      modelToDependencies: model => ({
-        activity: updateCheckActivity(model),
+const windowBlur = Subscription.make(
+  'WindowBlur',
+  windowEvents('blur', maybeWindowBlurMessage),
+)
+
+const pageVisibility = Subscription.make(
+  'PageVisibility',
+  documentEvents('visibilitychange', () =>
+    Option.some(pageVisibilityMessage(document.visibilityState)),
+  ),
+)
+
+const windowFocus = Subscription.make(
+  'WindowFocus',
+  windowEvents('focus', maybeWindowFocusMessage),
+)
+
+const pageRestores = Subscription.make(
+  'PageRestores',
+  windowEvents('pageshow', maybePageShowMessage),
+)
+
+const updateCheck = Subscription.make('UpdateCheck', updateCheckMessages)
+
+const mouseAim = Subscription.make('MouseAim', mouseMessages)
+
+const pointerReleases = Subscription.make(
+  'PointerReleases',
+  pointerReleaseMessages,
+)
+
+const fullscreenChanges = Subscription.make(
+  'FullscreenChanges',
+  documentEvents('fullscreenchange', () =>
+    Option.some(
+      Message.ChangedFullscreen({
+        fullscreen: document.fullscreenElement === null ? 'Off' : 'On',
       }),
-      handler: function* () {
-        return ({ activity }) =>
-          Stream.when(
-            updateCheckMessages,
-            Effect.sync(() => activity === 'Active'),
-          )
-      },
-    },
+    ),
   ),
+)
 
-  mouseAim: entry(
-    'MouseAim',
-    { activity: Activity },
-    {
-      messages: [Message.MovedMouse],
-      modelToDependencies: model => ({ activity: playingActivity(model) }),
-      handler: function* () {
-        return ({ activity }) =>
-          Stream.when(
-            mouseMessages(),
-            Effect.sync(() => activity === 'Active'),
-          )
-      },
-    },
-  ),
+const trackedPointers = Subscription.make(
+  'TrackedPointers',
+  pointerMoveMessages,
+)
 
-  pointerReleases: entry('PointerReleases', {
-    messages: [
-      Message.ReleasedPointer,
-      Message.CancelledPointer,
-      Message.ChangedTouches,
-    ],
-    handler: function* () {
-      return pointerReleaseMessages
-    },
-  }),
+type AppSubscription = Subscription.Subscription<
+  Message,
+  PlayerStore | InstallPrompt | CoopNet
+>
 
-  fullscreenChanges: entry('FullscreenChanges', {
-    messages: [Message.ChangedFullscreen],
-    handler: function* () {
-      return () =>
-        Dom.streamFromEvent({
-          target: document,
-          type: 'fullscreenchange',
-          mapEvent: () =>
-            Message.ChangedFullscreen({
-              fullscreen: document.fullscreenElement === null ? 'Off' : 'On',
-            }),
-        })
-    },
-  }),
+const ALWAYS: ReadonlyArray<AppSubscription> = [
+  playerSync,
+  today,
+  installOffers,
+  gamepad,
+  keyboard,
+  keyWatch,
+  windowBlur,
+  pageVisibility,
+  windowFocus,
+  pageRestores,
+  pointerReleases,
+  fullscreenChanges,
+]
 
-  trackedPointers: entry(
-    'TrackedPointers',
-    { activity: Activity },
-    {
-      messages: [Message.MovedPointer],
-      modelToDependencies: model => ({
-        activity: pointerTrackingActivity(model),
-      }),
-      handler: function* () {
-        return ({ activity }) =>
-          Stream.when(
-            pointerMoveMessages(),
-            Effect.sync(() => activity === 'Active'),
-          )
-      },
-    },
-  ),
-}))
+// NOTE: the Subscriptions the Model asks for, each gated on it: the frame
+// while a round or a screen moves (at its pace), the room's frame while its
+// game plays, the pad's repeats while a menu is up, the update check in its
+// window, the mouse's aim while a round is on, and a tracked pointer's
+// moves. `subscriptions` runs after every Message, every frame too, so each
+// list of gates is built once and kept by its gates' bits: a frame builds
+// no Subscription and no list.
+const listsByGates = new Map<number, ReadonlyArray<AppSubscription>>()
+
+const listFor = (
+  gates: number,
+  build: () => ReadonlyArray<AppSubscription>,
+): ReadonlyArray<AppSubscription> =>
+  Option.getOrElse(Option.fromUndefinedOr(listsByGates.get(gates)), () => {
+    const built = build()
+    listsByGates.set(gates, built)
+    return built
+  })
+
+const bit = (isOn: boolean, value: number): number => (isOn ? value : 0)
+
+export const subscriptions = ({
+  model,
+}: Readonly<{ model: Model }>): ReadonlyArray<AppSubscription> => {
+  const isFrameOn = isFrameActive(model)
+  const pace = framePaceOf(model)
+  const isRoomOn = isRoomFrameDue(model)
+  const isRepeatOn = isPadMenuUp(model)
+  const isCheckOn = updateCheckActivity(model) === 'Active'
+  const isAimOn = playingActivity(model) === 'Active'
+  const isTrackOn = pointerTrackingActivity(model) === 'Active'
+  const gates =
+    bit(isFrameOn, 1) +
+    bit(pace === 'Menu', 2) +
+    bit(isRoomOn, 4) +
+    bit(isRepeatOn, 8) +
+    bit(isCheckOn, 16) +
+    bit(isAimOn, 32) +
+    bit(isTrackOn, 64)
+  const gated = listFor(gates, () => [
+    ...ALWAYS,
+    ...(isFrameOn ? [frames[pace]] : []),
+    ...(isRoomOn ? [roomFrame] : []),
+    ...(isRepeatOn ? [padRepeat] : []),
+    ...(isCheckOn ? [updateCheck] : []),
+    ...(isAimOn ? [mouseAim] : []),
+    ...(isTrackOn ? [trackedPointers] : []),
+  ])
+  // NOTE: co-op's own (QUICK PLAY's queue, a room's lobby and socket), keyed
+  // by the room's code, so they join the list only while co-op has one: a
+  // frame in single player builds no list.
+  const coop = Array.filter(
+    coopSubscriptions(model.coop),
+    (entry): entry is Exclude<typeof entry, false> => entry !== false,
+  )
+  return Array.isReadonlyArrayNonEmpty(coop) ? [...gated, ...coop] : gated
+}

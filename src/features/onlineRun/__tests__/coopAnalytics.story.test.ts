@@ -1,11 +1,9 @@
 import { Array, Effect, Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { Component, UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 import { type Lobby, NetStats } from '@munch/netcode'
 
-import { CoopBinding } from '../../../app/bindings'
 import { Message } from '../../../app/message'
 import { Lesson, type Model } from '../../../app/model'
 import { initialModel } from '../../../app/pureApp'
@@ -14,7 +12,18 @@ import { Screen, maybeRoomOf } from '../../../domain/coopRoom'
 import type { CrewNetwork, RunSummary } from '../../../platform/analytics'
 import { crewRunKeyOf } from '../../../platform/analyticsRun'
 import { modifyLeadSeat, withSeat } from '../../../test/model.fixture'
-import { APPLICATION, resolveFocusCoop } from '../../../test/testing'
+import {
+  type AppStory,
+  checkModel,
+  expectNoCommand,
+  modelAfter,
+  resolveAll,
+  resolveFocusCoop,
+  resolveRememberRoom,
+  resolveSentSummary,
+  send,
+  steps,
+} from '../../../test/testing'
 import { asVeteran } from '../../../test/veteran'
 import {
   type RoomWorld,
@@ -24,9 +33,8 @@ import {
 import { noModifiers } from '../../../world/run/modifiers'
 import { Phase, RunMode, noKills } from '../../../world/schema/worldSchema'
 import { startWaveEarly } from '../../../world/waves/waves'
-import { Message as CoopMessage } from '../../coop/message'
 import { freshRoom } from '../../coop/roomState'
-import { FocusCoopElement } from '../../coop/steps'
+import { focusCoop } from '../../coop/steps'
 import { CODE, lobbyOf, memberOf, playingSession } from '../../coop/testing'
 import { RememberRoom } from '../../coop/update'
 
@@ -67,15 +75,15 @@ const fighting: RoomWorld = {
 const endedAs = (phase: Phase): RoomWorld => ({
   ...fighting,
   tick: 1,
-  world: modifyFields(fighting.world, { phase: () => phase }),
+  world: UiStruct.evolve(fighting.world, { phase: () => phase }),
 })
 
 // NOTE: a player whose own difficulty is not the room's, so the summary
 // shows which it read.
-const player: Model = modifyFields(asVeteran(initialModel), {
+const player: Model = UiStruct.evolve(asVeteran(initialModel), {
   lessons: lessons =>
-    modifyFields(lessons, { openBreak: () => Lesson.Learned({ atMs: 0 }) }),
-  difficulty: setting => modifyFields(setting, { chosen: () => 'Easy' }),
+    UiStruct.evolve(lessons, { openBreak: () => Lesson.Learned({ atMs: 0 }) }),
+  difficulty: setting => UiStruct.evolve(setting, { chosen: () => 'Easy' }),
   maybeVisitId: () => Option.some(VISIT_ID),
 })
 
@@ -93,9 +101,9 @@ const inRoom = (
   world: RoomWorld,
   { slot, lobby }: Seated = OWN_SEAT,
 ): Model =>
-  modifyFields(model, {
+  UiStruct.evolve(model, {
     coop: coop =>
-      modifyFields(coop, {
+      UiStruct.evolve(coop, {
         screen: () =>
           Screen.InRoom({
             room: Option.match(maybeRoomOf(coop), {
@@ -116,17 +124,12 @@ const inRoom = (
       }),
   })
 
-const roomFrame = (nowMs: number) =>
-  Story.message(Message.TickedRoomFrame({ nowMs }))
+const roomFrame = (nowMs: number) => send(Message.TickedRoomFrame({ nowMs }))
 
 // NOTE: the run under way, drawn from the room once: the Model the next
 // Story starts from, once the room has moved on.
 const midRun = (model: Model = player, seated: Seated = OWN_SEAT) =>
-  Story.story(
-    APPLICATION,
-    Story.given(inRoom(model, fighting, seated)),
-    roomFrame(100),
-  )
+  modelAfter(inRoom(model, fighting, seated), roomFrame(100))
 
 // NOTE: the room's last frame of a run, as the seat's client draws it.
 const endedIn = (phase: Phase, seated: Seated = OWN_SEAT) =>
@@ -135,10 +138,10 @@ const endedIn = (phase: Phase, seated: Seated = OWN_SEAT) =>
   )
 
 // NOTE: LEAVE done: co-op remembers no room and focuses its hub.
-const leaveRoom = Story.steps(
-  Story.messageIn(CoopBinding, CoopMessage.CompletedLeaveRoom()),
-  Story.Command.resolve(RememberRoom, CoopMessage.CompletedRememberRoom()),
-  resolveFocusCoop(),
+const leaveRoom = steps(
+  send(Message.CompletedLeaveRoom()),
+  resolveRememberRoom,
+  resolveFocusCoop,
 )
 
 // NOTE: a room faked with no pings back and no Deltas timed measured
@@ -183,9 +186,9 @@ const laggyNet: NetStats.ClientNet = {
 }
 
 const withRoomNet = (model: Model, net: NetStats.ClientNet): Model =>
-  modifyFields(model, {
+  UiStruct.evolve(model, {
     coop: coop =>
-      modifyFields(coop, {
+      UiStruct.evolve(coop, {
         screen: () =>
           Option.match(maybeRoomOf(coop), {
             onNone: () => coop.screen,
@@ -233,9 +236,9 @@ const crewSummary = (
 const GAME_OVER = { _tag: 'GameOver', killedBy: 'Unknown' } as const
 
 const sent = (summary: RunSummary) =>
-  Story.steps(
-    Story.Command.expectExact(SendRunSummary({ summary })),
-    Story.Command.resolve(SendRunSummary, Message.CompletedSendRunSummary()),
+  steps<AppStory>(
+    s => s.expectExact(SendRunSummary.make({ summary })),
+    resolveSentSummary,
   )
 
 describe("an online co-op run's summary", () => {
@@ -243,11 +246,9 @@ describe("an online co-op run's summary", () => {
     Effect.gen(function* () {
       const running = yield* midRun()
       expect(running.phase._tag).toBe('Wave')
-      yield* Story.story(
-        APPLICATION,
-        Story.given(inRoom(running, fighting)),
-        roomFrame(200),
-        Story.Command.expectNone(),
+      yield* modelAfter(
+        inRoom(running, fighting),
+        steps(roomFrame(200), expectNoCommand),
       )
     }),
   )
@@ -257,14 +258,15 @@ describe("an online co-op run's summary", () => {
     () =>
       Effect.gen(function* () {
         const ended = yield* endedIn(Phase.GameOver({ wave: 1 }))
-        yield* Story.story(
-          APPLICATION,
-          Story.given(ended),
-          roomFrame(200),
-          Story.model(current => {
-            expect(current.phase._tag).toBe('GameOver')
-          }),
-          sent(crewSummary({ outcome: GAME_OVER, wave: 1 })),
+        yield* modelAfter(
+          ended,
+          steps(
+            roomFrame(200),
+            checkModel(current => {
+              expect(current.phase._tag).toBe('GameOver')
+            }),
+            sent(crewSummary({ outcome: GAME_OVER, wave: 1 })),
+          ),
         )
       }),
   )
@@ -272,31 +274,32 @@ describe("an online co-op run's summary", () => {
   it.effect("the summary carries this client's network numbers", () =>
     Effect.gen(function* () {
       const ended = yield* endedIn(Phase.GameOver({ wave: 1 }))
-      yield* Story.story(
-        APPLICATION,
-        Story.given(withRoomNet(ended, laggyNet)),
-        roomFrame(200),
-        sent(
-          crewSummary({
-            outcome: GAME_OVER,
-            wave: 1,
-            party: {
-              ...crewOfThree,
-              network: {
-                rttP50Ms: 65,
-                rttP95Ms: 305,
-                rttSamples: 4,
-                jitterMs: 43,
-                snapshots: 3,
-                lateSnapshots: 1,
-                lateMsMean: 120,
-                lateMsMax: 120,
-                reconnects: 1,
-                corrections: 3,
-                correctionPxMax: 12,
+      yield* modelAfter(
+        withRoomNet(ended, laggyNet),
+        steps(
+          roomFrame(200),
+          sent(
+            crewSummary({
+              outcome: GAME_OVER,
+              wave: 1,
+              party: {
+                ...crewOfThree,
+                network: {
+                  rttP50Ms: 65,
+                  rttP95Ms: 305,
+                  rttSamples: 4,
+                  jitterMs: 43,
+                  snapshots: 3,
+                  lateSnapshots: 1,
+                  lateMsMean: 120,
+                  lateMsMax: 120,
+                  reconnects: 1,
+                  corrections: 3,
+                  correctionPxMax: 12,
+                },
               },
-            },
-          }),
+            }),
+          ),
         ),
       )
     }),
@@ -305,41 +308,41 @@ describe("an online co-op run's summary", () => {
   it.effect('leaving keeps the numbers the room measured', () =>
     Effect.gen(function* () {
       const playing = yield* midRun()
-      const running = yield* Story.story(
-        APPLICATION,
-        Story.given(withRoomNet(playing, laggyNet)),
+      const running = yield* modelAfter(
+        withRoomNet(playing, laggyNet),
         roomFrame(150),
       )
-      yield* Story.story(
-        APPLICATION,
-        Story.given(running),
-        leaveRoom,
-        Story.model(current => {
-          expect(Option.isNone(maybeRoomOf(current.coop))).toBe(true)
-        }),
-        sent(
-          crewSummary({
-            outcome: { _tag: 'Quit' },
-            wave: 1,
-            runMs: 100,
-            party: {
-              ...crewOfThree,
-              network: {
-                ...unmeasured,
-                rttP50Ms: 65,
-                rttP95Ms: 305,
-                rttSamples: 4,
-                jitterMs: 43,
-                snapshots: 3,
-                lateSnapshots: 1,
-                lateMsMean: 120,
-                lateMsMax: 120,
-                reconnects: 1,
-                corrections: 3,
-                correctionPxMax: 12,
-              },
-            },
+      yield* modelAfter(
+        running,
+        steps(
+          leaveRoom,
+          checkModel(current => {
+            expect(Option.isNone(maybeRoomOf(current.coop))).toBe(true)
           }),
+          sent(
+            crewSummary({
+              outcome: { _tag: 'Quit' },
+              wave: 1,
+              runMs: 100,
+              party: {
+                ...crewOfThree,
+                network: {
+                  ...unmeasured,
+                  rttP50Ms: 65,
+                  rttP95Ms: 305,
+                  rttSamples: 4,
+                  jitterMs: 43,
+                  snapshots: 3,
+                  lateSnapshots: 1,
+                  lateMsMean: 120,
+                  lateMsMax: 120,
+                  reconnects: 1,
+                  corrections: 3,
+                  correctionPxMax: 12,
+                },
+              },
+            }),
+          ),
         ),
       )
     }),
@@ -350,24 +353,26 @@ describe("an online co-op run's summary", () => {
     () =>
       Effect.gen(function* () {
         const ended = yield* endedIn(Phase.Escaped({ wave: 10 }))
-        yield* Story.story(
-          APPLICATION,
-          Story.given(ended),
-          roomFrame(200),
-          Story.model(current => {
-            expect(current.phase._tag).toBe('Escaped')
-          }),
-          sent(crewSummary({ outcome: { _tag: 'Escaped' }, wave: 10 })),
-          Story.messageIn(CoopBinding, CoopMessage.CompletedLeaveRoom()),
-          Story.Command.expectExact(RememberRoom, FocusCoopElement),
-          Story.model(current => {
-            expect(current.phase._tag).toBe('Ready')
-          }),
-          Story.Command.resolve(
-            RememberRoom,
-            CoopMessage.CompletedRememberRoom(),
+        yield* modelAfter(
+          ended,
+          steps(
+            roomFrame(200),
+            checkModel(current => {
+              expect(current.phase._tag).toBe('Escaped')
+            }),
+            sent(crewSummary({ outcome: { _tag: 'Escaped' }, wave: 10 })),
+            send(Message.CompletedLeaveRoom()),
+            s =>
+              s.expectExact(
+                RememberRoom.make({ maybeCode: Option.none() }),
+                focusCoop('QuickPlay'),
+              ),
+            checkModel(current => {
+              expect(current.phase._tag).toBe('Ready')
+            }),
+            resolveRememberRoom,
+            resolveFocusCoop,
           ),
-          resolveFocusCoop(),
         )
       }),
   )
@@ -377,15 +382,18 @@ describe("an online co-op run's summary", () => {
     () =>
       Effect.gen(function* () {
         const running = yield* midRun()
-        yield* Story.story(
-          APPLICATION,
-          Story.given(running),
-          leaveRoom,
-          Story.model(current => {
-            expect(current.phase._tag).toBe('Ready')
-            expect(Option.isNone(maybeRoomOf(current.coop))).toBe(true)
-          }),
-          sent(crewSummary({ outcome: { _tag: 'Quit' }, wave: 1, runMs: 50 })),
+        yield* modelAfter(
+          running,
+          steps(
+            leaveRoom,
+            checkModel(current => {
+              expect(current.phase._tag).toBe('Ready')
+              expect(Option.isNone(maybeRoomOf(current.coop))).toBe(true)
+            }),
+            sent(
+              crewSummary({ outcome: { _tag: 'Quit' }, wave: 1, runMs: 50 }),
+            ),
+          ),
         )
       }),
   )
@@ -393,22 +401,16 @@ describe("an online co-op run's summary", () => {
   it.effect('nothing is sent with sharing off', () =>
     Effect.gen(function* () {
       const private_ = yield* midRun(
-        modifyFields(player, {
-          settings: modifyFields({ shareStats: () => 'Off' as const }),
+        UiStruct.evolve(player, {
+          settings: settings =>
+            UiStruct.evolve(settings, { shareStats: () => 'Off' as const }),
         }),
       )
-      yield* Story.story(
-        APPLICATION,
-        Story.given(inRoom(private_, endedAs(Phase.GameOver({ wave: 1 })))),
-        roomFrame(200),
-        Story.Command.expectNone(),
+      yield* modelAfter(
+        inRoom(private_, endedAs(Phase.GameOver({ wave: 1 }))),
+        steps(roomFrame(200), expectNoCommand),
       )
-      yield* Story.story(
-        APPLICATION,
-        Story.given(private_),
-        leaveRoom,
-        Story.Command.expectNone(),
-      )
+      yield* modelAfter(private_, steps(leaveRoom, expectNoCommand))
     }),
   )
 
@@ -419,21 +421,22 @@ describe("an online co-op run's summary", () => {
         const seated = { ...OWN_SEAT, slot }
         const ended = yield* endedIn(Phase.GameOver({ wave: 1 }), seated)
         const own = slot === OWN_SLOT
-        yield* Story.story(
-          APPLICATION,
-          Story.given(ended),
-          roomFrame(200),
-          sent(
-            crewSummary({
-              outcome: GAME_OVER,
-              wave: 1,
-              party: {
-                ...crewOfThree,
-                seatKills: own ? 12 : 0,
-                seatDowns: own ? 2 : 0,
-                seatRevives: own ? 1 : 0,
-              },
-            }),
+        yield* modelAfter(
+          ended,
+          steps(
+            roomFrame(200),
+            sent(
+              crewSummary({
+                outcome: GAME_OVER,
+                wave: 1,
+                party: {
+                  ...crewOfThree,
+                  seatKills: own ? 12 : 0,
+                  seatDowns: own ? 2 : 0,
+                  seatRevives: own ? 1 : 0,
+                },
+              }),
+            ),
           ),
         )
       }),
@@ -449,16 +452,17 @@ describe("an online co-op run's summary", () => {
           expect(crewRunKeyOf(lobby)).not.toBe(crewRunKeyOf(playingLobby))
           const seated = { ...OWN_SEAT, lobby }
           const ended = yield* endedIn(Phase.GameOver({ wave: 1 }), seated)
-          yield* Story.story(
-            APPLICATION,
-            Story.given(ended),
-            roomFrame(200),
-            sent(
-              crewSummary({
-                outcome: GAME_OVER,
-                wave: 1,
-                party: { ...crewOfThree, runKey: crewRunKeyOf(lobby) },
-              }),
+          yield* modelAfter(
+            ended,
+            steps(
+              roomFrame(200),
+              sent(
+                crewSummary({
+                  outcome: GAME_OVER,
+                  wave: 1,
+                  party: { ...crewOfThree, runKey: crewRunKeyOf(lobby) },
+                }),
+              ),
             ),
           )
         }),
@@ -472,13 +476,12 @@ describe("an online co-op run's summary", () => {
         ...OWN_SEAT,
         lobby: { ...playingLobby, status: 'Closed' },
       }
-      yield* Story.story(
-        APPLICATION,
-        Story.given(
-          inRoom(running, endedAs(Phase.GameOver({ wave: 1 })), closed),
+      yield* modelAfter(
+        inRoom(running, endedAs(Phase.GameOver({ wave: 1 })), closed),
+        steps(
+          roomFrame(200),
+          sent(crewSummary({ outcome: GAME_OVER, wave: 1 })),
         ),
-        roomFrame(200),
-        sent(crewSummary({ outcome: GAME_OVER, wave: 1 })),
       )
     }),
   )
@@ -492,20 +495,15 @@ describe("an online co-op run's rank", () => {
   // NOTE: the client tallies its own stats from the room's events, so the
   // four waves cleared are on its Model.
   const clearedFour = (model: Model): Model =>
-    modifyFields(model, {
-      stats: stats => modifyFields(stats, { wavesCleared: () => 4 }),
+    UiStruct.evolve(model, {
+      stats: stats => UiStruct.evolve(stats, { wavesCleared: () => 4 }),
     })
 
   // NOTE: the run's end drawn, its summary sent: the Model it leaves.
   const endWith = (start: Model, world: RoomWorld, nowMs: number) =>
-    Story.story(
-      APPLICATION,
-      Story.given(inRoom(start, world)),
-      roomFrame(nowMs),
-      Story.Command.resolveAll([
-        SendRunSummary,
-        Message.CompletedSendRunSummary(),
-      ]),
+    modelAfter(
+      inRoom(start, world),
+      steps(roomFrame(nowMs), resolveAll(SendRunSummary)(Component.noop)),
     )
 
   it.effect(
@@ -559,18 +557,16 @@ describe("an online co-op run's rank", () => {
   it.effect('leaving mid-run pays the revives made, and no awards', () =>
     Effect.gen(function* () {
       const running = yield* midRun()
-      yield* Story.story(
-        APPLICATION,
-        Story.given(running),
-        leaveRoom,
-        Story.Command.resolve(
-          SendRunSummary,
-          Message.CompletedSendRunSummary(),
+      yield* modelAfter(
+        running,
+        steps(
+          leaveRoom,
+          resolveSentSummary,
+          checkModel(left => {
+            expect(left.phase._tag).toBe('Ready')
+            expect(left.rank).toMatchObject({ earnedPoints: 5, earnedBones: 0 })
+          }),
         ),
-        Story.model(left => {
-          expect(left.phase._tag).toBe('Ready')
-          expect(left.rank).toMatchObject({ earnedPoints: 5, earnedBones: 0 })
-        }),
       )
     }),
   )

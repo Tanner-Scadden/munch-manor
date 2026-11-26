@@ -13,11 +13,10 @@
 //   - the button's box does not cross any other button, link, or tab in the
 //     dialog, or its title, Rattles' bubble, the wallet, or the tabs' text,
 //   - a real tap (a click on a desktop) on the face's center and on two
-//     opposite corners of the hit area each sends exactly one
-//     ClickedCloseButton (the Dialog's, or the hero picker's own) and no
+//     opposite corners of the hit area each sends exactly one close (the
+//     root's ClosedDialog, or the hero picker's RequestedClose...) and no
 //     other tap Message, reaches nothing behind it, and closes the dialog,
-//   - Escape sends one CanceledDialog (the Dialog's cancel) and closes the
-//     dialog.
+//   - Escape sends one close the same way and closes the dialog.
 // Then it buys in the shop with a tap (a click on a desktop), opened from its
 // query and again after co-op's screen (`buy` and `buy-after-coop`): there
 // must be one `<dialog id="shop">`, one open dialog, no repeated id, a buy
@@ -169,18 +168,17 @@ type Placed = Readonly<{
   points: ReadonlyArray<Readonly<{ name: string; point: Point }>>
 }>
 
-// NOTE: how a close arrives, by Foldkit's Dialog Messages
-// (@foldkit/ui's dialog): a tap on the shared X is the Dialog's
-// ClickedCloseButton (the hero picker's own X sends its picker's
-// ClickedCloseButton, which closes its Dialog), and Escape is the Dialog's
-// CanceledDialog. Each tag is the delivery chain, such as
-// `GotPanelDialogMessage:ClickedCloseButton`.
-type CloseTag = 'ClickedCloseButton' | 'CanceledDialog'
+// NOTE: how a close reaches the root (the harness logs only the root's
+// Messages): ui-kit's Dialog asks to close on a tap on its X and on Escape
+// alike, which the root hears as `ClosedDialog` (src/ui/dialog.ts), and the
+// hero picker's X or Escape reaches it as the lobby's or co-op's
+// `RequestedClose...HeroPicker`. A tap and Escape are told apart only by
+// what the audit did.
+const CLOSE_TAGS = /^(ClosedDialog|RequestedClose\w*)$/
 
-const isCloseTag = (close: CloseTag) => (tag: string) =>
-  String.endsWith(`:${close}`)(tag)
+const isCloseTag = (tag: string) => CLOSE_TAGS.test(tag)
 const TAP_LEAVES =
-  /(^|:)(Clicked\w*|SelectedOption|SelectedTab|CanceledDialog|PressedPointer)$/
+  /(^|:)(Clicked\w*|Selected\w*|Picked\w*|ClosedDialog|RequestedClose\w*|PressedPointer)$/
 
 const press = (page: Page, viewport: Viewport, point: Point) =>
   attempt(() =>
@@ -544,7 +542,6 @@ const checkClosing = (
   viewport: Viewport,
   scene: Scene,
   how: string,
-  close: CloseTag,
   act: CloseAct,
   log: Log,
 ) =>
@@ -561,10 +558,10 @@ const checkClosing = (
     const isClosed = yield* waitForClosed(page)
     const tags = yield* messages(page)
     pages.release(page)
-    const closes = Array.filter(tags, isCloseTag(close))
+    const closes = Array.filter(tags, isCloseTag)
     const strays = Array.filter(
       tags,
-      tag => TAP_LEAVES.test(tag) && !isCloseTag(close)(tag),
+      tag => TAP_LEAVES.test(tag) && !isCloseTag(tag),
     )
     const isOk = closes.length === 1 && strays.length === 0 && isClosed
     log(
@@ -635,7 +632,6 @@ const checkScene = (
         viewport,
         scene,
         `${viewport.isPhone ? 'tap' : 'click'} ${name}`,
-        'ClickedCloseButton',
         (tapPage, placedNow) =>
           Option.match(
             Array.findFirst(placedNow.points, p => p.name === name),
@@ -655,7 +651,6 @@ const checkScene = (
       viewport,
       scene,
       'Escape',
-      'CanceledDialog',
       tapPage => attempt(() => tapPage.keyboard.press('Escape')),
       log,
     )

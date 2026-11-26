@@ -33,7 +33,7 @@ import {
 // NOTE: the realtime channel from the browser: one socket to the GameRoom
 // at a time, a Hello with a fresh token on each, every decoded frame as an
 // event, and a reconnect with backoff when the socket drops. `events` is a
-// plain Stream, so a Foldkit Subscription can map it to Messages, and
+// plain Stream, so an Effect UI Subscription can map it to Messages, and
 // `send` an Effect a Command can run. What the frames mean is Session.ts.
 
 export const RoomEvent = Schema.TaggedUnion({

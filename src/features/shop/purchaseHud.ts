@@ -1,7 +1,11 @@
-import { Function, Option, String } from 'effect'
-import type { Html } from 'foldkit/html'
+import { Function, Option, Stream, String } from 'effect'
 
-import type { ApplicationViewBuilder } from '../../app/composition'
+import { Mount } from '@effect/ui'
+
+import type {
+  ApplicationHtml,
+  ApplicationViewBuilder,
+} from '../../app/definition'
 import type { Model } from '../../app/model'
 import { pixelArtStyle } from '../../art/artSize'
 import { GRAB_ICON, HOLD_ICON } from '../../art/icons'
@@ -74,41 +78,37 @@ const takeBadgeView = (
   model: Model,
   offer: Offer,
   h: ApplicationViewBuilder,
-): Html =>
-  h.span(
-    [
-      h.Class('icon-button-badge hold-buy-price hold-buy-take'),
-      h.AriaHidden(true),
-    ],
-    [
+): ApplicationHtml =>
+  h.span
+    .class('icon-button-badge hold-buy-price hold-buy-take')
+    .attr('aria-hidden', 'true')
+    .children(
       iconView('hold-buy-take-hand', GRAB_ICON, h),
       ...Option.match(
         Option.flatMap(maybeTakenIcon(model, offer.target), spriteImage),
         {
           onNone: () => [],
           onSome: image => [
-            h.img([
-              h.Class('hold-buy-take-item'),
-              h.Src(image.src),
-              h.Alt(''),
-              h.Style({
+            h.img
+              .class('hold-buy-take-item')
+              .attr('src', image.src)
+              .attr('alt', '')
+              .style({
                 width: `${image.width * TAKE_IMAGE_SCALE}px`,
                 height: `${image.height * TAKE_IMAGE_SCALE}px`,
               }),
-            ]),
           ],
         },
       ),
-    ],
-  )
+    )
 
 const badgeView = (model: Model, offer: Offer, h: ApplicationViewBuilder) =>
   Purchasable.isAnyOf(['Prize', 'Case'])(offer.target)
     ? takeBadgeView(model, offer, h)
-    : h.span(
-        [h.Class('icon-button-badge hold-buy-price'), h.AriaHidden(true)],
-        [badgeOf(offer)],
-      )
+    : h.span
+        .class('icon-button-badge hold-buy-price')
+        .attr('aria-hidden', 'true')
+        .children(badgeOf(offer))
 
 const labelOf = (model: Model, offer: Offer): string =>
   Purchasable.match(offer.target, {
@@ -174,63 +174,61 @@ const progressAt = (model: Model, offer: Offer): number =>
 // NOTE: the button is held, not clicked: the finger that lands on it holds
 // the intent's interact until it lifts (src/input/input.ts). It sits outside the
 // game surface, so it never takes a stick's finger.
-const toPressedHoldButton = (
-  pointerType: string,
-  _button: number,
-  _screenX: number,
-  _screenY: number,
-  _timeStamp: number,
-  _clientX: number,
-  _clientY: number,
-  pointerId: number,
-): Option.Option<RunButtonMessage> =>
-  pointerType === 'mouse'
-    ? Option.none()
-    : Option.some(RunButtonMessage.PressedHoldButton({ pointerId }))
+// NOTE: a Mount, as the element's own `pointerdown` carries no pointer id,
+// and the hold lasts until that finger lifts (ReleasedPointer).
+export const PressHoldButton = Mount.makeStream(
+  'PressHoldButton',
+  { args: {} },
+  (node: HTMLElement) =>
+    Stream.fromEventListener<PointerEvent>(node, 'pointerdown').pipe(
+      Stream.filter(event => event.pointerType !== 'mouse'),
+      Stream.map(event =>
+        RunButtonMessage.PressedHoldButton({ pointerId: event.pointerId }),
+      ),
+    ),
+)
 
 const holdButtonFor = (
   model: Model,
   offer: Offer,
   h: ApplicationViewBuilder,
-): Html => {
+): ApplicationHtml => {
   const isShort = shortfallFor(model, offer) > 0
-  return h.button(
-    [
-      h.Type('button'),
-      h.Class(
-        isRefusedAt(model, offer)
-          ? 'icon-button cluster-button hold-buy-button is-refused'
-          : 'icon-button cluster-button hold-buy-button',
-      ),
-      h.AriaLabel(labelOf(model, offer)),
-      ...(isShort ? [h.AriaDisabled(true)] : []),
-      h.DataAttribute('short', isShort ? 'true' : 'false'),
-      h.Style({ '--hold': `${progressAt(model, offer)}` }),
-      h.OnPointerDown(toPressedHoldButton),
-      h.OnContextMenu(InputMessage.SuppressedContextMenu()),
-    ],
-    [
-      h.span([h.Class('hold-buy-ring'), h.AriaHidden(true)]),
-      h.span([
-        h.Class('icon-button-glyph'),
-        h.AriaHidden(true),
-        h.Style(pixelArtStyle(HOLD_ICON)),
-      ]),
+  return h.button
+    .attr('type', 'button')
+    .class(
+      isRefusedAt(model, offer)
+        ? 'icon-button cluster-button hold-buy-button is-refused'
+        : 'icon-button cluster-button hold-buy-button',
+    )
+    .attr('aria-label', labelOf(model, offer))
+    .attr('aria-disabled', isShort ? 'true' : undefined)
+    .attr('data-short', isShort ? 'true' : 'false')
+    .style({ '--hold': `${progressAt(model, offer)}` })
+    .onMount(PressHoldButton())
+    .on('contextmenu', InputMessage.SuppressedContextMenu())
+    .children(
+      h.span.class('hold-buy-ring').attr('aria-hidden', 'true'),
+      h.span
+        .class('icon-button-glyph')
+        .attr('aria-hidden', 'true')
+        .style(pixelArtStyle(HOLD_ICON)),
       badgeView(model, offer, h),
-    ],
-  )
+    )
 }
 
 export const holdButtonView: {
-  (h: ApplicationViewBuilder): (model: Model) => Html
-  (model: Model, h: ApplicationViewBuilder): Html
-} = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html =>
-  model.lastDevice === 'Touch'
-    ? Option.match(maybeShownOffer(model), {
-        onNone: () => h.empty,
-        onSome: offer => holdButtonFor(model, offer, h),
-      })
-    : h.empty,
+  (h: ApplicationViewBuilder): (model: Model) => ApplicationHtml | null
+  (model: Model, h: ApplicationViewBuilder): ApplicationHtml | null
+} = Function.dual(
+  2,
+  (model: Model, h: ApplicationViewBuilder): ApplicationHtml | null =>
+    model.lastDevice === 'Touch'
+      ? Option.match(maybeShownOffer(model), {
+          onNone: () => null,
+          onSome: offer => holdButtonFor(model, offer, h),
+        })
+      : null,
 )
 
 const howToBuy = (model: Model): string =>
@@ -249,16 +247,19 @@ const announcementOf = (model: Model, offer: Offer): string => {
 // NOTE: spoken once as the player reaches a purchasable, and again when
 // the key ring's verdict changes, never while the fight goes on around it.
 export const purchaseAnnouncementView: {
-  (h: ApplicationViewBuilder): (model: Model) => Html
-  (model: Model, h: ApplicationViewBuilder): Html
-} = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html =>
-  h.p(
-    [h.Class('sr-only'), h.Role('status'), h.AriaLive('polite')],
-    [
-      Option.match(maybeOfferInReach(model, focusSlotOf(model)), {
-        onNone: () => '',
-        onSome: offer => announcementOf(model, offer),
-      }),
-    ],
-  ),
+  (h: ApplicationViewBuilder): (model: Model) => ApplicationHtml
+  (model: Model, h: ApplicationViewBuilder): ApplicationHtml
+} = Function.dual(
+  2,
+  (model: Model, h: ApplicationViewBuilder): ApplicationHtml =>
+    h.p
+      .class('sr-only')
+      .attr('role', 'status')
+      .attr('aria-live', 'polite')
+      .children(
+        Option.match(maybeOfferInReach(model, focusSlotOf(model)), {
+          onNone: () => '',
+          onSome: offer => announcementOf(model, offer),
+        }),
+      ),
 )

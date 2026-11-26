@@ -34,6 +34,7 @@
         // own modules that hand out one of those types are marked
         // `@stability unstable` and listed here too. An unstable API not
         // listed here still fails.
+        "allowedExperimentalApis": ["@effect/ui", "@effect/ui-kit"],
         "allowedUnstableApis": [
           "effect/sql",
           "effect/reactivity",
@@ -45,7 +46,6 @@
           "effect/PlatformError",
           "@effect/vitest",
           "@effect/platform-node",
-          "@effect/platform-browser",
           "@effect/sql-d1",
           "@effect/sql-sqlite-bun",
           "@effect/sql-sqlite-do",
@@ -216,6 +216,20 @@
         },
         // NOTE: globs are relative to this file, whichever project extends it.
         "overrides": [
+          {
+            // NOTE: the game is an app on Effect UI's preview, which marks
+            // its whole surface `@stability experimental` (allowed above), so
+            // every module of the game's own code hands out its types: a
+            // component, a TaggedEnum. The leak rule guards a published
+            // package's API, which the game and its tools have none of; the
+            // packages and infra, which are packages, keep it.
+            "include": ["src/**/*.ts", "tools/**/*.ts"],
+            "options": {
+              "diagnosticSeverity": {
+                "apiStabilityLeak": "off"
+              }
+            }
+          },
           {
             // NOTE: the service worker runs outside the Effect runtime and
             // speaks the Fetch API.

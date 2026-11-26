@@ -1,7 +1,6 @@
-import { Array, Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
+import { Array, Effect, Option } from 'effect'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
 import { Message } from '../../app/message'
@@ -21,8 +20,10 @@ import {
   readyModel,
 } from '../../test/model.fixture'
 import {
-  APPLICATION,
+  checkModel,
+  send,
   settleRunCommands,
+  storyOf,
   tick,
   touchDown,
   touchMove,
@@ -41,50 +42,51 @@ const UP_ON_SCREEN = screenToFloorDirection({ x: 0, y: -1 })
 
 describe('touch sticks', () => {
   it.effect('two thumbs drive the move and aim sticks independently', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(playingModel),
-      touchDown(LEFT_THUMB, 100, 300),
-      touchDown(RIGHT_THUMB, 700, 300),
-      Story.model(({ input }) => {
-        expect(input.moveStick).toEqual(
-          Stick.Active({
-            pointerId: LEFT_THUMB,
-            originX: 100,
-            originY: 300,
-            currentX: 100,
-            currentY: 300,
-          }),
-        )
-        expect(input.aimStick).toEqual(
-          Stick.Active({
-            pointerId: RIGHT_THUMB,
-            originX: 700,
-            originY: 300,
-            currentX: 700,
-            currentY: 300,
-          }),
-        )
-      }),
-      touchMove(LEFT_THUMB, 100 + STICK_RADIUS_PX / 2, 300),
-      touchMove(RIGHT_THUMB, 700, 300 - STICK_RADIUS_PX),
-      Story.model(({ seats: [{ intent }] }) => {
-        expect(intent.move).toEqual(screenToFloorDirection({ x: 0.5, y: 0 }))
-        expect(intent.maybeAim).toEqual(Option.some(UP_ON_SCREEN))
-        expect(intent.trigger).toBe('Held')
-      }),
-      touchMove(LEFT_THUMB, 100 + STICK_RADIUS_PX * 3, 300),
-      Story.model(({ seats: [{ intent }] }) => {
-        expect(intent.move).toEqual(RIGHT_ON_SCREEN)
-      }),
-      Story.message(Message.ReleasedPointer({ pointerId: LEFT_THUMB })),
-      Story.model(({ input, seats: [{ intent }] }) => {
-        expect(input.moveStick).toEqual(Stick.Idle())
-        expect(Stick.guards.Active(input.aimStick)).toBe(true)
-        expect(intent.move).toEqual({ x: 0, y: 0 })
-        expect(intent.trigger).toBe('Held')
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(playingModel)
+      s.pipe(
+        touchDown(LEFT_THUMB, 100, 300),
+        touchDown(RIGHT_THUMB, 700, 300),
+        checkModel(({ input }) => {
+          expect(input.moveStick).toEqual(
+            Stick.Active({
+              pointerId: LEFT_THUMB,
+              originX: 100,
+              originY: 300,
+              currentX: 100,
+              currentY: 300,
+            }),
+          )
+          expect(input.aimStick).toEqual(
+            Stick.Active({
+              pointerId: RIGHT_THUMB,
+              originX: 700,
+              originY: 300,
+              currentX: 700,
+              currentY: 300,
+            }),
+          )
+        }),
+        touchMove(LEFT_THUMB, 100 + STICK_RADIUS_PX / 2, 300),
+        touchMove(RIGHT_THUMB, 700, 300 - STICK_RADIUS_PX),
+        checkModel(({ seats: [{ intent }] }) => {
+          expect(intent.move).toEqual(screenToFloorDirection({ x: 0.5, y: 0 }))
+          expect(intent.maybeAim).toEqual(Option.some(UP_ON_SCREEN))
+          expect(intent.trigger).toBe('Held')
+        }),
+        touchMove(LEFT_THUMB, 100 + STICK_RADIUS_PX * 3, 300),
+        checkModel(({ seats: [{ intent }] }) => {
+          expect(intent.move).toEqual(RIGHT_ON_SCREEN)
+        }),
+        send(Message.ReleasedPointer({ pointerId: LEFT_THUMB })),
+        checkModel(({ input, seats: [{ intent }] }) => {
+          expect(input.moveStick).toEqual(Stick.Idle())
+          expect(Stick.guards.Active(input.aimStick)).toBe(true)
+          expect(intent.move).toEqual({ x: 0, y: 0 })
+          expect(intent.trigger).toBe('Held')
+        }),
+      )
+    }),
   )
 
   it.effect(
@@ -92,7 +94,7 @@ describe('touch sticks', () => {
     () => {
       const shotgunInHand = modifyFocus(playingModel, {
         player: player =>
-          modifyFields(player, {
+          UiStruct.evolve(player, {
             facing: () => ({ x: 1, y: 0 }),
             arsenal: () => holdingSecond(freshGun('Shotgun')),
           }),
@@ -104,43 +106,44 @@ describe('touch sticks', () => {
         ) <=
         WEAPONS.Shotgun.spread / 2 + 0.01
 
-      return Story.story(
-        APPLICATION,
-        Story.given(shotgunInHand),
-        touchDown(RIGHT_THUMB, 700, 300),
-        tick(FIXED_STEP_MS),
-        Story.model(({ seats: [{ intent, player }], bullets }) => {
-          expect(intent.trigger).toBe('Released')
-          expect(bullets).toEqual([])
-          expect(player.facing).toEqual({ x: 1, y: 0 })
-        }),
-        touchMove(RIGHT_THUMB, 700, 300 - STICK_RADIUS_PX * 0.3),
-        tick(FIXED_STEP_MS),
-        Story.model(({ seats: [{ intent, player }], bullets }) => {
-          expect(intent.maybeAim).toEqual(Option.some(UP_ON_SCREEN))
-          expect(intent.trigger).toBe('Released')
-          expect(bullets).toEqual([])
-          expect(player.facing).toEqual(UP_ON_SCREEN)
-        }),
-        touchMove(
-          RIGHT_THUMB,
-          700,
-          300 - STICK_RADIUS_PX * (STICK_FIRE_ZONE + 0.05),
-        ),
-        tick(FIXED_STEP_MS),
-        Story.model(({ seats: [{ intent }], bullets }) => {
-          expect(intent.trigger).toBe('Held')
-          expect(bullets).toHaveLength(WEAPONS.Shotgun.pellets)
-          expect(Array.every(bullets, isUpward)).toBe(true)
-        }),
-      )
+      return Effect.gen(function* () {
+        const s = yield* storyOf(shotgunInHand)
+        s.pipe(
+          touchDown(RIGHT_THUMB, 700, 300),
+          tick(FIXED_STEP_MS),
+          checkModel(({ seats: [{ intent, player }], bullets }) => {
+            expect(intent.trigger).toBe('Released')
+            expect(bullets).toEqual([])
+            expect(player.facing).toEqual({ x: 1, y: 0 })
+          }),
+          touchMove(RIGHT_THUMB, 700, 300 - STICK_RADIUS_PX * 0.3),
+          tick(FIXED_STEP_MS),
+          checkModel(({ seats: [{ intent, player }], bullets }) => {
+            expect(intent.maybeAim).toEqual(Option.some(UP_ON_SCREEN))
+            expect(intent.trigger).toBe('Released')
+            expect(bullets).toEqual([])
+            expect(player.facing).toEqual(UP_ON_SCREEN)
+          }),
+          touchMove(
+            RIGHT_THUMB,
+            700,
+            300 - STICK_RADIUS_PX * (STICK_FIRE_ZONE + 0.05),
+          ),
+          tick(FIXED_STEP_MS),
+          checkModel(({ seats: [{ intent }], bullets }) => {
+            expect(intent.trigger).toBe('Held')
+            expect(bullets).toHaveLength(WEAPONS.Shotgun.pellets)
+            expect(Array.every(bullets, isUpward)).toBe(true)
+          }),
+        )
+      })
     },
   )
 
   it.effect('ignores pointer events whose id matches no stick', () => {
-    const twoThumbsModel = modifyFields(playingModel, {
+    const twoThumbsModel = UiStruct.evolve(playingModel, {
       input: input =>
-        modifyFields(input, {
+        UiStruct.evolve(input, {
           moveStick: () =>
             Stick.Active({
               pointerId: LEFT_THUMB,
@@ -160,67 +163,71 @@ describe('touch sticks', () => {
         }),
     })
 
-    return Story.story(
-      APPLICATION,
-      Story.given(twoThumbsModel),
-      touchMove(STRAY_POINTER, 10, 10),
-      Story.message(Message.ReleasedPointer({ pointerId: STRAY_POINTER })),
-      Story.message(Message.CancelledPointer({ pointerId: STRAY_POINTER })),
-      Story.model(({ input }) => {
-        expect(input).toEqual(twoThumbsModel.input)
-      }),
-    )
+    return Effect.gen(function* () {
+      const s = yield* storyOf(twoThumbsModel)
+      s.pipe(
+        touchMove(STRAY_POINTER, 10, 10),
+        send(Message.ReleasedPointer({ pointerId: STRAY_POINTER })),
+        send(Message.CancelledPointer({ pointerId: STRAY_POINTER })),
+        checkModel(({ input }) => {
+          expect(input).toEqual(twoThumbsModel.input)
+        }),
+      )
+    })
   })
 
   it.effect('a third touch on an occupied half does not steal the stick', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(playingModel),
-      touchDown(LEFT_THUMB, 100, 300),
-      touchDown(STRAY_POINTER, 200, 100),
-      touchMove(STRAY_POINTER, 300, 100),
-      Story.model(({ input }) => {
-        expect(input.moveStick).toEqual(
-          Stick.Active({
-            pointerId: LEFT_THUMB,
-            originX: 100,
-            originY: 300,
-            currentX: 100,
-            currentY: 300,
-          }),
-        )
-        expect(input.aimStick).toEqual(Stick.Idle())
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(playingModel)
+      s.pipe(
+        touchDown(LEFT_THUMB, 100, 300),
+        touchDown(STRAY_POINTER, 200, 100),
+        touchMove(STRAY_POINTER, 300, 100),
+        checkModel(({ input }) => {
+          expect(input.moveStick).toEqual(
+            Stick.Active({
+              pointerId: LEFT_THUMB,
+              originX: 100,
+              originY: 300,
+              currentX: 100,
+              currentY: 300,
+            }),
+          )
+          expect(input.aimStick).toEqual(Stick.Idle())
+        }),
+      )
+    }),
   )
 
   it.effect('pointercancel clears the stick it owns', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(playingModel),
-      touchDown(LEFT_THUMB, 100, 300),
-      touchDown(RIGHT_THUMB, 700, 300),
-      Story.message(Message.CancelledPointer({ pointerId: RIGHT_THUMB })),
-      Story.model(({ input, seats: [{ intent }] }) => {
-        expect(input.aimStick).toEqual(Stick.Idle())
-        expect(Stick.guards.Active(input.moveStick)).toBe(true)
-        expect(intent.trigger).toBe('Released')
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(playingModel)
+      s.pipe(
+        touchDown(LEFT_THUMB, 100, 300),
+        touchDown(RIGHT_THUMB, 700, 300),
+        send(Message.CancelledPointer({ pointerId: RIGHT_THUMB })),
+        checkModel(({ input, seats: [{ intent }] }) => {
+          expect(input.aimStick).toEqual(Stick.Idle())
+          expect(Stick.guards.Active(input.moveStick)).toBe(true)
+          expect(intent.trigger).toBe('Released')
+        }),
+      )
+    }),
   )
 
   it.effect(
     'a tap on the home menu, beside its buttons, starts nothing and grabs no stick',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(readyModel),
-        touchDown(LEFT_THUMB, 100, 300),
-        Story.model(({ phase, input }) => {
-          expect(Phase.guards.Ready(phase)).toBe(true)
-          expect(Stick.guards.Idle(input.moveStick)).toBe(true)
-        }),
-      ),
+      Effect.gen(function* () {
+        const s = yield* storyOf(readyModel)
+        s.pipe(
+          touchDown(LEFT_THUMB, 100, 300),
+          checkModel(({ phase, input }) => {
+            expect(Phase.guards.Ready(phase)).toBe(true)
+            expect(Stick.guards.Idle(input.moveStick)).toBe(true)
+          }),
+        )
+      }),
   )
 })
 
@@ -230,7 +237,7 @@ describe('mouse', () => {
   it.effect(
     'aims at the pointer through the letterboxed canvas and fires while held',
     () => {
-      const letterboxedModel = modifyFields(playingModel, {
+      const letterboxedModel = UiStruct.evolve(playingModel, {
         maybeSurface: () =>
           Option.some({ left: 0, top: 0, width: 640, height: 480 }),
       })
@@ -243,74 +250,78 @@ describe('mouse', () => {
       const underTop = viewToWorld(camera, { x: 160, y: 0 })
       const towardTop = Math.hypot(underTop.x - player.x, underTop.y - player.y)
 
-      return Story.story(
-        APPLICATION,
-        Story.given(letterboxedModel),
-        Story.message(Message.MovedMouse({ clientX: 320, clientY: 60 })),
-        Story.model(({ input, seats: [{ intent }] }) => {
-          expect(input.maybeMouseInView).toEqual(Option.some({ x: 160, y: 0 }))
-          expect(nearly(Option.getOrThrow(intent.maybeAim))).toEqual(
-            nearly({
-              x: (underTop.x - player.x) / towardTop,
-              y: (underTop.y - player.y) / towardTop,
-            }),
-          )
-          expect(intent.trigger).toBe('Released')
-        }),
-        Story.message(
-          Message.PressedPointer({
-            pointerId: MOUSE_POINTER,
-            device: 'Mouse',
-            clientX: 640,
-            clientY: 60 + playerView.y * 2,
+      return Effect.gen(function* () {
+        const s = yield* storyOf(letterboxedModel)
+        s.pipe(
+          send(Message.MovedMouse({ clientX: 320, clientY: 60 })),
+          checkModel(({ input, seats: [{ intent }] }) => {
+            expect(input.maybeMouseInView).toEqual(
+              Option.some({ x: 160, y: 0 }),
+            )
+            expect(nearly(Option.getOrThrow(intent.maybeAim))).toEqual(
+              nearly({
+                x: (underTop.x - player.x) / towardTop,
+                y: (underTop.y - player.y) / towardTop,
+              }),
+            )
+            expect(intent.trigger).toBe('Released')
           }),
-        ),
-        Story.model(({ input, seats: [{ intent }] }) => {
-          expect(input.mouseButton).toEqual(
-            MouseButton.Held({ pointerId: MOUSE_POINTER }),
-          )
-          expect(nearly(Option.getOrThrow(intent.maybeAim))).toEqual(
-            nearly(RIGHT_ON_SCREEN),
-          )
-          expect(intent.trigger).toBe('Held')
-        }),
-        Story.message(Message.ReleasedPointer({ pointerId: MOUSE_POINTER })),
-        Story.model(({ seats: [{ intent }] }) => {
-          expect(intent.trigger).toBe('Held')
-        }),
-        tick(FIXED_STEP_MS),
-        tick(FIXED_STEP_MS),
-        Story.model(({ seats: [{ intent }] }) => {
-          expect(intent.trigger).toBe('Released')
-        }),
-        settleRunCommands,
-      )
+          send(
+            Message.PressedPointer({
+              pointerId: MOUSE_POINTER,
+              device: 'Mouse',
+              clientX: 640,
+              clientY: 60 + playerView.y * 2,
+            }),
+          ),
+          checkModel(({ input, seats: [{ intent }] }) => {
+            expect(input.mouseButton).toEqual(
+              MouseButton.Held({ pointerId: MOUSE_POINTER }),
+            )
+            expect(nearly(Option.getOrThrow(intent.maybeAim))).toEqual(
+              nearly(RIGHT_ON_SCREEN),
+            )
+            expect(intent.trigger).toBe('Held')
+          }),
+          send(Message.ReleasedPointer({ pointerId: MOUSE_POINTER })),
+          checkModel(({ seats: [{ intent }] }) => {
+            expect(intent.trigger).toBe('Held')
+          }),
+          tick(FIXED_STEP_MS),
+          tick(FIXED_STEP_MS),
+          checkModel(({ seats: [{ intent }] }) => {
+            expect(intent.trigger).toBe('Released')
+          }),
+          settleRunCommands,
+        )
+      })
     },
   )
 })
 
 describe('page visibility', () => {
   it.effect('hiding the page pauses the game and releases input', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(playingModel),
-      touchDown(LEFT_THUMB, 100, 300),
-      Story.message(Message.PressedKey({ code: 'KeyD' })),
-      Story.message(Message.ChangedPageVisibility({ visibility: 'Hidden' })),
-      Story.model(({ phase, input, seats: [{ intent }] }) => {
-        expect(phase).toEqual(Phase.Paused({ round: FIGHTING_PHASE }))
-        expect(input.moveStick).toEqual(Stick.Idle())
-        expect(input.pressedKeys).toEqual([])
-        expect(intent.move).toEqual({ x: 0, y: 0 })
-      }),
-      tick(FIXED_STEP_MS),
-      Story.model(({ elapsedMs }) => {
-        expect(elapsedMs).toBe(0)
-      }),
-      Story.message(Message.PressedKey({ code: 'Escape' })),
-      Story.model(({ phase }) => {
-        expect(phase).toEqual(FIGHTING_PHASE)
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(playingModel)
+      s.pipe(
+        touchDown(LEFT_THUMB, 100, 300),
+        send(Message.PressedKey({ code: 'KeyD' })),
+        send(Message.ChangedPageVisibility({ visibility: 'Hidden' })),
+        checkModel(({ phase, input, seats: [{ intent }] }) => {
+          expect(phase).toEqual(Phase.Paused({ round: FIGHTING_PHASE }))
+          expect(input.moveStick).toEqual(Stick.Idle())
+          expect(input.pressedKeys).toEqual([])
+          expect(intent.move).toEqual({ x: 0, y: 0 })
+        }),
+        tick(FIXED_STEP_MS),
+        checkModel(({ elapsedMs }) => {
+          expect(elapsedMs).toBe(0)
+        }),
+        send(Message.PressedKey({ code: 'Escape' })),
+        checkModel(({ phase }) => {
+          expect(phase).toEqual(FIGHTING_PHASE)
+        }),
+      )
+    }),
   )
 })

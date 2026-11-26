@@ -1,7 +1,6 @@
 import { Array, Effect, Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
 import { type Bullet, type Model, Pierce } from '../../../app/model'
@@ -17,11 +16,13 @@ import {
   withFeatsOf,
 } from '../../../test/model.fixture'
 import {
-  APPLICATION,
   HOLD_TICKS,
+  checkModel,
   holdEnter,
   holdFire,
+  modelAfter,
   releaseFire,
+  steps,
   tick,
   zombieOf,
 } from '../../../test/testing'
@@ -135,7 +136,7 @@ const besideCase = zombieOf('Shambler', 900, AT_CASE.x + 10, AT_CASE.y, {
 })
 
 const lockedCase = (model: Model, feat: Feat = ONE_KILL): Model =>
-  modifyFields(atCase(model, 'Smg', CaseState.Locked(), feat), {
+  UiStruct.evolve(atCase(model, 'Smg', CaseState.Locked(), feat), {
     zombies: () => [besideCase],
   })
 
@@ -143,65 +144,74 @@ describe('one player', () => {
   it.effect(
     'its feat done, the case springs open for the player, who holds to take the gun',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(lockedCase(playingModel)),
-        Story.model(current => {
-          expect(caseOffered(current, 0)).toBe(false)
-        }),
-        holdFire,
-        tick(FRAME_MS),
-        Story.model(current => {
-          expect(firstCase(current).state).toEqual(CaseState.Opened({ by: 0 }))
-          expect(
-            Array.some(current.frameEvents, GameEvent.isAnyOf(['CaseOpened'])),
-          ).toBe(true)
-          expect(caseOffered(current, 0)).toBe(true)
-        }),
-        releaseFire,
-        // NOTE: the kill's hit-stop holds the world a few frames first.
-        ...holdEnter(HOLD_TICKS + 10),
-        Story.model(current => {
-          expect(firstCase(current).state).toEqual(CaseState.Emptied({ by: 0 }))
-          expect(
-            Option.map(
-              maybeSpareGun(focusOf(current).player.arsenal),
-              gun => gun.kind,
-            ),
-          ).toEqual(Option.some('Smg'))
-          expect(caseOffered(current, 0)).toBe(false)
-        }),
+      modelAfter(
+        lockedCase(playingModel),
+        steps(
+          checkModel(current => {
+            expect(caseOffered(current, 0)).toBe(false)
+          }),
+          holdFire,
+          tick(FRAME_MS),
+          checkModel(current => {
+            expect(firstCase(current).state).toEqual(
+              CaseState.Opened({ by: 0 }),
+            )
+            expect(
+              Array.some(
+                current.frameEvents,
+                GameEvent.isAnyOf(['CaseOpened']),
+              ),
+            ).toBe(true)
+            expect(caseOffered(current, 0)).toBe(true)
+          }),
+          releaseFire, // NOTE: the kill's hit-stop holds the world a few frames first.
+          holdEnter(HOLD_TICKS + 10),
+          checkModel(current => {
+            expect(firstCase(current).state).toEqual(
+              CaseState.Emptied({ by: 0 }),
+            )
+            expect(
+              Option.map(
+                maybeSpareGun(focusOf(current).player.arsenal),
+                gun => gun.kind,
+              ),
+            ).toEqual(Option.some('Smg'))
+            expect(caseOffered(current, 0)).toBe(false)
+          }),
+        ),
       ),
   )
 
   it.effect('short of its feat, the case stays locked', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(lockedCase(playingModel, Feat.Kills({ count: 2 }))),
-      holdFire,
-      tick(FRAME_MS),
-      Story.model(current => {
-        expect(focusOf(current).feats.kills).toBe(1)
-        expect(firstCase(current).state).toEqual(CaseState.Locked())
-      }),
+    modelAfter(
+      lockedCase(playingModel, Feat.Kills({ count: 2 })),
+      steps(
+        holdFire,
+        tick(FRAME_MS),
+        checkModel(current => {
+          expect(focusOf(current).feats.kills).toBe(1)
+          expect(firstCase(current).state).toEqual(CaseState.Locked())
+        }),
+      ),
     ),
   )
 
   it.effect('the Laser Sight case fits the sight', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(atOpenedCase(playingModel, 'LaserSight')),
-      ...holdEnter(HOLD_TICKS),
-      Story.model(current => {
-        expect(focusOf(current).laserSight).toBe('Fitted')
-        expect(isCarrying(focusOf(current).player, 'Smg')).toBe(false)
-      }),
+    modelAfter(
+      atOpenedCase(playingModel, 'LaserSight'),
+      steps(
+        holdEnter(HOLD_TICKS),
+        checkModel(current => {
+          expect(focusOf(current).laserSight).toBe('Fitted')
+          expect(isCarrying(focusOf(current).player, 'Smg')).toBe(false)
+        }),
+      ),
     ),
   )
 
   it.effect('a case in the kitchen waits for the kitchen to open', () => {
     const inKitchen = withFeatsOf(
-      modifyFields(playingModel, {
+      UiStruct.evolve(playingModel, {
         cases: () => [
           {
             id: 3,
@@ -212,28 +222,30 @@ describe('one player', () => {
           },
         ],
       }),
-      tally => modifyFields(tally, { kills: () => 1 }),
+      tally => UiStruct.evolve(tally, { kills: () => 1 }),
     )
     return Effect.gen(function* () {
-      yield* Story.story(
-        APPLICATION,
-        Story.given(inKitchen),
-        tick(FRAME_MS),
-        Story.model(current => {
-          expect(firstCase(current).state).toEqual(CaseState.Locked())
-        }),
-      )
-      yield* Story.story(
-        APPLICATION,
-        Story.given(
-          modifyFields(inKitchen, {
-            level: level => openExitIn(level, KITCHEN_EXIT),
+      yield* modelAfter(
+        inKitchen,
+        steps(
+          tick(FRAME_MS),
+          checkModel(current => {
+            expect(firstCase(current).state).toEqual(CaseState.Locked())
           }),
         ),
-        tick(FRAME_MS),
-        Story.model(current => {
-          expect(firstCase(current).state).toEqual(CaseState.Opened({ by: 0 }))
+      )
+      yield* modelAfter(
+        UiStruct.evolve(inKitchen, {
+          level: level => openExitIn(level, KITCHEN_EXIT),
         }),
+        steps(
+          tick(FRAME_MS),
+          checkModel(current => {
+            expect(firstCase(current).state).toEqual(
+              CaseState.Opened({ by: 0 }),
+            )
+          }),
+        ),
       )
     })
   })
@@ -259,7 +271,7 @@ const crewBullet = (id: number, shooter: number, x: number, y: number) =>
 
 describe('co-op', () => {
   test('a case opens for whoever does its feat first, and only they take its prize', () => {
-    const crew = modifyFields(
+    const crew = UiStruct.evolve(
       placeSeat(placeSeat(crewInWave(2), 0, AT_CASE.x, AT_CASE.y), 1, 40, 150),
       {
         cases: () => [

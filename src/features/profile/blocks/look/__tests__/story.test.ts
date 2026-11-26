@@ -1,11 +1,9 @@
 import { Array, Effect, Match, Option, Record, Schema, pipe } from 'effect'
-import { type Canvas, Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
+import { Story } from '@effect/ui/testing'
 import { describe, expect, it, test } from '@effect/vitest'
-import { RadioGroup } from '@foldkit/ui'
 
-import { ProfileBinding } from '../../../../../app/bindings'
 import { Message } from '../../../../../app/message'
 import {
   Appearance,
@@ -33,82 +31,31 @@ import {
   randomAppearance,
 } from '../../../../../art/appearance'
 import type { LookPart } from '../../../../../domain/looks'
+import type * as Draw from '../../../../../render/draw'
 import { playerShapes } from '../../../../../render/playerView'
 import { RESTART_GRACE_MS } from '../../../../../shared/constants'
 import { FreePrint, FreeShirtColor } from '../../../../../shared/playerData'
 import { home } from '../../../../../test/model.fixture'
 import { imageColors } from '../../../../../test/testPng'
 import {
-  APPLICATION,
+  type StoryStep,
   jsonOf,
-  resolveFocusOption,
-  showDialog,
+  modelAfter,
+  send,
+  settleRunCommands,
+  steps,
+  storyOf,
   throughIntro,
 } from '../../../../../test/testing'
-import { CharacterBinding } from '../../../composition'
-import * as Character from '../block'
-import { PartRadioGroupBlock, SectionRadioGroupBlock } from '../lookRadios'
+import {
+  characterPropsOf,
+  pickLook,
+  rollLookDice,
+} from '../../../__tests__/profile.fixture'
+import { Character } from '../block'
 import type { LookToggle } from '../lookSchema'
-
-// NOTE: a part's radio group Message, delivered down its path: the
-// Profile, the Look tab, and that part's own Binding. Only a Block-aware
-// Story builds a grandchild's envelopes.
-const choose = (part: LookPart, index: number, value: string) => {
-  const selected = PartRadioGroupBlock.Message.SelectedOption({ index, value })
-  switch (part) {
-    case 'Body':
-      return Story.messageIn(
-        [ProfileBinding, CharacterBinding, Character.BodyBinding],
-        selected,
-      )
-    case 'HairStyle':
-      return Story.messageIn(
-        [ProfileBinding, CharacterBinding, Character.HairStyleBinding],
-        selected,
-      )
-    case 'HairColor':
-      return Story.messageIn(
-        [ProfileBinding, CharacterBinding, Character.HairColorBinding],
-        selected,
-      )
-    case 'SkinTone':
-      return Story.messageIn(
-        [ProfileBinding, CharacterBinding, Character.SkinToneBinding],
-        selected,
-      )
-    case 'ShirtColor':
-      return Story.messageIn(
-        [ProfileBinding, CharacterBinding, Character.ShirtColorBinding],
-        selected,
-      )
-    case 'Outfit':
-      return Story.messageIn(
-        [ProfileBinding, CharacterBinding, Character.OutfitBinding],
-        selected,
-      )
-    case 'Print':
-      return Story.messageIn(
-        [ProfileBinding, CharacterBinding, Character.PrintBinding],
-        selected,
-      )
-    case 'Hat':
-      return Story.messageIn(
-        [ProfileBinding, CharacterBinding, Character.HatBinding],
-        selected,
-      )
-    case 'GunSkin':
-      return Story.messageIn(
-        [ProfileBinding, CharacterBinding, Character.GunSkinBinding],
-        selected,
-      )
-  }
-}
-
-const rollDice = () =>
-  Story.messageIn(
-    [ProfileBinding, CharacterBinding],
-    Character.Message.ClickedDiceButton(),
-  )
+import { Events, Message as LookMessage } from '../message'
+import { SECTION_PARTS, SECTION_TOGGLES } from '../model'
 
 const PICKED: Appearance = {
   body: 'Slim',
@@ -125,22 +72,13 @@ const PICKED: Appearance = {
   propStyle: 'Stock',
 }
 
-const flip = (toggle: 'Beard' | 'Glasses') =>
-  Story.messageIn(
-    [ProfileBinding, CharacterBinding],
-    Character.Message.ClickedToggle({ toggle }),
-  )
-
-const flipIn = (toggle: 'Beard' | 'Glasses') =>
-  Story.messageIn(
-    [ProfileBinding, CharacterBinding],
-    Character.Message.ClickedToggle({ toggle }),
-  )
+const flip = (toggle: 'Beard' | 'Glasses'): StoryStep =>
+  send(Message.FlippedProfileLook({ toggle }))
 
 const withLook = (base: Model, appearance: Appearance): Model =>
-  modifyFields(base, { appearance: () => appearance })
+  UiStruct.evolve(base, { appearance: () => appearance })
 
-const fills = (shapes: ReadonlyArray<Canvas.Shape>): ReadonlyArray<string> =>
+const fills = (shapes: ReadonlyArray<Draw.Shape>): ReadonlyArray<string> =>
   Array.flatMap(shapes, shape =>
     Match.value(shape).pipe(
       Match.tag('Group', group => fills(group.shapes)),
@@ -229,96 +167,78 @@ describe('Character', () => {
   })
 
   it.effect('picking each part stores it in the appearance', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(home),
-      choose('Body', 0, 'Slim'),
-      resolveFocusOption(),
-      choose('HairStyle', 4, 'Mohawk'),
-      resolveFocusOption(),
-      choose('HairColor', 5, 'Pink'),
-      resolveFocusOption(),
-      choose('SkinTone', 5, 'Deep'),
-      resolveFocusOption(),
-      choose('ShirtColor', 3, 'Teal'),
-      resolveFocusOption(),
-      choose('Outfit', 2, 'Dress'),
-      resolveFocusOption(),
-      choose('Print', 2, 'Rainbow'),
-      resolveFocusOption(),
-      flipIn('Beard'),
-      flipIn('Glasses'),
-      Story.model(({ appearance }) => {
-        expect(appearance).toEqual(PICKED)
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(home)
+      steps(
+        pickLook('Body', 'Slim'),
+        pickLook('HairStyle', 'Mohawk'),
+        pickLook('HairColor', 'Pink'),
+        pickLook('SkinTone', 'Deep'),
+        pickLook('ShirtColor', 'Teal'),
+        pickLook('Outfit', 'Dress'),
+        pickLook('Print', 'Rainbow'),
+        flip('Beard'),
+        flip('Glasses'),
+      )(s)
+      expect(s.model.appearance).toEqual(PICKED)
+      settleRunCommands(s)
+    }),
+  )
+
+  it.effect('the Look tab says each pick, flip, and roll for the root', () =>
+    Effect.gen(function* () {
+      const s = yield* Story.make(Character, characterPropsOf(home))
+      s.send(LookMessage.PickedPart({ part: 'HairStyle', value: 'Mohawk' }))
+        .emitted(Events.ChoseLook({ part: 'HairStyle', value: 'Mohawk' }))
+        .send(LookMessage.ClickedToggle({ toggle: 'Beard' }))
+        .emitted(Events.FlippedLook({ toggle: 'Beard' }))
+        .send(LookMessage.ClickedDiceButton())
+        .emitted(Events.RolledDice())
+      expect(s.model).toEqual({ section: 'Body' })
+    }),
   )
 
   it.effect('the beard and the glasses each come off with a second tap', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(home),
-      flip('Beard'),
-      Story.model(({ appearance, profile }) => {
-        expect(appearance.beard).toBe(true)
-        expect(profile.fx).toBe('Poof')
-      }),
-      flip('Glasses'),
-      flip('Beard'),
-      Story.model(({ appearance }) => {
-        expect(appearance).toEqual({ ...defaultAppearance, glasses: true })
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(home)
+      flip('Beard')(s)
+      expect(s.model.appearance.beard).toBe(true)
+      expect(s.model.profile.fx).toBe('Poof')
+      steps(flip('Glasses'), flip('Beard'))(s)
+      expect(s.model.appearance).toEqual({
+        ...defaultAppearance,
+        glasses: true,
+      })
+      settleRunCommands(s)
+    }),
   )
 
   it.effect('a word that is not one of the options leaves the look alone', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(home),
-      choose('Body', 0, 'Female'),
-      resolveFocusOption(),
-      choose('Print', 0, 'Plaid'),
-      resolveFocusOption(),
-      Story.model(({ appearance }) => {
-        expect(appearance).toEqual(defaultAppearance)
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(home)
+      steps(pickLook('Body', 'Female'), pickLook('Print', 'Plaid'))(s)
+      expect(s.model.appearance).toEqual(defaultAppearance)
+      settleRunCommands(s)
+    }),
   )
 
   it.effect('the little tabs switch which parts show, and keep the look', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(home),
-      Story.model(({ profile }) => {
-        expect(profile.character.section).toBe('Body')
-      }),
-      Story.messageIn(
-        [ProfileBinding, CharacterBinding, Character.SectionsBinding],
-        SectionRadioGroupBlock.Message.SelectedOption({
-          index: 2,
-          value: 'Outfit',
-        }),
-      ),
-      Story.Command.resolve(
-        RadioGroup.test.FocusOption,
-        SectionRadioGroupBlock.Message.CompletedFocusOption(),
-      ),
-      Story.model(({ profile, appearance }) => {
-        expect(profile.character.section).toBe('Outfit')
-        expect(appearance).toEqual(home.appearance)
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* Story.make(Character, characterPropsOf(home))
+      expect(s.model.section).toBe('Body')
+      s.send(LookMessage.PickedSection({ value: 'Outfit' })).expectNone()
+      expect(s.model.section).toBe('Outfit')
+      expect(s.current.emitted).toEqual([])
+      s.send(LookMessage.PickedSection({ value: 'Nope' }))
+      expect(s.model.section).toBe('Outfit')
+    }),
   )
 
   test('the little tabs are data: their parts and toggles', () => {
-    expect(Character.SECTION_PARTS.Outfit).toEqual([
-      'Outfit',
-      'ShirtColor',
-      'Print',
-    ])
-    const listed = Array.flatten(Record.values(Character.SECTION_PARTS))
+    expect(SECTION_PARTS.Outfit).toEqual(['Outfit', 'ShirtColor', 'Print'])
+    const listed = Array.flatten(Record.values(SECTION_PARTS))
     expect(Array.dedupe(listed).length).toBe(9)
-    expect(Character.SECTION_TOGGLES.Body).toEqual(['Beard', 'Glasses'])
+    expect(SECTION_TOGGLES.Body).toEqual(['Beard', 'Glasses'])
   })
 
   it.effect(
@@ -326,49 +246,36 @@ describe('Character', () => {
     () =>
       Effect.gen(function* () {
         const pressC = (given_: Model) =>
-          Story.story(
-            APPLICATION,
-            Story.given(given_),
-            Story.message(Message.PressedKey({ code: 'KeyC' })),
-            showDialog(),
-            Story.model(({ profile, profileDialog }) => {
-              expect(profileDialog.isOpen).toBe(true)
-              expect(profile.tab).toBe('Look')
-            }),
-          )
+          Effect.gen(function* () {
+            const s = yield* storyOf(given_)
+            s.send(Message.PressedKey({ code: 'KeyC' }))
+            expect(s.model.profileDialog.isOpen).toBe(true)
+            expect(s.model.profile.tab).toBe('Look')
+            settleRunCommands(s)
+          })
         yield* pressC(home)
         yield* pressC(
-          modifyFields(home, {
+          UiStruct.evolve(home, {
             phase: () => Phase.GameOver({ wave: 3 }),
             screenMs: () => RESTART_GRACE_MS,
           }),
         )
 
-        yield* Story.story(
-          APPLICATION,
-          Story.given(
-            modifyFields(home, {
-              phase: () => Phase.Wave({ wave: 2, elapsedMs: 0, spawns: [] }),
-            }),
-          ),
-          Story.message(Message.PressedKey({ code: 'KeyC' })),
-          Story.model(({ profileDialog }) => {
-            expect(profileDialog.isOpen).toBe(false)
+        const midRun = yield* modelAfter(
+          UiStruct.evolve(home, {
+            phase: () => Phase.Wave({ wave: 2, elapsedMs: 0, spawns: [] }),
           }),
+          steps(send(Message.PressedKey({ code: 'KeyC' })), settleRunCommands),
         )
-        yield* Story.story(
-          APPLICATION,
-          Story.given(
-            modifyFields(home, {
-              phase: () => Phase.GameOver({ wave: 3 }),
-              screenMs: () => 0,
-            }),
-          ),
-          Story.message(Message.ClickedCharacterButton()),
-          Story.model(({ profileDialog }) => {
-            expect(profileDialog.isOpen).toBe(false)
+        expect(midRun.profileDialog.isOpen).toBe(false)
+        const inGrace = yield* modelAfter(
+          UiStruct.evolve(home, {
+            phase: () => Phase.GameOver({ wave: 3 }),
+            screenMs: () => 0,
           }),
+          steps(send(Message.ClickedCharacterButton()), settleRunCommands),
         )
+        expect(inGrace.profileDialog.isOpen).toBe(false)
       }),
   )
 
@@ -377,14 +284,11 @@ describe('Character', () => {
     () =>
       Effect.gen(function* () {
         const rollFrom = (seed: number) =>
-          Story.story(
-            APPLICATION,
-            Story.given(
-              modifyFields(home, {
-                cosmetics: modifyFields({ cosmeticRngState: () => seed }),
-              }),
-            ),
-            rollDice(),
+          modelAfter(
+            UiStruct.evolve(home, {
+              cosmetics: UiStruct.evolve({ cosmeticRngState: () => seed }),
+            }),
+            steps(rollLookDice, settleRunCommands),
           )
         const first = yield* rollFrom(1234)
         const again = yield* rollFrom(1234)
@@ -438,49 +342,43 @@ describe('Character', () => {
     'the look lasts through new runs, endless, keep going, and restarts',
     () =>
       Effect.gen(function* () {
-        yield* Story.story(
-          APPLICATION,
-          Story.given(withLook(home, PICKED)),
-          Story.message(Message.ClickedCampaignButton()),
-          throughIntro,
-          Story.model(({ phase, appearance }) => {
-            expect(Phase.isAnyOf(['Preparation'])(phase)).toBe(true)
-            expect(appearance).toEqual(PICKED)
-          }),
-        )
-        yield* Story.story(
-          APPLICATION,
-          Story.given(
-            modifyFields(withLook(home, PICKED), {
-              phase: () => Phase.GameOver({ wave: 4 }),
-              screenMs: () => RESTART_GRACE_MS,
-            }),
+        const started = yield* modelAfter(
+          withLook(home, PICKED),
+          steps(
+            send(Message.ClickedCampaignButton()),
+            throughIntro,
+            settleRunCommands,
           ),
-          Story.message(Message.ClickedEndlessButton()),
-          throughIntro,
-          Story.model(({ phase, appearance }) => {
-            expect(Phase.isAnyOf(['Preparation'])(phase)).toBe(true)
-            expect(appearance).toEqual(PICKED)
-          }),
         )
-        yield* Story.story(
-          APPLICATION,
-          Story.given(
-            modifyFields(withLook(home, PICKED), {
-              phase: () => Phase.Escaped({ wave: 10 }),
-              screenMs: () => RESTART_GRACE_MS,
-            }),
+        expect(Phase.isAnyOf(['Preparation'])(started.phase)).toBe(true)
+        expect(started.appearance).toEqual(PICKED)
+        const endless = yield* modelAfter(
+          UiStruct.evolve(withLook(home, PICKED), {
+            phase: () => Phase.GameOver({ wave: 4 }),
+            screenMs: () => RESTART_GRACE_MS,
+          }),
+          steps(
+            send(Message.ClickedEndlessButton()),
+            throughIntro,
+            settleRunCommands,
           ),
-          Story.message(Message.ClickedRetryButton()),
-          Story.model(({ appearance }) => {
-            expect(appearance).toEqual(PICKED)
-          }),
-          Story.message(Message.PressedKey({ code: 'Escape' })),
-          Story.message(Message.PressedKey({ code: 'Escape' })),
-          Story.model(({ appearance }) => {
-            expect(appearance).toEqual(PICKED)
+        )
+        expect(Phase.isAnyOf(['Preparation'])(endless.phase)).toBe(true)
+        expect(endless.appearance).toEqual(PICKED)
+        const s = yield* storyOf(
+          UiStruct.evolve(withLook(home, PICKED), {
+            phase: () => Phase.Escaped({ wave: 10 }),
+            screenMs: () => RESTART_GRACE_MS,
           }),
         )
+        steps(send(Message.ClickedRetryButton()), settleRunCommands)(s)
+        expect(s.model.appearance).toEqual(PICKED)
+        steps(
+          send(Message.PressedKey({ code: 'Escape' })),
+          send(Message.PressedKey({ code: 'Escape' })),
+          settleRunCommands,
+        )(s)
+        expect(s.model.appearance).toEqual(PICKED)
       }),
   )
 

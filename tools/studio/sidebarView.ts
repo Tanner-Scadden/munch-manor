@@ -2,15 +2,14 @@
 // game's own art, and the display settings as segmented controls, swatches,
 // and switches. It redraws only when one of them changes.
 import { Array, Function, Option, String } from 'effect'
-import { Canvas } from 'foldkit'
-import { type Html, createLazy } from 'foldkit/html'
 
 import type { Facing } from '../../src/art/sprite'
 import {
   Backdrop,
   Message,
   type Model,
-  type StudioViewBuilder,
+  type StudioH,
+  type StudioHtml,
   ZOOMS,
 } from './block'
 import { Tab, Tone, sectionsOf, tabIconOf } from './catalog'
@@ -28,6 +27,7 @@ import {
   LiveSpot,
   LiveTool,
 } from './liveScene'
+import { studioPicture } from './picture'
 import {
   HOUSES,
   type RoomView,
@@ -67,8 +67,8 @@ const TOOL_LABELS: Readonly<Record<LiveTool, string>> = {
 const liveControls = (
   live: LiveScene,
   liveTool: LiveTool,
-  h: StudioViewBuilder,
-): ReadonlyArray<Html> => {
+  h: StudioH,
+): ReadonlyArray<StudioHtml> => {
   const pick = (change: Partial<LiveScene>) =>
     Message.ClickedLive({ live: { ...live, ...change } })
   return [
@@ -146,7 +146,7 @@ const TONE_LABELS: Readonly<Record<Tone, string>> = {
 }
 
 // NOTE: a tab's icon scaled to fit its box, the same size for every tab.
-const iconView = (tab: Tab, h: StudioViewBuilder): Html => {
+const iconView = (tab: Tab, h: StudioH): StudioHtml => {
   const sprite = tabIconOf(tab)
   const bounds = padded(spritesBounds([sprite]))
   const fit = Math.max(
@@ -157,20 +157,15 @@ const iconView = (tab: Tab, h: StudioViewBuilder): Html => {
     ),
   )
   const { width, height } = sizeOf(bounds, fit)
-  return h.span(
-    [h.Class('nav-icon')],
-    [
-      Canvas.view(
-        {
-          key: `icon-${tab}`,
-          width,
-          height,
-          shapes: [zoomed(sprite, bounds, fit)],
-          className: 'sprite',
-        },
-        h,
-      ),
-    ],
+  return h.span.class('nav-icon').children(
+    studioPicture(h)
+      .class('sprite')
+      .picture({
+        key: `icon-${tab}`,
+        width,
+        height,
+        shapes: [zoomed(sprite, bounds, fit)],
+      }),
   )
 }
 
@@ -181,93 +176,82 @@ type Choice = Readonly<{
   title?: string
 }>
 
-const segmented = (
-  choices: ReadonlyArray<Choice>,
-  h: StudioViewBuilder,
-): Html =>
-  h.div(
-    [h.Class('segmented'), h.Role('group')],
-    Array.map(choices, choice =>
-      h.button(
-        [
-          h.Class(choice.isOn ? 'segment on' : 'segment'),
-          h.AriaPressed(choice.isOn ? 'true' : 'false'),
-          h.Title(choice.title ?? choice.label),
-          h.OnClick(choice.message),
-        ],
-        [choice.label],
+const segmented = (choices: ReadonlyArray<Choice>, h: StudioH): StudioHtml =>
+  h.div
+    .class('segmented')
+    .attr('role', 'group')
+    .children(
+      Array.map(choices, choice =>
+        h.button
+          .class(choice.isOn ? 'segment on' : 'segment')
+          .attr('aria-pressed', choice.isOn ? 'true' : 'false')
+          .attr('title', choice.title ?? choice.label)
+          .on('click', choice.message)
+          .children(choice.label),
       ),
-    ),
-  )
+    )
 
 const switchRow = (
   label: string,
   isOn: boolean,
   message: Message,
-  h: StudioViewBuilder,
-): Html =>
-  h.button(
-    [
-      h.Class('switch-row'),
-      h.Role('switch'),
-      h.AriaChecked(isOn),
-      h.OnClick(message),
-    ],
-    [
-      h.span([], [label]),
-      h.span([h.Class(isOn ? 'switch on' : 'switch')], [h.span([])]),
-    ],
-  )
+  h: StudioH,
+): StudioHtml =>
+  h.button
+    .class('switch-row')
+    .attr('role', 'switch')
+    .attr('aria-checked', isOn ? 'true' : 'false')
+    .on('click', message)
+    .children(
+      h.span.children(label),
+      h.span.class(isOn ? 'switch on' : 'switch').children(h.span),
+    )
 
-const field = (label: string, control: Html, h: StudioViewBuilder): Html =>
-  h.div(
-    [h.Class('field')],
-    [h.span([h.Class('field-label')], [label]), control],
-  )
+const field = (label: string, control: StudioHtml, h: StudioH): StudioHtml =>
+  h.div
+    .class('field')
+    .children(h.span.class('field-label').children(label), control)
 
-const swatches = (backdrop: Backdrop, h: StudioViewBuilder): Html =>
-  h.div(
-    [h.Class('swatches'), h.Role('group')],
-    Array.map(Backdrop.literals, choice =>
-      h.button([
-        h.Class(choice === backdrop ? 'swatch on' : 'swatch'),
-        h.AriaPressed(choice === backdrop ? 'true' : 'false'),
-        h.AriaLabel(`${choice} background`),
-        h.Title(choice),
-        h.Style({ background: BACKDROP_COLORS[choice] }),
-        h.OnClick(Message.ClickedBackdrop({ backdrop: choice })),
-      ]),
-    ),
-  )
+const swatches = (backdrop: Backdrop, h: StudioH): StudioHtml =>
+  h.div
+    .class('swatches')
+    .attr('role', 'group')
+    .children(
+      Array.map(Backdrop.literals, choice =>
+        h.button
+          .class(choice === backdrop ? 'swatch on' : 'swatch')
+          .attr('aria-pressed', choice === backdrop ? 'true' : 'false')
+          .attr('aria-label', `${choice} background`)
+          .attr('title', choice)
+          .style({ background: BACKDROP_COLORS[choice] })
+          .on('click', Message.ClickedBackdrop({ backdrop: choice })),
+      ),
+    )
 
-const navView = (tab: Tab, freshTabs: string, h: StudioViewBuilder): Html =>
-  h.div(
-    [h.Class('nav')],
+const navView = (tab: Tab, freshTabs: string, h: StudioH): StudioHtml =>
+  h.div.class('nav').children(
     Array.map(Tab.literals, choice =>
-      h.button(
-        [
-          h.Key(choice),
-          h.Class(choice === tab ? 'nav-item on' : 'nav-item'),
-          h.AriaPressed(choice === tab ? 'true' : 'false'),
-          h.OnClick(Message.ClickedTab({ tab: choice })),
-        ],
-        [
+      h.button
+        .key(choice)
+        .class(choice === tab ? 'nav-item on' : 'nav-item')
+        .attr('aria-pressed', choice === tab ? 'true' : 'false')
+        .on('click', Message.ClickedTab({ tab: choice }))
+        .children(
           iconView(choice, h),
-          h.span([h.Class('nav-label')], [choice]),
+          h.span.class('nav-label').children(choice),
           ...(String.includes(choice)(freshTabs)
             ? [
-                h.span([
-                  h.Class('nav-dot'),
-                  h.Title('Something here was updated'),
-                ]),
+                h.span
+                  .class('nav-dot')
+                  .attr('title', 'Something here was updated'),
               ]
             : []),
-        ],
-      ),
+        ),
     ),
   )
 
 const sidebarBody = (
+  h: StudioH,
   tab: Tab,
   zoom: number,
   backdrop: Backdrop,
@@ -279,148 +263,137 @@ const sidebarBody = (
   live: LiveScene,
   liveTool: LiveTool,
   freshTabs: string,
-  h: StudioViewBuilder,
-): Html =>
-  h.nav(
-    [h.Class('sidebar')],
-    [
-      h.div(
-        [h.Class('brand')],
-        [
-          h.span([h.Class('brand-mark')], ['M']),
-          h.div(
-            [],
-            [
-              h.p([h.Class('brand-name')], ['Munch Studio']),
-              h.p([h.Class('brand-sub')], ['The game’s art, up close']),
-            ],
-          ),
-        ],
+): StudioHtml =>
+  h.nav.class('sidebar').children(
+    h.div
+      .class('brand')
+      .children(
+        h.span.class('brand-mark').children('M'),
+        h.div.children(
+          h.p.class('brand-name').children('Munch Studio'),
+          h.p.class('brand-sub').children('The game’s art, up close'),
+        ),
       ),
-      h.p([h.Class('section-label')], ['Library']),
-      navView(tab, freshTabs, h),
-      h.p([h.Class('section-label')], ['Display']),
-      ...(tab === 'Rooms' && roomView.room === 'Live'
-        ? []
-        : [
-            field(
-              'Size',
-              segmented(
-                Array.map(ZOOMS, choice => ({
-                  label: `${choice}×`,
-                  isOn: choice === zoom,
-                  message: Message.ClickedZoom({ zoom: choice }),
-                })),
-                h,
-              ),
+    h.p.class('section-label').children('Library'),
+    navView(tab, freshTabs, h),
+    h.p.class('section-label').children('Display'),
+    ...(tab === 'Rooms' && roomView.room === 'Live'
+      ? []
+      : [
+          field(
+            'Size',
+            segmented(
+              Array.map(ZOOMS, choice => ({
+                label: `${choice}×`,
+                isOn: choice === zoom,
+                message: Message.ClickedZoom({ zoom: choice }),
+              })),
               h,
             ),
-            field('Background', swatches(backdrop, h), h),
-          ]),
-      ...(tab === 'Rooms'
-        ? [
-            field(
-              'Room',
-              segmented(
-                Array.map(StudioRoom.literals, room => ({
-                  label: ROOM_LABELS[room],
-                  isOn: room === roomView.room,
-                  message: Message.ClickedRoom({ room }),
-                })),
-                h,
-              ),
+            h,
+          ),
+          field('Background', swatches(backdrop, h), h),
+        ]),
+    ...(tab === 'Rooms'
+      ? [
+          field(
+            'Room',
+            segmented(
+              Array.map(StudioRoom.literals, room => ({
+                label: ROOM_LABELS[room],
+                isOn: room === roomView.room,
+                message: Message.ClickedRoom({ room }),
+              })),
               h,
             ),
-            ...Option.match(roomToggleOf(roomView.room), {
-              onNone: () => [],
-              onSome: toggle => [
+            h,
+          ),
+          ...Option.match(roomToggleOf(roomView.room), {
+            onNone: () => [],
+            onSome: toggle => [
+              field(
+                toggle.label,
+                segmented(
+                  [
+                    {
+                      label: toggle.off,
+                      isOn: !isToggleOn(roomView),
+                      message: Message.ClickedRoomToggle(),
+                    },
+                    {
+                      label: toggle.on,
+                      isOn: isToggleOn(roomView),
+                      message: Message.ClickedRoomToggle(),
+                    },
+                  ],
+                  h,
+                ),
+                h,
+              ),
+            ],
+          }),
+          ...(roomView.room === 'Live' ? liveControls(live, liveTool, h) : []),
+          ...(roomView.room === 'Manor' || roomView.room === 'Live'
+            ? [
                 field(
-                  toggle.label,
+                  'House',
                   segmented(
-                    [
-                      {
-                        label: toggle.off,
-                        isOn: !isToggleOn(roomView),
-                        message: Message.ClickedRoomToggle(),
-                      },
-                      {
-                        label: toggle.on,
-                        isOn: isToggleOn(roomView),
-                        message: Message.ClickedRoomToggle(),
-                      },
-                    ],
+                    Array.map(HOUSES, ({ house, label }) => ({
+                      label,
+                      isOn: house === roomView.house,
+                      message: Message.ClickedHouse({ house }),
+                    })),
                     h,
                   ),
                   h,
                 ),
+              ]
+            : []),
+          switchRow('Tile grid', isGridOn, Message.ClickedGrid(), h),
+        ]
+      : [
+          field(
+            'Facing',
+            segmented(
+              [
+                {
+                  label: '← Left',
+                  isOn: facing === 'Left',
+                  message: Message.ClickedFacing({ facing: 'Left' }),
+                },
+                {
+                  label: 'Right →',
+                  isOn: facing === 'Right',
+                  message: Message.ClickedFacing({ facing: 'Right' }),
+                },
               ],
-            }),
-            ...(roomView.room === 'Live'
-              ? liveControls(live, liveTool, h)
-              : []),
-            ...(roomView.room === 'Manor' || roomView.room === 'Live'
-              ? [
-                  field(
-                    'House',
-                    segmented(
-                      Array.map(HOUSES, ({ house, label }) => ({
-                        label,
-                        isOn: house === roomView.house,
-                        message: Message.ClickedHouse({ house }),
-                      })),
-                      h,
-                    ),
-                    h,
-                  ),
-                ]
-              : []),
-            switchRow('Tile grid', isGridOn, Message.ClickedGrid(), h),
-          ]
-        : [
-            field(
-              'Facing',
-              segmented(
-                [
-                  {
-                    label: '← Left',
-                    isOn: facing === 'Left',
-                    message: Message.ClickedFacing({ facing: 'Left' }),
-                  },
-                  {
-                    label: 'Right →',
-                    isOn: facing === 'Right',
-                    message: Message.ClickedFacing({ facing: 'Right' }),
-                  },
-                ],
-                h,
-              ),
               h,
             ),
-            field(
-              'Look',
-              segmented(
-                Array.map(Tone.literals, choice => ({
-                  label: TONE_LABELS[choice],
-                  isOn: choice === tone,
-                  message: Message.ClickedTone({ tone: choice }),
-                  title:
-                    choice === 'Flash'
-                      ? 'The white flash when it gets hit'
-                      : choice === 'Rage'
-                        ? 'Red eyes in a frenzy'
-                        : choice,
-                })),
-                h,
-              ),
+            h,
+          ),
+          field(
+            'Look',
+            segmented(
+              Array.map(Tone.literals, choice => ({
+                label: TONE_LABELS[choice],
+                isOn: choice === tone,
+                message: Message.ClickedTone({ tone: choice }),
+                title:
+                  choice === 'Flash'
+                    ? 'The white flash when it gets hit'
+                    : choice === 'Rage'
+                      ? 'Red eyes in a frenzy'
+                      : choice,
+              })),
               h,
             ),
-            switchRow('Animate', isPlaying, Message.ClickedPlay(), h),
-          ]),
-      h.p(
-        [h.Class('sidebar-foot')],
-        ['When Claude changes the art, it shows up here by itself.'],
-      ),
-    ],
+            h,
+          ),
+          switchRow('Animate', isPlaying, Message.ClickedPlay(), h),
+        ]),
+    h.p
+      .class('sidebar-foot')
+      .children('When Claude changes the art, it shows up here by itself.'),
   )
 
 // NOTE: the tabs holding something Claude changed that has not been looked
@@ -466,26 +439,23 @@ const roomViewOf = (model: Model): RoomView => {
   return view
 }
 
-const lazySidebar = createLazy()
-
+// NOTE: the sidebar is built again only when one of these changes.
 export const sidebarView: {
-  (h: StudioViewBuilder): (model: Model) => Html
-  (model: Model, h: StudioViewBuilder): Html
-} = Function.dual(
-  2,
-  (model: Model, h: StudioViewBuilder): Html =>
-    lazySidebar(sidebarBody, [
-      model.tab,
-      model.zoom,
-      model.backdrop,
-      model.facing,
-      model.tone,
-      model.isPlaying,
-      roomViewOf(model),
-      model.isGridOn,
-      model.live,
-      model.liveTool,
-      freshTabsOf(model),
-      h,
-    ]) ?? h.nav([]),
+  (model: Model): (h: StudioH) => StudioHtml
+  (h: StudioH, model: Model): StudioHtml
+} = Function.dual(2, (h: StudioH, model: Model): StudioHtml =>
+  h.lazy(
+    sidebarBody,
+    model.tab,
+    model.zoom,
+    model.backdrop,
+    model.facing,
+    model.tone,
+    model.isPlaying,
+    roomViewOf(model),
+    model.isGridOn,
+    model.live,
+    model.liveTool,
+    freshTabsOf(model),
+  ),
 )

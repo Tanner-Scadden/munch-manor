@@ -1,7 +1,7 @@
 import { Array } from 'effect'
-import type { Canvas } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
+
+import { UiStruct } from '@effect/ui'
 
 import type { Model } from '../../../app/model'
 import {
@@ -12,6 +12,7 @@ import {
 } from '../../../art/dareArt'
 import { PocketCard } from '../../../domain/clientSchema'
 import { cameraOf } from '../../../render/camera'
+import type * as Draw from '../../../render/draw'
 import { HUD_STRIP_HEIGHT, hudLayoutFor } from '../../../render/hudLayout'
 import {
   DEFAULT_PORTRAIT_SCREEN,
@@ -22,7 +23,7 @@ import { hudShapes } from '../../../screens/game/hud'
 import { pocketOf } from '../../../screens/game/pocket'
 import { quietWave } from '../../../test/model.fixture'
 import { type DareKind, DareThingState } from '../../../world/dare/dareSchema'
-import { Phase } from '../../../world/schema/worldSchema'
+import { BreakClock, Phase } from '../../../world/schema/worldSchema'
 import { type DarePocket, dareCardShapes, pocketBoxOf } from '../dareCard'
 
 // The dare pocket on the HUD (src/features/dare/dareCard.ts): shut through a
@@ -37,8 +38,8 @@ const LIST: ReadonlyArray<DareKind> = [
 ]
 
 const onTheHunt = (found: ReadonlyArray<DareKind>): Model =>
-  modifyFields(quietWave(3), {
-    dare: dare => modifyFields(dare, { list: () => LIST }),
+  UiStruct.evolve(quietWave(3), {
+    dare: dare => UiStruct.evolve(dare, { list: () => LIST }),
     dareThings: () =>
       Array.map(LIST, (kind, id) => ({
         id,
@@ -51,9 +52,10 @@ const onTheHunt = (found: ReadonlyArray<DareKind>): Model =>
 
 // NOTE: a break `msIn` ms in, its banner in the top band or the bottom one.
 const inBreak = (model: Model, msIn: number, band: Model['hintBand']): Model =>
-  modifyFields(model, {
+  UiStruct.evolve(model, {
     phase: () =>
       Phase.Preparation({
+        clock: BreakClock.Counting(),
         wave: 3,
         remainingMs: 20_000 - msIn,
         durationMs: 20_000,
@@ -66,20 +68,20 @@ const inBreak = (model: Model, msIn: number, band: Model['hintBand']): Model =>
 type Placed = Readonly<{ x: number; y: number; src: string }>
 
 const placedImages = (
-  shapes: ReadonlyArray<Canvas.Shape>,
+  shapes: ReadonlyArray<Draw.Shape>,
 ): ReadonlyArray<Placed> =>
   Array.flatMap(shapes, shape =>
     shape._tag === 'Image' ? [{ x: shape.x, y: shape.y, src: shape.src }] : [],
   )
 
-const srcOf = (sprite: ReadonlyArray<Canvas.Shape>): string =>
+const srcOf = (sprite: ReadonlyArray<Draw.Shape>): string =>
   Array.match(placedImages(sprite), {
     onEmpty: () => '',
     onNonEmpty: ([first]) => first.src,
   })
 
 const isSlotIn =
-  (sprites: Readonly<Record<DareKind, ReadonlyArray<Canvas.Shape>>>) =>
+  (sprites: Readonly<Record<DareKind, ReadonlyArray<Draw.Shape>>>) =>
   (kind: DareKind) =>
   ({ src }: Placed): boolean =>
     src === srcOf(sprites[kind])
@@ -162,7 +164,7 @@ describe('the dare pocket', () => {
     expect(pocketOf(inBreak(hunting, 5000, 'Bottom'))).toBe('Open')
     expect(
       pocketOf(
-        modifyFields(inBreak(hunting, 5000, 'Bottom'), {
+        UiStruct.evolve(inBreak(hunting, 5000, 'Bottom'), {
           pocketCard: () => PocketCard.Reading({ ageMs: 0 }),
         }),
       ),
@@ -171,7 +173,7 @@ describe('the dare pocket', () => {
     // each picture flies into its own slot.
     expect(
       pocketOf(
-        modifyFields(inBreak(hunting, 0, 'Top'), {
+        UiStruct.evolve(inBreak(hunting, 0, 'Top'), {
           pocketCard: () => PocketCard.Folding({ ageMs: 0 }),
         }),
       ),
@@ -206,8 +208,8 @@ describe('the dare pocket', () => {
       hudShapes(model, LANDSCAPE_SCREEN, cameraOf(model)),
     )
     expect(Array.filter(hud, isAnySlot)).toHaveLength(LIST.length)
-    const endless = modifyFields(model, {
-      dare: dare => modifyFields(dare, { list: () => [] }),
+    const endless = UiStruct.evolve(model, {
+      dare: dare => UiStruct.evolve(dare, { list: () => [] }),
       dareThings: () => [],
     })
     expect(

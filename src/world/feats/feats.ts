@@ -1,5 +1,6 @@
 import { Array, Function, Option } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import { isInKitchenAt } from '../kitchen/kitchenKeys'
 import { type Level, levelOf } from '../level/arena'
@@ -117,7 +118,7 @@ const ARMAMENT_OF: Readonly<Record<KillSource, Option.Option<Armament>>> = {
   Other: Option.none(),
 }
 
-type Kill = typeof GameEvent.ZombieKilled.Type
+type Kill = typeof GameEvent.cases.ZombieKilled.Type
 
 // NOTE: who a kill is credited to. A kill no player made (a trap, a
 // shatter) is single player's own, as its keys are; in co-op it is nobody's.
@@ -131,7 +132,7 @@ export const killerOf: {
 const countKill =
   (level: Level, isStandingInKitchen: boolean) =>
   (tally: FeatTally, kill: Kill): FeatTally =>
-    modifyFields(tally, {
+    UiStruct.evolve(tally, {
       kills: kills => kills + 1,
       killsWith: counts =>
         Option.match(ARMAMENT_OF[kill.source], {
@@ -211,22 +212,22 @@ const tallySeat =
       countKill(level, isInKitchenAt(level, after.player)),
     )
     const hurt = wasHurt
-      ? modifyFields(killed, {
+      ? UiStruct.evolve(killed, {
           streak: () => 0,
           hurtThisWave: () => true,
         })
       : killed
     const cleared =
       moments.waveEnded && !hurt.hurtThisWave
-        ? modifyFields(hurt, { cleanWaves: count => count + 1 })
+        ? UiStruct.evolve(hurt, { cleanWaves: count => count + 1 })
         : hurt
     const begun = moments.waveBegan
-      ? modifyFields(cleared, {
+      ? UiStruct.evolve(cleared, {
           hurtThisWave: () => false,
           kitchenKills: () => 0,
         })
       : cleared
-    const tallied = modifyFields(begun, {
+    const tallied = UiStruct.evolve(begun, {
       roomsOpened: count => (openedRoom ? count + 1 : count),
       firesLit: count => (litFire ? count + 1 : count),
     })

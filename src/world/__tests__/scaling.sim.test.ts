@@ -7,9 +7,8 @@
 // sizes are timed in turn, several times, and their medians compared, so a
 // slow moment on a busy machine moves them alike.
 import { Array, Clock, Effect, Order, pipe } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
 import type { Model } from '../../app/model'
@@ -19,7 +18,7 @@ import {
   plannedSpawn,
   quietWave,
 } from '../../test/model.fixture'
-import { APPLICATION, FRAME_MS, ticks } from '../../test/testing'
+import { FRAME_MS, modelAfter, ticks } from '../../test/testing'
 import { Phase } from '../schema/worldSchema'
 import { crowdOf } from './workBudget.fixture'
 
@@ -35,11 +34,7 @@ const MOST_GROWTH = 7.5
 const timedFrom = (start: Model) =>
   Effect.gen(function* () {
     const before = yield* Clock.currentTimeNanos
-    yield* Story.story(
-      APPLICATION,
-      Story.given(start),
-      ...ticks(FRAMES, FRAME_MS),
-    )
+    yield* modelAfter(start, ticks(FRAMES, FRAME_MS))
     const after = yield* Clock.currentTimeNanos
     return Number(after - before)
   })
@@ -52,7 +47,7 @@ const SMALL_PLAN = 100
 const LARGE_PLAN = 400
 
 const heldPlan = (packs: number): Model =>
-  modifyFields(crowdOf(quietWave(3), ZOMBIE_ALIVE_MAX), {
+  UiStruct.evolve(crowdOf(quietWave(3), ZOMBIE_ALIVE_MAX), {
     phase: () =>
       Phase.Wave({
         wave: 3,

@@ -24,7 +24,7 @@ import { type WireError, readAll } from './Wire'
 import type { World } from './World'
 
 // NOTE: a player's side of the room, as pure functions over plain data, so
-// it is tested without a socket and fits a Foldkit Model: the shell feeds
+// it is tested without a socket and fits an Effect UI Model: the shell feeds
 // it what arrives (`receive`) and, once a frame, the local input
 // (`tickInput`), sends what it returns, and draws `render`.
 //

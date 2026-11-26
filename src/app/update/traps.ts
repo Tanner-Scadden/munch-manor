@@ -1,5 +1,6 @@
 import { Array, Option, Result } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import { playerKeyAction } from '../../input/keyActions'
 import { puffDust } from '../../render/particles/particles'
@@ -15,26 +16,26 @@ import { ActionRefusal, SeatAction } from '../../world/step/stepWorld'
 import { type Model, TrapHint, TrapNotice } from '../model'
 import { actAsLead, tryAsLead } from './action'
 import { playSounds, uiCue } from './sound'
-import type { UpdateReturn, UpdateStep } from './step'
+import { type UpdateStep, toModel } from './step'
 
 const shakeBy = (model: Model, trauma: number): Model =>
-  modifyFields(model, {
+  UiStruct.evolve(model, {
     shake: shake =>
-      modifyFields(shake, {
+      UiStruct.evolve(shake, {
         trauma: current => Math.min(SHAKE_TRAUMA_MAX, current + trauma),
       }),
   })
 
 // NOTE: a trap placed settles its hint and quiets the notice.
 const notePlacement = (model: Model): Model =>
-  modifyFields(model, {
+  UiStruct.evolve(model, {
     trapHint: () => TrapHint.Seen(),
-    cosmetics: modifyFields({ trapNotice: () => TrapNotice.Quiet() }),
+    cosmetics: UiStruct.evolve({ trapNotice: () => TrapNotice.Quiet() }),
   })
 
 const refusePlacement = (model: Model, reason: string): Model =>
-  modifyFields(model, {
-    cosmetics: modifyFields({
+  UiStruct.evolve(model, {
+    cosmetics: UiStruct.evolve({
       trapNotice: () =>
         TrapNotice.Refused({ reason, remainingMs: TRAP_NOTICE_MS }),
     }),
@@ -42,47 +43,56 @@ const refusePlacement = (model: Model, reason: string): Model =>
 
 // NOTE: a placed trap stamps its dust and thunk where it landed; a refused
 // one says why in the trap notice.
-export const placeSelectedTrap = (model: Model): UpdateReturn =>
-  Result.match(tryAsLead(model, SeatAction.PlaceTrap()), {
+export const placeSelectedTrap: UpdateStep = $ =>
+  Result.match(tryAsLead($.model, SeatAction.PlaceTrap()), {
     onFailure: refusal =>
       ActionRefusal.match(refusal, {
-        NotNow: () => ({ model }),
+        NotNow: () => $.model,
         Refused: ({ reason }) =>
-          playSounds([uiCue('Denied')])(refusePlacement(model, reason)),
+          $.combine(
+            toModel(refusePlacement($.model, reason)),
+            playSounds([uiCue('Denied')]),
+          ),
       }),
     onSuccess: placed =>
       Option.match(Array.last(placed.traps), {
-        onNone: () => ({ model: placed }),
+        onNone: () => placed,
         onSome: trap => {
           const { x, y } = trapCenter(levelOf(placed), trap)
-          return playSounds([{ sound: 'Thunk', variation: 0 }])(
-            shakeBy(puffDust(notePlacement(placed), x, y), TRAP_PLACE_TRAUMA),
+          return $.combine(
+            toModel(
+              shakeBy(puffDust(notePlacement(placed), x, y), TRAP_PLACE_TRAUMA),
+            ),
+            playSounds([{ sound: 'Thunk', variation: 0 }]),
           )
         },
       }),
   })
 
-export const nextTrap = (model: Model): UpdateReturn => {
-  const cycled = actAsLead(model, SeatAction.NextTrap())
-  return playSounds(
-    focusOf(cycled).selectedTrap === focusOf(model).selectedTrap
-      ? []
-      : [uiCue('Swap')],
-  )(cycled)
+export const nextTrap: UpdateStep = $ => {
+  const cycled = actAsLead($.model, SeatAction.NextTrap())
+  return $.combine(
+    toModel(cycled),
+    playSounds(
+      focusOf(cycled).selectedTrap === focusOf($.model).selectedTrap
+        ? []
+        : [uiCue('Swap')],
+    ),
+  )
 }
 
 // NOTE: T places the selected trap and G picks the next, read from the one
 // key table (src/input/keyActions.ts).
-export const trapFromKey: (code: string) => UpdateStep = code => stepModel =>
-  Option.match(playerKeyAction(stepModel, code), {
-    onNone: () => ({ model: stepModel }),
+export const trapFromKey: (code: string) => UpdateStep = code => $ =>
+  Option.match(playerKeyAction($.model, code), {
+    onNone: () => $.model,
     onSome: action =>
       SeatAction.matchOrElse(
         action,
         {
-          PlaceTrap: () => placeSelectedTrap(stepModel),
-          NextTrap: () => nextTrap(stepModel),
+          PlaceTrap: () => placeSelectedTrap($),
+          NextTrap: () => nextTrap($),
         },
-        () => ({ model: stepModel }),
+        () => $.model,
       ),
   })

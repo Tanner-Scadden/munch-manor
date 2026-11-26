@@ -1,5 +1,6 @@
 import { Array, Function, Option, pipe } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import {
   MS_PER_SECOND,
@@ -173,10 +174,10 @@ export const maybeStandingBoss = (model: World): Option.Option<Zombie> =>
 
 const announce = (
   model: World,
-  { door, hp, guestHpScale }: typeof Boss.Waiting.Type,
+  { door, hp, guestHpScale }: typeof Boss.cases.Waiting.Type,
 ): World => {
   const { x, y } = warningPoint(levelOf(model), door)
-  return modifyFields(model, {
+  return UiStruct.evolve(model, {
     boss: () =>
       Boss.Arriving({
         door,
@@ -222,7 +223,7 @@ const entryPoint = (model: World, door: DoorId): Vector => {
 
 const enter = (
   model: World,
-  { door, hp, guestHpScale }: typeof Boss.Arriving.Type,
+  { door, hp, guestHpScale }: typeof Boss.cases.Arriving.Type,
 ): World => {
   const speedDraw = nextRandom(model.rngState)
   const boss = arrivingZombie({
@@ -233,7 +234,7 @@ const enter = (
     speedScale: difficultySpeedScale(model.difficulty.chosen),
     hp,
   })
-  return modifyFields(model, {
+  return UiStruct.evolve(model, {
     zombies: Array.append(boss),
     nextEntityId: id => id + 1,
     rngState: () => speedDraw.nextState,
@@ -258,7 +259,7 @@ export const advanceBossEntrance: {
         pendingSpawns <= waiting.waitBelow ? announce(model, waiting) : model,
       Arriving: arriving =>
         arriving.remainingMs > worldMs
-          ? modifyFields(model, {
+          ? UiStruct.evolve(model, {
               boss: () =>
                 Boss.Arriving({
                   ...arriving,
@@ -268,13 +269,13 @@ export const advanceBossEntrance: {
           : enter(model, arriving),
       Fighting: fight =>
         Option.isSome(Option.filter(findBoss(model, fight.id), isStanding))
-          ? modifyFields(model, {
+          ? UiStruct.evolve(model, {
               boss: () =>
-                modifyFields(fight, {
+                UiStruct.evolve(fight, {
                   standingMs: standingMs => standingMs + worldMs,
                 }),
             })
-          : modifyFields(model, { boss: () => Boss.Absent() }),
+          : UiStruct.evolve(model, { boss: () => Boss.Absent() }),
     }),
 )
 
@@ -314,7 +315,7 @@ const callCrasher =
     const row = Math.floor(index / Math.max(1, doorIds.length))
     const kind = crasherKindOf(index)
     const speedDraw = nextRandom(model.rngState)
-    return modifyFields(model, {
+    return UiStruct.evolve(model, {
       zombies: Array.append(
         arrivingZombie({
           id: model.nextEntityId,
@@ -346,7 +347,7 @@ const enrage = (model: World, fight: Fight, boss: Zombie): World =>
     ? pipe(
         callCrashers(
           modifyFight(model, current =>
-            modifyFields(current, { mood: () => 'Enraged' }),
+            UiStruct.evolve(current, { mood: () => 'Enraged' }),
           ),
           fight,
         ),
@@ -365,7 +366,7 @@ const tickBelch = (
       ? BOSS_RULES.belchFarRate
       : 1
   return modifyFight(model, current =>
-    modifyFields(current, {
+    UiStruct.evolve(current, {
       belchMs: belchMs => Math.max(0, belchMs - deltaMs * rate),
     }),
   )
@@ -451,7 +452,7 @@ const shoveFrom =
     zombie.id !== boss.id &&
     isGrounded(zombie) &&
     circlesOverlap(boss, BOSS_RULES.stompRadius, zombie, bodyRadiusOf(zombie))
-      ? modifyFields(zombie, {
+      ? UiStruct.evolve(zombie, {
           knockback: () =>
             scaleVector(
               awayFrom(boss, zombie),
@@ -501,7 +502,7 @@ const stomp = (
 ): World =>
   recover(
     stompPlayer(
-      modifyFields(model, {
+      UiStruct.evolve(model, {
         zombies: Array.map(shoveFrom(boss)),
         frameEvents: Array.append(
           GameEvent.BossStomped({
@@ -542,7 +543,7 @@ const shoveFromSlam =
     zombie.id !== boss.id &&
     isGrounded(zombie) &&
     circlesOverlap(boss, BOSS_RULES.slamRadius, zombie, bodyRadiusOf(zombie))
-      ? modifyFields(zombie, {
+      ? UiStruct.evolve(zombie, {
           knockback: () =>
             scaleVector(
               awayFrom(boss, zombie),
@@ -557,7 +558,7 @@ const slam = (
   fight: Fight,
   boss: Zombie,
 ): World => {
-  const landed = modifyFields(model, {
+  const landed = UiStruct.evolve(model, {
     zombies: Array.map(shoveFromSlam(boss)),
     frameEvents: Array.append(
       GameEvent.BossStomped({
@@ -614,7 +615,7 @@ const belchOne =
   (fight: Fight, boss: Zombie, toward: Vector, count: number) =>
   (model: World, index: number): World => {
     const speedDraw = nextRandom(model.rngState)
-    return modifyFields(model, {
+    return UiStruct.evolve(model, {
       zombies: Array.append(
         arrivingZombie({
           id: model.nextEntityId,
@@ -655,7 +656,7 @@ const belch = (
         ),
       ),
       current =>
-        modifyFields(current, {
+        UiStruct.evolve(current, {
           belchMs: () =>
             BOSS_RULES.belchEveryMs *
             bossAttackPace(model.difficulty.chosen) *
@@ -704,7 +705,7 @@ const spit = (
   recover(
     pipe(
       modifyFight(model, current =>
-        modifyFields(current, {
+        UiStruct.evolve(current, {
           nextFar: () => 'Charge',
           globs: globs => [
             ...globs,
@@ -731,7 +732,7 @@ const rush = (model: World, boss: Zombie, target: Vector): World => {
   const direction = awayFrom(boss, target)
   return pipe(
     modifyFight(model, current =>
-      modifyFields(current, {
+      UiStruct.evolve(current, {
         nextFar: () => 'Spit',
         move: () =>
           BossMove.Rushing({
@@ -767,7 +768,7 @@ const bowl =
     zombie.id !== boss.id &&
     isGrounded(zombie) &&
     circlesOverlap(boss, bodyRadiusOf(boss), zombie, bodyRadiusOf(zombie))
-      ? modifyFields(zombie, {
+      ? UiStruct.evolve(zombie, {
           knockback: () =>
             scaleVector(
               sweptAside(boss, direction, zombie),
@@ -849,9 +850,9 @@ const stepRush = (
   )
   const progress =
     (moved.x - boss.x) * direction.x + (moved.y - boss.y) * direction.y
-  const rushed = modifyFields(boss, { x: () => moved.x, y: () => moved.y })
+  const rushed = UiStruct.evolve(boss, { x: () => moved.x, y: () => moved.y })
   const swept = ram(
-    modifyFields(model, {
+    UiStruct.evolve(model, {
       zombies: Array.map(zombie =>
         zombie.id === boss.id ? rushed : bowl(rushed, direction)(zombie),
       ),

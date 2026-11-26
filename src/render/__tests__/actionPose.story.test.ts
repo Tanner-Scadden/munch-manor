@@ -1,7 +1,6 @@
 import { Array, Effect, Option, Record } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
 import { Message } from '../../app/message'
@@ -19,7 +18,14 @@ import {
   withPlayerAt,
   withSeatLife,
 } from '../../test/model.fixture'
-import { APPLICATION, settleRunCommands, ticks } from '../../test/testing'
+import {
+  checkModel,
+  modelAfter,
+  send,
+  settleRunCommands,
+  steps,
+  ticks,
+} from '../../test/testing'
 import { DareThingState } from '../../world/dare/dareSchema'
 import { FIND_RULES } from '../../world/dare/finds'
 import { levelOf } from '../../world/level/arena'
@@ -104,40 +110,42 @@ describe('CPR', () => {
   it.effect(
     'the reviver kneels and pushes on the chest, facing the body, then pumps a fist as they spring up',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(beside),
-        ...ticks(Math.floor(COOP_RULES.reviveMs / FRAME_MS / 2), FRAME_MS),
-        Story.model(current => {
-          const pose = poseAt(current, 0)
-          expect(motionOf(pose)).toEqual(Option.some('Compress'))
-          expect(ActionPose.isAnyOf(['Working'])(pose) && pose.facing).toBe(
-            'Right',
-          )
-          expect(
-            ActionPose.isAnyOf(['Working'])(pose) && pose.share,
-          ).toBeCloseTo(0.5, 1)
-        }),
-        ...ticks(Math.ceil(COOP_RULES.reviveMs / FRAME_MS / 2) + 2, FRAME_MS),
-        settleRunCommands,
-        Story.model(current => {
-          expect(payoffsOf(current, 0)).toEqual(['FistPump'])
-          expect(payoffsOf(current, 1)).toEqual(['SpringUp'])
-          expect(poseAt(current, 0)._tag).toBe('Beat')
-        }),
+      modelAfter(
+        beside,
+        steps(
+          ticks(Math.floor(COOP_RULES.reviveMs / FRAME_MS / 2), FRAME_MS),
+          checkModel(current => {
+            const pose = poseAt(current, 0)
+            expect(motionOf(pose)).toEqual(Option.some('Compress'))
+            expect(ActionPose.isAnyOf(['Working'])(pose) && pose.facing).toBe(
+              'Right',
+            )
+            expect(
+              ActionPose.isAnyOf(['Working'])(pose) && pose.share,
+            ).toBeCloseTo(0.5, 1)
+          }),
+          ticks(Math.ceil(COOP_RULES.reviveMs / FRAME_MS / 2) + 2, FRAME_MS),
+          settleRunCommands,
+          checkModel(current => {
+            expect(payoffsOf(current, 0)).toEqual(['FistPump'])
+            expect(payoffsOf(current, 1)).toEqual(['SpringUp'])
+            expect(poseAt(current, 0)._tag).toBe('Beat')
+          }),
+        ),
       ),
   )
 
   it.effect('a blow lands once each time the push comes round', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(beside),
-      ...ticks(Math.floor(COOP_RULES.reviveMs / FRAME_MS / 2), FRAME_MS),
-      Story.model(current => {
-        expect(current.cosmetics.actionWatch.working).toEqual([
-          expect.objectContaining({ slot: 0, motion: 'Compress' }),
-        ])
-      }),
+    modelAfter(
+      beside,
+      steps(
+        ticks(Math.floor(COOP_RULES.reviveMs / FRAME_MS / 2), FRAME_MS),
+        checkModel(current => {
+          expect(current.cosmetics.actionWatch.working).toEqual([
+            expect.objectContaining({ slot: 0, motion: 'Compress' }),
+          ])
+        }),
+      ),
     ),
   )
 })
@@ -145,7 +153,7 @@ describe('CPR', () => {
 describe('a find', () => {
   const spot = hidingSpotIn(levelOf(quietWave(3)), PARLOUR_ROOM_ID)
   const atTrunk = withPlayerAt(
-    modifyFields(
+    UiStruct.evolve(
       withDareThings(quietWave(3), [
         {
           id: 0,
@@ -162,22 +170,23 @@ describe('a find', () => {
   it.effect(
     'rummages the trunk while it is worked, then holds the thing up overhead',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(atTrunk),
-        ...ticks(10, FRAME_MS),
-        Story.model(current => {
-          expect(motionOf(poseAt(current, 0))).toEqual(Option.some('Rummage'))
-        }),
-        ...ticks(Math.ceil(FIND_RULES.Rummage.workMs / FRAME_MS), FRAME_MS),
-        settleRunCommands,
-        Story.model(current => {
-          const pose = poseAt(current, 0)
-          expect(pose._tag).toBe('Beat')
-          expect(ActionPose.isAnyOf(['Beat'])(pose) && pose.maybeThing).toEqual(
-            Option.some('SilverSpoon'),
-          )
-        }),
+      modelAfter(
+        atTrunk,
+        steps(
+          ticks(10, FRAME_MS),
+          checkModel(current => {
+            expect(motionOf(poseAt(current, 0))).toEqual(Option.some('Rummage'))
+          }),
+          ticks(Math.ceil(FIND_RULES.Rummage.workMs / FRAME_MS), FRAME_MS),
+          settleRunCommands,
+          checkModel(current => {
+            const pose = poseAt(current, 0)
+            expect(pose._tag).toBe('Beat')
+            expect(
+              ActionPose.isAnyOf(['Beat'])(pose) && pose.maybeThing,
+            ).toEqual(Option.some('SilverSpoon'))
+          }),
+        ),
       ),
   )
 })
@@ -194,13 +203,14 @@ describe('a room tool', () => {
 
   it.effect('each is worked with its own motion', () =>
     Effect.forEach(CASES, ([id, motion]) =>
-      Story.story(
-        APPLICATION,
-        Story.given(atTool(houseWave, id)),
-        ...ticks(6, FRAME_MS),
-        Story.model(current => {
-          expect(motionOf(poseAt(current, 0))).toEqual(Option.some(motion))
-        }),
+      modelAfter(
+        atTool(houseWave, id),
+        steps(
+          ticks(6, FRAME_MS),
+          checkModel(current => {
+            expect(motionOf(poseAt(current, 0))).toEqual(Option.some(motion))
+          }),
+        ),
       ),
     ),
   )
@@ -234,22 +244,23 @@ describe('a hold to buy', () => {
 
 describe('a swap', () => {
   it.effect('tosses the gun for a beat, then stands as usual', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(armedBreak),
-      ...ticks(1, FRAME_MS),
-      Story.message(Message.ClickedSwapButton()),
-      ...ticks(1, FRAME_MS),
-      settleRunCommands,
-      Story.model(current => {
-        expect(payoffsOf(current, 0)).toEqual(['Swap'])
-      }),
-      ...ticks(Math.ceil(PAYOFF_MS.Swap / FRAME_MS) + 1, FRAME_MS),
-      settleRunCommands,
-      Story.model(current => {
-        expect(payoffsOf(current, 0)).toEqual([])
-        expect(poseAt(current, 0)).toEqual(ActionPose.Ready())
-      }),
+    modelAfter(
+      armedBreak,
+      steps(
+        ticks(1, FRAME_MS),
+        send(Message.ClickedSwapButton()),
+        ticks(1, FRAME_MS),
+        settleRunCommands,
+        checkModel(current => {
+          expect(payoffsOf(current, 0)).toEqual(['Swap'])
+        }),
+        ticks(Math.ceil(PAYOFF_MS.Swap / FRAME_MS) + 1, FRAME_MS),
+        settleRunCommands,
+        checkModel(current => {
+          expect(payoffsOf(current, 0)).toEqual([])
+          expect(poseAt(current, 0)).toEqual(ActionPose.Ready())
+        }),
+      ),
     ),
   )
 })

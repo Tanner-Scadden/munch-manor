@@ -1,8 +1,11 @@
 // NOTE: reading what a view draws in tests: a canvas shape tree's Rects
-// and Images, and a rendered VNode's elements.
+// and Images, and a rendered view's elements.
 
 import { Array, Function, Match } from 'effect'
-import { Canvas } from 'foldkit'
+
+import { Locator } from '@effect/ui/testing'
+
+import * as Draw from '../render/draw'
 
 type Box = Readonly<{ x: number; y: number; width: number; height: number }>
 
@@ -17,17 +20,17 @@ type Edges = Readonly<{
 export const rectsOf: {
   (
     offset: Readonly<{ x: number; y: number }>,
-  ): (shapes: ReadonlyArray<Canvas.Shape>) => ReadonlyArray<Canvas.Rect & Box>
+  ): (shapes: ReadonlyArray<Draw.Shape>) => ReadonlyArray<Draw.Rect & Box>
   (
-    shapes: ReadonlyArray<Canvas.Shape>,
+    shapes: ReadonlyArray<Draw.Shape>,
     offset: Readonly<{ x: number; y: number }>,
-  ): ReadonlyArray<Canvas.Rect & Box>
+  ): ReadonlyArray<Draw.Rect & Box>
 } = Function.dual(
   2,
   (
-    shapes: ReadonlyArray<Canvas.Shape>,
+    shapes: ReadonlyArray<Draw.Shape>,
     offset: Readonly<{ x: number; y: number }>,
-  ): ReadonlyArray<Canvas.Rect & Box> =>
+  ): ReadonlyArray<Draw.Rect & Box> =>
     Array.flatMap(shapes, shape =>
       Match.value(shape).pipe(
         Match.tag('Group', group =>
@@ -37,7 +40,7 @@ export const rectsOf: {
           }),
         ),
         Match.tag('Rect', rect => [
-          Canvas.Rect({ ...rect, x: rect.x + offset.x, y: rect.y + offset.y }),
+          Draw.Rect({ ...rect, x: rect.x + offset.x, y: rect.y + offset.y }),
         ]),
         Match.orElse(() => []),
       ),
@@ -49,7 +52,7 @@ export const rectsOf: {
 type Placing = Readonly<{ x: number; y: number; scale: number }>
 
 const drawnBoxesAt = (
-  shapes: ReadonlyArray<Canvas.Shape>,
+  shapes: ReadonlyArray<Draw.Shape>,
   at: Placing,
 ): ReadonlyArray<Edges> =>
   Array.flatMap(shapes, shape =>
@@ -74,7 +77,7 @@ const drawnBoxesAt = (
   )
 
 export const drawnBoxesOf = (
-  shapes: ReadonlyArray<Canvas.Shape>,
+  shapes: ReadonlyArray<Draw.Shape>,
 ): ReadonlyArray<Edges> => drawnBoxesAt(shapes, { x: 0, y: 0, scale: 1 })
 
 // NOTE: whether two boxes overlap, edges touching not counted.
@@ -87,8 +90,8 @@ export const isOverBox =
     box.bottom > other.top
 
 export const imagesIn = (
-  shapes: ReadonlyArray<Canvas.Shape>,
-): ReadonlyArray<Canvas.Image> =>
+  shapes: ReadonlyArray<Draw.Shape>,
+): ReadonlyArray<Draw.Image> =>
   Array.flatMap(shapes, shape =>
     Match.value(shape).pipe(
       Match.tag('Image', image => [image]),
@@ -97,28 +100,11 @@ export const imagesIn = (
     ),
   )
 
-export type VNodeLike = Readonly<{
-  sel?: string | undefined
-  key?: PropertyKey | undefined
-  data?:
-    | Readonly<{
-        attrs?: Readonly<Record<string, unknown>> | undefined
-        props?: Readonly<Record<string, unknown>> | undefined
-      }>
-    | undefined
-  children?: ReadonlyArray<VNodeLike | string> | undefined
-}>
+// NOTE: a rendered view's elements, as a Scene's `root` and Effect UI's
+// locators read them (`Locator.Node`: tag, attrs, props, text, children).
+export type ViewNode = Locator.Node
 
-// NOTE: a rendered VNode and every element under it, depth first.
-export const nodesOf = (root: VNodeLike): ReadonlyArray<VNodeLike> => {
-  const found: Array<VNodeLike> = []
-  const visit = (node: VNodeLike | string) => {
-    if (typeof node === 'string') {
-      return
-    }
-    found.push(node)
-    Array.forEach(node.children ?? [], visit)
-  }
-  visit(root)
-  return found
-}
+// NOTE: a rendered view and every element under it, depth first, the root
+// included.
+export const nodesOf = (root: ViewNode): ReadonlyArray<ViewNode> =>
+  Locator.elements(root)

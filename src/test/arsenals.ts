@@ -1,5 +1,6 @@
 import { Array, Function, Option } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import {
   STARTING_PISTOL,
@@ -38,7 +39,7 @@ export const withPistol: {
 } = Function.dual(
   2,
   (player: Player, change: (pistol: CarriedGun) => CarriedGun): Player =>
-    modifyFields(player, {
+    UiStruct.evolve(player, {
       arsenal: arsenal =>
         mapGuns(arsenal, gun => (gun.kind === 'Pistol' ? change(gun) : gun)),
     }),

@@ -1,5 +1,6 @@
 import { Array, Function, Option } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import { maybeTakenDareOf, withDarePicks } from '../domain/beatMyRun'
 import { activeBots, crewBotSlots, seatCallings } from '../domain/bots'
@@ -42,7 +43,7 @@ const startRun = (model: Model, mode: RunMode): Model =>
 // NOTE: a run starts its recording (src/platform/recording.ts) from the
 // World it starts with, when this device shows RECORD MY RUNS and it is on.
 const recordedFromStart = (model: Model): Model =>
-  modifyFields(model, {
+  UiStruct.evolve(model, {
     recorder: () =>
       model.recordUnlock === 'Unlocked' && model.settings.recordRuns === 'On'
         ? beginRecording({
@@ -65,7 +66,7 @@ const fromDare = (model: Model): Model =>
   Option.match(maybeTakenDareOf(model), {
     onNone: () => model,
     onSome: dare =>
-      modifyFields(withDarePicks(model, dare), {
+      UiStruct.evolve(withDarePicks(model, dare), {
         rngState: () => dare.seed,
       }),
   })
@@ -108,7 +109,7 @@ const startedFrom = (model: Model, mode: RunMode): Model => {
 }
 
 const resume = (model: Model, round: Round): Model =>
-  modifyFields(model, {
+  UiStruct.evolve(model, {
     phase: () =>
       Round.match(round, {
         Preparation: (preparation): Phase => preparation,

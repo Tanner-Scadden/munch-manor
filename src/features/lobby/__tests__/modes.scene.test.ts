@@ -1,17 +1,19 @@
 import { Array, Effect, Option } from 'effect'
-import { Scene } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
-import { describe, it } from '@effect/vitest'
+import { UiStruct } from '@effect/ui'
+import { HtmlLocator } from '@effect/ui/html/testing'
+import { Locator } from '@effect/ui/testing'
+import { describe, expect, it } from '@effect/vitest'
 
-import { Message } from '../../../app/message'
 import { Phase, RunMode } from '../../../app/model'
 import { initialModel } from '../../../app/pureApp'
 import { withBests } from '../../../domain/run'
 import { RESTART_GRACE_MS } from '../../../shared/constants'
 import {
-  APPLICATION,
-  SCENE_SUBSCRIPTIONS,
+  ackHudSlots,
+  byClass,
+  emitFrame,
+  expectAttr,
   keepGoingButton,
   lobbyMode,
   lobbyStartButton,
@@ -19,15 +21,19 @@ import {
   openLobbyInScene,
   playButton,
   playEndlessButton,
-  resolveFocusLobbyInScene,
   retryButton,
   shareMountSettles,
   startRunInScene,
+  statusLine,
   throughIntroInScene,
-} from '../../../test/testing'
+} from '../../../test/sceneTesting'
+import { resolveFocusLobby, sceneOf, steps } from '../../../test/testing'
 import { asVeteran } from '../../../test/veteran'
+import { Lobby } from '../block'
+import { Events } from '../message'
+import { expectLobbyDrawn, lobbyAttr, lobbySceneIn } from './lobby.fixture'
 
-const endlessModeButton = Scene.role('button', { name: 'Endless' })
+const endlessModeButton = HtmlLocator.role('button', { name: 'Endless' })
 const START_PROMPT =
   'Press Enter, or use the Start wave button, to start it now.'
 
@@ -35,78 +41,101 @@ describe('Mode choice', () => {
   it.effect(
     'the home menu offers PLAY alone, and the lobby picks endless and starts it',
     () =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(asVeteran(initialModel)),
-        measureSurface,
-        Scene.expect(playButton).toHaveAttr('aria-keyshortcuts', 'Enter'),
-        Scene.expect(endlessModeButton).toBeAbsent(),
-        Scene.expect(Scene.selector('.home-key')).toExist(),
-        Scene.expect(keepGoingButton).toBeAbsent(),
-        ...openLobbyInScene(),
-        Scene.expect(endlessModeButton).toHaveAttr('aria-pressed', 'false'),
-        Scene.click(endlessModeButton),
-        resolveFocusLobbyInScene(),
-        Scene.expect(endlessModeButton).toHaveAttr('aria-pressed', 'true'),
-        Scene.expect(lobbyMode('Campaign')).toHaveAttr('aria-pressed', 'false'),
-        Scene.click(lobbyStartButton),
-        ...throughIntroInScene(),
-        Scene.expect(Scene.role('status')).toHaveText(
-          `Get ready for endless wave 1. ${START_PROMPT} Keys on the ring: 0.`,
-        ),
-        Scene.expect(playEndlessButton).toBeAbsent(),
-      ),
+      Effect.gen(function* () {
+        const s = yield* sceneOf(asVeteran(initialModel))
+        s.pipe(
+          measureSurface,
+          expectAttr(playButton, 'aria-keyshortcuts', 'Enter'),
+        )
+          .expect(endlessModeButton)
+          .toBeAbsent()
+          .expect(byClass('home-key'))
+          .toExist()
+          .expect(keepGoingButton)
+          .toBeAbsent()
+          .pipe(openLobbyInScene)
+        const campaign = yield* lobbySceneIn(s)
+        campaign
+          .pipe(lobbyAttr(endlessModeButton, 'aria-pressed', 'false'))
+          .click(endlessModeButton)
+          .emitted(Events.PickedMode({ mode: 'Endless' }))
+        s.childEmit(
+          Lobby,
+          'lobby',
+          Events.PickedMode({ mode: 'Endless' }),
+        ).pipe(resolveFocusLobby())
+        const endless = yield* lobbySceneIn(s)
+        endless
+          .pipe(
+            lobbyAttr(endlessModeButton, 'aria-pressed', 'true'),
+            lobbyAttr(lobbyMode('Campaign'), 'aria-pressed', 'false'),
+          )
+          .click(lobbyStartButton)
+          .emitted(Events.RequestedStart())
+        s.childEmit(Lobby, 'lobby', Events.RequestedStart())
+          .pipe(expectLobbyDrawn(false), throughIntroInScene, ackHudSlots)
+          .expect(statusLine)
+          .toHaveText(
+            `Get ready for endless wave 1. ${START_PROMPT} Keys on the ring: 0.`,
+          )
+          .expect(playEndlessButton)
+          .toBeAbsent()
+      }),
   )
 
   it.effect('the Play button starts the escape', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(
-        modifyFields(asVeteran(initialModel), {
+    Effect.gen(function* () {
+      const s = yield* sceneOf(
+        UiStruct.evolve(asVeteran(initialModel), {
           mode: () => RunMode.Endless(),
         }),
-      ),
-      measureSurface,
-      ...startRunInScene(),
-      Scene.expect(Scene.role('status')).toHaveText(
-        `Get ready for wave 1. ${START_PROMPT} Keys on the ring: 0.`,
-      ),
-    ),
+      )
+      s.pipe(measureSurface, startRunInScene, ackHudSlots)
+        .expect(statusLine)
+        .toHaveText(
+          `Get ready for wave 1. ${START_PROMPT} Keys on the ring: 0.`,
+        )
+    }),
   )
 
   it.effect(
     'touch shows the buttons without key badges, and PLAY as the dare card',
     () =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(modifyFields(initialModel, { lastDevice: () => 'Touch' })),
-        measureSurface,
-        Scene.expect(playButton).toExist(),
-        Scene.expect(playButton).toHaveText('I DARE YOU'),
-        Scene.expect(Scene.selector('.home-play-icon')).toExist(),
-        Scene.expect(Scene.selector('.home-key')).toBeAbsent(),
-      ),
+      Effect.gen(function* () {
+        const s = yield* sceneOf(
+          UiStruct.evolve(initialModel, { lastDevice: () => 'Touch' }),
+        )
+        s.pipe(measureSurface)
+          .expect(playButton)
+          .toHaveText('I DARE YOU')
+          .expect(byClass('home-play-icon'))
+          .toExist()
+          .expect(byClass('home-key'))
+          .toBeAbsent()
+      }),
   )
 
   it.effect('an escape offers no Keep going, even after the grace', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(
-        modifyFields(asVeteran(initialModel), {
+    Effect.gen(function* () {
+      const s = yield* sceneOf(
+        UiStruct.evolve(asVeteran(initialModel), {
           phase: () => Phase.Escaped({ wave: 10 }),
         }),
-      ),
-      measureSurface,
-      ...Array.makeBy(Math.ceil(RESTART_GRACE_MS / 50), () =>
-        Scene.Subscription.emit(
-          SCENE_SUBSCRIPTIONS.frame,
-          Message.TickedFrame({ deltaTime: 50 }),
+      )
+      s.pipe(
+        measureSurface,
+        steps(
+          ...Array.makeBy(Math.ceil(RESTART_GRACE_MS / 50), () =>
+            emitFrame(50),
+          ),
         ),
-      ),
-      Scene.expect(retryButton).toExist(),
-      Scene.expect(keepGoingButton).toBeAbsent(),
-      shareMountSettles('Cancelled'),
-    ),
+      )
+        .expect(retryButton)
+        .toExist()
+        .expect(keepGoingButton)
+        .toBeAbsent()
+        .pipe(shareMountSettles('Cancelled'))
+    }),
   )
 
   it.effect(
@@ -114,35 +143,31 @@ describe('Mode choice', () => {
     () =>
       Effect.gen(function* () {
         const FEEDBACK = 'Tell whoever sent you this what you think!'
+        const feedback = new RegExp(FEEDBACK)
         yield* Effect.forEach(
           [Phase.GameOver({ wave: 4 }), Phase.Escaped({ wave: 10 })],
           phase =>
-            Scene.scene(
-              APPLICATION,
-              Scene.given(modifyFields(initialModel, { phase: () => phase })),
-              measureSurface,
-              Scene.expect(Scene.role('status')).toContainText(FEEDBACK),
+            Effect.map(
+              sceneOf(UiStruct.evolve(initialModel, { phase: () => phase })),
+              s =>
+                s.pipe(measureSurface).expect(statusLine).toHaveText(feedback),
             ),
           { discard: true },
         )
-        yield* Scene.scene(
-          APPLICATION,
-          Scene.given(initialModel),
-          measureSurface,
-          Scene.expect(Scene.role('status')).not.toContainText(FEEDBACK),
-        )
+        const s = yield* sceneOf(initialModel)
+        s.pipe(measureSurface).check(() => {
+          expect(Locator.textOf(s.get(statusLine))).not.toContain(FEEDBACK)
+        })
       }),
   )
-
   it.effect(
     'an endless Game Over reads out the wave reached and your best',
     () =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(
-          modifyFields(
+      Effect.gen(function* () {
+        const s = yield* sceneOf(
+          UiStruct.evolve(
             withBests(initialModel, bests =>
-              modifyFields(bests, {
+              UiStruct.evolve(bests, {
                 maybeBestEndlessWave: () => Option.some(14),
               }),
             ),
@@ -151,11 +176,10 @@ describe('Mode choice', () => {
               phase: () => Phase.GameOver({ wave: 12 }),
             },
           ),
-        ),
-        measureSurface,
-        Scene.expect(Scene.role('status')).toContainText(
-          'Wave reached: 12. Your best: wave 14.',
-        ),
-      ),
+        )
+        s.pipe(measureSurface)
+          .expect(statusLine)
+          .toHaveText(/Wave reached: 12\. Your best: wave 14\./)
+      }),
   )
 })

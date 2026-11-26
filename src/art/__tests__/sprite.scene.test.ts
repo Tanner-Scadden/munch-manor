@@ -1,10 +1,8 @@
 import { Array, Option, Record, String, pipe } from 'effect'
-import { Canvas, Scene } from 'foldkit'
-import type { Html, HtmlBuilder } from 'foldkit/html'
 import { afterEach, describe, expect, test } from 'vitest'
 
-import type { Message } from '../../app/message'
 import { defaultAppearance } from '../../app/model'
+import * as Draw from '../../render/draw'
 import { decodePng, hexOf } from '../../test/testPng'
 import { imagesIn } from '../../test/viewReading'
 import { playerSprites } from '../appearance'
@@ -12,7 +10,6 @@ import { GLYPH_SPRITES, KEY_SPRITE } from '../font'
 import {
   type Palette,
   bakeShapes,
-  group,
   placeAt,
   spriteDataUrl,
   spriteShapes,
@@ -42,7 +39,7 @@ const colorAt = (x: number, y: number): Option.Option<string> =>
     Option.flatMap(symbol => Option.fromNullishOr(PALETTE[symbol])),
   )
 
-const onlyImage = (shapes: ReadonlyArray<Canvas.Shape>): Canvas.Image => {
+const onlyImage = (shapes: ReadonlyArray<Draw.Shape>): Draw.Image => {
   expect(shapes.length).toBe(1)
   return Option.getOrThrow(Array.head(imagesIn(shapes)))
 }
@@ -139,8 +136,8 @@ describe('sprite images', () => {
   test('baking rectangles paints them in order into one image', () => {
     const baked = onlyImage(
       bakeShapes([
-        Canvas.Rect({ x: 2, y: 3, width: 3, height: 2, fill: '#000000' }),
-        Canvas.Rect({ x: 3, y: 3, width: 1, height: 1, fill: '#ffffff' }),
+        Draw.Rect({ x: 2, y: 3, width: 3, height: 2, fill: '#000000' }),
+        Draw.Rect({ x: 3, y: 3, width: 1, height: 1, fill: '#ffffff' }),
       ]),
     )
     expect(baked).toMatchObject({ x: 2, y: 3, width: 3, height: 2 })
@@ -156,7 +153,7 @@ describe('sprite images', () => {
   })
 
   test('shapes that are not whole pixel rectangles stay as they are', () => {
-    const circle = [Canvas.Circle({ x: 3, y: 3, radius: 2, fill: '#000' })]
+    const circle = [Draw.Circle({ x: 3, y: 3, radius: 2, fill: '#000' })]
     expect(bakeShapes(circle)).toBe(circle)
   })
 
@@ -172,7 +169,7 @@ describe('sprite images', () => {
 
 // PREBUILT SPRITES
 
-const keyOf = (shapes: ReadonlyArray<Canvas.Shape>): string =>
+const keyOf = (shapes: ReadonlyArray<Draw.Shape>): string =>
   Option.getOrThrow(standInKeyOf(onlyImage(shapes).src))
 
 const ATLAS_FILE = 'sprites.png'
@@ -209,7 +206,7 @@ describe('prebuilt sprites', () => {
       levels: {},
     })
     expect(onlyImage(spriteShapes(PIXELS, PALETTE, { x: 2, y: 6 }))).toEqual(
-      Canvas.Image({
+      Draw.Image({
         src: ATLAS_FILE,
         x: -2,
         y: -6,
@@ -234,8 +231,8 @@ describe('prebuilt sprites', () => {
 
   test('baked rectangles in the atlas are found by their content, wherever they stand', () => {
     const rects = (x: number) => [
-      Canvas.Rect({ x, y: 3, width: 3, height: 2, fill: '#000000' }),
-      Canvas.Rect({ x: x + 1, y: 3, width: 1, height: 1, fill: '#ffffff' }),
+      Draw.Rect({ x, y: 3, width: 3, height: 2, fill: '#000000' }),
+      Draw.Rect({ x: x + 1, y: 3, width: 1, height: 1, fill: '#ffffff' }),
     ]
     const key = keyOf(bakeShapes(rects(2)))
     expect(keyOf(bakeShapes(rects(40)))).toBe(key)
@@ -261,86 +258,12 @@ describe('prebuilt sprites', () => {
   })
 })
 
-// PAINTER
+// DRAW SHAPES
 
-type DrawCall = ReadonlyArray<unknown>
-
-const recordingContext = (
-  draws: Array<DrawCall>,
-  smoothing: Array<boolean>,
-) => {
-  const ignore = () => undefined
-  // NOTE: a translate and scale only transform, enough for the painter to
-  // find where an image lands on the canvas.
-  const transform = { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }
-  const saved: Array<typeof transform> = []
-  return {
-    fillStyle: '',
-    strokeStyle: '',
-    lineWidth: 1,
-    globalAlpha: 1,
-    set imageSmoothingEnabled(isOn: boolean) {
-      smoothing.push(isOn)
-    },
-    save: () => {
-      saved.push({ ...transform })
-    },
-    restore: () => {
-      Object.assign(transform, saved.pop() ?? transform)
-    },
-    clearRect: ignore,
-    fillRect: (...args: DrawCall) => {
-      draws.push(['fillRect', ...args])
-    },
-    translate: (x: number, y: number) => {
-      transform.e += transform.a * x
-      transform.f += transform.d * y
-    },
-    scale: (x: number, y: number) => {
-      transform.a *= x
-      transform.d *= y
-    },
-    rotate: ignore,
-    getTransform: () => ({ ...transform }),
-    drawImage: (...args: DrawCall) => {
-      draws.push(args)
-    },
-  }
-}
-
-const paintWithFoldkit = (
-  shapes: ReadonlyArray<Canvas.Shape>,
-): Readonly<{ draws: ReadonlyArray<DrawCall>; smoothing: Array<boolean> }> => {
-  const rendered: Array<Html> = []
-  const canvasView = (_model: number, h: HtmlBuilder<Message>): Html => {
-    const node = Canvas.view({ width: 40, height: 40, shapes }, h)
-    rendered.push(node)
-    return node
-  }
-  // NOTE: a plain Scene over a bare canvas view: no game, no Block.
-  Scene.scene(
-    { update: (model: number) => ({ model }), view: canvasView },
-    Scene.given(0),
-  )
-  const draws: Array<DrawCall> = []
-  const smoothing: Array<boolean> = []
-  const element = document.createElement('canvas')
-  Object.defineProperty(element, 'getContext', {
-    value: () => recordingContext(draws, smoothing),
-  })
-  Option.map(Array.last(rendered), node => {
-    if (node !== null) {
-      node.data?.hook?.insert?.({ ...node, elm: element })
-    }
-  })
-  return { draws, smoothing }
-}
-
-describe('the patched Foldkit painter', () => {
-  const src = Option.getOrThrow(spriteDataUrl(PIXELS, PALETTE))
-
-  test('Canvas.Image exists in the installed Foldkit', () => {
-    expect(Canvas.Image({ src, x: 0, y: 0, width: 5, height: 6 })).toEqual({
+describe('Draw.Image', () => {
+  test('builds an image shape', () => {
+    const src = Option.getOrThrow(spriteDataUrl(PIXELS, PALETTE))
+    expect(Draw.Image({ src, x: 0, y: 0, width: 5, height: 6 })).toEqual({
       _tag: 'Image',
       src,
       x: 0,
@@ -348,84 +271,5 @@ describe('the patched Foldkit painter', () => {
       width: 5,
       height: 6,
     })
-  })
-
-  test('draws an image with one drawImage into its box, unsmoothed', () => {
-    const { draws, smoothing } = paintWithFoldkit([
-      Canvas.Image({
-        src,
-        x: 4,
-        y: 7,
-        width: 5,
-        height: 6,
-        rendering: 'Pixelated',
-      }),
-    ])
-    expect(draws.length).toBe(1)
-    expect(Array.get(draws[0] ?? [], 0).pipe(Option.getOrNull)).toBeInstanceOf(
-      HTMLImageElement,
-    )
-    expect(Array.drop(draws[0] ?? [], 1)).toEqual([4, 7, 5, 6])
-    expect(smoothing).toEqual([false])
-  })
-
-  test('lands a pixelated image on whole canvas pixels', () => {
-    const { draws } = paintWithFoldkit([
-      group({
-        translate: { x: 3.5, y: 2 },
-        scale: { x: 2, y: 2 },
-        shapes: [
-          Canvas.Image({
-            src,
-            x: 0.1,
-            y: 0.3,
-            width: 5,
-            height: 6,
-            crop: { x: 1, y: 1, width: 5, height: 6 },
-            rendering: 'Pixelated',
-          }),
-        ],
-      }),
-    ])
-    const [x = 0, y = 0, width = 0, height = 0] = Array.filter(
-      Array.drop(draws[0] ?? [], 5),
-      (value): value is number => typeof value === 'number',
-    )
-    // NOTE: on the canvas the box runs from 3.7 to 13.7 and 2.6 to 14.6.
-    expect([3.5 + 2 * x, 2 + 2 * y]).toEqual([4, 3])
-    expect([2 * width, 2 * height]).toEqual([10, 12])
-  })
-
-  test('lands a filled rectangle on whole canvas pixels', () => {
-    const { draws } = paintWithFoldkit([
-      group({
-        translate: { x: 3.5, y: 2 },
-        scale: { x: 2, y: 2 },
-        shapes: [
-          Canvas.Rect({ x: 0.1, y: 0.3, width: 5, height: 1, fill: '#000' }),
-        ],
-      }),
-    ])
-    const [x = 0, y = 0, width = 0, height = 0] = Array.filter(
-      Array.drop(draws[0] ?? [], 1),
-      (value): value is number => typeof value === 'number',
-    )
-    // NOTE: on the canvas the box runs from 3.7 to 13.7 and 2.6 to 4.6.
-    expect([3.5 + 2 * x, 2 + 2 * y]).toEqual([4, 3])
-    expect([2 * width, 2 * height]).toEqual([10, 2])
-  })
-
-  test('draws a cropped region of the source', () => {
-    const { draws } = paintWithFoldkit([
-      Canvas.Image({
-        src,
-        x: 0,
-        y: 0,
-        width: 2,
-        height: 2,
-        crop: { x: 1, y: 1, width: 2, height: 2 },
-      }),
-    ])
-    expect(Array.drop(draws[0] ?? [], 1)).toEqual([1, 1, 2, 2, 0, 0, 2, 2])
   })
 })

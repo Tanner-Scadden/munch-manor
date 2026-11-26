@@ -1,7 +1,6 @@
 import { Array, Effect, Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
 import { type Model, Phase, RunMode } from '../../../app/model'
@@ -20,10 +19,13 @@ import {
   withZombies,
 } from '../../../test/model.fixture'
 import {
-  APPLICATION,
+  checkModel,
+  modelAfter,
   press,
   release,
   settleRunCommands,
+  steps,
+  storyOf,
   ticks,
   zombieOf,
 } from '../../../test/testing'
@@ -43,8 +45,8 @@ import { BOT, BREAK } from './bots.fixture'
 const TICK_MS = FIXED_STEP_MS
 
 const withBot = (base: Model): Model =>
-  modifyFields(base, {
-    runStart: modifyFields({ crewBots: () => [BOT] }),
+  UiStruct.evolve(base, {
+    runStart: UiStruct.evolve({ crewBots: () => [BOT] }),
   })
 
 const crew = (): Model => withBot(crewInWave(2))
@@ -58,15 +60,16 @@ describe('in a fight', () => {
       placeSeat(1, 60, 60)(placeSeat(0, 30, 60)(crew())),
       [zombieOf('Shambler', 7, 110, 60, { hp: 6 })],
     )
-    return Story.story(
-      APPLICATION,
-      Story.given(fight),
-      ...ticks(40, TICK_MS),
-      Story.model(current => {
-        expect(seatOf(current, 1).seat.shotsFired).toBeGreaterThan(0)
-        expect(seatOf(current, 0).seat.shotsFired).toBe(0)
-      }),
-    )
+    return Effect.gen(function* () {
+      const s = yield* storyOf(fight)
+      s.pipe(
+        ticks(40, TICK_MS),
+        checkModel(current => {
+          expect(seatOf(current, 1).seat.shotsFired).toBeGreaterThan(0)
+          expect(seatOf(current, 0).seat.shotsFired).toBe(0)
+        }),
+      )
+    })
   })
 
   it.effect(
@@ -76,14 +79,15 @@ describe('in a fight', () => {
         placeSeat(1, 100, 60)(placeSeat(0, 30, 60)(crew())),
         [zombieOf('Tank', 7, 112, 60)],
       )
-      return Story.story(
-        APPLICATION,
-        Story.given(fight),
-        ...ticks(30, TICK_MS),
-        Story.model(current => {
-          expect(seatOf(current, 1).player.x).toBeLessThan(100)
-        }),
-      )
+      return Effect.gen(function* () {
+        const s = yield* storyOf(fight)
+        s.pipe(
+          ticks(30, TICK_MS),
+          checkModel(current => {
+            expect(seatOf(current, 1).player.x).toBeLessThan(100)
+          }),
+        )
+      })
     },
   )
 
@@ -94,15 +98,16 @@ describe('in a fight', () => {
         placeSeat(1, 25, 155)(placeSeat(0, 200, 60)(crew())),
         [zombieOf('Tank', 7, 50, 130, { speed: 20 })],
       )
-      return Story.story(
-        APPLICATION,
-        Story.given(cornered),
-        ...ticks(90, TICK_MS),
-        Story.model(current => {
-          const bot = seatOf(current, 1).player
-          expect(Math.hypot(bot.x - 10, bot.y - 170)).toBeGreaterThan(45)
-        }),
-      )
+      return Effect.gen(function* () {
+        const s = yield* storyOf(cornered)
+        s.pipe(
+          ticks(90, TICK_MS),
+          checkModel(current => {
+            const bot = seatOf(current, 1).player
+            expect(Math.hypot(bot.x - 10, bot.y - 170)).toBeGreaterThan(45)
+          }),
+        )
+      })
     },
   )
 
@@ -113,18 +118,19 @@ describe('in a fight', () => {
         0,
         Life.Downed({ bleedMs: 10_000, reviveMs: 0, callMs: 0 }),
       )(placeSeat(1, 120, 60)(placeSeat(0, 30, 60, 0)(crew())))
-      return Story.story(
-        APPLICATION,
-        Story.given(downed),
-        Story.model(current => {
-          expect(seatOf(current, 0).seat.life._tag).toBe('Downed')
-        }),
-        ...ticks(360, TICK_MS),
-        Story.model(current => {
-          expect(seatOf(current, 0).seat.life._tag).toBe('Standing')
-          expect(seatOf(current, 1).seat.revives).toBe(1)
-        }),
-      )
+      return Effect.gen(function* () {
+        const s = yield* storyOf(downed)
+        s.pipe(
+          checkModel(current => {
+            expect(seatOf(current, 0).seat.life._tag).toBe('Downed')
+          }),
+          ticks(360, TICK_MS),
+          checkModel(current => {
+            expect(seatOf(current, 0).seat.life._tag).toBe('Standing')
+            expect(seatOf(current, 1).seat.revives).toBe(1)
+          }),
+        )
+      })
     },
   )
 
@@ -145,37 +151,39 @@ describe('on its own', () => {
     )
 
   it.effect('a bot does not follow the human: it walks to its own post', () => {
-    const apart = modifyFields(
+    const apart = UiStruct.evolve(
       placeSeat(1, 150, 90)(placeSeat(0, 40, 140)(crew())),
       { phase: () => BREAK },
     )
-    return Story.story(
-      APPLICATION,
-      Story.given(apart),
-      ...ticks(240, TICK_MS),
-      Story.model(current => {
-        expect(distance(current, 0, 1)).toBeGreaterThan(60)
-        expect(seatOf(current, 1).player.x).not.toBeCloseTo(150)
-      }),
-    )
+    return Effect.gen(function* () {
+      const s = yield* storyOf(apart)
+      s.pipe(
+        ticks(240, TICK_MS),
+        checkModel(current => {
+          expect(distance(current, 0, 1)).toBeGreaterThan(60)
+          expect(seatOf(current, 1).player.x).not.toBeCloseTo(150)
+        }),
+      )
+    })
   })
 
   it.effect('two bots side by side split up to posts of their own', () => {
-    const twoBots = modifyFields(
+    const twoBots = UiStruct.evolve(
       placeSeat(2, 152, 90)(placeSeat(1, 148, 90)(crewInWave(3))),
       {
         phase: () => BREAK,
-        runStart: modifyFields({ crewBots: () => [BOT, BOT] }),
+        runStart: UiStruct.evolve({ crewBots: () => [BOT, BOT] }),
       },
     )
-    return Story.story(
-      APPLICATION,
-      Story.given(twoBots),
-      ...ticks(300, TICK_MS),
-      Story.model(current => {
-        expect(distance(current, 1, 2)).toBeGreaterThan(60)
-      }),
-    )
+    return Effect.gen(function* () {
+      const s = yield* storyOf(twoBots)
+      s.pipe(
+        ticks(300, TICK_MS),
+        checkModel(current => {
+          expect(distance(current, 1, 2)).toBeGreaterThan(60)
+        }),
+      )
+    })
   })
 
   it.effect(
@@ -185,15 +193,16 @@ describe('on its own', () => {
         placeSeat(1, 40, 70)(placeSeat(0, 30, 140)(crew())),
         [zombieOf('Shambler', 7, 190, 70, { speed: 0, hp: 6 })],
       )
-      return Story.story(
-        APPLICATION,
-        Story.given(far),
-        ...ticks(180, TICK_MS),
-        Story.model(current => {
-          expect(seatOf(current, 1).player.x).toBeGreaterThan(80)
-          expect(seatOf(current, 1).seat.shotsFired).toBeGreaterThan(0)
-        }),
-      )
+      return Effect.gen(function* () {
+        const s = yield* storyOf(far)
+        s.pipe(
+          ticks(180, TICK_MS),
+          checkModel(current => {
+            expect(seatOf(current, 1).player.x).toBeGreaterThan(80)
+            expect(seatOf(current, 1).seat.shotsFired).toBeGreaterThan(0)
+          }),
+        )
+      })
     },
   )
 })
@@ -207,15 +216,16 @@ describe('power-ups', () => {
       placeSeat(1, 150, 90)(placeSeat(0, 30, 140)(crew())),
       [pickupAt(900, 'Damage', 150, 135)],
     )
-    return Story.story(
-      APPLICATION,
-      Story.given(start),
-      ...ticks(60, TICK_MS),
-      Story.model(current => {
-        expect(boostOf(current, 1)).toBe('On')
-        expect(current.pickups).toEqual([])
-      }),
-    )
+    return Effect.gen(function* () {
+      const s = yield* storyOf(start)
+      s.pipe(
+        ticks(60, TICK_MS),
+        checkModel(current => {
+          expect(boostOf(current, 1)).toBe('On')
+          expect(current.pickups).toEqual([])
+        }),
+      )
+    })
   })
 
   it.effect('it leaves one the human is nearer to', () => {
@@ -223,15 +233,16 @@ describe('power-ups', () => {
       placeSeat(1, 150, 90)(placeSeat(0, 150, 150)(crew())),
       [pickupAt(900, 'Damage', 150, 135)],
     )
-    return Story.story(
-      APPLICATION,
-      Story.given(start),
-      ...ticks(60, TICK_MS),
-      Story.model(current => {
-        expect(boostOf(current, 1)).toBe('Off')
-        expect(current.pickups).toHaveLength(1)
-      }),
-    )
+    return Effect.gen(function* () {
+      const s = yield* storyOf(start)
+      s.pipe(
+        ticks(60, TICK_MS),
+        checkModel(current => {
+          expect(boostOf(current, 1)).toBe('Off')
+          expect(current.pickups).toHaveLength(1)
+        }),
+      )
+    })
   })
 
   it.effect('it leaves a Heart at full health, and takes one when hurt', () =>
@@ -240,19 +251,17 @@ describe('power-ups', () => {
         withPickups(placeSeat(1, 150, 90, hp)(placeSeat(0, 30, 140)(crew())), [
           pickupAt(900, 'Heart', 150, 135),
         ])
-      yield* Story.story(
-        APPLICATION,
-        Story.given(start(PLAYER_MAX_HP)),
-        ...ticks(60, TICK_MS),
-        Story.model(current => {
+      const full = yield* storyOf(start(PLAYER_MAX_HP))
+      full.pipe(
+        ticks(60, TICK_MS),
+        checkModel(current => {
           expect(current.pickups).toHaveLength(1)
         }),
       )
-      yield* Story.story(
-        APPLICATION,
-        Story.given(start(2)),
-        ...ticks(60, TICK_MS),
-        Story.model(current => {
+      const hurt = yield* storyOf(start(2))
+      hurt.pipe(
+        ticks(60, TICK_MS),
+        checkModel(current => {
           expect(seatOf(current, 1).player.hp).toBe(3)
           expect(current.pickups).toEqual([])
         }),
@@ -265,50 +274,53 @@ describe('power-ups', () => {
       placeSeat(1, 150, 90)(placeSeat(0, 30, 140)(crew())),
       [pickupAt(900, 'Damage', 150, 135)],
     )
-    const start = modifyFields(stocked, { phase: () => BREAK })
-    return Story.story(
-      APPLICATION,
-      Story.given(start),
-      ...ticks(60, TICK_MS),
-      Story.model(current => {
-        expect(boostOf(current, 1)).toBe('On')
-      }),
-    )
+    const start = UiStruct.evolve(stocked, { phase: () => BREAK })
+    return Effect.gen(function* () {
+      const s = yield* storyOf(start)
+      s.pipe(
+        ticks(60, TICK_MS),
+        checkModel(current => {
+          expect(boostOf(current, 1)).toBe('On')
+        }),
+      )
+    })
   })
 })
 
 describe('in a break', () => {
-  const inBreak = modifyFields(crew(), { phase: () => BREAK })
+  const inBreak = UiStruct.evolve(crew(), { phase: () => BREAK })
 
   it.effect('presses READY with the human, and the wave starts', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(inBreak),
-      press('Enter'),
-      release('Enter'),
-      ...ticks(3, TICK_MS),
-      Story.model(current => {
-        expect(current.phase._tag).toBe('Wave')
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(inBreak)
+      s.pipe(
+        press('Enter'),
+        release('Enter'),
+        ticks(3, TICK_MS),
+        checkModel(current => {
+          expect(current.phase._tag).toBe('Wave')
+        }),
+      )
+    }),
   )
 
   it.effect(
     'presses READY after a short wait on its own, and the wave still waits for the human',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(inBreak),
-        ...ticks(40, TICK_MS),
-        Story.model(current => {
-          expect(seatOf(current, 1).seat.readiness).toBe('Waiting')
-        }),
-        ...ticks(300, TICK_MS),
-        Story.model(current => {
-          expect(current.phase._tag).toBe('Preparation')
-          expect(seatOf(current, 1).seat.readiness).toBe('Ready')
-        }),
-      ),
+      Effect.gen(function* () {
+        const s = yield* storyOf(inBreak)
+        s.pipe(
+          ticks(40, TICK_MS),
+          checkModel(current => {
+            expect(seatOf(current, 1).seat.readiness).toBe('Waiting')
+          }),
+          ticks(300, TICK_MS),
+          checkModel(current => {
+            expect(current.phase._tag).toBe('Preparation')
+            expect(seatOf(current, 1).seat.readiness).toBe('Ready')
+          }),
+        )
+      }),
   )
 })
 
@@ -324,15 +336,15 @@ describe('the same World gives the same bot', () => {
 
   it.effect('replaying the same frames plays the same run', () =>
     Effect.gen(function* () {
-      const run = Story.story(
-        APPLICATION,
-        Story.given(
+      const run = Effect.map(
+        modelAfter(
           withZombies(placeSeat(1, 60, 60)(placeSeat(0, 30, 60)(crew())), [
             zombieOf('Shambler', 7, 110, 60, { speed: 12 }),
           ]),
+          steps(ticks(200, TICK_MS), settleRunCommands),
         ),
-        ...ticks(200, TICK_MS),
-      ).pipe(Effect.map(playersOf))
+        playersOf,
+      )
       const first = yield* run
       const second = yield* run
       expect(second).toEqual(first)
@@ -366,7 +378,7 @@ describe('at the back door', () => {
   // human at the back door and the bot across the kitchen.
   const atBackDoor = (): Model => {
     const opened = withDareThings(
-      modifyFields(withBot(crewInWave(2, kitchenBreak(4))), {
+      UiStruct.evolve(withBot(crewInWave(2, kitchenBreak(4))), {
         mode: () => RunMode.Campaign(),
         level: level => openExitIn(level, KITCHEN_EXIT),
       }),
@@ -389,21 +401,22 @@ describe('at the back door', () => {
   it.effect(
     'a bot walks over to a human holding it, and the crew leaves together',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(atBackDoor()),
-        press('Enter'),
-        ...ticks(60, TICK_MS),
-        Story.model(current => {
-          expect(current.phase._tag).toBe('Preparation')
-        }),
-        ...ticks(240, TICK_MS),
-        Story.model(current => {
-          expect(current.phase).toEqual(Phase.LeftEarly({ wave: 4 }))
-        }),
-        release('Enter'),
-        settleRunCommands,
-      ),
+      Effect.gen(function* () {
+        const s = yield* storyOf(atBackDoor())
+        s.pipe(
+          press('Enter'),
+          ticks(60, TICK_MS),
+          checkModel(current => {
+            expect(current.phase._tag).toBe('Preparation')
+          }),
+          ticks(240, TICK_MS),
+          checkModel(current => {
+            expect(current.phase).toEqual(Phase.LeftEarly({ wave: 4 }))
+          }),
+          release('Enter'),
+          settleRunCommands,
+        )
+      }),
   )
 
   test('a bot never holds the door itself', () => {

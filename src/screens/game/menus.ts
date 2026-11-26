@@ -1,12 +1,12 @@
 import { Array, Function, Option, Order, String, pipe } from 'effect'
-import type { Html } from 'foldkit/html'
 
 import type { LobbyMember } from '@munch/netcode'
 
 import type {
-  ApplicationAttribute,
+  ApplicationHtml,
+  ApplicationMount,
   ApplicationViewBuilder,
-} from '../../app/composition'
+} from '../../app/definition'
 import type { Model } from '../../app/model'
 import { pixelArtStyle } from '../../art/artSize'
 import {
@@ -84,7 +84,10 @@ export const debutPitch = (kind: ZombieKind): string =>
 
 // CORNER BUTTONS
 
-const muteButtonView = (model: Model, h: ApplicationViewBuilder): Html => {
+const muteButtonView = (
+  model: Model,
+  h: ApplicationViewBuilder,
+): ApplicationHtml => {
   const isMuted = model.settings.soundSetting === 'Muted'
   return iconButtonView(
     {
@@ -99,7 +102,10 @@ const muteButtonView = (model: Model, h: ApplicationViewBuilder): Html => {
   )
 }
 
-const musicButtonView = (model: Model, h: ApplicationViewBuilder): Html => {
+const musicButtonView = (
+  model: Model,
+  h: ApplicationViewBuilder,
+): ApplicationHtml => {
   const isOn = model.settings.musicSetting === 'On'
   return iconButtonView(
     {
@@ -114,7 +120,7 @@ const musicButtonView = (model: Model, h: ApplicationViewBuilder): Html => {
   )
 }
 
-const pauseButtonView = (h: ApplicationViewBuilder): Html =>
+const pauseButtonView = (h: ApplicationViewBuilder): ApplicationHtml =>
   iconButtonView(
     {
       className: 'corner-button pause-button',
@@ -126,7 +132,10 @@ const pauseButtonView = (h: ApplicationViewBuilder): Html =>
     h,
   )
 
-const fullscreenButtonView = (model: Model, h: ApplicationViewBuilder): Html =>
+const fullscreenButtonView = (
+  model: Model,
+  h: ApplicationViewBuilder,
+): ApplicationHtml | null =>
   model.settings.screenFit === 'Fullscreen'
     ? iconButtonView(
         {
@@ -138,12 +147,12 @@ const fullscreenButtonView = (model: Model, h: ApplicationViewBuilder): Html =>
         },
         h,
       )
-    : h.empty
+    : null
 
 const cornerButtons = (
   model: Model,
   h: ApplicationViewBuilder,
-): ReadonlyArray<Html> => {
+): ReadonlyArray<ApplicationHtml | null> => {
   const audioButtons = [musicButtonView(model, h), muteButtonView(model, h)]
   // NOTE: a co-op room has no pause (decided 7); its LEAVE takes the
   // corner instead (src/features/coop/view.ts).
@@ -165,36 +174,42 @@ const cornerButtons = (
 }
 
 export const cornerButtonsView: {
-  (h: ApplicationViewBuilder): (model: Model) => Html
-  (model: Model, h: ApplicationViewBuilder): Html
-} = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html =>
-  h.div([h.Class('corner-buttons')], cornerButtons(model, h)),
+  (h: ApplicationViewBuilder): (model: Model) => ApplicationHtml
+  (model: Model, h: ApplicationViewBuilder): ApplicationHtml
+} = Function.dual(
+  2,
+  (model: Model, h: ApplicationViewBuilder): ApplicationHtml =>
+    h.div.class('corner-buttons').children(cornerButtons(model, h)),
 )
 
 // PAUSE MENU BUTTON
 
 const pauseMenuButtonView: {
-  (h: ApplicationViewBuilder): (model: Model) => Html
-  (model: Model, h: ApplicationViewBuilder): Html
-} = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html =>
-  Phase.isAnyOf(['Paused'])(model.phase)
-    ? h.button(
-        [
-          h.Type('button'),
-          h.Class('pause-menu-button'),
-          h.AriaLabel('Menu: leave this run'),
-          h.AriaKeyshortcuts('H'),
-          h.AriaHasPopup('dialog'),
-          h.OnClick(HomeMessage.ClickedMenuButton(), { propagation: 'Stop' }),
-        ],
-        [
-          'MENU',
-          ...(model.lastDevice === 'KeyboardMouse'
-            ? [h.span([h.Class('home-button-key'), h.AriaHidden(true)], ['H'])]
-            : []),
-        ],
-      )
-    : h.empty,
+  (h: ApplicationViewBuilder): (model: Model) => ApplicationHtml
+  (model: Model, h: ApplicationViewBuilder): ApplicationHtml
+} = Function.dual(
+  2,
+  (model: Model, h: ApplicationViewBuilder): ApplicationHtml | null =>
+    Phase.isAnyOf(['Paused'])(model.phase)
+      ? h.button
+          .attr('type', 'button')
+          .class('pause-menu-button')
+          .attr('aria-label', 'Menu: leave this run')
+          .attr('aria-keyshortcuts', 'H')
+          .attr('aria-haspopup', 'dialog')
+          .on('click', HomeMessage.ClickedMenuButton())
+          .children(
+            'MENU',
+            ...(model.lastDevice === 'KeyboardMouse'
+              ? [
+                  h.span
+                    .class('home-button-key')
+                    .attr('aria-hidden', 'true')
+                    .children('H'),
+                ]
+              : []),
+          )
+      : null,
 )
 
 // END BUTTONS
@@ -202,44 +217,37 @@ const pauseMenuButtonView: {
 // NOTE: a newer build waits on the menu, so the end screens offer only MENU,
 // and it carries a little gift that bobs on its corner, the same one the
 // menu shows.
-const updateGiftBadgeView = (h: ApplicationViewBuilder): Html =>
-  h.span([
-    h.Class('mode-button-gift'),
-    h.AriaHidden(true),
-    h.Style({ backgroundImage: `${GIFT_LID_ICON}, ${GIFT_BOX_ICON}` }),
-  ])
+const updateGiftBadgeView = (h: ApplicationViewBuilder): ApplicationHtml =>
+  h.span
+    .class('mode-button-gift')
+    .attr('aria-hidden', 'true')
+    .style({ backgroundImage: `${GIFT_LID_ICON}, ${GIFT_BOX_ICON}` })
 
-const menuOnlyView = (model: Model, h: ApplicationViewBuilder): Html =>
-  h.div(
-    [h.Class('mode-choice is-update-waiting')],
-    [
-      h.button(
-        [
-          h.Type('button'),
-          h.Id(END_MENU_BUTTON_ID),
-          h.Class('mode-button menu-button is-primary'),
-          h.AriaLabel('Menu: back home, where a new version is waiting'),
-          h.AriaKeyshortcuts('Enter H'),
-          h.OnClick(HomeMessage.ClickedMenuButton(), {
-            focusSelector: '.game-surface',
-            propagation: 'Stop',
-          }),
-        ],
-        [
-          h.span([h.Class('mode-button-label')], ['MENU']),
-          h.span([h.Class('mode-button-detail')], ['BACK HOME']),
-          updateGiftBadgeView(h),
-          ...(model.lastDevice === 'KeyboardMouse'
-            ? [
-                h.span(
-                  [h.Class('mode-button-key'), h.AriaHidden(true)],
-                  ['ENTER'],
-                ),
-              ]
-            : []),
-        ],
+const menuOnlyView = (
+  model: Model,
+  h: ApplicationViewBuilder,
+): ApplicationHtml =>
+  h.div.class('mode-choice is-update-waiting').children(
+    h.button
+      .attr('type', 'button')
+      .id(END_MENU_BUTTON_ID)
+      .class('mode-button menu-button is-primary')
+      .attr('aria-label', 'Menu: back home, where a new version is waiting')
+      .attr('aria-keyshortcuts', 'Enter H')
+      .on('click', HomeMessage.ClickedMenuButton())
+      .children(
+        h.span.class('mode-button-label').children('MENU'),
+        h.span.class('mode-button-detail').children('BACK HOME'),
+        updateGiftBadgeView(h),
+        ...(model.lastDevice === 'KeyboardMouse'
+          ? [
+              h.span
+                .class('mode-button-key')
+                .attr('aria-hidden', 'true')
+                .children('ENTER'),
+            ]
+          : []),
       ),
-    ],
   )
 
 // NOTE: the end card's buttons, icon first and all one size: HOME, then
@@ -312,32 +320,39 @@ const endButtonFace = (
   model: Model,
   button: EndButton,
   h: ApplicationViewBuilder,
-): ReadonlyArray<Html> => [
-  h.span([
-    h.Class('end-button-icon'),
-    h.AriaHidden(true),
-    h.Style(pixelArtStyle(button.icon)),
-  ]),
-  h.span([h.Class('end-button-label'), h.AriaHidden(true)], [button.label]),
+): ReadonlyArray<ApplicationHtml> => [
+  h.span
+    .class('end-button-icon')
+    .attr('aria-hidden', 'true')
+    .style(pixelArtStyle(button.icon)),
+  h.span
+    .class('end-button-label')
+    .attr('aria-hidden', 'true')
+    .children(button.label),
   ...(Array.isReadonlyArrayNonEmpty(button.heads)
     ? [
-        h.span(
-          [h.Class('end-button-heads'), h.AriaHidden(true)],
-          Array.map(button.heads, head =>
-            h.keyed('span')(`head-${head.slot}`, [
-              h.Class('end-button-head'),
-              h.DataAttribute('in', head.isIn ? 'In' : 'Out'),
-              h.Style(pixelArtStyle(head.portrait)),
-            ]),
+        h.span
+          .class('end-button-heads')
+          .attr('aria-hidden', 'true')
+          .children(
+            Array.map(button.heads, head =>
+              h.span
+                .key(`head-${head.slot}`)
+                .class('end-button-head')
+                .attr('data-in', head.isIn ? 'In' : 'Out')
+                .style(pixelArtStyle(head.portrait)),
+            ),
           ),
-        ),
       ]
     : []),
   ...(model.lastDevice === 'KeyboardMouse'
     ? Option.match(button.maybeKey, {
         onNone: () => [],
         onSome: ({ cap }) => [
-          h.span([h.Class('end-button-key'), h.AriaHidden(true)], [cap]),
+          h.span
+            .class('end-button-key')
+            .attr('aria-hidden', 'true')
+            .children(cap),
         ],
       })
     : []),
@@ -348,51 +363,48 @@ const endButtonFace = (
 export const shareTextOf = (model: Model): string =>
   shareText(sharedRunOf(model, runDifficultyOf(model)))
 
-type ShareMount = (h: ApplicationViewBuilder) => ApplicationAttribute
+// NOTE: the root's ShareFromClick Mount (src/app/mount.ts), handed in by
+// the root's view, since a screen imports nothing of `app/`.
+type ShareMount = ApplicationMount
 
 // NOTE: SHARE carries its post and the ShareFromClick Mount, which opens
-// the share sheet (or copies the post) in the click itself; its OnClick
+// the share sheet (or copies the post) in the click itself; its click
 // counts the share (src/app/update/end.ts).
-const shareAttributes = (
+const sharePostButton = (
+  h: ApplicationViewBuilder,
   model: Model,
   shareMount: ShareMount,
-  h: ApplicationViewBuilder,
-) => [
-  h.DataAttribute(SHARE_TEXT_DATA, shareTextOf(model)),
-  h.DataAttribute(SHARE_URL_DATA, shareUrlOf(model)),
-  shareMount(h),
-]
+) =>
+  h.button
+    .onMount(shareMount)
+    .attr(`data-${SHARE_TEXT_DATA}`, shareTextOf(model))
+    .attr(`data-${SHARE_URL_DATA}`, shareUrlOf(model))
 
 const endButtonView =
   (model: Model, shareMount: ShareMount, h: ApplicationViewBuilder) =>
-  (button: EndButton, index: number): Html =>
-    h.keyed('button')(
-      button.id,
-      [
-        h.Type('button'),
-        h.Id(button.id),
-        h.Class('end-button'),
-        h.DataAttribute('look', button.look),
-        h.Style({ animationDelay: `${index * END_BUTTON_STAGGER_MS}ms` }),
-        h.AriaLabel(button.ariaLabel),
-        ...Option.match(button.maybePressed, {
-          onNone: () => [],
-          onSome: isPressed => [h.AriaPressed(isPressed ? 'true' : 'false')],
-        }),
-        ...Option.match(button.maybeKey, {
-          onNone: () => [],
-          onSome: ({ name }) => [h.AriaKeyshortcuts(name)],
-        }),
-        h.OnClick(button.message, {
-          focusSelector: '.game-surface',
-          propagation: 'Stop',
-        }),
-        ...(button.look === 'Share'
-          ? shareAttributes(model, shareMount, h)
-          : []),
-      ],
-      endButtonFace(model, button, h),
-    )
+  (button: EndButton, index: number): ApplicationHtml =>
+    (button.look === 'Share' ? sharePostButton(h, model, shareMount) : h.button)
+      .key(button.id)
+      .attr('type', 'button')
+      .id(button.id)
+      .class('end-button')
+      .attr('data-look', button.look)
+      .style({ animationDelay: `${index * END_BUTTON_STAGGER_MS}ms` })
+      .attr('aria-label', button.ariaLabel)
+      .attr(
+        'aria-pressed',
+        Option.getOrUndefined(
+          Option.map(button.maybePressed, isPressed =>
+            isPressed ? 'true' : 'false',
+          ),
+        ),
+      )
+      .attr(
+        'aria-keyshortcuts',
+        Option.getOrUndefined(Option.map(button.maybeKey, ({ name }) => name)),
+      )
+      .on('click', button.message)
+      .children(endButtonFace(model, button, h))
 
 // AN ONLINE ROOM'S CARD
 
@@ -489,33 +501,41 @@ const endActionsView = (
   model: Model,
   shareMount: ShareMount,
   h: ApplicationViewBuilder,
-): Html =>
-  h.div(
-    [
-      h.Class('mode-choice end-actions'),
-      h.Role('group'),
-      h.AriaLabel('What next'),
-    ],
-    Array.map(endButtonsOf(model), endButtonView(model, shareMount, h)),
-  )
+): ApplicationHtml =>
+  h.div
+    .class('mode-choice end-actions')
+    .attr('role', 'group')
+    .attr('aria-label', 'What next')
+    .children(
+      Array.map(endButtonsOf(model), endButtonView(model, shareMount, h)),
+    )
 
 // NOTE: `shareMount` makes the root's ShareFromClick Mount (src/app/mount.ts),
 // which SHARE carries, only when SHARE is drawn.
 export const modeChoiceView: {
-  (shareMount: ShareMount, h: ApplicationViewBuilder): (model: Model) => Html
-  (model: Model, shareMount: ShareMount, h: ApplicationViewBuilder): Html
+  (
+    shareMount: ShareMount,
+    h: ApplicationViewBuilder,
+  ): (model: Model) => ApplicationHtml
+  (
+    model: Model,
+    shareMount: ShareMount,
+    h: ApplicationViewBuilder,
+  ): ApplicationHtml
 } = Function.dual(
   3,
-  (model: Model, shareMount: ShareMount, h: ApplicationViewBuilder): Html => {
+  (
+    model: Model,
+    shareMount: ShareMount,
+    h: ApplicationViewBuilder,
+  ): ApplicationHtml | null => {
     const offer = endOffer(model)
     if (offer === 'Nothing') {
-      return h.empty
+      return null
     } else if (isCoopOpen(model.coop)) {
       // NOTE: an online room's card offers the room's choices, with or without
       // a newer build waiting, until LOBBY lets the lobby in.
-      return isRunCardHeld(model)
-        ? endActionsView(model, shareMount, h)
-        : h.empty
+      return isRunCardHeld(model) ? endActionsView(model, shareMount, h) : null
     } else if (offer === 'MenuOnly') {
       return menuOnlyView(model, h)
     } else {
@@ -529,54 +549,56 @@ export const modeChoiceView: {
 const DEBUT_TITLE_ID = 'debut-title'
 const DEBUT_BODY_ID = 'debut-body'
 
-const debutCardButtonView = (model: Model, h: ApplicationViewBuilder): Html =>
+const debutCardButtonView = (
+  model: Model,
+  h: ApplicationViewBuilder,
+): ApplicationHtml | null =>
   canSkipDebutCard(model)
-    ? h.button(
-        [
-          h.Type('button'),
-          h.Class('debut-card-button'),
-          h.DataAttribute('device', model.lastDevice),
-          h.AriaKeyshortcuts('Enter'),
-          h.OnClick(OnboardingMessage.ClickedDebutCardButton(), {
-            focusSelector: '.game-surface',
-          }),
-        ],
-        model.lastDevice === 'Touch'
-          ? ['TAP TO CONTINUE']
-          : [
-              'CONTINUE',
-              h.kbd([h.Class('debut-card-key'), h.AriaHidden(true)], ['ENTER']),
-            ],
-      )
-    : h.empty
+    ? h.button
+        .attr('type', 'button')
+        .class('debut-card-button')
+        .attr('data-device', model.lastDevice)
+        .attr('aria-keyshortcuts', 'Enter')
+        .on('click', OnboardingMessage.ClickedDebutCardButton())
+        .children(
+          model.lastDevice === 'Touch'
+            ? ['TAP TO CONTINUE']
+            : [
+                'CONTINUE',
+                h.kbd
+                  .class('debut-card-key')
+                  .attr('aria-hidden', 'true')
+                  .children('ENTER'),
+              ],
+        )
+    : null
 
 export const debutCardView: {
-  (h: ApplicationViewBuilder): (model: Model) => Html
-  (model: Model, h: ApplicationViewBuilder): Html
-} = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html =>
-  !Phase.isAnyOf(['Wave'])(model.phase)
-    ? h.empty
-    : DebutCard.match(model.debutCard, {
-        Hidden: () => h.empty,
-        Showing: ({ kind }) =>
-          h.div(
-            [
-              h.Class('debut-card'),
-              h.Role('group'),
-              h.AriaLabelledBy(DEBUT_TITLE_ID),
-              h.AriaDescribedBy(DEBUT_BODY_ID),
-            ],
-            [
-              h.h2(
-                [h.Id(DEBUT_TITLE_ID), h.Class('sr-only')],
-                [`New zombie: ${ZOMBIE_KINDS[kind].name}`],
+  (h: ApplicationViewBuilder): (model: Model) => ApplicationHtml
+  (model: Model, h: ApplicationViewBuilder): ApplicationHtml
+} = Function.dual(
+  2,
+  (model: Model, h: ApplicationViewBuilder): ApplicationHtml | null =>
+    !Phase.isAnyOf(['Wave'])(model.phase)
+      ? null
+      : DebutCard.match(model.debutCard, {
+          Hidden: () => null,
+          Showing: ({ kind }) =>
+            h.div
+              .class('debut-card')
+              .attr('role', 'group')
+              .attr('aria-labelledby', DEBUT_TITLE_ID)
+              .attr('aria-describedby', DEBUT_BODY_ID)
+              .children(
+                h.h2
+                  .id(DEBUT_TITLE_ID)
+                  .class('sr-only')
+                  .children(`New zombie: ${ZOMBIE_KINDS[kind].name}`),
+                h.p
+                  .id(DEBUT_BODY_ID)
+                  .class('sr-only')
+                  .children(debutPitch(kind)),
+                debutCardButtonView(model, h),
               ),
-              h.p(
-                [h.Id(DEBUT_BODY_ID), h.Class('sr-only')],
-                [debutPitch(kind)],
-              ),
-              debutCardButtonView(model, h),
-            ],
-          ),
-      }),
+        }),
 )

@@ -1,5 +1,6 @@
 import { Array, Function, Option } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import { atSeat, modifySeat, seatStateAt } from '../party/party'
 import type { World } from '../schema/world'
@@ -50,7 +51,7 @@ const coolKnife = (world: World, slot: PlayerSlot, deltaMs: number): World =>
   seatStateAt(world, slot).player.knifeCooldownMs > 0
     ? modifySeat(world, slot, {
         player: player =>
-          modifyFields(player, {
+          UiStruct.evolve(player, {
             knifeCooldownMs: cooldown => Math.max(0, cooldown - deltaMs),
           }),
       })
@@ -84,7 +85,7 @@ const stab = (world: World, slot: PlayerSlot): World => {
       onSome: hit => creditKillEvents(hit.events, Option.some(slot), 'Knife'),
     }),
   ]
-  const stabbed = modifyFields(world, {
+  const stabbed = UiStruct.evolve(world, {
     zombies: zombies =>
       Option.match(outcome, {
         onNone: () => zombies,
@@ -95,7 +96,7 @@ const stab = (world: World, slot: PlayerSlot): World => {
       }),
     seats: atSeat(slot, {
       player: current =>
-        modifyFields(current, {
+        UiStruct.evolve(current, {
           knifeCooldownMs: () => KNIFE_RULES.intervalMs,
         }),
     }),

@@ -1,5 +1,6 @@
 import { Array, Function, Option, Order, pipe } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import { PLAYER_RADIUS } from '../../shared/constants'
 import * as DetMath from '../../shared/detMath'
@@ -108,7 +109,7 @@ export const strikeInMelee: {
       struck.hp > 0 &&
       isSmallKind(zombie.kind) &&
       isRoamingAction(struck.action)
-        ? modifyFields(struck, {
+        ? UiStruct.evolve(struck, {
             action: () =>
               ZombieAction.Reeling({
                 remainingMs: dazeMs,
@@ -221,7 +222,7 @@ export const creditStriker: {
     const kills = countKills(events)
     return isCoop(world) && kills > 0
       ? modifySeatRecord(world, slot, seat =>
-          modifyFields(seat, { kills: count => count + kills }),
+          UiStruct.evolve(seat, { kills: count => count + kills }),
         )
       : world
   },

@@ -3,7 +3,6 @@
 // pass moved into a loop, fails here at once, long before the frame time
 // moves by a percent (src/shared/workCount.ts).
 import { Effect } from 'effect'
-import { Story } from 'foldkit'
 
 import { describe, expect, it } from '@effect/vitest'
 
@@ -11,10 +10,11 @@ import { TILE_SIZE } from '../../shared/constants'
 import { resetWorkCounts, workCounts } from '../../shared/workCount'
 import { quietWave } from '../../test/model.fixture'
 import {
-  APPLICATION,
   FRAME_MS,
+  modelAfter,
   press,
   release,
+  steps,
   ticks,
 } from '../../test/testing'
 import { focusOf } from '../party/party'
@@ -29,17 +29,9 @@ describe('the work budget', () => {
       const start = crowdOf(quietWave(3), CROWD)
       // NOTE: the first frame builds what a level keeps (its maps, its
       // graphs), so the count starts after it.
-      const warm = yield* Story.story(
-        APPLICATION,
-        Story.given(start),
-        ...ticks(1, FRAME_MS),
-      )
+      const warm = yield* modelAfter(start, ticks(1, FRAME_MS))
       resetWorkCounts()
-      yield* Story.story(
-        APPLICATION,
-        Story.given(warm),
-        ...ticks(FRAMES, FRAME_MS),
-      )
+      yield* modelAfter(warm, ticks(FRAMES, FRAME_MS))
       const counts = workCounts()
       expect(counts.MapScan).toBe(0)
       expect(counts.FlowField).toBeLessThanOrEqual(1)
@@ -52,18 +44,11 @@ describe('the work budget', () => {
   it.effect('a walking player costs a field for each tile crossed', () =>
     Effect.gen(function* () {
       const start = crowdOf(quietWave(3), CROWD)
-      const warm = yield* Story.story(
-        APPLICATION,
-        Story.given(start),
-        ...ticks(1, FRAME_MS),
-      )
+      const warm = yield* modelAfter(start, ticks(1, FRAME_MS))
       resetWorkCounts()
-      const walked = yield* Story.story(
-        APPLICATION,
-        Story.given(warm),
-        press('KeyD'),
-        ...ticks(FRAMES, FRAME_MS),
-        release('KeyD'),
+      const walked = yield* modelAfter(
+        warm,
+        steps(press('KeyD'), ticks(FRAMES, FRAME_MS), release('KeyD')),
       )
       const counts = workCounts()
       const tilesCrossed =

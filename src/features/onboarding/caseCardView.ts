@@ -1,8 +1,9 @@
 import { Function, Option, String } from 'effect'
-import { Canvas } from 'foldkit'
-import type { Html } from 'foldkit/html'
 
-import type { ApplicationViewBuilder } from '../../app/composition'
+import type {
+  ApplicationHtml,
+  ApplicationViewBuilder,
+} from '../../app/definition'
 import type { Model } from '../../app/model'
 import {
   CARD_ARROW,
@@ -19,6 +20,7 @@ import {
 } from '../../art/font'
 import { group, placeAt } from '../../art/sprite'
 import { CaseCard } from '../../domain/clientSchema'
+import * as Draw from '../../render/draw'
 import { featLockShapes } from '../../render/featLockView'
 import { LANDSCAPE_SIZE } from '../../render/screen'
 import { caseLookOf } from '../../world/feats/caseSpots'
@@ -99,12 +101,12 @@ export const featLabelOf = (feat: Feat): string =>
     KitchenStandKills: ({ count }) => `${count} KILLS IN THE KITCHEN`,
   })
 
-const centered = (baked: BakedText, y: number, scale = 1): Canvas.Shape =>
+const centered = (baked: BakedText, y: number, scale = 1): Draw.Shape =>
   placeBaked(baked, { x: CENTER_X, y, align: 'Center', scale })
 
 // NOTE: a dim over the whole screen, past the landscape frame, as the new
 // zombie card's, so it dims the HUD band in portrait too.
-const DIM = Canvas.Rect({
+const DIM = Draw.Rect({
   x: -LANDSCAPE_SIZE.width,
   y: -LANDSCAPE_SIZE.height * 2,
   width: LANDSCAPE_SIZE.width * 3,
@@ -112,15 +114,15 @@ const DIM = Canvas.Rect({
   fill: CARD_DIM,
 })
 
-const BAND: ReadonlyArray<Canvas.Shape> = [
-  Canvas.Rect({
+const BAND: ReadonlyArray<Draw.Shape> = [
+  Draw.Rect({
     x: 0,
     y: CARD_TOP - 1,
     width: LANDSCAPE_SIZE.width,
     height: CARD_BOTTOM - CARD_TOP + 2,
     fill: CARD_EDGE,
   }),
-  Canvas.Rect({
+  Draw.Rect({
     x: 0,
     y: CARD_TOP,
     width: LANDSCAPE_SIZE.width,
@@ -129,17 +131,17 @@ const BAND: ReadonlyArray<Canvas.Shape> = [
   }),
 ]
 
-const timerShapes = (ageMs: number): ReadonlyArray<Canvas.Shape> => {
+const timerShapes = (ageMs: number): ReadonlyArray<Draw.Shape> => {
   const left = CENTER_X - TIMER_WIDTH / 2
   return [
-    Canvas.Rect({
+    Draw.Rect({
       x: left,
       y: TIMER_Y,
       width: TIMER_WIDTH,
       height: 2,
       fill: TIMER_BACK,
     }),
-    Canvas.Rect({
+    Draw.Rect({
       x: left,
       y: TIMER_Y,
       width: Math.round(TIMER_WIDTH * clamp(1 - ageMs / CASE_CARD_MS, 0, 1)),
@@ -150,10 +152,7 @@ const timerShapes = (ageMs: number): ReadonlyArray<Canvas.Shape> => {
 }
 
 // NOTE: the case as it stands, locked: its body, its prize, and its glass.
-const bigCaseShapes = (
-  model: Model,
-  displayCase: DisplayCase,
-): Canvas.Shape => {
+const bigCaseShapes = (model: Model, displayCase: DisplayCase): Draw.Shape => {
   const art = CASE_ART[caseLookOf(levelOf(model), displayCase)]
   return group({
     translate: {
@@ -177,7 +176,7 @@ const cardShapes = (
   model: Model,
   displayCase: DisplayCase,
   ageMs: number,
-): ReadonlyArray<Canvas.Shape> => [
+): ReadonlyArray<Draw.Shape> => [
   DIM,
   ...BAND,
   centered(TITLE, TITLE_Y, TITLE_SCALE),
@@ -209,7 +208,7 @@ const cardShapes = (
 ]
 
 // NOTE: in the landscape frame, over the round's overlay.
-export const caseCardShapes = (model: Model): ReadonlyArray<Canvas.Shape> =>
+export const caseCardShapes = (model: Model): ReadonlyArray<Draw.Shape> =>
   CaseCard.match(model.caseCard, {
     Hidden: () => [],
     Showing: ({ ageMs }) =>
@@ -224,53 +223,55 @@ export const caseCardShapes = (model: Model): ReadonlyArray<Canvas.Shape> =>
 const CASE_TITLE_ID = 'case-card-title'
 const CASE_BODY_ID = 'case-card-body'
 
-const buttonView = (model: Model, h: ApplicationViewBuilder): Html =>
+const buttonView = (
+  model: Model,
+  h: ApplicationViewBuilder,
+): ApplicationHtml | null =>
   canSkipCaseCard(model)
-    ? h.button(
-        [
-          h.Type('button'),
-          h.Class('debut-card-button'),
-          h.DataAttribute('device', model.lastDevice),
-          h.AriaKeyshortcuts('Enter'),
-          h.OnClick(OnboardingMessage.ClickedCaseCardButton(), {
-            focusSelector: '.game-surface',
-          }),
-        ],
-        model.lastDevice === 'Touch'
-          ? ['GOT IT']
-          : [
-              'GOT IT',
-              h.kbd([h.Class('debut-card-key'), h.AriaHidden(true)], ['ENTER']),
-            ],
-      )
-    : h.empty
+    ? h.button
+        .attr('type', 'button')
+        .class('debut-card-button')
+        .attr('data-device', model.lastDevice)
+        .attr('aria-keyshortcuts', 'Enter')
+        .on('click', OnboardingMessage.ClickedCaseCardButton())
+        .children(
+          model.lastDevice === 'Touch'
+            ? ['GOT IT']
+            : [
+                'GOT IT',
+                h.kbd
+                  .class('debut-card-key')
+                  .attr('aria-hidden', 'true')
+                  .children('ENTER'),
+              ],
+        )
+    : null
 
 // NOTE: the card's button and what it says for a screen reader, in the new
 // zombie card's place and style.
 export const caseCardView: {
-  (h: ApplicationViewBuilder): (model: Model) => Html
-  (model: Model, h: ApplicationViewBuilder): Html
-} = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html =>
-  CaseCard.match(model.caseCard, {
-    Hidden: () => h.empty,
-    Showing: () =>
-      h.div(
-        [
-          h.Class('debut-card'),
-          h.Role('group'),
-          h.AriaLabelledBy(CASE_TITLE_ID),
-          h.AriaDescribedBy(CASE_BODY_ID),
-        ],
-        [
-          h.h2([h.Id(CASE_TITLE_ID), h.Class('sr-only')], [DISPLAY_CASE_NAME]),
-          h.p(
-            [h.Id(CASE_BODY_ID), h.Class('sr-only')],
-            [
-              "Do the deed. Win what's inside. The lock over each case shows its deed and how far along you are.",
-            ],
+  (h: ApplicationViewBuilder): (model: Model) => ApplicationHtml
+  (model: Model, h: ApplicationViewBuilder): ApplicationHtml
+} = Function.dual(
+  2,
+  (model: Model, h: ApplicationViewBuilder): ApplicationHtml | null =>
+    CaseCard.match(model.caseCard, {
+      Hidden: () => null,
+      Showing: () =>
+        h.div
+          .class('debut-card')
+          .attr('role', 'group')
+          .attr('aria-labelledby', CASE_TITLE_ID)
+          .attr('aria-describedby', CASE_BODY_ID)
+          .children(
+            h.h2.id(CASE_TITLE_ID).class('sr-only').children(DISPLAY_CASE_NAME),
+            h.p
+              .id(CASE_BODY_ID)
+              .class('sr-only')
+              .children(
+                "Do the deed. Win what's inside. The lock over each case shows its deed and how far along you are.",
+              ),
+            buttonView(model, h),
           ),
-          buttonView(model, h),
-        ],
-      ),
-  }),
+    }),
 )

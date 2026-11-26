@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { Effect, Option } from 'effect'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
 import { initialModel } from '../../app/pureApp'
@@ -86,7 +86,7 @@ describe('the journal data', () => {
 
 describe('the journal in the save', () => {
   it('round-trips', () => {
-    const played = modifyFields(readyAfterRead, { journal: () => PHONE_RUN })
+    const played = UiStruct.evolve(readyAfterRead, { journal: () => PHONE_RUN })
     const raw = Option.getOrThrow(encodeSave(saveOf(played)))
     const decoded = Option.getOrThrow(decodeSave(raw))
     expect(restoreSave(initialModel, decoded).journal).toEqual(PHONE_RUN)
@@ -94,7 +94,7 @@ describe('the journal in the save', () => {
 
   it('a save from before the journal loads with it empty', () => {
     const { journal: _journal, ...withoutJournal } = saveOf(
-      modifyFields(readyAfterRead, { journal: () => PHONE_RUN }),
+      UiStruct.evolve(readyAfterRead, { journal: () => PHONE_RUN }),
     )
     const versionTwentyFour = jsonOf({ ...withoutJournal, version: 24 })
     const migrated = Option.getOrThrow(decodeSave(versionTwentyFour))

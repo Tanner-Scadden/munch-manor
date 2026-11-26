@@ -1,7 +1,6 @@
 import { Function, Option } from 'effect'
-import { type Html, createLazy } from 'foldkit/html'
 
-import type { ApplicationViewBuilder } from '../app/composition'
+import type { ApplicationHtml, ApplicationViewBuilder } from '../app/definition'
 import { type Palette, spriteDataUrl } from '../art/sprite'
 import { type Screen, thumbAreaTop } from '../render/screen'
 import { percentOf } from '../ui/menuParts'
@@ -82,41 +81,42 @@ const PANEL_URL = cssUrl(PANEL_PIXELS)
 // VIEW
 
 const thumbAreaBoxView = (
+  h: ApplicationViewBuilder,
   width: number,
   top: number,
   height: number,
   screenHeight: number,
-  h: ApplicationViewBuilder,
-): Html =>
-  h.div([
-    h.Key('thumb-area'),
-    h.Class('thumb-area'),
-    h.AriaHidden(true),
-    h.Style({
+): ApplicationHtml =>
+  h.div
+    .key('thumb-area')
+    .class('thumb-area')
+    .attr('aria-hidden', 'true')
+    .style({
       top: percentOf(top, screenHeight),
       height: percentOf(height, screenHeight),
       backgroundImage: `${RAIL_URL}, ${PANEL_URL}`,
       backgroundRepeat: 'repeat-x, repeat',
       backgroundPosition: `0 0, 0 ${percentOf(RAIL_HEIGHT, height - PANEL_HEIGHT)}`,
       backgroundSize: `${percentOf(1, width)} ${percentOf(RAIL_HEIGHT, height)}, ${percentOf(PANEL_WIDTH, width)} ${percentOf(PANEL_HEIGHT, height)}`,
-    }),
-  ])
+    })
 
-const lazyThumbArea = createLazy()
-
+// NOTE: built again only when the screen's size changes (`h.lazy`).
 export const thumbAreaView: {
-  (h: ApplicationViewBuilder): (screen: Screen) => Html
-  (screen: Screen, h: ApplicationViewBuilder): Html
-} = Function.dual(2, (screen: Screen, h: ApplicationViewBuilder): Html => {
-  if (screen.layout === 'Landscape') {
-    return h.empty
-  }
-  const top = thumbAreaTop(screen)
-  return lazyThumbArea(thumbAreaBoxView, [
-    screen.width,
-    top,
-    screen.height - top,
-    screen.height,
-    h,
-  ])
-})
+  (h: ApplicationViewBuilder): (screen: Screen) => ApplicationHtml | null
+  (screen: Screen, h: ApplicationViewBuilder): ApplicationHtml | null
+} = Function.dual(
+  2,
+  (screen: Screen, h: ApplicationViewBuilder): ApplicationHtml | null => {
+    if (screen.layout === 'Landscape') {
+      return null
+    }
+    const top = thumbAreaTop(screen)
+    return h.lazy(
+      thumbAreaBoxView,
+      screen.width,
+      top,
+      screen.height - top,
+      screen.height,
+    )
+  },
+)

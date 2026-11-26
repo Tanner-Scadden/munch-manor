@@ -2,7 +2,8 @@
 // the opacity its groups give it, as the 2D painter would draw it.
 
 import { Function } from 'effect'
-import type { Canvas } from 'foldkit'
+
+import type * as Draw from '../draw'
 
 // NOTE: a 2D affine matrix as the canvas keeps it: x' = a x + c y + e,
 // y' = b x + d y + f.
@@ -36,7 +37,7 @@ const rotation = (turn: number): Affine => ({
 })
 
 // NOTE: the painter's order: translate, then rotate, then scale.
-const groupMatrix = (group: Canvas.Group): Affine => {
+const groupMatrix = (group: Draw.Group): Affine => {
   const moved =
     group.translate === undefined
       ? IDENTITY
@@ -51,13 +52,13 @@ const groupMatrix = (group: Canvas.Group): Affine => {
 }
 
 export type Leaf = Readonly<{
-  shape: Exclude<Canvas.Shape, Canvas.Group>
+  shape: Exclude<Draw.Shape, Draw.Group>
   matrix: Affine
   alpha: number
 }>
 
 const flattenInto = (
-  shapes: ReadonlyArray<Canvas.Shape>,
+  shapes: ReadonlyArray<Draw.Shape>,
   matrix: Affine,
   alpha: number,
   out: Array<Leaf>,
@@ -77,7 +78,7 @@ const flattenInto = (
 }
 
 export const flatten = (
-  shapes: ReadonlyArray<Canvas.Shape>,
+  shapes: ReadonlyArray<Draw.Shape>,
 ): ReadonlyArray<Leaf> => {
   const out: Array<Leaf> = []
   flattenInto(shapes, IDENTITY, 1, out)
@@ -90,7 +91,7 @@ export const flatten = (
 // NOTE: read once per level, as the house's floor art is sorted out
 // (house.ts), never per frame.
 // oxlint-disable-next-line munch/no-string-key-per-frame
-export const rectKey = (shape: Canvas.Rect): string =>
+export const rectKey = (shape: Draw.Rect): string =>
   `${shape.x},${shape.y},${shape.width},${shape.height},${shape.fill ?? ''}`
 
 // SAMENESS

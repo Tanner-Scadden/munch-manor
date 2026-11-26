@@ -1,7 +1,7 @@
 import { Array, Option } from 'effect'
-import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
+import { UiStruct } from '@effect/ui'
 import { NEUTRAL_INPUT, makeReader, makeWriter } from '@munch/netcode'
 
 import { initialModel } from '../../../app/pureApp'
@@ -145,7 +145,7 @@ describe('inputs and presses', () => {
         world =>
           modifyFocus(world, {
             player: player =>
-              modifyFields(player, {
+              UiStruct.evolve(player, {
                 arsenal: () =>
                   holdingSecond({ kind: 'Smg', loaded: 30, tier: 0, kills: 0 }),
               }),
@@ -426,7 +426,7 @@ describe('the rolled house', () => {
       expect(readBack(room).world.level).toEqual(room.world.level)
       const opened = {
         ...room,
-        world: modifyFields(room.world, {
+        world: UiStruct.evolve(room.world, {
           level: level => openExitIn(level, 'West'),
         }),
       }
@@ -455,7 +455,7 @@ describe('the lobby picks', () => {
   })
 
   test('an escape wins the room, and the next run starts fresh', () => {
-    const escaped = modifyFields(TWO_SEAT_ROOM.world, {
+    const escaped = UiStruct.evolve(TWO_SEAT_ROOM.world, {
       phase: () => Phase.Escaped({ wave: 12 }),
       elapsedMs: () => 600000,
     })
@@ -468,13 +468,13 @@ describe('the lobby picks', () => {
     expect(
       rules.endReason({
         ...TWO_SEAT_ROOM,
-        world: modifyFields(escaped, { mode: () => RunMode.Endless() }),
+        world: UiStruct.evolve(escaped, { mode: () => RunMode.Endless() }),
       }),
     ).toBe('GameOver')
   })
 
   test('a crew out the back door closes the room LeftEarly', () => {
-    const left = modifyFields(TWO_SEAT_ROOM.world, {
+    const left = UiStruct.evolve(TWO_SEAT_ROOM.world, {
       phase: () => Phase.LeftEarly({ wave: 4 }),
     })
     const rules = roomWorldFor(roomSettingsOf('Campaign', 'Normal'))
@@ -489,7 +489,8 @@ describe('the crew in the music', () => {
     // well east of the lead on the start spot.
     const apart = withSeat(TWO_SEAT_ROOM.world, 1, seatWorld =>
       modifyFocus(seatWorld, {
-        player: player => modifyFields(player, { x: () => 300, y: () => 130 }),
+        player: player =>
+          UiStruct.evolve(player, { x: () => 300, y: () => 130 }),
       }),
     )
     const lead = Option.getOrThrow(maybePlayerAt(apart, 0)).player
@@ -498,7 +499,7 @@ describe('the crew in the music', () => {
       stepRoomWorld(
         {
           ...TWO_SEAT_ROOM,
-          world: modifyFields(apart, {
+          world: UiStruct.evolve(apart, {
             zombies: () => [zombieAt(900, zombieX, zombieY)],
           }),
         },
@@ -528,7 +529,7 @@ describe('the crew in the music', () => {
 describe('latency', () => {
   const apart = withSeat(TWO_SEAT_ROOM.world, 1, seatWorld =>
     modifyFocus(seatWorld, {
-      player: player => modifyFields(player, { x: () => 200, y: () => 120 }),
+      player: player => UiStruct.evolve(player, { x: () => 200, y: () => 120 }),
     }),
   )
 
@@ -538,7 +539,7 @@ describe('latency', () => {
     const room: RoomWorld = {
       ...TWO_SEAT_ROOM,
       tick: 20,
-      world: modifyFields(apart, { zombies: () => [zombie] }),
+      world: UiStruct.evolve(apart, { zombies: () => [zombie] }),
       history: Array.makeBy(15, index => ({
         tick: 6 + index,
         zombies: [{ id: 900, x: seen.x, y: seen.y }],
@@ -585,7 +586,7 @@ describe('latency', () => {
     const mate = Option.getOrThrow(maybePlayerAt(apart, 1)).player
     const touching: RoomWorld = {
       ...TWO_SEAT_ROOM,
-      world: modifyFields(apart, {
+      world: UiStruct.evolve(apart, {
         zombies: () => [zombieAt(901, mate.x + 6, mate.y)],
       }),
     }

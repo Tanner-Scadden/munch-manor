@@ -3,7 +3,8 @@
 // src/world/zombies/__tests__/bossAttacks.story.test.ts start from it.
 
 import { Array, Function, Option } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import {
   Boss,
@@ -69,14 +70,14 @@ export const inWave: {
     zombies: ReadonlyArray<Zombie> = [],
   ): Model =>
     modifyFocus(
-      modifyFields(newPlayerReady, {
+      UiStruct.evolve(newPlayerReady, {
         phase: () => Phase.Wave({ wave, elapsedMs: 0, spawns }),
         boss: () => boss,
         zombies: () => zombies,
       }),
       {
         player: player =>
-          modifyFields(player, { x: () => CENTER_X, y: () => CENTER_Y }),
+          UiStruct.evolve(player, { x: () => CENTER_X, y: () => CENTER_Y }),
       },
     ),
 )
@@ -86,7 +87,7 @@ export const bossAt: {
   (y: number): (x: number) => Zombie
   (x: number, y: number): Zombie
 } = Function.dual(2, (x: number, y: number): Zombie =>
-  modifyFields(zombieOf('Boss', BOSS_ID, x, y, { hp: BOSS_HP }), {
+  UiStruct.evolve(zombieOf('Boss', BOSS_ID, x, y, { hp: BOSS_HP }), {
     maxHp: () => BOSS_HP,
   }),
 )
@@ -96,12 +97,12 @@ export const bossWithHpAt: {
   (x: number, y: number): (hp: number) => Zombie
   (hp: number, x: number, y: number): Zombie
 } = Function.dual(3, (hp: number, x: number, y: number): Zombie =>
-  modifyFields(bossAt(x, y), { hp: () => hp }),
+  UiStruct.evolve(bossAt(x, y), { hp: () => hp }),
 )
 
 // NOTE: the fight a Model's boss stands in, failing the test when he is
 // not fighting.
-export const fightOf = (current: Model): typeof Boss.Fighting.Type =>
+export const fightOf = (current: Model): typeof Boss.cases.Fighting.Type =>
   Option.getOrThrow(Option.liftPredicate(current.boss, Boss.guards.Fighting))
 
 export const fightingBoss = (move: BossMove): Boss =>
@@ -109,17 +110,23 @@ export const fightingBoss = (move: BossMove): Boss =>
 
 export const fightingWith: {
   (
-    change: Partial<Omit<typeof Boss.Fighting.Type, '_tag' | 'id' | 'move'>>,
+    change: Partial<
+      Omit<typeof Boss.cases.Fighting.Type, '_tag' | 'id' | 'move'>
+    >,
   ): (move: BossMove) => Boss
   (
     move: BossMove,
-    change: Partial<Omit<typeof Boss.Fighting.Type, '_tag' | 'id' | 'move'>>,
+    change: Partial<
+      Omit<typeof Boss.cases.Fighting.Type, '_tag' | 'id' | 'move'>
+    >,
   ): Boss
 } = Function.dual(
   2,
   (
     move: BossMove,
-    change: Partial<Omit<typeof Boss.Fighting.Type, '_tag' | 'id' | 'move'>>,
+    change: Partial<
+      Omit<typeof Boss.cases.Fighting.Type, '_tag' | 'id' | 'move'>
+    >,
   ): Boss =>
     Boss.Fighting({
       ...Option.getOrThrow(
@@ -132,7 +139,7 @@ export const fightingWith: {
 export const sturdy = (start: Model): Model =>
   modifyFocus(start, {
     player: player =>
-      modifyFields(player, {
+      UiStruct.evolve(player, {
         hp: () => 1e6,
         invulnerability: () =>
           Invulnerability.Invulnerable({ remainingMs: 1e9, durationMs: 1e9 }),

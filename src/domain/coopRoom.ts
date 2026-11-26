@@ -1,6 +1,6 @@
 import { Option, Schema, SchemaTransformation } from 'effect'
-import { defineTaggedUnion } from 'foldkit/schema'
 
+import { UiSchema } from '@effect/ui'
 import {
   Lobby,
   PickedMode,
@@ -91,7 +91,7 @@ export type CoopProblem = typeof CoopProblem.Type
 
 // NOTE: what a player writes to the room's lobby scope. The service fills
 // in who it is for (`by`), so the update never needs the player id.
-export const LobbyChange = defineTaggedUnion({
+export const LobbyChange = UiSchema.TaggedEnum({
   ChangedReady: { ready: Schema.Boolean, pingMs: Schema.Finite },
   ChangedPicks: { mode: PickedMode, difficulty: RoomDifficulty },
   ChangedModifiers: { modifiers: Schema.Finite },
@@ -105,7 +105,7 @@ export type LobbyChange = typeof LobbyChange.Type
 
 // REQUESTS
 
-export const RoomRequest = defineTaggedUnion({
+export const RoomRequest = UiSchema.TaggedEnum({
   Create: {},
   Join: { code: RoomCode },
 })
@@ -220,7 +220,7 @@ export type Room = typeof Room.Type
 
 // SCREENS
 
-export const Screen = defineTaggedUnion({
+export const Screen = UiSchema.TaggedEnum({
   Closed: {},
   Hub: { maybeProblem: Schema.Option(CoopProblem) },
   Code: { typed: Schema.String, maybeProblem: Schema.Option(CoopProblem) },
@@ -229,10 +229,6 @@ export const Screen = defineTaggedUnion({
   InRoom: { room: Room },
 })
 export type Screen = typeof Screen.Type
-
-// NOTE: `Screen.InRoom({ room })` without its Schema validation, which walks
-// the whole room. The room's frame moves the room on every tick.
-export const screenInRoom = (room: Room): Screen => ({ _tag: 'InRoom', room })
 
 // READS
 

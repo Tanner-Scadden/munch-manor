@@ -6,7 +6,7 @@ import { isRoundActive } from '../../world/waves/waves'
 import { type Model, Phase, type RunMode } from '../model'
 import { startOrResume } from '../runFlow'
 import { playStartSoundWhen, unlockAudio } from './sound'
-import { type UpdateReturn, combine, withInput } from './step'
+import { type UpdateStep, toModel, withInput } from './step'
 
 export const isPaused = Phase.isAnyOf(['Paused'])
 
@@ -40,15 +40,16 @@ export const startsRun: {
     Phase.isAnyOf(['Arriving', 'Preparation'])(after.phase),
 )
 
-export const startFromButton: {
-  (started: Model): (before: Model) => UpdateReturn
-  (before: Model, started: Model): UpdateReturn
-} = Function.dual(2, (before: Model, started: Model): UpdateReturn =>
-  combine(withInput(started, releaseAll), [
-    unlockAudio,
-    playStartSoundWhen(startsRun(before, started)),
-  ]),
-)
+// NOTE: `started` is the Model a start button built from `$.model`, the
+// Model before it.
+export const startFromButton =
+  (started: Model): UpdateStep =>
+  $ =>
+    $.combine(
+      toModel(withInput(started, releaseAll)),
+      unlockAudio,
+      playStartSoundWhen(startsRun($.model, started)),
+    )
 
 export const isScreenAnimated = (phase: Phase): boolean =>
   Phase.isAnyOf(['Ready', 'Escaped', 'LeftEarly', 'GameOver'])(phase)

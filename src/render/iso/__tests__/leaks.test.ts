@@ -1,13 +1,14 @@
 import { Array, Option, String } from 'effect'
-import type { Canvas } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 import { expect, test } from 'vitest'
+
+import { UiStruct } from '@effect/ui'
 
 import { atClock, quietWave } from '../../../test/model.fixture'
 import { rectsOf } from '../../../test/viewReading'
 import { levelOf, openExitIn } from '../../../world/level/arena'
 import { leaksOf } from '../../../world/level/leaks'
 import { EAST_EXIT, FAR_EXIT } from '../../../world/level/plan'
+import type * as Draw from '../../draw'
 import {
   dripsOf,
   maybeDripHeard,
@@ -90,7 +91,7 @@ test('a strike lights the puddles, and only a change paints them again', () => {
 })
 
 test('the flashlight catches a cellar puddle in the dark', () => {
-  const dark = modifyFields(quietWave(4), {
+  const dark = UiStruct.evolve(quietWave(4), {
     level: state => openExitIn(openExitIn(state, EAST_EXIT), FAR_EXIT),
   })
   const level = levelOf(dark)
@@ -116,7 +117,7 @@ test('the flashlight catches a cellar puddle in the dark', () => {
 // NOTE: the pixels a ring covers around its landing, read as what a viewer
 // near the puddle sees that one far off does not.
 const ringPixelsAt = (ms: number, spot: Readonly<{ x: number; y: number }>) => {
-  const keyOf = ({ x, y, width, height, fill }: Canvas.Rect) =>
+  const keyOf = ({ x, y, width, height, fill }: Draw.Rect) =>
     `${x},${y},${width},${height},${fill}`
   const glints = (at: Readonly<{ x: number; y: number }>) =>
     rectsOf(

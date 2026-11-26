@@ -1,5 +1,6 @@
 import { Array, Function, Option, Record, pipe } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import { nextRandom } from '../../shared/prng'
 import {
@@ -342,10 +343,10 @@ export const giveWeapon: {
   (player: Player, kind: WeaponKind): Player
 } = Function.dual(2, (player: Player, kind: WeaponKind): Player =>
   kind === 'Pan'
-    ? modifyFields(takePan(dropCharge(player), freshGun(kind)), {
+    ? UiStruct.evolve(takePan(dropCharge(player), freshGun(kind)), {
         fireCooldownMs: () => 0,
       })
-    : modifyFields(dropCharge(putGunInHand(player)), {
+    : UiStruct.evolve(dropCharge(putGunInHand(player)), {
         arsenal: arsenal => takeGun(arsenal, freshGun(kind, player.calling)),
         wield: () => 'Gun',
         fireCooldownMs: () => 0,
@@ -363,11 +364,11 @@ const givePrize = (world: World, slot: PlayerSlot, prize: FridgePrize): World =>
         y: seatStateAt(world, slot).player.y,
       }
       return grantKeys(
-        modifyFields(world, {
+        UiStruct.evolve(world, {
           seats: atSeat(slot, {
             player: player =>
               prize === 'Sandwich'
-                ? modifyFields(player, {
+                ? UiStruct.evolve(player, {
                     hp: hp => Math.min(maxHpOf(player), hp + 1),
                   })
                 : player,
@@ -398,11 +399,11 @@ export const pullFridge: {
       const draw = nextRandom(world.loot.fridgeRngState)
       const prize = pickPrize(weightsFor(world, slot), draw.value)
       const spot = fridgeSpot(box)
-      const paid = modifyFields(spendKeys(world, price), {
+      const paid = UiStruct.evolve(spendKeys(world, price), {
         loot: loot =>
-          modifyFields(loot, { fridgeRngState: () => draw.nextState }),
+          UiStruct.evolve(loot, { fridgeRngState: () => draw.nextState }),
         fridge: fridge =>
-          modifyFields(fridge, {
+          UiStruct.evolve(fridge, {
             pulls: pulls => pulls + 1,
             door: () =>
               FridgeDoor.Open({
@@ -433,23 +434,24 @@ const shut = (world: World): World => {
       draw.value < FRIDGE_RULES.slamChance)
   const rolled =
     pulls >= FRIDGE_RULES.pullsBeforeSlam && pulls < FRIDGE_RULES.maxPulls
-      ? modifyFields(world, {
+      ? UiStruct.evolve(world, {
           loot: loot =>
-            modifyFields(loot, { fridgeRngState: () => draw.nextState }),
+            UiStruct.evolve(loot, { fridgeRngState: () => draw.nextState }),
         })
       : world
   if (!isLast) {
-    return modifyFields(rolled, {
-      fridge: fridge => modifyFields(fridge, { door: () => FridgeDoor.Shut() }),
+    return UiStruct.evolve(rolled, {
+      fridge: fridge =>
+        UiStruct.evolve(fridge, { door: () => FridgeDoor.Shut() }),
     })
   }
   const spot = Option.match(fridgeBoxOf(levelOf(world)), {
     onNone: () => ({ x: focusOf(world).player.x, y: focusOf(world).player.y }),
     onSome: fridgeSpot,
   })
-  return modifyFields(rolled, {
+  return UiStruct.evolve(rolled, {
     fridge: fridge =>
-      modifyFields(fridge, {
+      UiStruct.evolve(fridge, {
         door: () =>
           FridgeDoor.Slammed({
             remainingMs: FRIDGE_RULES.slamMs,
@@ -482,7 +484,7 @@ export const takePrize: {
     ? Option.map(weaponOf(world.fridge.door.prize), kind => {
         const spot = spotOf(world)
         return shut(
-          modifyFields(world, {
+          UiStruct.evolve(world, {
             seats: atSeat(slot, {
               player: player => giveWeapon(player, kind),
             }),
@@ -501,7 +503,7 @@ export const takePrize: {
 const leavePrize = (world: World): World => {
   const spot = spotOf(world)
   return shut(
-    modifyFields(world, {
+    UiStruct.evolve(world, {
       frameEvents: frameEvents => [
         ...frameEvents,
         GameEvent.PrizeLeft({ x: spot.x, y: spot.y }),
@@ -522,9 +524,9 @@ const hasWalkedOff = (world: World, slot: number): boolean =>
 
 const afterReveal = (world: World, prize: FridgePrize, slot: number): World =>
   Option.isSome(weaponOf(prize))
-    ? modifyFields(world, {
+    ? UiStruct.evolve(world, {
         fridge: fridge =>
-          modifyFields(fridge, {
+          UiStruct.evolve(fridge, {
             door: () =>
               FridgeDoor.Offering({
                 prize,
@@ -545,9 +547,9 @@ export const advanceFridge: {
     Shut: () => world,
     Open: door =>
       door.remainingMs > deltaMs
-        ? modifyFields(world, {
+        ? UiStruct.evolve(world, {
             fridge: fridge =>
-              modifyFields(fridge, {
+              UiStruct.evolve(fridge, {
                 door: () =>
                   FridgeDoor.Open({
                     ...door,
@@ -559,9 +561,9 @@ export const advanceFridge: {
     Offering: door =>
       door.remainingMs <= deltaMs || hasWalkedOff(world, door.slot)
         ? leavePrize(world)
-        : modifyFields(world, {
+        : UiStruct.evolve(world, {
             fridge: fridge =>
-              modifyFields(fridge, {
+              UiStruct.evolve(fridge, {
                 door: () =>
                   FridgeDoor.Offering({
                     ...door,
@@ -570,9 +572,9 @@ export const advanceFridge: {
               }),
           }),
     Slammed: ({ remainingMs, durationMs }) =>
-      modifyFields(world, {
+      UiStruct.evolve(world, {
         fridge: fridge =>
-          modifyFields(fridge, {
+          UiStruct.evolve(fridge, {
             door: () =>
               remainingMs > deltaMs
                 ? FridgeDoor.Slammed({

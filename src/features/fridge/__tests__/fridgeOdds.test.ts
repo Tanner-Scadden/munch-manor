@@ -1,10 +1,10 @@
 import { Array, Match, Option } from 'effect'
-import type { Canvas } from 'foldkit'
 
 import { describe, expect, test } from '@effect/vitest'
 
 import { prizeOnPaperSprite, prizeSprite } from '../../../art/prizeArt'
 import { cameraOf } from '../../../render/camera'
+import type * as Draw from '../../../render/draw'
 import { clearWindowOf } from '../../../render/hudLayout'
 import { screenOf } from '../../../render/screen'
 import { atFridge } from '../../../test/model.fixture'
@@ -24,7 +24,7 @@ import {
 const model = atFridge(10)
 const camera = cameraOf(model)
 
-const scaleOf = (shapes: ReadonlyArray<Canvas.Shape>): number =>
+const scaleOf = (shapes: ReadonlyArray<Draw.Shape>): number =>
   Option.getOrElse(
     Option.flatMap(Array.head(shapes), shape =>
       Match.value(shape).pipe(
@@ -112,7 +112,7 @@ describe('the fridge odds note', () => {
       imagesIn(fridgeOddsShapes(model, camera, [])),
       ({ src }) => src,
     )
-    const srcOf = (sprite: ReadonlyArray<Canvas.Shape>) =>
+    const srcOf = (sprite: ReadonlyArray<Draw.Shape>) =>
       Array.map(imagesIn(sprite), ({ src }) => src)
     expect(drawn).toEqual(
       expect.arrayContaining(srcOf(prizeOnPaperSprite('Dud'))),

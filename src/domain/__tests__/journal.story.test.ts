@@ -1,12 +1,11 @@
 import { Array, Effect } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
 import { type Model, Phase } from '../../app/model'
+import { WriteSave } from '../../app/update/save'
 import {
-  checkSavedChanges,
   diesOnWave7,
   frame,
   lastWave,
@@ -18,7 +17,13 @@ import {
   readyModel,
   withDareThings,
 } from '../../test/model.fixture'
-import { APPLICATION, press, showDialog, writeSave } from '../../test/testing'
+import {
+  checkModel,
+  checkPendingArgs,
+  press,
+  storyOf,
+  writeSave,
+} from '../../test/testing'
 import { type DareThing, DareThingState } from '../../world/dare/dareSchema'
 import { focusOf } from '../../world/party/party'
 import {
@@ -50,97 +55,102 @@ describe('a run that ends', () => {
   it.effect(
     'adds its finds and hero to the journal, reaches the first find, and saves it once',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(munchedWithPage),
-        frame,
-        Story.model(model => {
-          expect(Phase.guards.GameOver(model.phase)).toBe(true)
-          expect(model.journal.thingsFound).toBe(1)
-          expect(model.journal.heroesPlayed).toEqual([
-            focusOf(munchedWithPage).player.calling,
-          ])
-          expect(model.journal.milestones).toEqual(['FirstFind'])
-          expect(model.runGains.journalRun.reached).toEqual(['FirstFind'])
-          expect(hasNewJournalPage(model)).toBe(true)
-          expect(openedThingsOf(model)).toEqual([])
-        }),
-        checkSavedChanges(changes => {
-          expect(
-            Array.filter(changes, change => change._tag === 'KeptJournal'),
-          ).toHaveLength(1)
-        }),
-        writeSave(),
-        frame,
-        Story.model(model => {
-          expect(model.journal.thingsFound).toBe(1)
-          expect(model.journal.milestones).toEqual(['FirstFind'])
-        }),
-      ),
+      Effect.gen(function* () {
+        const s = yield* storyOf(munchedWithPage)
+        s.pipe(
+          frame,
+          checkModel(model => {
+            expect(Phase.guards.GameOver(model.phase)).toBe(true)
+            expect(model.journal.thingsFound).toBe(1)
+            expect(model.journal.heroesPlayed).toEqual([
+              focusOf(munchedWithPage).player.calling,
+            ])
+            expect(model.journal.milestones).toEqual(['FirstFind'])
+            expect(model.runGains.journalRun.reached).toEqual(['FirstFind'])
+            expect(hasNewJournalPage(model)).toBe(true)
+            expect(openedThingsOf(model)).toEqual([])
+          }),
+          checkPendingArgs(WriteSave)(writes => {
+            const saved = Array.flatMap(writes, write => write.changes)
+            expect(
+              Array.filter(saved, change => change._tag === 'KeptJournal'),
+            ).toHaveLength(1)
+          }),
+          writeSave,
+          frame,
+          checkModel(model => {
+            expect(model.journal.thingsFound).toBe(1)
+            expect(model.journal.milestones).toEqual(['FirstFind'])
+          }),
+        )
+      }),
   )
 
   it.effect(
     'an escape reaches the first escape, which opens the napkin ring, with a card for each',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(escapingToday),
-        frame,
-        Story.model(model => {
-          expect(Phase.guards.Escaped(model.phase)).toBe(true)
-          expect(model.journal.milestones).toContain('FirstEscape')
-          expect(model.runGains.journalRun.reached).toContain('FirstEscape')
-          expect(openedThingsOf(model)).toEqual(['NapkinRing'])
-          expect(unlocksOf(model)).toEqual(
-            expect.arrayContaining([
-              EndUnlock.Milestone({ milestone: 'FirstFind' }),
-              EndUnlock.Milestone({ milestone: 'FirstEscape' }),
-            ]),
-          )
-        }),
-        writeSave(),
-      ),
+      Effect.gen(function* () {
+        const s = yield* storyOf(escapingToday)
+        s.pipe(
+          frame,
+          checkModel(model => {
+            expect(Phase.guards.Escaped(model.phase)).toBe(true)
+            expect(model.journal.milestones).toContain('FirstEscape')
+            expect(model.runGains.journalRun.reached).toContain('FirstEscape')
+            expect(openedThingsOf(model)).toEqual(['NapkinRing'])
+            expect(unlocksOf(model)).toEqual(
+              expect.arrayContaining([
+                EndUnlock.Milestone({ milestone: 'FirstFind' }),
+                EndUnlock.Milestone({ milestone: 'FirstEscape' }),
+              ]),
+            )
+          }),
+          writeSave,
+        )
+      }),
   )
 
   it.effect('a milestone already in the journal raises no second card', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        modifyFields(munchedWithPage, {
+    Effect.gen(function* () {
+      const s = yield* storyOf(
+        UiStruct.evolve(munchedWithPage, {
           journal: () => ({
             ...noJournal,
             milestones: ['FirstFind'],
             thingsFound: 4,
           }),
         }),
-      ),
-      frame,
-      Story.model(model => {
-        expect(model.journal.thingsFound).toBe(5)
-        expect(model.runGains.journalRun.reached).toEqual([])
-        expect(
-          Array.filter(unlocksOf(model), unlock => unlock._tag === 'Milestone'),
-        ).toEqual([])
-      }),
-      writeSave(),
-    ),
+      )
+      s.pipe(
+        frame,
+        checkModel(model => {
+          expect(model.journal.thingsFound).toBe(5)
+          expect(model.runGains.journalRun.reached).toEqual([])
+          expect(
+            Array.filter(
+              unlocksOf(model),
+              unlock => unlock._tag === 'Milestone',
+            ),
+          ).toEqual([])
+        }),
+        writeSave,
+      )
+    }),
   )
 })
 
 describe('the journal pip', () => {
-  const withPage: Model = modifyFields(readyModel, {
+  const withPage: Model = UiStruct.evolve(readyModel, {
     journal: () => ({ ...noJournal, milestones: ['FirstFind'] }),
   })
 
   it.effect('shows until the journal opens, which marks the page NEW', () =>
     Effect.gen(function* () {
       expect(hasNewJournalPage(withPage)).toBe(true)
-      yield* Story.story(
-        APPLICATION,
-        Story.given(withPage),
+      const s = yield* storyOf(withPage)
+      s.pipe(
         press('KeyZ'),
-        showDialog(),
-        Story.model(model => {
+        checkModel(model => {
           expect(hasNewJournalPage(model)).toBe(false)
           expect(model.seenUnlocks).toContain(milestoneUnlockId('FirstFind'))
           expect(model.freshUnlocks).toContain(milestoneUnlockId('FirstFind'))
@@ -153,7 +163,7 @@ describe('the journal pip', () => {
     Effect.sync(() => {
       const seen = markJournalSeen(withPage)
       const again = markJournalSeen(
-        modifyFields(seen, { freshUnlocks: () => [] }),
+        UiStruct.evolve(seen, { freshUnlocks: () => [] }),
       )
       expect(again.freshUnlocks).toEqual([])
     }),

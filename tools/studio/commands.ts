@@ -4,8 +4,10 @@
 import { Array, Effect, Layer, Option, Schema, Stream, pipe } from 'effect'
 import { FetchHttpClient, HttpClient, HttpClientRequest } from 'effect/http'
 
+import { Command, Component, Subscription } from '@effect/ui'
+
 import { describeError } from '../../src/shared/describeError'
-import { Flags, Message, SavedView, StudioBlock } from './block'
+import { Flags, Message, type Model, SavedView } from './block'
 import { NOTES_PATH, NoteDraft, NoteDraftJson, StoredNotesJson } from './notes'
 
 // STORAGE
@@ -53,33 +55,31 @@ export const flags = Effect.all({
   ),
 }).pipe(Effect.map(fields => Flags.make(fields)))
 
-export const SaveView = StudioBlock.makeCommand('SaveView', {
-  args: { view: SavedView },
-  messages: [Message.CompletedSaveView],
-  handler: function* () {
-    return ({ view }) =>
-      pipe(
-        Schema.encodeEffect(SavedViewJson)(view),
-        Effect.flatMap(json => writeKey(session, VIEW_KEY, json)),
-        Effect.as(Message.CompletedSaveView()),
-        Effect.orElseSucceed(() => Message.CompletedSaveView()),
-      )
-  },
-})
+// NOTE: a write that fails leaves nothing to report: the view and what has
+// been seen are only conveniences.
+export const SaveView = Command.make(
+  'SaveView',
+  { args: { view: SavedView } },
+  ({ view }) =>
+    pipe(
+      Schema.encodeEffect(SavedViewJson)(view),
+      Effect.flatMap(json => writeKey(session, VIEW_KEY, json)),
+      Effect.ignore,
+      Effect.as(Component.noop),
+    ),
+)
 
-export const SaveSeen = StudioBlock.makeCommand('SaveSeen', {
-  args: { seen: Schema.Array(Schema.String) },
-  messages: [Message.CompletedSaveSeen],
-  handler: function* () {
-    return ({ seen }) =>
-      pipe(
-        Schema.encodeEffect(SeenJson)({ seenNoteIds: seen }),
-        Effect.flatMap(json => writeKey(local, SEEN_KEY, json)),
-        Effect.as(Message.CompletedSaveSeen()),
-        Effect.orElseSucceed(() => Message.CompletedSaveSeen()),
-      )
-  },
-})
+export const SaveSeen = Command.make(
+  'SaveSeen',
+  { args: { seen: Schema.Array(Schema.String) } },
+  ({ seen }) =>
+    pipe(
+      Schema.encodeEffect(SeenJson)({ seenNoteIds: seen }),
+      Effect.flatMap(json => writeKey(local, SEEN_KEY, json)),
+      Effect.ignore,
+      Effect.as(Component.noop),
+    ),
+)
 
 // THE BEFORE PICTURE
 
@@ -101,11 +101,21 @@ export type Capture = typeof Capture.Type
 // small file.
 const MAX_PICTURE = 480
 
-const pictureOf = (capture: Capture): Option.Option<string> => {
-  const source = document.querySelector(capture.selector)
-  if (!(source instanceof HTMLCanvasElement)) {
-    return Option.none()
-  }
+// NOTE: the canvas a note pictures, by its selector.
+const canvasOf = (selector: string): Option.Option<HTMLCanvasElement> => {
+  const source = document.querySelector(selector)
+  return source instanceof HTMLCanvasElement && source.width > 0
+    ? Option.some(source)
+    : Option.none()
+}
+
+// NOTE: the picture as a PNG data URL, with no 2D canvas: the crop is cut and
+// scaled by createImageBitmap (whole pixels kept), shown on a bitmaprenderer
+// canvas of its own size, and encoded from there.
+const encodePicture = (
+  source: HTMLCanvasElement,
+  capture: Capture,
+): Effect.Effect<string, string> => {
   const crop = capture.crop ?? {
     x: 0,
     y: 0,
@@ -113,27 +123,47 @@ const pictureOf = (capture: Capture): Option.Option<string> => {
     height: source.height,
   }
   const scale = Math.min(1, MAX_PICTURE / Math.max(crop.width, crop.height))
-  const picture = document.createElement('canvas')
-  picture.width = Math.round(crop.width * scale)
-  picture.height = Math.round(crop.height * scale)
-  const context = picture.getContext('2d')
-  if (context === null) {
-    return Option.none()
-  }
-  context.imageSmoothingEnabled = false
-  context.drawImage(
-    source,
-    crop.x,
-    crop.y,
-    crop.width,
-    crop.height,
-    0,
-    0,
-    picture.width,
-    picture.height,
+  const width = Math.max(1, Math.round(crop.width * scale))
+  const height = Math.max(1, Math.round(crop.height * scale))
+  return pipe(
+    Effect.tryPromise({
+      try: () =>
+        createImageBitmap(source, crop.x, crop.y, crop.width, crop.height, {
+          resizeWidth: width,
+          resizeHeight: height,
+          resizeQuality: 'pixelated',
+        }),
+      catch: error => describeError(error),
+    }),
+    Effect.flatMap(bitmap =>
+      Effect.try({
+        try: () => {
+          const picture = document.createElement('canvas')
+          picture.width = bitmap.width
+          picture.height = bitmap.height
+          const context = picture.getContext('bitmaprenderer')
+          if (context === null) {
+            bitmap.close()
+            return Option.none<string>()
+          }
+          context.transferFromImageBitmap(bitmap)
+          return Option.some(picture.toDataURL('image/png'))
+        },
+        catch: error => describeError(error),
+      }),
+    ),
+    Effect.flatMap(Effect.fromOption),
+    Effect.mapError(error =>
+      typeof error === 'string' ? error : 'no bitmap renderer',
+    ),
   )
-  return Option.some(picture.toDataURL('image/png'))
 }
+
+const pictureOf = (capture: Capture): Effect.Effect<Option.Option<string>> =>
+  Option.match(canvasOf(capture.selector), {
+    onNone: () => Effect.succeed(Option.none<string>()),
+    onSome: source => pipe(encodePicture(source, capture), Effect.option),
+  })
 
 // THE NOTES
 
@@ -173,24 +203,21 @@ const postDraft = (draft: NoteDraft) =>
     Effect.mapError(unreachable),
   )
 
-export const SendNote = StudioBlock.makeCommand('SendNote', {
-  args: { draft: NoteDraft, capture: Capture },
-  messages: [Message.CompletedSendNote, Message.FailedSendNote],
-  handler: function* () {
-    return ({ draft, capture }) =>
-      pipe(
-        Effect.sync(() => pictureOf(capture)),
-        Effect.orElseSucceed(() => Option.none<string>()),
-        Effect.flatMap(maybePicture =>
-          postDraft({ ...draft, before: Option.getOrNull(maybePicture) }),
-        ),
-        Effect.map(noteId => Message.CompletedSendNote({ noteId })),
-        Effect.catch(error =>
-          Effect.succeed(Message.FailedSendNote({ reason: error.message })),
-        ),
-      )
-  },
-})
+export const SendNote = Command.make(
+  'SendNote',
+  { args: { draft: NoteDraft, capture: Capture } },
+  ({ draft, capture }) =>
+    pipe(
+      pictureOf(capture),
+      Effect.flatMap(maybePicture =>
+        postDraft({ ...draft, before: Option.getOrNull(maybePicture) }),
+      ),
+      Effect.match({
+        onSuccess: noteId => Message.CompletedSendNote({ noteId }),
+        onFailure: error => Message.FailedSendNote({ reason: error.message }),
+      }),
+    ),
+)
 
 const fetchNotes = pipe(
   Layer.build(FetchHttpClient.layer),
@@ -215,48 +242,28 @@ const FRAME_STEP_MS = 50
 // NOTE: how often the page asks for the notes, to see the agent's answers.
 const INBOX_POLL = '2 seconds'
 
-export const subscriptions = StudioBlock.makeSubscriptions(entry => ({
-  frames: entry(
-    'Frames',
-    { isPlaying: Schema.Boolean },
-    {
-      messages: [Message.TickedFrame],
-      modelToDependencies: model => ({ isPlaying: model.isPlaying }),
-      handler: function* () {
-        return ({ isPlaying }) =>
-          isPlaying
-            ? Stream.map(Stream.tick(`${FRAME_STEP_MS} millis`), () =>
-                Message.TickedFrame({ deltaTime: FRAME_STEP_MS }),
-              )
-            : Stream.empty
-      },
-    },
+const frames = Subscription.make(
+  'Frames',
+  Stream.map(Stream.tick(`${FRAME_STEP_MS} millis`), () =>
+    Message.TickedFrame({ deltaTime: FRAME_STEP_MS }),
   ),
-  inbox: entry(
-    'Inbox',
-    {},
-    {
-      messages: [Message.ReceivedNotes, Message.LostInbox],
-      modelToDependencies: () => ({}),
-      handler: function* () {
-        return () =>
-          Stream.mapEffect(Stream.tick(INBOX_POLL), () =>
-            pipe(
-              fetchNotes,
-              Effect.map(notes =>
-                Message.ReceivedNotes({ notes: Array.fromIterable(notes) }),
-              ),
-              Effect.orElseSucceed(() => Message.LostInbox()),
-            ),
-          )
-      },
-    },
-  ),
-}))
-
-export const EffectsLayer = Layer.mergeAll(
-  SaveView.layer,
-  SaveSeen.layer,
-  SendNote.layer,
-  subscriptions.layer,
 )
+
+const inbox = Subscription.make(
+  'Inbox',
+  Stream.mapEffect(Stream.tick(INBOX_POLL), () =>
+    pipe(
+      fetchNotes,
+      Effect.map(notes =>
+        Message.ReceivedNotes({ notes: Array.fromIterable(notes) }),
+      ),
+      Effect.orElseSucceed(() => Message.LostInbox()),
+    ),
+  ),
+)
+
+// NOTE: the clock runs while the animation plays; the inbox always.
+export const subscriptions = ({ model }: { readonly model: Model }) => [
+  model.isPlaying && frames,
+  inbox,
+]

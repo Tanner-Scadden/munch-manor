@@ -1,5 +1,6 @@
 import { Array, Function, Option, pipe } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import { type Camera, viewToWorld } from '../render/camera'
 import { screenToFloorDirection } from '../render/lens'
@@ -123,7 +124,7 @@ export const pressKey: {
 } = Function.dual(2, (input: Input, code: string): Input =>
   isPadCode(code)
     ? input
-    : modifyFields(input, {
+    : UiStruct.evolve(input, {
         pressedKeys: pressedKeys =>
           Array.contains(pressedKeys, code)
             ? pressedKeys
@@ -135,7 +136,7 @@ export const releaseKey: {
   (code: string): (input: Input) => Input
   (input: Input, code: string): Input
 } = Function.dual(2, (input: Input, code: string): Input =>
-  modifyFields(input, {
+  UiStruct.evolve(input, {
     pressedKeys: Array.filter(pressedCode => pressedCode !== code),
   }),
 )
@@ -143,10 +144,10 @@ export const releaseKey: {
 // NOTE: macOS sends no keyup for a key released while Command is down, so
 // Command lets go of every key rather than leave one held for good.
 export const releaseKeys = (input: Input): Input =>
-  modifyFields(input, { pressedKeys: () => [] })
+  UiStruct.evolve(input, { pressedKeys: () => [] })
 
 export const releaseAll = (input: Input): Input =>
-  modifyFields(input, {
+  UiStruct.evolve(input, {
     pressedKeys: () => [],
     mouseButton: () => MouseButton.Released(),
     moveStick: () => Stick.Idle(),
@@ -159,7 +160,7 @@ export const releaseAll = (input: Input): Input =>
 export const seeFirePress = (input: Input): Input =>
   input.firePress === 'Seen'
     ? input
-    : modifyFields(input, { firePress: () => 'Seen' })
+    : UiStruct.evolve(input, { firePress: () => 'Seen' })
 
 // NOTE: how far a stick's last point may sit from a finger still on the
 // glass and stay held. A finger's last move can trail its touch a little;
@@ -194,7 +195,7 @@ export const keepTouchedSticks: {
   (points: ReadonlyArray<TouchPoint>): (input: Input) => Input
   (input: Input, points: ReadonlyArray<TouchPoint>): Input
 } = Function.dual(2, (input: Input, points: ReadonlyArray<TouchPoint>): Input =>
-  modifyFields(input, {
+  UiStruct.evolve(input, {
     moveStick: stick => keepIfTouched(stick, points),
     aimStick: stick => keepIfTouched(stick, points),
   }),
@@ -245,11 +246,11 @@ const pressTouch = (
   press: PointerPress,
 ): Input => {
   if (isLeftHalf(surface, press.clientX)) {
-    return modifyFields(input, {
+    return UiStruct.evolve(input, {
       moveStick: stick => takeStick(stick, press),
     })
   } else {
-    return modifyFields(input, {
+    return UiStruct.evolve(input, {
       aimStick: stick => takeStick(stick, press),
     })
   }
@@ -260,7 +261,7 @@ const pressMouse = (
   surface: SurfaceRectangle,
   press: PointerPress,
 ): Input =>
-  modifyFields(input, {
+  UiStruct.evolve(input, {
     mouseButton: () => MouseButton.Held({ pointerId: press.pointerId }),
     firePress: () => 'Waiting',
     maybeMouseInView: () =>
@@ -312,7 +313,7 @@ const moveStickPointer = (stick: Stick, position: PointerPosition): Stick =>
 // waits for a step as a click does, so a flick in and out between two
 // steps still shoots.
 const pushAimStick = (input: Input, aimStick: Stick): Input =>
-  modifyFields(input, {
+  UiStruct.evolve(input, {
     aimStick: () => aimStick,
     firePress: firePress =>
       isAimStickFiring(aimStick) && !isAimStickFiring(input.aimStick)
@@ -349,7 +350,7 @@ export const movePointer: {
           y: position.clientY,
         })
       : pushAimStick(
-          modifyFields(input, {
+          UiStruct.evolve(input, {
             moveStick: stick => moveStickPointer(stick, position),
           }),
           moveStickPointer(input.aimStick, position),
@@ -386,7 +387,7 @@ export const releasePointer: {
   (pointerId: number): (input: Input) => Input
   (input: Input, pointerId: number): Input
 } = Function.dual(2, (input: Input, pointerId: number): Input =>
-  modifyFields(input, {
+  UiStruct.evolve(input, {
     moveStick: stick => releaseStickPointer(stick, pointerId),
     aimStick: stick => releaseStickPointer(stick, pointerId),
     mouseButton: mouseButton => releaseMouseButton(mouseButton, pointerId),
@@ -401,7 +402,7 @@ export const pressHoldButton: {
   (pointerId: number): (input: Input) => Input
   (input: Input, pointerId: number): Input
 } = Function.dual(2, (input: Input, pointerId: number): Input =>
-  modifyFields(input, {
+  UiStruct.evolve(input, {
     holdButton: holdButton =>
       HoldButton.match(holdButton, {
         Released: () => HoldButton.Held({ pointerId }),
@@ -430,7 +431,7 @@ export const moveMouse: {
     Option.match(maybeSurface, {
       onNone: () => input,
       onSome: surface =>
-        modifyFields(input, {
+        UiStruct.evolve(input, {
           maybeMouseInView: () => clientToView(surface, client),
         }),
     }),

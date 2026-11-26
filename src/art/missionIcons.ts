@@ -1,6 +1,6 @@
 import { Record } from 'effect'
-import type { Canvas } from 'foldkit'
 
+import type * as Draw from '../render/draw'
 import type { MissionId } from '../shared/missionData'
 import { pixelIconUrl } from './icons'
 import { type Palette, spriteShapes } from './sprite'
@@ -244,7 +244,7 @@ const DONE_PIXELS: Pixels = [
 
 const icon = (pixels: Pixels): string => pixelIconUrl(pixels, MISSION_PALETTE)
 
-const sprite = (pixels: Pixels): ReadonlyArray<Canvas.Shape> =>
+const sprite = (pixels: Pixels): ReadonlyArray<Draw.Shape> =>
   spriteShapes(pixels, MISSION_PALETTE)
 
 export const MISSION_ICONS: Readonly<Record<MissionId, string>> = Record.map(
@@ -256,7 +256,7 @@ export const MISSION_DONE_ICON = icon(DONE_PIXELS)
 
 // NOTE: the same pictures on the end card's canvas, centered on their spot.
 export const MISSION_SPRITES: Readonly<
-  Record<MissionId, ReadonlyArray<Canvas.Shape>>
+  Record<MissionId, ReadonlyArray<Draw.Shape>>
 > = Record.map(MISSION_PIXELS, sprite)
 export const ALL_THREE_SPRITE = sprite(ALL_THREE_PIXELS)
 export const MISSION_DONE_SPRITE = sprite(DONE_PIXELS)

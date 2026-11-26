@@ -9,7 +9,6 @@
 // co-op room sees and hears the same leaks.
 
 import { Array, Option, Order } from 'effect'
-import type { Canvas } from 'foldkit'
 
 import { TILE_SIZE } from '../../shared/constants'
 import { isCellarLit } from '../../world/cellar/bulb'
@@ -25,6 +24,7 @@ import type { Vector } from '../../world/schema/entitySchema'
 import type { World } from '../../world/schema/worldSchema'
 import { clamp, distanceBetween, hundredths } from '../../world/step/geometry'
 import { beamReach } from '../cellarDark'
+import type * as Draw from '../draw'
 import { rect } from '../drawing'
 import type { Mote } from './air'
 import type { TileQuad } from './house'
@@ -277,8 +277,8 @@ const mirrorsOf = (level: Level): ReadonlyArray<ReadonlyArray<Mirror>> => {
 
 // NOTE: the body of every puddle, which never changes: the water, softer
 // at each row's ends, and the pale rim along its far edge.
-export const puddlesOf = (level: Level): ReadonlyArray<Canvas.Shape> => {
-  const shapes: Array<Canvas.Shape> = []
+export const puddlesOf = (level: Level): ReadonlyArray<Draw.Shape> => {
+  const shapes: Array<Draw.Shape> = []
   Array.forEach(leaksOf(level), ({ rows }) => {
     Array.forEach(rows, ({ y, left, right }, index) => {
       const above = rows[index - 1]
@@ -352,7 +352,7 @@ const RING_SPANS: ReadonlyArray<ReadonlyArray<RingSpan>> = [
   ],
 ]
 
-const ringOf = (leak: Leak, step: number): ReadonlyArray<Canvas.Shape> => {
+const ringOf = (leak: Leak, step: number): ReadonlyArray<Draw.Shape> => {
   const { x, y } = leak.spot
   const spans = RING_SPANS[clamp(step, 1, RING_SPANS.length) - 1] ?? []
   return Array.map(spans, ([row, left, width]) =>
@@ -366,7 +366,7 @@ const streakOn = (
   centerX: number,
   length: number,
   color: string,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const inside = row.right - row.left - 1
   const width = Math.min(length, inside)
   if (width < 1) {
@@ -387,7 +387,7 @@ const flameStreaksOf = (
   leak: Leak,
   mirror: Mirror,
   rowIndex: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const strength = clamp(
     mirror.weight * (1 - gapTo(leak, mirror) / MIRROR_REACH),
     0,
@@ -435,7 +435,7 @@ const mirrorRowOf = (leak: Leak, mirror: Mirror, taken: number): number => {
 const strikeBandOf = (
   rows: ReadonlyArray<PuddleRow>,
   step: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const [first, second] = rows
   if (first === undefined || step === 0) {
     return []
@@ -493,10 +493,7 @@ const isInDarkAt = (world: World, level: Level, viewer: Viewer): boolean =>
       viewer.y < box.bottom,
   )
 
-const beamGlintOf = (
-  leak: Leak,
-  viewer: Viewer,
-): ReadonlyArray<Canvas.Shape> => {
+const beamGlintOf = (leak: Leak, viewer: Viewer): ReadonlyArray<Draw.Shape> => {
   const { rows } = leak
   const first = Array.headNonEmpty(rows)
   const middle = rows[Math.floor(rows.length / 2)] ?? first
@@ -525,12 +522,12 @@ const glintsOf = (
   mirrors: ReadonlyArray<Mirror>,
   lit: ReadonlySet<FlameKind>,
   strikeStep: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const shown = Array.take(
     Array.filter(mirrors, ({ kind }) => lit.has(kind)),
     MOST_MIRRORS,
   )
-  const shapes: Array<Canvas.Shape> = []
+  const shapes: Array<Draw.Shape> = []
   let taken = -10
   Array.forEach(shown, mirror => {
     const rowIndex = mirrorRowOf(leak, mirror, taken)
@@ -594,7 +591,7 @@ export const puddleGlintsOf = ({
   world: World
   level: Level
   viewer: Viewer
-}>): ReadonlyArray<Canvas.Shape> => {
+}>): ReadonlyArray<Draw.Shape> => {
   const lit = litOf(world)
   const strike = strikeStepOf(world)
   const mirrors = mirrorsOf(level)

@@ -37,7 +37,7 @@ tools/learn/out/
 # Video renders
 tools/video/out/
 
-# The Foldkit source, cloned locally for reference (bun run foldkit:source)
+# Vendored source cloned locally for reference (Effect UI in repos/effect-ui)
 repos/
 
 # itch.io upload zips (bun run build:itch)

@@ -1,5 +1,6 @@
 import { Array, Function, Option, Result } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import { PLAYER_RADIUS, ZOMBIE_HIT_PULSE_MS } from '../../shared/constants'
 import * as DetMath from '../../shared/detMath'
@@ -244,7 +245,7 @@ const withPlayer = (
 const withEvents = (world: World, events: ReadonlyArray<GameEvent>): World =>
   Array.isReadonlyArrayEmpty(events)
     ? world
-    : modifyFields(world, {
+    : UiStruct.evolve(world, {
         frameEvents: frameEvents => [...frameEvents, ...events],
       })
 
@@ -253,7 +254,7 @@ const startReload = (world: World, slot: PlayerSlot): World => {
   return withEvents(
     withPlayer(world, slot, player =>
       beginReload(
-        modifyFields(player, {
+        UiStruct.evolve(player, {
           fireCooldownMs: () => 0,
           charge: () => Charge.Idle(),
         }),
@@ -271,7 +272,7 @@ const startReload = (world: World, slot: PlayerSlot): World => {
 }
 
 const coolDown = (player: Player, deltaMs: number): Player =>
-  modifyFields(player, {
+  UiStruct.evolve(player, {
     fireCooldownMs: cooldown => Math.max(0, cooldown - deltaMs),
   })
 
@@ -355,14 +356,14 @@ const launch = (
     onSome: shooter => ({ ...lob, shooter }),
   })
   return withEvents(
-    modifyFields(world, {
+    UiStruct.evolve(world, {
       lobs: lobs => [...lobs, thrown],
       nextEntityId: id => id + 1,
       seats: atSeat(slot, {
         player: current =>
           spendLid(
             boosts,
-            modifyFields(current, {
+            UiStruct.evolve(current, {
               charge: () => Charge.Idle(),
               recoilRemainingMs: () => 180,
             }),
@@ -379,7 +380,7 @@ const launch = (
 const pop = (world: World, slot: PlayerSlot): World => {
   const { player, boosts } = seatStateAt(world, slot)
   const back = scaleVector(player.facing, -1)
-  const shoved = modifyFields(player, {
+  const shoved = UiStruct.evolve(player, {
     charge: () => Charge.Spent(),
     knockback: knockback =>
       addVectors(knockback, scaleVector(back, COOKER_RULES.popShove)),
@@ -405,7 +406,7 @@ const fireCooker = (
       isHeld
         ? cooled
         : withPlayer(cooled, slot, current =>
-            modifyFields(current, { charge: () => Charge.Idle() }),
+            UiStruct.evolve(current, { charge: () => Charge.Idle() }),
           ),
     Idle: () => {
       if (spare.loaded <= 0) {
@@ -414,7 +415,7 @@ const fireCooker = (
         return cooled
       } else {
         return withPlayer(cooled, slot, current =>
-          modifyFields(current, {
+          UiStruct.evolve(current, {
             charge: () =>
               Charge.Building({ heldMs: deltaMs, aim: current.facing }),
           }),
@@ -429,7 +430,7 @@ const fireCooker = (
       return nextMs >= cookerFullMs(spare.tier) + COOKER_RULES.overMs
         ? pop(cooled, slot)
         : withPlayer(cooled, slot, current =>
-            modifyFields(current, {
+            UiStruct.evolve(current, {
               charge: () =>
                 Charge.Building({ heldMs: nextMs, aim: current.facing }),
             }),
@@ -488,7 +489,7 @@ const lidBlast = (world: World, lob: Lob, at: Vector): World => {
     maybeShooter,
     'Cooker',
   )
-  const struck = modifyFields(world, {
+  const struck = UiStruct.evolve(world, {
     zombies: () => zombieOutcome.targets,
     frameEvents: frameEvents => [
       ...frameEvents,
@@ -530,14 +531,14 @@ export const advanceLobs: {
       isBursting
         ? Result.failVoid
         : Result.succeed(
-            modifyFields(lob, {
+            UiStruct.evolve(lob, {
               x: () => at.x,
               y: () => at.y,
               remainingMs: () => remainingMs,
             }),
           ),
   )
-  const landed: World = modifyFields(world, { lobs: () => flying })
+  const landed: World = UiStruct.evolve(world, { lobs: () => flying })
   return Array.reduce(
     Array.filter(flights, ({ isBursting }) => isBursting),
     landed,
@@ -566,7 +567,7 @@ const panBlow = (damage: number, knockback: number): Blow => ({
 // knocked flying back the way the Pan swung, and that is the end of it.
 const swat = (player: Player, zombie: Zombie): Struck => {
   const direction = player.facing
-  const struck = modifyFields(
+  const struck = UiStruct.evolve(
     strikeZombie(
       zombie,
       { damage: zombie.hp, direction, knockbackSpeed: PAN_RULES.swatKnockback },
@@ -625,7 +626,7 @@ const smash = (world: World, slot: PlayerSlot): Swing => {
             strikeInMelee(
               player,
               isSmallKind(zombie.kind) && isSteadied(zombie.action)
-                ? modifyFields(zombie, {
+                ? UiStruct.evolve(zombie, {
                     action: () => ZombieAction.Roaming(),
                   })
                 : zombie,
@@ -663,27 +664,27 @@ const firePan = (
     return Charge.isAnyOf(['Idle'])(player.charge)
       ? cooled
       : withPlayer(cooled, slot, current =>
-          modifyFields(current, { charge: () => Charge.Idle() }),
+          UiStruct.evolve(current, { charge: () => Charge.Idle() }),
         )
   }
   const heldMs = holdMsOf(player) + deltaMs
   if (player.fireCooldownMs > 0) {
     return withPlayer(cooled, slot, current =>
-      modifyFields(current, {
+      UiStruct.evolve(current, {
         charge: () => Charge.Building({ heldMs, aim: current.facing }),
       }),
     )
   }
   const isSmash = spare.tier >= SMASH_TIER && heldMs >= PAN_RULES.smashHoldMs
   const swing = isSmash ? smash(cooled, slot) : swingArc(cooled, slot, spare)
-  const struck = modifyFields(cooled, {
+  const struck = UiStruct.evolve(cooled, {
     zombies: () => swing.zombies,
     seats: atSeat(slot, {
       player: current =>
-        modifyFields(
+        UiStruct.evolve(
           swing.connected
             ? mapPan(current, pan =>
-                modifyFields(pan, {
+                UiStruct.evolve(pan, {
                   loaded: loaded => Math.max(0, loaded - 1),
                 }),
               )
@@ -727,7 +728,7 @@ export const flattenPans: {
         withEvents(
           withPlayer(world, slot, player =>
             mapPan(player, pan =>
-              modifyFields(pan, {
+              UiStruct.evolve(pan, {
                 loaded: () => magazineOf('Pan', pan.tier),
               }),
             ),
@@ -747,7 +748,7 @@ const isChilledNow = ZombieAction.isAnyOf(['Chilled'])
 const DOUBLE_CHILL_KINDS: ReadonlyArray<ZombieKind> = ['Tank']
 
 const iceFor = (zombie: Zombie, frozenMs: number): Zombie =>
-  modifyFields(zombie, {
+  UiStruct.evolve(zombie, {
     action: () =>
       ZombieAction.Frozen({ remainingMs: frozenMs, durationMs: frozenMs }),
     knockback: () => ZERO_VECTOR,
@@ -763,7 +764,7 @@ const freezeOne = (zombie: Zombie): Zombie => {
     return iceFor(zombie, FREEZE_RULES.lugFrozenMs)
   }
   return ZombieAction.isAnyOf(['Roaming', 'Chilled'])(zombie.action)
-    ? modifyFields(zombie, {
+    ? UiStruct.evolve(zombie, {
         action: () =>
           ZombieAction.Chilled({ remainingMs: FREEZE_RULES.chillMs }),
       })
@@ -776,7 +777,7 @@ const freezeOne = (zombie: Zombie): Zombie => {
 // zombie stays frozen.
 const sting = (zombie: Zombie, direction: Vector): Zombie => {
   const hp = Math.max(0, zombie.hp - FREEZE_RULES.damage)
-  return modifyFields(zombie, {
+  return UiStruct.evolve(zombie, {
     hp: () => hp,
     hitRemainingMs: () => ZOMBIE_HIT_PULSE_MS,
     state: state =>
@@ -815,12 +816,12 @@ const spray = (world: World, slot: PlayerSlot): World => {
     'Freeze',
   )
   const iced = withEvents(
-    modifyFields(world, {
+    UiStruct.evolve(world, {
       zombies: () => Array.map(sprayed, ({ zombie }) => zombie),
       seats: atSeat(slot, {
         player: current =>
           spendRound(
-            modifyFields(current, {
+            UiStruct.evolve(current, {
               fireCooldownMs: () => FREEZE_RULES.intervalMs,
               recoilRemainingMs: () => 160,
             }),
@@ -904,7 +905,7 @@ export const fireFridgeWeapon: {
 export const dropCharge = (player: Player): Player =>
   Charge.isAnyOf(['Idle'])(player.charge)
     ? player
-    : modifyFields(player, { charge: () => Charge.Idle() })
+    : UiStruct.evolve(player, { charge: () => Charge.Idle() })
 
 // SHATTERS
 
@@ -1013,8 +1014,8 @@ export const resolveShatters: {
         kind: zombie.kind,
       }),
   )
-  return withEvents(modifyFields(after, { zombies: () => splashed.zombies }), [
-    ...cracks,
-    ...splashed.events,
-  ])
+  return withEvents(
+    UiStruct.evolve(after, { zombies: () => splashed.zombies }),
+    [...cracks, ...splashed.events],
+  )
 })

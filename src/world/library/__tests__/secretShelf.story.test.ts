@@ -1,10 +1,9 @@
 import { Array, Option, Result } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { GameEvent, type Model, Phase } from '../../../app/model'
+import { BreakClock, GameEvent, type Model, Phase } from '../../../app/model'
 import {
   FIXED_STEP_MS,
   PLAYER_RADIUS,
@@ -15,7 +14,7 @@ import {
   quietWave,
   withPlayerAt,
 } from '../../../test/model.fixture'
-import { APPLICATION, ticks } from '../../../test/testing'
+import { checkModel, modelAfter, steps, ticks } from '../../../test/testing'
 import { levelFor, levelOf, openExitIn } from '../../level/arena'
 import { exitOffers } from '../../level/exits'
 import { flowFieldToward, playerDistancePx } from '../../level/pathing'
@@ -41,7 +40,7 @@ const atBook = (model: Model): Model =>
   withPlayerAt(model, SHELF.book.x + PLAYER_RADIUS + 1, SHELF.book.y)
 
 const withLibraryOpen = (model: Model): Model =>
-  modifyFields(model, { level: state => openExitIn(state, EAST_EXIT) })
+  UiStruct.evolve(model, { level: state => openExitIn(state, EAST_EXIT) })
 
 const isSecretOpen = (model: Model): boolean =>
   Array.contains(levelOf(model).openExits, SECRET_EXIT)
@@ -78,75 +77,80 @@ describe('the secret shelf', () => {
   })
 
   it.effect('swings open when a player walks up to the book in a round', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(atBook(withLibraryOpen(quietWave(4)))),
-      ...ticks(1, FIXED_STEP_MS),
-      Story.model(current => {
-        expect(isSecretOpen(current)).toBe(true)
-        expect(swungEvents(current)).toHaveLength(1)
-        expect(
-          isWalkableTile(levelOf(current), DINING_SIDE.column, DINING_SIDE.row),
-        ).toBe(true)
-      }),
-      ...ticks(3, FIXED_STEP_MS),
-      Story.model(current => {
-        expect(isSecretOpen(current)).toBe(true)
-        expect(swungEvents(current)).toEqual([])
-      }),
+    modelAfter(
+      atBook(withLibraryOpen(quietWave(4))),
+      steps(
+        ticks(1, FIXED_STEP_MS),
+        checkModel(current => {
+          expect(isSecretOpen(current)).toBe(true)
+          expect(swungEvents(current)).toHaveLength(1)
+          expect(
+            isWalkableTile(
+              levelOf(current),
+              DINING_SIDE.column,
+              DINING_SIDE.row,
+            ),
+          ).toBe(true)
+        }),
+        ticks(3, FIXED_STEP_MS),
+        checkModel(current => {
+          expect(isSecretOpen(current)).toBe(true)
+          expect(swungEvents(current)).toEqual([])
+        }),
+      ),
     ),
   )
 
   it.effect('swings in a break too', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        atBook(
-          withLibraryOpen(
-            modifyFields(quietWave(4), {
-              phase: () =>
-                Phase.Preparation({
-                  wave: 4,
-                  remainingMs: 60_000,
-                  durationMs: 60_000,
-                  spawns: [DISTANT_SPAWN],
-                }),
-            }),
-          ),
+    modelAfter(
+      atBook(
+        withLibraryOpen(
+          UiStruct.evolve(quietWave(4), {
+            phase: () =>
+              Phase.Preparation({
+                clock: BreakClock.Counting(),
+                wave: 4,
+                remainingMs: 60_000,
+                durationMs: 60_000,
+                spawns: [DISTANT_SPAWN],
+              }),
+          }),
         ),
       ),
-      ...ticks(1, FIXED_STEP_MS),
-      Story.model(current => {
-        expect(isSecretOpen(current)).toBe(true)
-      }),
+      steps(
+        ticks(1, FIXED_STEP_MS),
+        checkModel(current => {
+          expect(isSecretOpen(current)).toBe(true)
+        }),
+      ),
     ),
   )
 
   it.effect('stays shut for a player a step away from the book', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        withPlayerAt(
-          withLibraryOpen(quietWave(4)),
-          SHELF.book.x + PLAYER_RADIUS + SHELF_RULES.reachPx + 4,
-          SHELF.book.y,
-        ),
+    modelAfter(
+      withPlayerAt(
+        withLibraryOpen(quietWave(4)),
+        SHELF.book.x + PLAYER_RADIUS + SHELF_RULES.reachPx + 4,
+        SHELF.book.y,
       ),
-      ...ticks(4, FIXED_STEP_MS),
-      Story.model(current => {
-        expect(isSecretOpen(current)).toBe(false)
-      }),
+      steps(
+        ticks(4, FIXED_STEP_MS),
+        checkModel(current => {
+          expect(isSecretOpen(current)).toBe(false)
+        }),
+      ),
     ),
   )
 
   it.effect('cannot swing while the library is boarded', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(atBook(quietWave(4))),
-      ...ticks(2, FIXED_STEP_MS),
-      Story.model(current => {
-        expect(isSecretOpen(current)).toBe(false)
-      }),
+    modelAfter(
+      atBook(quietWave(4)),
+      steps(
+        ticks(2, FIXED_STEP_MS),
+        checkModel(current => {
+          expect(isSecretOpen(current)).toBe(false)
+        }),
+      ),
     ),
   )
 

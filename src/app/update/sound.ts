@@ -1,19 +1,17 @@
 import { Array, Effect, Function, Option, Schema, pipe } from 'effect'
-import type { ManagedResource } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
+
+import { Command, Component, UiStruct } from '@effect/ui'
 
 import {
-  type AudioEngine,
-  type AudioEngineError,
+  AudioEngine,
   type PlayOutcome,
   SoundEffect,
-  acquireAudioEngine,
   playSound,
   playSoundAt,
   positionVariation,
-  releaseAudioEngine,
   resumeAudio,
 } from '../../audio/audio'
+import { SoundMessage } from '../../audio/message'
 import { maybeTuneCue } from '../../features/dare/musicBox'
 import { scratchesBetween } from '../../features/dare/pocketCard'
 import {
@@ -39,115 +37,115 @@ import { focusOf } from '../../world/party/party'
 import { vectorLength } from '../../world/step/geometry'
 import { isRoundActive } from '../../world/waves/waves'
 import { ZOMBIE_KINDS, isArmorShedAt } from '../../world/zombies/zombies'
-import {
-  ApplicationBlock,
-  makeManagedResources,
-  makeResource,
-} from '../definition'
-import { Message } from '../message'
 import { AudioState, GameEvent, type Model, Phase, type Player } from '../model'
-import { type UpdateStep, defineHandlers } from './step'
+import { type UpdateStep, defineHandlers, modelStep } from './step'
 
 // AUDIO
 
-export const AudioEngineResource = makeResource<AudioEngine>()('AudioEngine')
+// NOTE: the engine is the AudioEngine service (src/audio/audio.ts), built
+// once the first tap unlocks audio; each sound, tune, and resume is a
+// Command over it, so a test fakes the Command and never the engine.
+export class AcquireAudioEngine extends Command.Service<AcquireAudioEngine>()(
+  'app/AcquireAudioEngine',
+  { args: {}, success: SoundMessage },
+) {
+  static readonly layer = this.toLayer(
+    Effect.gen(function* () {
+      const { engine } = yield* AudioEngine
+      return () =>
+        engine.pipe(
+          Effect.match({
+            onSuccess: () => SoundMessage.SucceededAcquireAudioEngine(),
+            onFailure: error =>
+              SoundMessage.FailedAcquireAudioEngine({ reason: error.reason }),
+          }),
+        )
+    }),
+  )
+}
 
-const wantsAudioEngine = (audio: AudioState): boolean =>
-  AudioState.match(audio, {
-    Locked: () => false,
-    Unlocking: () => true,
-    Suspended: () => true,
-    Ready: () => true,
-    Unavailable: () => false,
-  })
+export class ResumeAudio extends Command.Service<ResumeAudio>()(
+  'app/ResumeAudio',
+  { args: {}, success: SoundMessage },
+) {
+  static readonly layer = this.toLayer(
+    Effect.gen(function* () {
+      const { engine } = yield* AudioEngine
+      return () =>
+        engine.pipe(
+          Effect.flatMap(resumeAudio),
+          Effect.match({
+            onSuccess: playback =>
+              SoundMessage.CompletedResumeAudio({ playback }),
+            onFailure: error =>
+              SoundMessage.FailedResumeAudio({ reason: error.reason }),
+          }),
+        )
+    }),
+  )
+}
 
-export const managedResources = makeManagedResources(entry => ({
-  audioEngine: entry('ManageAudioEngine', Schema.Option(Schema.Null), {
-    resource: AudioEngineResource,
-    modelToMaybeRequirements: model =>
-      wantsAudioEngine(model.audio) ? Option.some(null) : Option.none(),
-    onAcquired: () => Message.AcquiredAudioEngine(),
-    onAcquireError: error =>
-      Message.FailedAcquireAudioEngine({ reason: String(error) }),
-    onReleased: () => Message.ReleasedAudioEngine(),
-    handler: function* () {
-      return {
-        acquire: () => acquireAudioEngine,
-        release: releaseAudioEngine,
-      }
-    },
-  }),
-}))
+// NOTE: a sound played reports only when it was dropped under a suspended
+// engine, the one outcome that changes the Model (`notePlayOutcome`); a
+// failure changes nothing, so it is logged and nothing is reported.
+const reportPlayed = (
+  sound: SoundEffect,
+  outcome: PlayOutcome,
+): SoundMessage | Component.Noop =>
+  outcome === 'DroppedWhileSuspended'
+    ? SoundMessage.CompletedPlaySound({ sound, outcome })
+    : Component.noop
 
-export const audioFailureReason = (
-  error: AudioEngineError | ManagedResource.ResourceNotAvailable,
-): string =>
-  error._tag === 'AudioEngineError'
-    ? error.reason
-    : `${error.resource} is not acquired`
+const PlayResult = Schema.Union([SoundMessage, Component.Noop])
 
-export const ResumeAudio = ApplicationBlock.makeCommand('ResumeAudio', {
-  messages: [Message.CompletedResumeAudio, Message.FailedResumeAudio],
-  handler: function* () {
-    return () =>
-      pipe(
-        AudioEngineResource.get,
-        Effect.flatMap(resumeAudio),
-        Effect.map(playback => Message.CompletedResumeAudio({ playback })),
-        Effect.catch(error =>
-          Effect.succeed(
-            Message.FailedResumeAudio({ reason: audioFailureReason(error) }),
-          ),
-        ),
-      )
-  },
-})
-
-export const PlaySound = ApplicationBlock.makeCommand('PlaySound', {
+export class PlaySound extends Command.Service<PlaySound>()('app/PlaySound', {
   args: { sound: SoundEffect, variation: Schema.Finite },
-  messages: [Message.CompletedPlaySound, Message.FailedPlaySound],
-  handler: function* () {
-    return ({ sound, variation }) =>
-      pipe(
-        AudioEngineResource.get,
-        Effect.flatMap(engine => playSound(engine, sound, variation)),
-        Effect.map(outcome => Message.CompletedPlaySound({ sound, outcome })),
-        Effect.catch(error =>
-          Effect.succeed(
-            Message.FailedPlaySound({
-              sound,
-              reason: audioFailureReason(error),
-            }),
+  success: PlayResult,
+}) {
+  static readonly layer = this.toLayer(
+    Effect.gen(function* () {
+      const { engine } = yield* AudioEngine
+      return ({ sound, variation }) =>
+        engine.pipe(
+          Effect.flatMap(built => playSound(built, sound, variation)),
+          Effect.map(outcome => reportPlayed(sound, outcome)),
+          Effect.catch(error =>
+            Effect.as(
+              Effect.logWarning('play sound', sound, error.reason),
+              Component.noop,
+            ),
           ),
-        ),
-      )
-  },
-})
+        )
+    }),
+  )
+}
 
-// NOTE: the music box's tune, placed by where it is from the player
-// (src/features/dare/musicBox.ts).
 // NOTE: a sound from a spot in the house, louder the nearer it is to the
 // player and panned to its side: the music box's tune, a roof leak's drip.
-export const PlayPlaced = ApplicationBlock.makeCommand('PlayPlaced', {
-  args: { sound: SoundEffect, volume: Schema.Finite, pan: Schema.Finite },
-  messages: [Message.CompletedPlaySound, Message.FailedPlaySound],
-  handler: function* () {
-    return ({ sound, volume, pan }) =>
-      pipe(
-        AudioEngineResource.get,
-        Effect.flatMap(engine => playSoundAt(engine, sound, { volume, pan })),
-        Effect.map(outcome => Message.CompletedPlaySound({ sound, outcome })),
-        Effect.catch(error =>
-          Effect.succeed(
-            Message.FailedPlaySound({
-              sound,
-              reason: audioFailureReason(error),
-            }),
-          ),
-        ),
-      )
+export class PlayPlaced extends Command.Service<PlayPlaced>()(
+  'app/PlayPlaced',
+  {
+    args: { sound: SoundEffect, volume: Schema.Finite, pan: Schema.Finite },
+    success: PlayResult,
   },
-})
+) {
+  static readonly layer = this.toLayer(
+    Effect.gen(function* () {
+      const { engine } = yield* AudioEngine
+      return ({ sound, volume, pan }) =>
+        engine.pipe(
+          Effect.flatMap(built => playSoundAt(built, sound, { volume, pan })),
+          Effect.map(outcome => reportPlayed(sound, outcome)),
+          Effect.catch(error =>
+            Effect.as(
+              Effect.logWarning('play placed sound', sound, error.reason),
+              Component.noop,
+            ),
+          ),
+        )
+    }),
+  )
+}
 
 const MUTE_KEY = 'KeyM'
 const MUSIC_KEY = 'KeyN'
@@ -431,16 +429,10 @@ export const ammoTickCues = (model: Model): ReadonlyArray<SoundCue> =>
 
 export const playSounds =
   (cues: ReadonlyArray<SoundCue>): UpdateStep =>
-  stepModel => {
-    if (isSoundAudible(stepModel)) {
-      return {
-        model: stepModel,
-        commands: Array.map(cues, cue => PlaySound(cue)),
-      }
-    } else {
-      return { model: stepModel }
-    }
-  }
+  $ =>
+    isSoundAudible($.model) && Array.isReadonlyArrayNonEmpty(cues)
+      ? $.run(...Array.map(cues, cue => PlaySound.make(cue)))
+      : $.model
 
 // NOTE: a roof leak's drop landing between two frames near the focused
 // player (src/render/iso/leaks.ts), in a round, read off the World's clock.
@@ -474,33 +466,38 @@ const isWadeDue = (before: Model, after: Model): boolean =>
 
 // NOTE: the placed sounds between two frames, when they are due and heard:
 // the music box's tune, the nearest drip, and a stride through a puddle.
+// NOTE: `before` is the frame's start and `after` the frame drawn, which an
+// online run reads off the room's World rather than the Step's Model.
 export const playPlaced: {
   (after: Model): (before: Model) => UpdateStep
   (before: Model, after: Model): UpdateStep
 } = Function.dual(
   2,
   (before: Model, after: Model): UpdateStep =>
-    stepModel =>
-      isSoundAudible(stepModel)
-        ? {
-            model: stepModel,
-            commands: [
-              ...Option.toArray(
-                Option.map(maybeTuneCue(before, after), placement =>
-                  PlayPlaced({ sound: 'MusicBox', ...placement }),
-                ),
+    $ =>
+      isSoundAudible($.model)
+        ? $.run(
+            ...Option.toArray(
+              Option.map(maybeTuneCue(before, after), placement =>
+                PlayPlaced.make({ sound: 'MusicBox', ...placement }),
               ),
-              ...Option.toArray(
-                Option.map(maybeDripCue(before, after), placement =>
-                  PlayPlaced({ sound: 'Drip', ...placement }),
-                ),
+            ),
+            ...Option.toArray(
+              Option.map(maybeDripCue(before, after), placement =>
+                PlayPlaced.make({ sound: 'Drip', ...placement }),
               ),
-              ...(isWadeDue(before, after)
-                ? [PlayPlaced({ sound: 'Wade', volume: WADE_VOLUME, pan: 0 })]
-                : []),
-            ],
-          }
-        : { model: stepModel },
+            ),
+            ...(isWadeDue(before, after)
+              ? [
+                  PlayPlaced.make({
+                    sound: 'Wade',
+                    volume: WADE_VOLUME,
+                    pan: 0,
+                  }),
+                ]
+              : []),
+          )
+        : $.model,
 )
 
 export const uiCue = (sound: SoundEffect): SoundCue => ({ sound, variation: 0 })
@@ -518,30 +515,29 @@ export const playSwapSoundWhen = (isSwap: boolean): UpdateStep =>
 // suspended it under a Ready engine: the next tap resumes it.
 const notePlayOutcome =
   (outcome: PlayOutcome): UpdateStep =>
-  model =>
+  $ =>
     outcome === 'DroppedWhileSuspended' &&
-    AudioState.isAnyOf(['Ready'])(model.audio)
-      ? {
-          model: modifyFields(model, {
-            audio: () => AudioState.Suspended(),
-          }),
-        }
-      : { model }
+    AudioState.isAnyOf(['Ready'])($.model.audio)
+      ? $.evolve({ audio: AudioState.Suspended() })
+      : $.model
 
-export const unlockAudio: UpdateStep = stepModel =>
-  AudioState.match(stepModel.audio, {
-    Locked: () => ({
-      model: modifyFields(stepModel, { audio: () => AudioState.Unlocking() }),
-    }),
-    Unlocking: () => ({ model: stepModel }),
-    Suspended: () => ({ model: stepModel, commands: [ResumeAudio()] }),
-    Ready: () => ({ model: stepModel }),
-    Unavailable: () => ({ model: stepModel }),
+// NOTE: the first tap asks for the engine (AcquireAudioEngine); it is
+// resumed once it is built, and again by any tap while it is suspended.
+export const unlockAudio: UpdateStep = $ =>
+  AudioState.match($.model.audio, {
+    Locked: () =>
+      $.evolve({ audio: AudioState.Unlocking() }).run(
+        AcquireAudioEngine.make(),
+      ),
+    Unlocking: () => $.model,
+    Suspended: () => $.run(ResumeAudio.make()),
+    Ready: () => $.model,
+    Unavailable: () => $.model,
   })
 
 export const toggleSound = (model: Model): Model =>
-  modifyFields(model, {
-    settings: modifyFields({
+  UiStruct.evolve(model, {
+    settings: UiStruct.evolve({
       soundSetting: setting => (setting === 'On' ? 'Muted' : 'On'),
     }),
   })
@@ -550,8 +546,8 @@ const toggleSoundFromKey = (model: Model, code: string): Model =>
   code === MUTE_KEY ? toggleSound(model) : model
 
 export const toggleMusic = (model: Model): Model =>
-  modifyFields(model, {
-    settings: modifyFields({
+  UiStruct.evolve(model, {
+    settings: UiStruct.evolve({
       musicSetting: setting => (setting === 'On' ? 'Off' : 'On'),
     }),
   })
@@ -583,41 +579,27 @@ const isFreshRun = (model: Model): boolean =>
 // NOTE: the mute and music buttons, the audio engine, and each sound and
 // tune (src/audio/message.ts).
 export const soundHandlers = defineHandlers({
-  ClickedMuteButton: model => unlockAudio(toggleSound(model)),
+  ClickedMuteButton: $ => $.combine(modelStep(toggleSound), unlockAudio),
 
-  ClickedMusicButton: model => unlockAudio(toggleMusic(model)),
+  ClickedMusicButton: $ => $.combine(modelStep(toggleMusic), unlockAudio),
 
-  AcquiredAudioEngine: model => ({
-    model: modifyFields(model, { audio: () => AudioState.Suspended() }),
-    commands: [ResumeAudio()],
-  }),
+  SucceededAcquireAudioEngine: $ =>
+    $.evolve({ audio: AudioState.Suspended() }).run(ResumeAudio.make()),
 
-  FailedAcquireAudioEngine: model => ({
-    model: modifyFields(model, { audio: () => AudioState.Unavailable() }),
-  }),
+  FailedAcquireAudioEngine: $ => $.evolve({ audio: AudioState.Unavailable() }),
 
-  ReleasedAudioEngine: model => ({ model }),
-
-  CompletedResumeAudio: (model, { playback }) => {
+  CompletedResumeAudio: ($, { playback }) => {
     if (playback === 'Running') {
-      const ready = modifyFields(model, { audio: () => AudioState.Ready() })
-      return playStartSoundWhen(isFreshRun(ready))(ready)
+      const ready = UiStruct.evolve($.model, {
+        audio: () => AudioState.Ready(),
+      })
+      return $.combine(() => ready, playStartSoundWhen(isFreshRun(ready)))
     } else {
-      return {
-        model: modifyFields(model, { audio: () => AudioState.Suspended() }),
-      }
+      return $.evolve({ audio: AudioState.Suspended() })
     }
   },
 
-  FailedResumeAudio: model => ({
-    model: modifyFields(model, { audio: () => AudioState.Suspended() }),
-  }),
+  FailedResumeAudio: $ => $.evolve({ audio: AudioState.Suspended() }),
 
-  CompletedPlaySound: (model, { outcome }) => notePlayOutcome(outcome)(model),
-
-  FailedPlaySound: model => ({ model }),
-
-  CompletedCueMusic: model => ({ model }),
-
-  FailedCueMusic: model => ({ model }),
+  CompletedPlaySound: ($, { outcome }) => notePlayOutcome(outcome)($),
 })

@@ -1,10 +1,11 @@
-import { Effect, Option } from 'effect'
-import { Scene } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
+import { Array, Effect, Match, Option, Schema, type Scope } from 'effect'
 
-import { describe, it } from '@effect/vitest'
+import { Component, UiStruct } from '@effect/ui'
+import { HtmlLocator, HtmlScene } from '@effect/ui/html/testing'
+import { Locator } from '@effect/ui/testing'
+import { describe, expect, it } from '@effect/vitest'
 
-import { defaultAppearance } from '../../../app/model'
+import { type Model, Phase, defaultAppearance } from '../../../app/model'
 import { portraitOf } from '../../../art/coopIcons'
 import { badgeImage } from '../../../art/rankArt'
 import { seatLook } from '../../../art/seatLooks'
@@ -14,14 +15,30 @@ import {
   RoomRequest,
   Screen,
 } from '../../../domain/coopRoom'
-import { noDareMarks } from '../../../shared/dareMarkData'
 import { lookCodeOf } from '../../../shared/lookCodes'
 import type { Appearance } from '../../../shared/playerData'
-import type { ViewInputs } from '../block'
-import { Message } from '../message'
-import { type Model, emptyQueue } from '../model'
+import {
+  button,
+  byClass,
+  childrenOf,
+  expectAttr,
+  expectStyle,
+  firstOf,
+  measureSurface,
+  withAttrs,
+} from '../../../test/sceneTesting'
+import {
+  type AppScene,
+  type SceneStep,
+  resolveFocusCoop,
+  resolveRememberRoom,
+  sceneOf,
+} from '../../../test/testing'
+import { HeroPicker, HeroPickerProps } from '../../heroes/block'
+import { Events as HeroPickerEvents } from '../../heroes/message'
+import { CoopMessage } from '../message'
+import { emptyQueue } from '../model'
 import { freshRoom } from '../roomState'
-import { ChangeLobby, FocusCoopElement } from '../steps'
 import {
   CODE,
   lobbyOf,
@@ -34,23 +51,29 @@ import {
   CancelQuickPlay,
   CopyRoomCode,
   LeaveRoom,
-  RememberRoom,
   RequestRoom,
   ShareRoomLink,
 } from '../update'
-import { COOP, coopAt as at } from './story.fixture'
+import { coopAt, lobbyChanged } from './story.fixture'
 
-const VIEW_INPUTS: ViewInputs = {
-  look: defaultAppearance,
-  isKeyboard: false,
-  isRunCardUp: false,
-  isRunEndComing: false,
-  bought: ['hero:Handyman'],
-  bones: 0,
-  dareMarks: noDareMarks,
-}
+// Co-op's screens as the root draws them (src/app/coopView.ts): the root
+// with co-op open on a screen, the player in the default look on a touch
+// screen, so no key caps show. The hero picker is a child, a leaf in the
+// root's Scene: its cards are read in a Scene of their own, with the props
+// co-op hands it, and a tap on a card is its event.
 
-const COOP_SCENE = { ...COOP, viewInputs: VIEW_INPUTS }
+const at = (screen: Screen): Model =>
+  UiStruct.evolve(coopAt(screen), {
+    appearance: () => defaultAppearance,
+    lastDevice: () => 'Touch',
+  })
+
+// NOTE: a Scene of the root as `model` leaves it, the game surface's
+// Mounts under co-op acknowledged.
+const coopSceneOf = (
+  model: Model,
+): Effect.Effect<AppScene, never, Scope.Scope> =>
+  Effect.map(sceneOf(model), measureSurface)
 
 const onHub = at(Screen.Hub({ maybeProblem: Option.none() }))
 
@@ -64,141 +87,182 @@ const lobbyRoom = (members: ReadonlyArray<ReturnType<typeof memberOf>>) =>
     link: 'Online',
   })
 
-const quickPlayButton = Scene.role('button', {
-  name: 'Quick play: join players anywhere',
-})
+const quickPlayButton = button('Quick play: join players anywhere')
 
-describe('the hub', () => {
-  it.effect('QUICK PLAY, CODE, and NEW ROOM are the three ways in', () =>
-    Scene.scene(
-      COOP_SCENE,
-      Scene.given(onHub),
-      Scene.expect(quickPlayButton).toExist(),
-      Scene.expect(
-        Scene.role('button', { name: 'Join a friend with a code' }),
-      ).toExist(),
-      Scene.expect(
-        Scene.role('button', { name: 'Make a room for friends' }),
-      ).toExist(),
-      Scene.click(quickPlayButton),
-      Scene.expect(Scene.selector('[data-screen="Queue"]')).toExist(),
+const findingRoom = HtmlLocator.role('status', { name: 'Finding the room' })
+
+// NOTE: an element by its aria-label, and what sits inside it wearing a
+// class: the old `[aria-label="..."] .name`.
+const inLabelled = (label: string, name: string): Locator.Locator =>
+  Locator.inside(Locator.attr('aria-label', label), byClass(name))
+
+const inCalling = (calling: string, locator: Locator.Locator) =>
+  Locator.inside(Locator.attr('data-calling', calling), locator)
+
+const ask = (request: RoomRequest) =>
+  RequestRoom.make({
+    request,
+    name: '',
+    look: '',
+    rank: 1,
+    calling: 'You',
+    introSeen: false,
+  })
+
+// THE HERO PICKER, A CHILD
+
+const PICKER_KEY = 'coop-hero-picker'
+
+const isPickerProps = Schema.is(HeroPickerProps)
+
+// NOTE: the props co-op's lobby hands the hero picker, or none while it is
+// shut.
+const pickerPropsIn = (s: AppScene): Option.Option<HeroPickerProps> =>
+  Array.findFirst(childrenOf(s.view), node =>
+    Match.value(node).pipe(
+      Match.tag('Child', child =>
+        child.key === PICKER_KEY && isPickerProps(child.props)
+          ? Option.some(child.props)
+          : Option.none(),
+      ),
+      Match.orElse(() => Option.none()),
     ),
   )
 
-  it.effect('a problem shows as an alert', () =>
-    Scene.scene(
-      COOP_SCENE,
-      Scene.given(at(Screen.Hub({ maybeProblem: Option.some('Kicked') }))),
-      Scene.expect(
-        Scene.role('alert', { name: 'The host kicked you.' }),
-      ).toExist(),
+const expectPicker =
+  (isUp: boolean): SceneStep =>
+  s =>
+    s.check(() => {
+      expect(Option.isSome(pickerPropsIn(s))).toBe(isUp)
+    })
+
+const pickerSceneIn = (
+  s: AppScene,
+): Effect.Effect<HtmlScene.Steps<typeof HeroPicker>, never, Scope.Scope> =>
+  HtmlScene.make(
+    HeroPicker,
+    Option.getOrThrowWith(
+      pickerPropsIn(s),
+      () => new Error('co-op draws no hero picker'),
     ),
+  )
+
+describe('the hub', () => {
+  it.effect('QUICK PLAY, CODE, and NEW ROOM are the three ways in', () =>
+    Effect.gen(function* () {
+      const s = yield* coopSceneOf(onHub)
+      s.expect(quickPlayButton)
+        .toExist()
+        .expect(button('Join a friend with a code'))
+        .toExist()
+        .expect(button('Make a room for friends'))
+        .toExist()
+        .click(quickPlayButton)
+        .expect(Locator.attr('data-screen', 'Queue'))
+        .toExist()
+    }),
+  )
+
+  it.effect('a problem shows as an alert', () =>
+    Effect.gen(function* () {
+      const s = yield* coopSceneOf(
+        at(Screen.Hub({ maybeProblem: Option.some('Kicked') })),
+      )
+      s.expect(
+        HtmlLocator.role('alert', { name: 'The host kicked you.' }),
+      ).toExist()
+    }),
   )
 
   it.effect('a new room in flight shows its door, and a code its tiles', () =>
     Effect.gen(function* () {
-      yield* Scene.scene(
-        COOP_SCENE,
-        Scene.given(at(Screen.Asking({ request: RoomRequest.Create() }))),
-        Scene.expect(
-          Scene.selector('[data-request="Create"] .coop-door'),
-        ).toExist(),
-        Scene.expect(Scene.selector('.coop-check-tiles')).not.toExist(),
+      const create = yield* coopSceneOf(
+        at(Screen.Asking({ request: RoomRequest.Create() })),
       )
-      yield* Scene.scene(
-        COOP_SCENE,
-        Scene.given(
-          at(Screen.Asking({ request: RoomRequest.Join({ code: CODE }) })),
-        ),
-        Scene.expect(
-          Scene.role('status', { name: 'Finding the room' }),
-        ).toExist(),
-        Scene.expect(
-          Scene.selector('[data-request="Join"] .coop-check-tiles'),
-        ).toHaveText(CODE),
+      create
+        .expect(
+          Locator.inside(
+            Locator.attr('data-request', 'Create'),
+            byClass('coop-door'),
+          ),
+        )
+        .toExist()
+        .expect(byClass('coop-check-tiles'))
+        .toBeAbsent()
+      const join = yield* coopSceneOf(
+        at(Screen.Asking({ request: RoomRequest.Join({ code: CODE }) })),
       )
+      join
+        .expect(findingRoom)
+        .toExist()
+        .expect(
+          Locator.inside(
+            Locator.attr('data-request', 'Join'),
+            byClass('coop-check-tiles'),
+          ),
+        )
+        .toHaveText(CODE)
     }),
   )
 
   it.effect('NEW ROOM asks for a room', () =>
-    Scene.scene(
-      COOP_SCENE,
-      Scene.given(onHub),
-      Scene.click(Scene.role('button', { name: 'Make a room for friends' })),
-      Scene.expect(
-        Scene.role('status', { name: 'Finding the room' }),
-      ).toExist(),
-      Scene.Command.resolve(
-        RequestRoom({
-          request: RoomRequest.Create(),
-          name: '',
-          look: '',
-          rank: 1,
-          calling: 'You',
-          introSeen: false,
-        }),
-        Message.SucceededRequestRoom({ code: CODE, slot: 0 }),
-      ),
-      Scene.Command.resolve(RememberRoom, Message.CompletedRememberRoom()),
-      Scene.Command.resolve(
-        FocusCoopElement,
-        Message.CompletedFocusCoopElement(),
-      ),
-      Scene.expect(
-        Scene.role('button', { name: 'I dare you: share the room link' }),
-      ).toExist(),
-    ),
+    Effect.gen(function* () {
+      const s = yield* coopSceneOf(onHub)
+      s.click(button('Make a room for friends'))
+        .expect(findingRoom)
+        .toExist()
+        .resolve(
+          ask(RoomRequest.Create()),
+          CoopMessage.SucceededRequestRoom({ code: CODE, slot: 0 }),
+        )
+        .pipe(resolveRememberRoom, resolveFocusCoop)
+        .expect(button('I dare you: share the room link'))
+        .toExist()
+    }),
   )
 })
 
 describe('the code', () => {
   it.effect('five symbols typed into the slots join that room', () =>
-    Scene.scene(
-      COOP_SCENE,
-      Scene.given(at(Screen.Code({ typed: '', maybeProblem: Option.none() }))),
-      Scene.expect(Scene.role('button', { name: 'Join' })).toBeDisabled(),
-      Scene.type(Scene.role('textbox', { name: 'Room code' }), 'mnch'),
-      Scene.expect(Scene.role('button', { name: 'Join' })).toBeDisabled(),
-      Scene.type(Scene.role('textbox', { name: 'Room code' }), 'mnch7'),
-      Scene.Command.resolve(
-        RequestRoom({
-          request: RoomRequest.Join({ code: CODE }),
-          name: '',
-          look: '',
-          rank: 1,
-          calling: 'You',
-          introSeen: false,
-        }),
-        Message.FailedRequestRoom({ problem: 'Full' }),
-      ),
-      Scene.Command.resolve(RememberRoom, Message.CompletedRememberRoom()),
-      Scene.expect(
-        Scene.role('alert', { name: 'That room is full.' }),
-      ).toExist(),
-    ),
+    Effect.gen(function* () {
+      const field = HtmlLocator.role('textbox', { name: 'Room code' })
+      const join = button('Join')
+      const s = yield* coopSceneOf(
+        at(Screen.Code({ typed: '', maybeProblem: Option.none() })),
+      )
+      s.expect(join)
+        .toBeDisabled()
+        .type(field, 'mnch')
+        .expect(join)
+        .toBeDisabled()
+        .type(field, 'mnch7')
+        .resolve(
+          ask(RoomRequest.Join({ code: CODE })),
+          CoopMessage.FailedRequestRoom({ problem: 'Full' }),
+        )
+        .pipe(resolveRememberRoom)
+        .expect(HtmlLocator.role('alert', { name: 'That room is full.' }))
+        .toExist()
+    }),
   )
 
   it.effect('back returns to the hub', () =>
-    Scene.scene(
-      COOP_SCENE,
-      Scene.given(
+    Effect.gen(function* () {
+      const s = yield* coopSceneOf(
         at(Screen.Code({ typed: 'AB', maybeProblem: Option.none() })),
-      ),
-      Scene.click(Scene.role('button', { name: 'Back' })),
-      Scene.Command.resolve(
-        FocusCoopElement,
-        Message.CompletedFocusCoopElement(),
-      ),
-      Scene.expect(quickPlayButton).toExist(),
-    ),
+      )
+      s.click(button('Back'))
+        .pipe(resolveFocusCoop)
+        .expect(quickPlayButton)
+        .toExist()
+    }),
   )
 })
 
 describe('the queue', () => {
   it.effect('heads fill the seats and the offer starts with fewer', () =>
-    Scene.scene(
-      COOP_SCENE,
-      Scene.given(
+    Effect.gen(function* () {
+      const s = yield* coopSceneOf(
         at(
           Screen.Queue({
             queue: {
@@ -211,94 +275,74 @@ describe('the queue', () => {
             },
           }),
         ),
-      ),
-      Scene.expect(
-        Scene.role('list', { name: '3 of 4 players here' }),
-      ).toExist(),
-      Scene.click(
-        Scene.role('button', { name: 'Start with 3 players. 1 said yes' }),
-      ),
-      Scene.Command.resolve(
-        AnswerOffer({ accept: true }),
-        Message.CompletedAnswerOffer(),
-      ),
-      Scene.expect(
-        Scene.role('button', { name: 'Keep waiting for four' }),
-      ).not.toExist(),
-      Scene.click(Scene.role('button', { name: 'Stop looking' })),
-      Scene.Command.resolve(
-        CancelQuickPlay,
-        Message.CompletedCancelQuickPlay(),
-      ),
-      Scene.expect(quickPlayButton).toExist(),
-    ),
+      )
+      s.expect(HtmlLocator.role('list', { name: '3 of 4 players here' }))
+        .toExist()
+        .click(button('Start with 3 players. 1 said yes'))
+        .resolve(AnswerOffer.make({ accept: true }), Component.noop)
+        .expect(button('Keep waiting for four'))
+        .toBeAbsent()
+        .click(button('Stop looking'))
+        .resolve(CancelQuickPlay, Component.noop)
+        .expect(quickPlayButton)
+        .toExist()
+    }),
   )
 })
 
 describe('the lobby', () => {
   it.effect('seats show names, the host crown, and READY stamps', () =>
-    Scene.scene(
-      COOP_SCENE,
-      Scene.given(lobbyRoom([memberOf(0, 'Ana'), memberOf(1, 'Bo', true)])),
-      Scene.expect(
-        Scene.role('listitem', { name: 'Ana, you, host, rank 1' }),
-      ).toExist(),
-      Scene.expect(
-        Scene.role('listitem', { name: 'Bo, rank 1, ready' }),
-      ).toExist(),
-      Scene.expect(Scene.role('listitem', { name: 'Empty seat' })).toExist(),
-      Scene.expect(Scene.role('button', { name: 'Kick Bo' })).toExist(),
-      Scene.click(Scene.role('button', { name: 'READY' })),
-      Scene.Command.resolve(
-        ChangeLobby({
-          change: LobbyChange.ChangedReady({ ready: true, pingMs: 0 }),
-        }),
-        Message.CompletedChangeLobby(),
-      ),
-      Scene.click(Scene.role('button', { name: 'Kick Bo' })),
-      Scene.Command.resolve(
-        ChangeLobby({
-          change: LobbyChange.KickedPlayer({ playerId: 'player-1' }),
-        }),
-        Message.CompletedChangeLobby(),
-      ),
-    ),
+    Effect.gen(function* () {
+      const s = yield* coopSceneOf(
+        lobbyRoom([memberOf(0, 'Ana'), memberOf(1, 'Bo', true)]),
+      )
+      s.expect(HtmlLocator.role('listitem', { name: 'Ana, you, host, rank 1' }))
+        .toExist()
+        .expect(HtmlLocator.role('listitem', { name: 'Bo, rank 1, ready' }))
+        .toExist()
+        .expect(HtmlLocator.role('listitem', { name: 'Empty seat' }))
+        .toExist()
+        .expect(button('Kick Bo'))
+        .toExist()
+        .click(button('READY'))
+        .pipe(
+          lobbyChanged(LobbyChange.ChangedReady({ ready: true, pingMs: 0 })),
+        )
+        .click(button('Kick Bo'))
+        .pipe(lobbyChanged(LobbyChange.KickedPlayer({ playerId: 'player-1' })))
+    }),
   )
 
   it.effect('the host taps a mode and a skull; Nightmare stays padlocked', () =>
-    Scene.scene(
-      COOP_SCENE,
-      Scene.given(lobbyRoom([memberOf(0, 'Ana'), memberOf(1, 'Bo')])),
-      Scene.expect(Scene.role('group', { name: 'Mode' })).toExist(),
-      Scene.expect(Scene.role('button', { name: 'Campaign' })).toHaveAttr(
-        'aria-pressed',
-        'true',
-      ),
-      Scene.expect(Scene.role('button', { name: 'Keep going' })).not.toExist(),
-      Scene.expect(
-        Scene.role('button', { name: 'Triple Dog Dare, locked' }),
-      ).toHaveAttr('aria-disabled', 'true'),
-      Scene.click(Scene.role('button', { name: 'Endless' })),
-      Scene.Command.resolve(
-        ChangeLobby({
-          change: LobbyChange.ChangedPicks({
-            mode: 'Endless',
-            difficulty: 'Normal',
-          }),
-        }),
-        Message.CompletedChangeLobby(),
-      ),
-      Scene.click(Scene.role('button', { name: 'Triple Dare' })),
-      Scene.Command.resolve(
-        ChangeLobby({
-          change: LobbyChange.ChangedPicks({
-            mode: 'Campaign',
-            difficulty: 'Hard',
-          }),
-        }),
-        Message.CompletedChangeLobby(),
-      ),
-    ),
+    Effect.gen(function* () {
+      const s = yield* coopSceneOf(
+        lobbyRoom([memberOf(0, 'Ana'), memberOf(1, 'Bo')]),
+      )
+      s.expect(HtmlLocator.role('group', { name: 'Mode' }))
+        .toExist()
+        .pipe(expectAttr(button('Campaign'), 'aria-pressed', 'true'))
+        .expect(button('Keep going'))
+        .toBeAbsent()
+        .pipe(
+          expectAttr(
+            button('Triple Dog Dare, locked'),
+            'aria-disabled',
+            'true',
+          ),
+        )
+        .click(button('Endless'))
+        .pipe(
+          lobbyChanged(
+            LobbyChange.ChangedPicks({ mode: 'Endless', difficulty: 'Normal' }),
+          ),
+        )
+        .click(button('Triple Dare'))
+        .pipe(
+          lobbyChanged(
+            LobbyChange.ChangedPicks({ mode: 'Campaign', difficulty: 'Hard' }),
+          ),
+        )
+    }),
   )
 
   it.effect(
@@ -313,52 +357,39 @@ describe('the lobby', () => {
               modifiers: mask,
             }),
           })
-        yield* Scene.scene(
-          COOP_SCENE,
-          Scene.given(withMask(0)),
-          Scene.expect(Scene.role('group', { name: 'Modifiers' })).toExist(),
-          Scene.expect(
-            Scene.role('button', { name: 'Friendly Fire, +15%, off' }),
-          ).toExist(),
-          Scene.expect(Scene.role('status', { name: 'Bonus +0%' })).toExist(),
-          Scene.click(Scene.role('button', { name: 'Glass, +350%, off' })),
-          Scene.Command.resolve(
-            ChangeLobby({
-              change: LobbyChange.ChangedModifiers({ modifiers: 8 }),
-            }),
-            Message.CompletedChangeLobby(),
-          ),
-        )
-        yield* Scene.scene(
-          COOP_SCENE,
-          Scene.given(withMask(9)),
-          Scene.expect(
-            Scene.role('button', { name: 'Friendly Fire, +15%, on' }),
-          ).toHaveAttr('aria-pressed', 'true'),
-          Scene.expect(
-            Scene.role('button', { name: 'Glass, +350%, on' }),
-          ).toHaveAttr('aria-pressed', 'true'),
-          Scene.expect(
-            Scene.role('button', { name: 'Broke, +75%, off' }),
-          ).toHaveAttr('aria-pressed', 'false'),
-          Scene.expect(Scene.role('status', { name: 'Bonus +365%' })).toExist(),
-          Scene.click(Scene.role('button', { name: 'Glass, +350%, on' })),
-          Scene.Command.resolve(
-            ChangeLobby({
-              change: LobbyChange.ChangedModifiers({ modifiers: 1 }),
-            }),
-            Message.CompletedChangeLobby(),
-          ),
-        )
+        const none = yield* coopSceneOf(withMask(0))
+        none
+          .expect(HtmlLocator.role('group', { name: 'Modifiers' }))
+          .toExist()
+          .expect(button('Friendly Fire, +15%, off'))
+          .toExist()
+          .expect(HtmlLocator.role('status', { name: 'Bonus +0%' }))
+          .toExist()
+          .click(button('Glass, +350%, off'))
+          .pipe(lobbyChanged(LobbyChange.ChangedModifiers({ modifiers: 8 })))
+        const some = yield* coopSceneOf(withMask(9))
+        some
+          .pipe(
+            expectAttr(
+              button('Friendly Fire, +15%, on'),
+              'aria-pressed',
+              'true',
+            ),
+            expectAttr(button('Glass, +350%, on'), 'aria-pressed', 'true'),
+            expectAttr(button('Broke, +75%, off'), 'aria-pressed', 'false'),
+          )
+          .expect(HtmlLocator.role('status', { name: 'Bonus +365%' }))
+          .toExist()
+          .click(button('Glass, +350%, on'))
+          .pipe(lobbyChanged(LobbyChange.ChangedModifiers({ modifiers: 1 })))
       }),
   )
 
   it.effect(
     'a guest sees the tiles still, and a tap on one says the host picks',
     () =>
-      Scene.scene(
-        COOP_SCENE,
-        Scene.given(
+      Effect.gen(function* () {
+        const s = yield* coopSceneOf(
           roomWith({
             slot: 1,
             maybePlayerId: Option.some('player-1'),
@@ -367,16 +398,15 @@ describe('the lobby', () => {
               modifiers: 4,
             }),
           }),
-        ),
-        Scene.expect(
-          Scene.role('button', { name: 'Broke, +75%, on' }),
-        ).toHaveAttr('aria-disabled', 'true'),
-        Scene.expect(Scene.role('status', { name: 'Bonus +75%' })).toExist(),
-      ),
+        )
+        s.pipe(expectAttr(button('Broke, +75%, on'), 'aria-disabled', 'true'))
+          .expect(HtmlLocator.role('status', { name: 'Bonus +75%' }))
+          .toExist()
+      }),
   )
 
-  // NOTE: Scene treats aria-disabled as disabled and refuses the click, but a
-  // browser delivers it: the taps themselves are Story tests (story.test.ts).
+  // NOTE: the taps on a pick that is not yours are Story tests
+  // (lobbyEdits.story.test.ts); this is the note they leave.
   it.effect('a tap on a pick that is not yours leaves a note in place', () =>
     Effect.gen(function* () {
       const guest = (reason: 'HostPicks' | 'Locked') =>
@@ -388,61 +418,54 @@ describe('the lobby', () => {
           ),
           maybeNudge: Option.some({ reason, count: 1 }),
         })
-      yield* Scene.scene(
-        COOP_SCENE,
-        Scene.given(guest('HostPicks')),
-        Scene.expect(Scene.selector('.coop-nudge')).toHaveText('HOST PICKS'),
-        Scene.expect(Scene.selector('.coop-crown-flash-b')).toExist(),
+      const hostPicks = yield* coopSceneOf(guest('HostPicks'))
+      hostPicks
+        .expect(byClass('coop-nudge'))
+        .toHaveText('HOST PICKS')
+        .expect(byClass('coop-crown-flash-b'))
+        .toExist()
+      const locked = yield* coopSceneOf(guest('Locked'))
+      locked
+        .expect(byClass('coop-nudge'))
+        .toHaveText('Escape on Triple Dare to unlock')
+        .expect(byClass('coop-crown-flash-b'))
+        .toBeAbsent()
+      const host = yield* coopSceneOf(
+        lobbyRoom([memberOf(0, 'Ana'), memberOf(1, 'Bo')]),
       )
-      yield* Scene.scene(
-        COOP_SCENE,
-        Scene.given(guest('Locked')),
-        Scene.expect(Scene.selector('.coop-nudge')).toHaveText(
-          'Escape on Triple Dare to unlock',
-        ),
-        Scene.expect(Scene.selector('.coop-crown-flash-b')).not.toExist(),
-      )
-      yield* Scene.scene(
-        COOP_SCENE,
-        Scene.given(lobbyRoom([memberOf(0, 'Ana'), memberOf(1, 'Bo')])),
-        Scene.expect(Scene.selector('.coop-nudge')).not.toExist(),
-      )
+      host.expect(byClass('coop-nudge')).toBeAbsent()
     }),
   )
 
   it.effect('your own name is a button; the field saves it for the room', () =>
-    Scene.scene(
-      COOP_SCENE,
-      Scene.given(lobbyRoom([memberOf(0, 'Ana'), memberOf(1, 'Bo')])),
-      Scene.expect(Scene.role('button', { name: 'Bo, rank 1' })).not.toExist(),
-      Scene.expect(
-        Scene.role('button', { name: 'Your name: Ana. Change it' }),
-      ).toExist(),
-      Scene.click(Scene.role('button', { name: 'Your name: Ana. Change it' })),
-      Scene.Command.resolve(
-        FocusCoopElement,
-        Message.CompletedFocusCoopElement(),
-      ),
-      Scene.expect(Scene.role('dialog', { name: 'Your name' })).toExist(),
-      Scene.expect(Scene.selector('.coop-name-input')).toHaveValue('Ana'),
-      Scene.click(Scene.role('button', { name: 'Roll a goofy name' })),
-      Scene.Command.resolve(
-        FocusCoopElement,
-        Message.CompletedFocusCoopElement(),
-      ),
-      Scene.click(Scene.role('button', { name: 'Cancel' })),
-      Scene.Command.resolve(
-        FocusCoopElement,
-        Message.CompletedFocusCoopElement(),
-      ),
-      Scene.expect(Scene.role('dialog', { name: 'Your name' })).not.toExist(),
-    ),
+    Effect.gen(function* () {
+      const nameButton = button('Your name: Ana. Change it')
+      const nameDialog = HtmlLocator.role('dialog', { name: 'Your name' })
+      const s = yield* coopSceneOf(
+        lobbyRoom([memberOf(0, 'Ana'), memberOf(1, 'Bo')]),
+      )
+      s.expect(button('Bo, rank 1'))
+        .toBeAbsent()
+        .expect(nameButton)
+        .toExist()
+        .click(nameButton)
+        .pipe(resolveFocusCoop)
+        .expect(nameDialog)
+        .toExist()
+        .expect(byClass('coop-name-input'))
+        .toHaveValue('Ana')
+        .click(button('Roll a goofy name'))
+        .pipe(resolveFocusCoop)
+        .click(button('Cancel'))
+        .pipe(resolveFocusCoop)
+        .expect(nameDialog)
+        .toBeAbsent()
+    }),
   )
 
   it.effect('a guest sees the picks as icons, and KEEP GOING after a win', () =>
-    Scene.scene(
-      COOP_SCENE,
-      Scene.given(
+    Effect.gen(function* () {
+      const s = yield* coopSceneOf(
         roomWith({
           slot: 1,
           maybePlayerId: Option.some('player-1'),
@@ -456,24 +479,18 @@ describe('the lobby', () => {
             difficulty: 'Hard',
           }),
         }),
-      ),
-      Scene.expect(
-        Scene.selector('[aria-label="Keep going, Triple Dare"]'),
-      ).toExist(),
-      Scene.expect(Scene.role('button', { name: 'Keep going' })).toHaveAttr(
-        'aria-disabled',
-        'true',
-      ),
-      Scene.expect(Scene.role('button', { name: 'Triple Dare' })).toHaveAttr(
-        'aria-pressed',
-        'true',
-      ),
-    ),
+      )
+      s.expect(Locator.attr('aria-label', 'Keep going, Triple Dare'))
+        .toExist()
+        .pipe(
+          expectAttr(button('Keep going'), 'aria-disabled', 'true'),
+          expectAttr(button('Triple Dare'), 'aria-pressed', 'true'),
+        )
+    }),
   )
 
-  it.effect(
-    'each seat wears the look its player sent, or its seat look',
-    () => {
+  it.effect('each seat wears the look its player sent, or its seat look', () =>
+    Effect.gen(function* () {
       const sent: Appearance = {
         body: 'Broad',
         hairStyle: 'Long',
@@ -488,180 +505,212 @@ describe('the lobby', () => {
         gunSkin: 'Stock',
         propStyle: 'Stock',
       }
-      return Scene.scene(
-        COOP_SCENE,
-        Scene.given(
-          lobbyRoom([
-            memberOf(0, 'Ana'),
-            memberOf(1, 'Bo', false, lookCodeOf(sent)),
-            memberOf(2, 'Cy', false, 'Robot.Chrome'),
-          ]),
-        ),
-        Scene.expect(
-          Scene.selector('[aria-label="Bo, rank 1"] .coop-seat-head'),
-        ).toHaveStyle('background-image', portraitOf(sent)),
-        Scene.expect(
-          Scene.selector('[aria-label="Cy, rank 1"] .coop-seat-head'),
-        ).toHaveStyle('background-image', portraitOf(seatLook(2))),
-        Scene.expect(
-          Scene.selector(
-            '[aria-label="Ana, you, host, rank 1"] .coop-seat-head',
-          ),
-        ).toHaveStyle('background-image', portraitOf(defaultAppearance)),
+      const s = yield* coopSceneOf(
+        lobbyRoom([
+          memberOf(0, 'Ana'),
+          memberOf(1, 'Bo', false, lookCodeOf(sent)),
+          memberOf(2, 'Cy', false, 'Robot.Chrome'),
+        ]),
       )
-    },
+      s.pipe(
+        expectStyle(
+          inLabelled('Bo, rank 1', 'coop-seat-head'),
+          'background-image',
+          portraitOf(sent),
+        ),
+        expectStyle(
+          inLabelled('Cy, rank 1', 'coop-seat-head'),
+          'background-image',
+          portraitOf(seatLook(2)),
+        ),
+        expectStyle(
+          inLabelled('Ana, you, host, rank 1', 'coop-seat-head'),
+          'background-image',
+          portraitOf(defaultAppearance),
+        ),
+      )
+    }),
   )
 
   it.effect(
     "each seat shows its player's rank badge and number beside the name",
-    () => {
-      const woodSrc = Option.getOrThrow(badgeImage('Wood')).src
-      const silverSrc = Option.getOrThrow(badgeImage('Silver')).src
-      return Scene.scene(
-        COOP_SCENE,
-        Scene.given(
+    () =>
+      Effect.gen(function* () {
+        const woodSrc = Option.getOrThrow(badgeImage('Wood')).src
+        const silverSrc = Option.getOrThrow(badgeImage('Silver')).src
+        const s = yield* coopSceneOf(
           lobbyRoom([
             memberOf(0, 'Ana'),
             memberOf(1, 'Bo', false, '', false, 12),
             memberOf(2, 'Cy', false, '', false, 33),
             memberOf(3, 'Dee', false, '', false, 999),
           ]),
-        ),
-        Scene.expect(
-          Scene.selector('[aria-label="Ana, you, host, rank 1"] .coop-rank'),
-        ).toHaveText('1'),
-        Scene.expect(
-          Scene.selector('[aria-label="Bo, rank 12"] .coop-rank'),
-        ).toHaveText('12'),
-        Scene.expect(
-          Scene.selector('[aria-label="Dee, rank 999"] .coop-rank'),
-        ).toHaveText('999'),
-        Scene.expect(
-          Scene.selector(
-            '[aria-label="Ana, you, host, rank 1"] .coop-rank img',
-          ),
-        ).toHaveAttr('src', woodSrc),
-        Scene.expect(
-          Scene.selector('[aria-label="Cy, rank 33"] .coop-rank'),
-        ).toHaveAttr('data-tier', 'Silver'),
-        Scene.expect(
-          Scene.selector('[aria-label="Cy, rank 33"] .coop-rank img'),
-        ).toHaveAttr('src', silverSrc),
-      )
-    },
+        )
+        s.expect(inLabelled('Ana, you, host, rank 1', 'coop-rank'))
+          .toHaveText('1')
+          .expect(inLabelled('Bo, rank 12', 'coop-rank'))
+          .toHaveText('12')
+          .expect(inLabelled('Dee, rank 999', 'coop-rank'))
+          .toHaveText('999')
+          .pipe(
+            expectAttr(
+              Locator.inside(
+                inLabelled('Ana, you, host, rank 1', 'coop-rank'),
+                Locator.tag('img'),
+              ),
+              'src',
+              woodSrc,
+            ),
+            expectAttr(
+              inLabelled('Cy, rank 33', 'coop-rank'),
+              'data-tier',
+              'Silver',
+            ),
+            expectAttr(
+              Locator.inside(
+                inLabelled('Cy, rank 33', 'coop-rank'),
+                Locator.tag('img'),
+              ),
+              'src',
+              silverSrc,
+            ),
+          )
+      }),
   )
 
   it.effect(
     "each seat shows its player's calling prop beside the rank, YOU none",
     () =>
-      Scene.scene(
-        COOP_SCENE,
-        Scene.given(
+      Effect.gen(function* () {
+        const s = yield* coopSceneOf(
           lobbyRoom([
             memberOf(0, 'Ana'),
             memberOf(1, 'Bo', false, '', false, 4, 'Handyman'),
             memberOf(2, 'Cy', false, '', false, 16, 'LineCook'),
             memberOf(3, 'Dee', false, '', false, 7, 'Wizard'),
           ]),
-        ),
-        Scene.expect(
-          Scene.selector('[aria-label="Ana, you, host, rank 1"] .coop-calling'),
-        ).toBeAbsent(),
-        Scene.expect(
-          Scene.selector('[aria-label="Bo, rank 4, Handyman"] .coop-calling'),
-        ).toHaveAttr('data-calling', 'Handyman'),
-        Scene.expect(
-          Scene.selector('[aria-label="Cy, rank 16, Line Cook"] .coop-calling'),
-        ).toHaveAttr('data-calling', 'LineCook'),
-        Scene.expect(
-          Scene.selector('[aria-label="Dee, rank 7"] .coop-calling'),
-        ).toBeAbsent(),
-        // NOTE: the portrait wears the prop too; a word that is no calling does not.
-        Scene.expect(
-          Scene.selector('[aria-label="Bo, rank 4, Handyman"] .coop-seat-head'),
-        ).toHaveStyle('background-image', portraitOf(seatLook(1), 'Handyman')),
-        Scene.expect(
-          Scene.selector('[aria-label="Dee, rank 7"] .coop-seat-head'),
-        ).toHaveStyle('background-image', portraitOf(seatLook(3))),
-      ),
+        )
+        s.expect(inLabelled('Ana, you, host, rank 1', 'coop-calling'))
+          .toBeAbsent()
+          .pipe(
+            expectAttr(
+              inLabelled('Bo, rank 4, Handyman', 'coop-calling'),
+              'data-calling',
+              'Handyman',
+            ),
+            expectAttr(
+              inLabelled('Cy, rank 16, Line Cook', 'coop-calling'),
+              'data-calling',
+              'LineCook',
+            ),
+          )
+          .expect(inLabelled('Dee, rank 7', 'coop-calling'))
+          .toBeAbsent()
+          // NOTE: the portrait wears the prop too; a word that is no calling
+          // does not.
+          .pipe(
+            expectStyle(
+              inLabelled('Bo, rank 4, Handyman', 'coop-seat-head'),
+              'background-image',
+              portraitOf(seatLook(1), 'Handyman'),
+            ),
+            expectStyle(
+              inLabelled('Dee, rank 7', 'coop-seat-head'),
+              'background-image',
+              portraitOf(seatLook(3)),
+            ),
+          )
+      }),
   )
 
   it.effect('a seat reads aloud its player, rank, hero, and READY', () =>
-    Scene.scene(
-      COOP_SCENE,
-      Scene.given(
+    Effect.gen(function* () {
+      const s = yield* coopSceneOf(
         lobbyRoom([
           memberOf(0, 'Ana', false, '', false, 7),
           memberOf(1, 'Bo', true, '', false, 16, 'LineCook'),
           memberOf(2, 'Cy', false, '', false, 3, 'Wizard'),
         ]),
-      ),
-      Scene.expect(
-        Scene.role('listitem', { name: 'Ana, you, host, rank 7' }),
-      ).toExist(),
-      Scene.expect(
-        Scene.role('listitem', { name: 'Bo, rank 16, Line Cook, ready' }),
-      ).toExist(),
-      Scene.expect(Scene.role('listitem', { name: 'Cy, rank 3' })).toExist(),
-    ),
+      )
+      s.expect(HtmlLocator.role('listitem', { name: 'Ana, you, host, rank 7' }))
+        .toExist()
+        .expect(
+          HtmlLocator.role('listitem', {
+            name: 'Bo, rank 16, Line Cook, ready',
+          }),
+        )
+        .toExist()
+        .expect(HtmlLocator.role('listitem', { name: 'Cy, rank 3' }))
+        .toExist()
+    }),
   )
 
-  it.effect('the hero pill opens a picker of cards with their specials', () => {
-    const picking = (rank: number) =>
-      lobbyRoom([memberOf(0, 'Ana', false, '', false, rank)])
-    return Scene.scene(
-      COOP_SCENE,
-      Scene.given(picking(4)),
-      Scene.expect(Scene.selector('.coop-calling-picker')).toBeAbsent(),
-      Scene.click(Scene.role('button', { name: /^Hero: YOU/ })),
-      Scene.expect(Scene.selector('.coop-calling-picker')).toExist(),
-      Scene.expect(
-        Scene.selector('[data-calling="Handyman"] .calling-special'),
-      ).toHaveText('+Traps 50% sturdier'),
-      Scene.expect(
-        Scene.selector('[data-calling="Handyman"][data-lock="Owned"]'),
-      ).toExist(),
-      Scene.expect(
-        Scene.selector(
-          '[data-calling="Handyman"] [data-sign="Drawback"] .calling-special-line',
-        ),
-      ).toHaveText('4 max hearts'),
-      Scene.expect(
-        Scene.selector(
-          '[data-calling="PennyPincher"] [data-sign="Perk"] .calling-special-line',
-        ),
-      ).toHaveText('Kills drop 50% more keys'),
-      Scene.expect(
-        Scene.selector('[data-calling="LineCook"][data-lock="Locked"]'),
-      ).toExist(),
-      Scene.expect(
-        Scene.selector('[data-calling="LineCook"] .calling-special-line'),
-      ).toHaveText('Starts with Pressure Cooker'),
-      Scene.expect(
-        Scene.selector('[data-calling="LineCook"] .rank-number'),
-      ).toHaveText('15'),
-      Scene.click(
-        Scene.role('button', {
-          name: /^Handyman\. Plus: Traps 50% sturdier/,
-        }),
-      ),
-      Scene.Command.resolve(
-        ChangeLobby({
-          change: LobbyChange.ChangedMemberCalling({ calling: 'Handyman' }),
-        }),
-        Message.CompletedChangeLobby(),
-      ),
-      Scene.Command.resolve(
-        FocusCoopElement,
-        Message.CompletedFocusCoopElement(),
-      ),
-      Scene.expect(Scene.selector('.coop-calling-picker')).toBeAbsent(),
-    )
-  })
+  it.effect('the hero pill opens a picker of cards with their specials', () =>
+    Effect.gen(function* () {
+      const s = yield* coopSceneOf(
+        lobbyRoom([memberOf(0, 'Ana', false, '', false, 4)]),
+      )
+      s.pipe(expectPicker(false))
+        .click(button(/^Hero: YOU/))
+        .pipe(expectPicker(true))
+      const picker = yield* pickerSceneIn(s)
+      picker
+        .expect(byClass('coop-calling-picker'))
+        .toExist()
+        .expect(firstOf(inCalling('Handyman', byClass('calling-special'))))
+        .toHaveText('+Traps 50% sturdier')
+        .expect(
+          withAttrs({ 'data-lock': 'Owned' })(
+            Locator.attr('data-calling', 'Handyman'),
+          ),
+        )
+        .toExist()
+        .expect(
+          inCalling(
+            'Handyman',
+            Locator.inside(
+              Locator.attr('data-sign', 'Drawback'),
+              byClass('calling-special-line'),
+            ),
+          ),
+        )
+        .toHaveText('4 max hearts')
+        .expect(
+          inCalling(
+            'PennyPincher',
+            Locator.inside(
+              Locator.attr('data-sign', 'Perk'),
+              byClass('calling-special-line'),
+            ),
+          ),
+        )
+        .toHaveText('Kills drop 50% more keys')
+        .expect(
+          withAttrs({ 'data-lock': 'Locked' })(
+            Locator.attr('data-calling', 'LineCook'),
+          ),
+        )
+        .toExist()
+        .expect(firstOf(inCalling('LineCook', byClass('calling-special-line'))))
+        .toHaveText('Starts with Pressure Cooker')
+        .expect(inCalling('LineCook', byClass('rank-number')))
+        .toHaveText('15')
+        .click(button(/^Handyman\. Plus: Traps 50% sturdier/))
+        .emitted(HeroPickerEvents.Picked({ calling: 'Handyman' }))
+      s.childEmit(
+        HeroPicker,
+        PICKER_KEY,
+        HeroPickerEvents.Picked({ calling: 'Handyman' }),
+      ).pipe(
+        lobbyChanged(LobbyChange.ChangedMemberCalling({ calling: 'Handyman' })),
+        resolveFocusCoop,
+        expectPicker(false),
+      )
+    }),
+  )
 
-  it.effect(
-    'each seat shows its link as bars, yours from your own pings',
-    () => {
+  it.effect('each seat shows its link as bars, yours from your own pings', () =>
+    Effect.gen(function* () {
       const room = {
         ...freshRoom(CODE, 0),
         maybePlayerId: Option.some('player-0'),
@@ -674,35 +723,35 @@ describe('the lobby', () => {
         ),
         link: 'Online' as const,
       }
-      return Scene.scene(
-        COOP_SCENE,
-        Scene.given(
-          at(
-            Screen.InRoom({
-              room: { ...room, session: { ...room.session, rttMs: 42 } },
-            }),
-          ),
+      const s = yield* coopSceneOf(
+        at(
+          Screen.InRoom({
+            room: { ...room, session: { ...room.session, rttMs: 42 } },
+          }),
         ),
-        Scene.expect(Scene.role('img', { name: '42 ms' })).toHaveAttr(
+      )
+      s.pipe(
+        expectAttr(
+          HtmlLocator.role('img', { name: '42 ms' }),
           'data-ping',
           'Good',
         ),
-        Scene.expect(Scene.role('img', { name: '150 ms' })).toHaveAttr(
+        expectAttr(
+          HtmlLocator.role('img', { name: '150 ms' }),
           'data-ping',
           'Ok',
         ),
-        Scene.expect(Scene.role('img', { name: '300 ms' })).not.toExist(),
-        Scene.expect(
-          Scene.selector('[aria-label="Cy"] .coop-ping'),
-        ).not.toExist(),
       )
-    },
+        .expect(HtmlLocator.role('img', { name: '300 ms' }))
+        .toBeAbsent()
+        .expect(inLabelled('Cy', 'coop-ping'))
+        .toBeAbsent()
+    }),
   )
 
   it.effect('a guest sees no kick', () =>
-    Scene.scene(
-      COOP_SCENE,
-      Scene.given(
+    Effect.gen(function* () {
+      const s = yield* coopSceneOf(
         roomWith({
           slot: 1,
           maybePlayerId: Option.some('player-1'),
@@ -710,82 +759,66 @@ describe('the lobby', () => {
             lobbyOf([memberOf(0, 'Ana'), memberOf(1, 'Bo')]),
           ),
         }),
-      ),
-      Scene.expect(Scene.role('button', { name: 'Kick Ana' })).not.toExist(),
-    ),
+      )
+      s.expect(button('Kick Ana')).toBeAbsent()
+    }),
   )
 
   it.effect('share and leave', () =>
-    Scene.scene(
-      COOP_SCENE,
-      Scene.given(lobbyRoom([memberOf(0, 'Ana')])),
-      Scene.expect(
-        Scene.role('button', { name: 'Room code M N C H 7, tap to copy' }),
-      ).toExist(),
-      Scene.click(
-        Scene.role('button', { name: 'I dare you: share the room link' }),
-      ),
-      Scene.Command.resolve(
-        ShareRoomLink({ code: CODE }),
-        Message.CompletedShareRoomLink({ share: 'Copied' }),
-      ),
-      Scene.expect(Scene.role('button', { name: 'Link copied' })).toExist(),
-      Scene.click(Scene.role('button', { name: 'Leave the room' })),
-      Scene.expect(
-        Scene.role('button', { name: 'Leave the room' }),
-      ).toBeDisabled(),
-      Scene.Command.resolve(LeaveRoom, Message.CompletedLeaveRoom()),
-      Scene.Command.resolve(RememberRoom, Message.CompletedRememberRoom()),
-      Scene.Command.resolve(
-        FocusCoopElement,
-        Message.CompletedFocusCoopElement(),
-      ),
-      Scene.expect(quickPlayButton).toExist(),
-    ),
+    Effect.gen(function* () {
+      const leave = button('Leave the room')
+      const s = yield* coopSceneOf(lobbyRoom([memberOf(0, 'Ana')]))
+      s.expect(button('Room code M N C H 7, tap to copy'))
+        .toExist()
+        .click(button('I dare you: share the room link'))
+        .resolve(
+          ShareRoomLink.make({ code: CODE }),
+          CoopMessage.CompletedShareRoomLink({ share: 'Copied' }),
+        )
+        .expect(button('Link copied'))
+        .toExist()
+        .click(leave)
+        .expect(leave)
+        .toBeDisabled()
+        .resolve(LeaveRoom, CoopMessage.CompletedLeaveRoom())
+        .pipe(resolveRememberRoom, resolveFocusCoop)
+        .expect(quickPlayButton)
+        .toExist()
+    }),
   )
 })
 
 describe('the room code', () => {
-  const codeButton = Scene.role('button', { name: /^Room code M N C H 7/ })
+  const codeButton = button(/^Room code M N C H 7/)
+  const copied = byClass('coop-room-code-copied')
+  const copy = CopyRoomCode.make({ code: CODE })
 
   it.effect('a tap copies it, and COPIED! flashes afresh for each copy', () =>
-    Scene.scene(
-      COOP_SCENE,
-      Scene.given(lobbyRoom([memberOf(0, 'Ana')])),
-      Scene.expect(Scene.selector('.coop-room-code-copied')).toBeAbsent(),
-      Scene.click(codeButton),
-      Scene.Command.resolve(
-        CopyRoomCode({ code: CODE }),
-        Message.CompletedCopyRoomCode({ copy: 'Copied' }),
-      ),
-      Scene.expect(Scene.selector('.coop-room-code-copied')).toHaveText(
-        'COPIED!',
-      ),
-      Scene.expect(codeButton).toHaveAccessibleName(
-        'Room code M N C H 7, copied',
-      ),
-      Scene.click(codeButton),
-      Scene.Command.resolve(
-        CopyRoomCode({ code: CODE }),
-        Message.CompletedCopyRoomCode({ copy: 'Copied' }),
-      ),
-      Scene.expect(Scene.selector('.coop-room-code-copied')).toHaveText(
-        'COPIED!',
-      ),
-    ),
+    Effect.gen(function* () {
+      const s = yield* coopSceneOf(lobbyRoom([memberOf(0, 'Ana')]))
+      s.expect(copied)
+        .toBeAbsent()
+        .click(codeButton)
+        .resolve(copy, CoopMessage.CompletedCopyRoomCode({ copy: 'Copied' }))
+        .expect(copied)
+        .toHaveText('COPIED!')
+        .expect(codeButton)
+        .toHaveAccessibleName('Room code M N C H 7, copied')
+        .click(codeButton)
+        .resolve(copy, CoopMessage.CompletedCopyRoomCode({ copy: 'Copied' }))
+        .expect(copied)
+        .toHaveText('COPIED!')
+    }),
   )
 
   it.effect('a clipboard that refuses shows nothing', () =>
-    Scene.scene(
-      COOP_SCENE,
-      Scene.given(lobbyRoom([memberOf(0, 'Ana')])),
-      Scene.click(codeButton),
-      Scene.Command.resolve(
-        CopyRoomCode({ code: CODE }),
-        Message.CompletedCopyRoomCode({ copy: 'Failed' }),
-      ),
-      Scene.expect(Scene.selector('.coop-room-code-copied')).toBeAbsent(),
-    ),
+    Effect.gen(function* () {
+      const s = yield* coopSceneOf(lobbyRoom([memberOf(0, 'Ana')]))
+      s.click(codeButton)
+        .resolve(copy, CoopMessage.CompletedCopyRoomCode({ copy: 'Failed' }))
+        .expect(copied)
+        .toBeAbsent()
+    }),
   )
 })
 
@@ -806,107 +839,102 @@ describe('the arena', () => {
   it.effect(
     'the game shows through, with a leave button and the link numbers',
     () =>
-      Scene.scene(
-        COOP_SCENE,
-        Scene.given(playing()),
-        Scene.expect(Scene.selector('.coop[data-screen="Arena"]')).toExist(),
-        Scene.expect(Scene.selector('canvas')).not.toExist(),
-        Scene.expect(Scene.selector('.coop-net[data-slot="0"]')).toExist(),
-        Scene.expect(
-          Scene.role('button', { name: 'Leave the room' }),
-        ).toExist(),
-      ),
+      Effect.gen(function* () {
+        const s = yield* coopSceneOf(playing())
+        s.expect(withAttrs({ 'data-screen': 'Arena' })(byClass('coop')))
+          .toExist()
+          .expect(Locator.inside(byClass('coop'), Locator.tag('canvas')))
+          .toBeAbsent()
+          .expect(withAttrs({ 'data-slot': '0' })(byClass('coop-net')))
+          .toExist()
+          .expect(button('Leave the room'))
+          .toExist()
+      }),
   )
 
   it.effect('a dropped link shows Away', () =>
-    Scene.scene(
-      COOP_SCENE,
-      Scene.given(playing({ link: 'Reconnecting' })),
-      Scene.expect(Scene.role('status', { name: 'Reconnecting' })).toExist(),
-    ),
+    Effect.gen(function* () {
+      const s = yield* coopSceneOf(playing({ link: 'Reconnecting' }))
+      s.expect(HtmlLocator.role('status', { name: 'Reconnecting' })).toExist()
+    }),
   )
 
   it.effect('a link lost for good says so and offers LEAVE', () =>
-    Scene.scene(
-      COOP_SCENE,
-      Scene.given(playing({ link: 'Lost' })),
-      Scene.expect(Scene.role('alert')).toExist(),
-      Scene.expect(Scene.role('button', { name: 'Leave the room' })).toExist(),
-    ),
+    Effect.gen(function* () {
+      const s = yield* coopSceneOf(playing({ link: 'Lost' }))
+      s.expect(Locator.inside(byClass('coop'), HtmlLocator.role('alert')))
+        .toExist()
+        .expect(button('Leave the room'))
+        .toExist()
+    }),
   )
 
   it.effect(
     'the lobby waits behind the run end card, drawing nothing over it, then crowns the MVP',
     () =>
       Effect.gen(function* () {
-        const back = modifyFields(
-          at(Screen.Hub({ maybeProblem: Option.none() })),
-          {
-            bought: () => [],
-            screen: () =>
-              Screen.InRoom({
-                room: {
-                  ...freshRoom(CODE, 0),
-                  maybeLobby: Option.some({
-                    ...lobbyOf([
-                      memberOf(0, 'Ana'),
-                      memberOf(1, 'Bo', false, '', false, 1, 'TrackStar'),
-                    ]),
-                    result: Option.some({
-                      round: 1,
-                      reason: 'GameOver' as const,
-                      ticks: 600,
-                      scores: [
-                        { playerId: 'player-0', slot: 0, score: 3 },
-                        { playerId: 'player-1', slot: 1, score: 9 },
-                      ],
+        const back = UiStruct.evolve(onHub, {
+          boughtCosmetics: () => [],
+          coop: coop =>
+            UiStruct.evolve(coop, {
+              bought: () => [],
+              screen: () =>
+                Screen.InRoom({
+                  room: {
+                    ...freshRoom(CODE, 0),
+                    maybeLobby: Option.some({
+                      ...lobbyOf([
+                        memberOf(0, 'Ana'),
+                        memberOf(1, 'Bo', false, '', false, 1, 'TrackStar'),
+                      ]),
+                      result: Option.some({
+                        round: 1,
+                        reason: 'GameOver' as const,
+                        ticks: 600,
+                        scores: [
+                          { playerId: 'player-0', slot: 0, score: 3 },
+                          { playerId: 'player-1', slot: 1, score: 9 },
+                        ],
+                      }),
                     }),
-                  }),
-                },
-              }),
-          },
+                  },
+                }),
+            }),
+        })
+        const mvp = 'Bo: rank 1, Track Star, 9, MVP'
+        // NOTE: the end card holds the run while the root's World stands on
+        // its end (src/features/end/endBeat.ts, `isRunCardHeld`).
+        const card = yield* coopSceneOf(
+          UiStruct.evolve(back, { phase: () => Phase.GameOver({ wave: 1 }) }),
         )
-        yield* Scene.scene(
-          {
-            ...COOP,
-            viewInputs: { ...VIEW_INPUTS, isRunCardUp: true, bought: [] },
-          },
-          Scene.given(back),
-          Scene.expect(Scene.selector('#coop-ready')).toBeAbsent(),
-          Scene.expect(
-            Scene.role('listitem', { name: 'Bo: rank 1, Track Star, 9, MVP' }),
-          ).toBeAbsent(),
-          Scene.expect(Scene.role('button', { name: /^Leave/ })).toBeAbsent(),
-          Scene.expect(
-            Scene.selector('.coop[data-screen="RunCard"]'),
-          ).toExist(),
-        )
-        yield* Scene.scene(
-          COOP_SCENE,
-          Scene.given(back),
-          Scene.expect(
-            Scene.role('listitem', { name: 'Bo: rank 1, Track Star, 9, MVP' }),
-          ).toExist(),
-          Scene.expect(
-            Scene.role('listitem', { name: 'Ana: rank 1, 3' }),
-          ).toExist(),
-          Scene.expect(Scene.selector('.coop-result-crown')).toExist(),
-          Scene.expect(
-            Scene.selector(
-              '[aria-label="Bo: rank 1, Track Star, 9, MVP"] .coop-result-rank',
+        card
+          .expect(Locator.attr('id', 'coop-ready'))
+          .toBeAbsent()
+          .expect(HtmlLocator.role('listitem', { name: mvp }))
+          .toBeAbsent()
+          .expect(Locator.inside(byClass('coop'), button(/^Leave/)))
+          .toBeAbsent()
+          .expect(withAttrs({ 'data-screen': 'RunCard' })(byClass('coop')))
+          .toExist()
+        const lobby = yield* coopSceneOf(back)
+        lobby
+          .expect(HtmlLocator.role('listitem', { name: mvp }))
+          .toExist()
+          .expect(HtmlLocator.role('listitem', { name: 'Ana: rank 1, 3' }))
+          .toExist()
+          .expect(byClass('coop-result-crown'))
+          .toExist()
+          .expect(inLabelled(mvp, 'coop-result-rank'))
+          .toExist()
+          .pipe(
+            expectAttr(
+              inLabelled(mvp, 'coop-result-calling'),
+              'data-calling',
+              'TrackStar',
             ),
-          ).toExist(),
-          Scene.expect(
-            Scene.selector(
-              '[aria-label="Bo: rank 1, Track Star, 9, MVP"] .coop-result-calling',
-            ),
-          ).toHaveAttr('data-calling', 'TrackStar'),
-          Scene.expect(
-            Scene.selector(
-              '[aria-label="Ana: rank 1, 3"] .coop-result-calling',
-            ),
-          ).toBeAbsent(),
-        )
+          )
+          .expect(inLabelled('Ana: rank 1, 3', 'coop-result-calling'))
+          .toBeAbsent()
       }),
   )
 })

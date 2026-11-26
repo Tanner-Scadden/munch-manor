@@ -1,0 +1,244 @@
+// The studio's flat pictures, `<studio-picture>`: a sprite's frame on its
+// backdrop, a tab's icon, a whole room. Every one is painted by one shared
+// Pixi renderer (one WebGL context, however many cards the gallery shows)
+// with the game's own FlatPainter, then copied off its canvas as an
+// ImageBitmap onto the element's own `bitmaprenderer` canvas. No 2D canvas.
+import { Effect, Option, Predicate, Schema } from 'effect'
+import { Application } from 'pixi.js'
+
+import { Html } from '@effect/ui/html'
+
+import type * as Draw from '../../src/render/draw'
+import { FlatPainter } from '../../src/render/iso/painter'
+import { Textures } from '../../src/render/iso/textures'
+import { toBrowserError } from '../../src/shared/describeError'
+
+const TAG = 'studio-picture'
+
+// NOTE: what a picture shows. `key` names its content: two pictures with one
+// key are the same picture, so a render that hands the same one again paints
+// nothing.
+export type StudioPicture = Readonly<{
+  key: string
+  width: number
+  height: number
+  shapes: ReadonlyArray<Draw.Shape>
+}>
+
+const isStudioPicture = (value: unknown): value is StudioPicture =>
+  Predicate.isObject(value) &&
+  Predicate.hasProperty(value, 'key') &&
+  Predicate.hasProperty(value, 'width') &&
+  Predicate.hasProperty(value, 'height') &&
+  Predicate.hasProperty(value, 'shapes')
+
+// NOTE: the element's one property, written as it is, never decoded.
+export const studioPicture = Html.customElement({
+  tag: TAG,
+  properties: { picture: Schema.declare(isStudioPicture) },
+})
+
+// NOTE: what a picture element offers the shared painter.
+type Paintable = Readonly<{
+  pictureToPaint: () => Option.Option<StudioPicture>
+  show: (bitmap: ImageBitmap, token: number, isSettled: boolean) => void
+  nextToken: () => number
+}>
+
+type Renderer = Readonly<{
+  app: Application
+  textures: Textures
+  painter: FlatPainter
+}>
+
+// NOTE: mutable on purpose: the one renderer every picture shares, and the
+// pictures waiting on it, painted together on the next animation frame.
+class SharedPainter {
+  private renderer: Option.Option<Renderer> = Option.none()
+  private isStarting = false
+  private isPassDue = false
+  private readonly due = new Set<Paintable>()
+  private readonly live = new Set<Paintable>()
+
+  join(element: Paintable): void {
+    this.live.add(element)
+    this.ask(element)
+  }
+
+  leave(element: Paintable): void {
+    this.live.delete(element)
+    this.due.delete(element)
+  }
+
+  ask(element: Paintable): void {
+    this.due.add(element)
+    this.start()
+    this.schedule()
+  }
+
+  private start(): void {
+    if (Option.isSome(this.renderer) || this.isStarting) {
+      return
+    }
+    this.isStarting = true
+    const app = new Application()
+    Effect.runFork(
+      Effect.tryPromise({
+        try: () =>
+          app.init({
+            preference: 'webgl',
+            backgroundAlpha: 0,
+            antialias: false,
+            autoStart: false,
+            width: 1,
+            height: 1,
+            resolution: 1,
+            autoDensity: false,
+          }),
+        catch: toBrowserError,
+      }).pipe(
+        Effect.match({
+          onSuccess: () => {
+            // NOTE: a sprite sheet that loads paints every picture again.
+            const textures = new Textures(app, () => {
+              for (const element of this.live) {
+                this.due.add(element)
+              }
+              this.schedule()
+            })
+            const painter = new FlatPainter(textures)
+            app.stage.addChild(painter.container)
+            this.renderer = Option.some({ app, textures, painter })
+            this.isStarting = false
+            this.schedule()
+          },
+          onFailure: () => {
+            this.isStarting = false
+          },
+        }),
+      ),
+    )
+  }
+
+  private schedule(): void {
+    if (this.isPassDue || Option.isNone(this.renderer) || this.due.size === 0) {
+      return
+    }
+    this.isPassDue = true
+    requestAnimationFrame(() => {
+      this.isPassDue = false
+      this.pass()
+    })
+  }
+
+  // NOTE: each due picture painted in turn and copied off the canvas in the
+  // same task, before the next paint clears it.
+  private pass(): void {
+    if (Option.isNone(this.renderer)) {
+      return
+    }
+    const { app, textures, painter } = this.renderer.value
+    const elements = [...this.due]
+    this.due.clear()
+    for (const element of elements) {
+      const maybePicture = element.pictureToPaint()
+      if (Option.isNone(maybePicture)) {
+        continue
+      }
+      const picture = maybePicture.value
+      const width = Math.max(1, Math.round(picture.width))
+      const height = Math.max(1, Math.round(picture.height))
+      const { renderer } = app
+      if (renderer.width !== width || renderer.height !== height) {
+        renderer.resize(width, height, 1)
+      }
+      painter.paint(picture.shapes)
+      app.render()
+      const token = element.nextToken()
+      const isSettled = textures.isSettled
+      Effect.runFork(
+        Effect.tryPromise({
+          try: () => createImageBitmap(app.canvas),
+          catch: toBrowserError,
+        }).pipe(
+          Effect.match({
+            onSuccess: bitmap => {
+              element.show(bitmap, token, isSettled)
+            },
+            onFailure: () => undefined,
+          }),
+        ),
+      )
+    }
+  }
+}
+
+const SHARED = new SharedPainter()
+
+// NOTE: mutable on purpose: a custom element is the browser's own mutable
+// object. It holds the picture it was handed, the key it last painted, and
+// its canvas. Built only when it is defined, since HTMLElement exists only
+// in a browser.
+const pictureElementClass = () =>
+  class PictureElement extends HTMLElement {
+    private latest: Option.Option<StudioPicture> = Option.none()
+    private paintedKey: Option.Option<string> = Option.none()
+    private token = 0
+    private readonly canvas = document.createElement('canvas')
+    private readonly paintable: Paintable = {
+      pictureToPaint: () => this.latest,
+      show: (bitmap, token, isSettled) => {
+        this.show(bitmap, token, isSettled)
+      },
+      nextToken: () => {
+        this.token += 1
+        return this.token
+      },
+    }
+
+    get picture(): StudioPicture | undefined {
+      return Option.getOrUndefined(this.latest)
+    }
+
+    set picture(next: StudioPicture) {
+      const isSame = Option.exists(this.paintedKey, key => key === next.key)
+      this.latest = Option.some(next)
+      if (!isSame && this.isConnected) {
+        this.paintedKey = Option.some(next.key)
+        SHARED.ask(this.paintable)
+      }
+    }
+
+    connectedCallback(): void {
+      if (this.canvas.parentElement !== this) {
+        this.append(this.canvas)
+      }
+      this.paintedKey = Option.map(this.latest, picture => picture.key)
+      SHARED.join(this.paintable)
+    }
+
+    disconnectedCallback(): void {
+      SHARED.leave(this.paintable)
+    }
+
+    // NOTE: only the newest paint lands, however the copies resolve.
+    private show(bitmap: ImageBitmap, token: number, isSettled: boolean): void {
+      const context = this.canvas.getContext('bitmaprenderer')
+      if (token !== this.token || context === null) {
+        bitmap.close()
+        return
+      }
+      this.canvas.width = bitmap.width
+      this.canvas.height = bitmap.height
+      context.transferFromImageBitmap(bitmap)
+      // NOTE: an audit waits for it, once every sprite sheet is in.
+      this.dataset['drawn'] = isSettled ? 'true' : 'loading'
+    }
+  }
+
+// NOTE: called once by the studio's entry.
+export const defineStudioPicture = (): void => {
+  if (customElements.get(TAG) === undefined) {
+    customElements.define(TAG, pictureElementClass())
+  }
+}

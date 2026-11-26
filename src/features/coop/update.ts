@@ -1,16 +1,6 @@
-import {
-  Array,
-  Effect,
-  Function,
-  Layer,
-  Match,
-  Option,
-  Result,
-  Schema,
-} from 'effect'
-import type { Update } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
+import { Array, Effect, Match, Option, Result, Schema } from 'effect'
 
+import { Command, Component, UiStruct } from '@effect/ui'
 import {
   ClientFrame,
   type Lobby,
@@ -38,23 +28,18 @@ import {
 } from '../../domain/coopRoom'
 import { toBrowserError } from '../../shared/describeError'
 import { Calling, type SavedBoughtCosmetics } from '../../shared/playerData'
-import { stepWhen } from '../../shared/stepWhen'
 import { eventsBetween } from '../../world/net/roomWorld'
 import { DIFFICULTY_ORDER } from '../../world/run/difficulty'
-import { CoopBlock } from './block'
-import { CoopComposition } from './composition'
-import { Message, OutMessage } from './message'
+import { CoopMessage, CoopNotice } from './message'
 import { type Model, emptyQueue } from './model'
 import { CoopNet } from './net'
 import {
-  CODE_INPUT_ID,
+  CALLING_KEY,
   DIFFICULTY_KEY,
   ENTER,
   ESCAPE,
   MODE_KEY,
   MODE_PICKS,
-  QUICK_PLAY_BUTTON_ID,
-  READY_BUTTON_ID,
   ROOM_CODE_LENGTH,
   ROOM_PARAM,
   canPickDifficulty,
@@ -78,188 +63,221 @@ import {
 } from './roomState'
 import {
   ChangeLobby,
-  FocusCoopElement,
+  type CoopResultOf,
+  type LobbyCommand,
+  buyHero,
+  closePicker,
   closeStrayPicker,
   edits,
+  focusCoop,
+  lobbyMeOf,
+  pickHero,
   togglePicker,
 } from './steps'
 
-// COMMAND
+// Co-op's rules, pure over its own Model (the root's `coop` field): each
+// takes co-op's Model and returns a `CoopResult`, the next Model, the
+// Commands to run, and a notice for the root. The root runs them as its own
+// Steps (src/app/update/coop.ts, `coopHandlers`).
 
-export const RequestRoom = CoopBlock.makeCommand('RequestRoom', {
-  args: {
-    request: RoomRequest,
-    name: Schema.String,
-    look: Schema.String,
-    rank: Schema.Finite,
-    calling: Calling,
-    introSeen: Schema.Boolean,
-  },
-  messages: [Message.SucceededRequestRoom, Message.FailedRequestRoom],
-  handler: function* () {
-    return ({ request, name, look, rank, calling, introSeen }) =>
-      CoopNet.use(net =>
-        net.requestRoom(request, name, look, rank, calling, introSeen),
-      ).pipe(
-        Effect.map(ticket => Message.SucceededRequestRoom(ticket)),
-        Effect.catch(problem =>
-          Effect.succeed(Message.FailedRequestRoom({ problem })),
-        ),
-      )
-  },
-})
+// COMMANDS
 
-export const AnswerOffer = CoopBlock.makeCommand('AnswerOffer', {
-  args: { accept: Schema.Boolean },
-  messages: [Message.CompletedAnswerOffer],
-  handler: function* () {
-    return ({ accept }) =>
-      CoopNet.use(net => net.answerOffer(accept)).pipe(
-        Effect.as(Message.CompletedAnswerOffer()),
-      )
+export class RequestRoom extends Command.Service<RequestRoom>()(
+  'coop/RequestRoom',
+  {
+    args: {
+      request: RoomRequest,
+      name: Schema.String,
+      look: Schema.String,
+      rank: Schema.Finite,
+      calling: Calling,
+      introSeen: Schema.Boolean,
+    },
+    success: CoopMessage,
   },
-})
+) {
+  static readonly layer = this.toLayer(
+    Effect.gen(function* () {
+      const net = yield* CoopNet
+      return ({ request, name, look, rank, calling, introSeen }) =>
+        net.requestRoom(request, name, look, rank, calling, introSeen).pipe(
+          Effect.match({
+            onSuccess: ({ code, slot }) =>
+              CoopMessage.SucceededRequestRoom({ code, slot }),
+            onFailure: problem => CoopMessage.FailedRequestRoom({ problem }),
+          }),
+        )
+    }),
+  )
+}
 
-export const CancelQuickPlay = CoopBlock.makeCommand('CancelQuickPlay', {
-  messages: [Message.CompletedCancelQuickPlay],
-  handler: function* () {
-    return () =>
-      CoopNet.use(net => net.cancelQuickPlay).pipe(
-        Effect.as(Message.CompletedCancelQuickPlay()),
-      )
-  },
-})
+export class AnswerOffer extends Command.Service<AnswerOffer>()(
+  'coop/AnswerOffer',
+  { args: { accept: Schema.Boolean }, success: Component.Noop },
+) {
+  static readonly layer = this.toLayer(
+    Effect.gen(function* () {
+      const net = yield* CoopNet
+      return ({ accept }) =>
+        net.answerOffer(accept).pipe(Effect.as(Component.noop))
+    }),
+  )
+}
 
-export const SendRoomFrames = CoopBlock.makeCommand('SendRoomFrames', {
-  args: { frames: Schema.Array(ClientFrame) },
-  messages: [Message.CompletedSendRoomFrames],
-  handler: function* () {
-    return ({ frames }) =>
-      CoopNet.use(net => net.sendToRoom(frames)).pipe(
-        Effect.map(bytes => Message.CompletedSendRoomFrames({ bytes })),
-      )
-  },
-})
+export class CancelQuickPlay extends Command.Service<CancelQuickPlay>()(
+  'coop/CancelQuickPlay',
+  { args: {}, success: Component.Noop },
+) {
+  static readonly layer = this.toLayer(
+    Effect.gen(function* () {
+      const net = yield* CoopNet
+      return () => net.cancelQuickPlay.pipe(Effect.as(Component.noop))
+    }),
+  )
+}
 
-export const LeaveRoom = CoopBlock.makeCommand('LeaveRoom', {
-  messages: [Message.CompletedLeaveRoom],
-  handler: function* () {
-    return () =>
-      CoopNet.use(net => net.leaveRoom).pipe(
-        Effect.as(Message.CompletedLeaveRoom()),
-      )
-  },
-})
+export class SendRoomFrames extends Command.Service<SendRoomFrames>()(
+  'coop/SendRoomFrames',
+  { args: { frames: Schema.Array(ClientFrame) }, success: CoopMessage },
+) {
+  static readonly layer = this.toLayer(
+    Effect.gen(function* () {
+      const net = yield* CoopNet
+      return ({ frames }) =>
+        net
+          .sendToRoom(frames)
+          .pipe(
+            Effect.map(bytes => CoopMessage.CompletedSendRoomFrames({ bytes })),
+          )
+    }),
+  )
+}
+
+export class LeaveRoom extends Command.Service<LeaveRoom>()('coop/LeaveRoom', {
+  args: {},
+  success: CoopMessage,
+}) {
+  static readonly layer = this.toLayer(
+    Effect.gen(function* () {
+      const net = yield* CoopNet
+      return () =>
+        net.leaveRoom.pipe(Effect.as(CoopMessage.CompletedLeaveRoom()))
+    }),
+  )
+}
 
 // NOTE: the session could not apply a message from the room, so it asks
 // for a new socket, whose link brings a fresh Snapshot.
-export const ResyncRoom = CoopBlock.makeCommand('ResyncRoom', {
-  messages: [Message.CompletedResyncRoom],
-  handler: function* () {
-    return () =>
-      CoopNet.use(net => net.resyncRoom).pipe(
-        Effect.as(Message.CompletedResyncRoom()),
-      )
-  },
-})
+export class ResyncRoom extends Command.Service<ResyncRoom>()(
+  'coop/ResyncRoom',
+  { args: {}, success: Component.Noop },
+) {
+  static readonly layer = this.toLayer(
+    Effect.gen(function* () {
+      const net = yield* CoopNet
+      return () => net.resyncRoom.pipe(Effect.as(Component.noop))
+    }),
+  )
+}
 
 // NOTE: the room link arrives as a dare (LORE.md, "PLAY is the dare"): the
 // phone's own share sheet where there is one, else the line and the link on
 // the clipboard. Either way the button shows what happened with an icon.
 const DARE_LINE = 'I dare you.'
 
-export const ShareRoomLink = CoopBlock.makeCommand('ShareRoomLink', {
-  args: { code: Schema.String },
-  messages: [Message.CompletedShareRoomLink],
-  handler: function* () {
-    return ({ code }) =>
-      Effect.gen(function* () {
-        const url = linkOf(code)
-        if (typeof navigator.share === 'function') {
-          yield* Effect.tryPromise({
-            try: () =>
-              navigator.share({ title: 'Munch Manor', text: DARE_LINE, url }),
-            catch: toBrowserError,
-          })
-          return Message.CompletedShareRoomLink({ share: 'Shared' })
-        }
+export const ShareRoomLink = Command.make(
+  'ShareRoomLink',
+  { args: { code: Schema.String } },
+  ({ code }) =>
+    Effect.gen(function* () {
+      const url = linkOf(code)
+      if (typeof navigator.share === 'function') {
         yield* Effect.tryPromise({
-          try: () => navigator.clipboard.writeText(`${DARE_LINE} ${url}`),
+          try: () =>
+            navigator.share({ title: 'Munch Manor', text: DARE_LINE, url }),
           catch: toBrowserError,
         })
-        return Message.CompletedShareRoomLink({ share: 'Copied' })
-      }).pipe(
-        Effect.orElseSucceed(() =>
-          Message.CompletedShareRoomLink({ share: 'Idle' }),
-        ),
-      )
-  },
-})
+        return CoopMessage.CompletedShareRoomLink({ share: 'Shared' })
+      }
+      yield* Effect.tryPromise({
+        try: () => navigator.clipboard.writeText(`${DARE_LINE} ${url}`),
+        catch: toBrowserError,
+      })
+      return CoopMessage.CompletedShareRoomLink({ share: 'Copied' })
+    }).pipe(
+      Effect.orElseSucceed(() =>
+        CoopMessage.CompletedShareRoomLink({ share: 'Idle' }),
+      ),
+    ),
+)
 
 // NOTE: a tap on the lobby's room code puts the code on the clipboard, to
 // paste in a chat. A browser with no clipboard (an insecure page) fails.
-export const CopyRoomCode = CoopBlock.makeCommand('CopyRoomCode', {
-  args: { code: Schema.String },
-  messages: [Message.CompletedCopyRoomCode],
-  handler: function* () {
-    return ({ code }) =>
-      Effect.tryPromise({
-        try: () => navigator.clipboard.writeText(code),
-        catch: toBrowserError,
-      }).pipe(
-        Effect.as(Message.CompletedCopyRoomCode({ copy: 'Copied' })),
-        Effect.orElseSucceed(() =>
-          Message.CompletedCopyRoomCode({ copy: 'Failed' }),
-        ),
-      )
-  },
-})
+export const CopyRoomCode = Command.make(
+  'CopyRoomCode',
+  { args: { code: Schema.String } },
+  ({ code }) =>
+    Effect.tryPromise({
+      try: () => navigator.clipboard.writeText(code),
+      catch: toBrowserError,
+    }).pipe(
+      Effect.as(CoopMessage.CompletedCopyRoomCode({ copy: 'Copied' })),
+      Effect.orElseSucceed(() =>
+        CoopMessage.CompletedCopyRoomCode({ copy: 'Failed' }),
+      ),
+    ),
+)
 
 // NOTE: the room's code rides in the address, so a reload rejoins the same
 // seat and the address bar is itself the invite.
-export const RememberRoom = CoopBlock.makeCommand('RememberRoom', {
-  args: { maybeCode: Schema.Option(Schema.String) },
-  messages: [Message.CompletedRememberRoom],
-  handler: function* () {
-    return ({ maybeCode }) =>
-      Effect.sync(() => {
-        const url = new URL(location.href)
-        Option.match(maybeCode, {
-          onNone: () => url.searchParams.delete(ROOM_PARAM),
-          onSome: code => url.searchParams.set(ROOM_PARAM, code),
-        })
-        history.replaceState(history.state, '', url)
-      }).pipe(Effect.ignore, Effect.as(Message.CompletedRememberRoom()))
-  },
-})
+export const RememberRoom = Command.make(
+  'RememberRoom',
+  { args: { maybeCode: Schema.Option(Schema.String) } },
+  ({ maybeCode }) =>
+    Effect.sync(() => {
+      const url = new URL(location.href)
+      Option.match(maybeCode, {
+        onNone: () => url.searchParams.delete(ROOM_PARAM),
+        onSome: code => url.searchParams.set(ROOM_PARAM, code),
+      })
+      history.replaceState(history.state, '', url)
+    }).pipe(Effect.ignore, Effect.as(Component.noop)),
+)
 
-// HELPERS
+// RESULT
 
-// NOTE: the handlers co-op's Commands need; the CoopNet service they use
-// is a requirement of their Layers, supplied by the application.
-// NOTE: the handlers co-op's Commands need, read off the Layer that
-// supplies them (CommandsLayer below), so a new Command joins both at once.
-type CoopHandlers = Layer.Success<typeof CommandsLayer>
+// NOTE: the Command services co-op's Commands need. Each `.layer` joins the
+// root's CommandsLayer, which supplies CoopNet (src/app/services.ts).
+type CoopServices =
+  | RequestRoom
+  | AnswerOffer
+  | CancelQuickPlay
+  | SendRoomFrames
+  | LeaveRoom
+  | ResyncRoom
+  | ChangeLobby
 
-export type UpdateReturn = Update.ReturnWithOutMessage<
-  Model,
-  Message,
-  OutMessage,
-  CoopHandlers
->
+export type CoopCommand =
+  | LobbyCommand
+  | Command.Command<CoopMessage | Component.Noop, CoopServices>
 
-const enterRoom = (model: Model, code: string, slot: number): UpdateReturn => ({
+export type CoopResult = CoopResultOf<CoopCommand>
+
+// NOTE: a rule's result with nothing to run or say.
+const kept = (model: Model): CoopResult => ({ model })
+
+const enterRoom = (model: Model, code: string, slot: number): CoopResult => ({
   model: withScreen(model, Screen.InRoom({ room: freshRoom(code, slot) })),
   commands: [
-    RememberRoom({ maybeCode: Option.some(code) }),
-    FocusCoopElement({ id: READY_BUTTON_ID }),
+    RememberRoom.make({ maybeCode: Option.some(code) }),
+    focusCoop('Ready'),
   ],
 })
 
-const ask = (model: Model, request: RoomRequest): UpdateReturn => ({
+const ask = (model: Model, request: RoomRequest): CoopResult => ({
   model: withScreen(model, Screen.Asking({ request })),
   commands: [
-    RequestRoom({
+    RequestRoom.make({
       request,
       name: model.name,
       look: model.look,
@@ -270,12 +288,12 @@ const ask = (model: Model, request: RoomRequest): UpdateReturn => ({
   ],
 })
 
-const leaveFor = (model: Model, problem: CoopProblem): UpdateReturn => ({
+const leaveFor = (model: Model, problem: CoopProblem): CoopResult => ({
   model: hub(model, Option.some(problem)),
-  commands: [RememberRoom({ maybeCode: Option.none() })],
+  commands: [RememberRoom.make({ maybeCode: Option.none() })],
 })
 
-const lobbyUpdated = (model: Model, room: Room, lobby: Lobby): UpdateReturn => {
+const lobbyUpdated = (model: Model, room: Room, lobby: Lobby): CoopResult => {
   const learned = learnLobby(room, lobby)
   if (lobby.status === 'Closed') {
     return leaveFor(model, 'NoRoom')
@@ -300,7 +318,7 @@ const receiveServerFrame = (
   frame: ServerFrame,
   bytes: number,
   atMs: number,
-): UpdateReturn =>
+): CoopResult =>
   ServerFrame.matchOrElse(
     frame,
     {
@@ -330,8 +348,8 @@ const receiveServerFrame = (
         refused.reason === 'VersionMismatch'
           ? {
               model: hub(model, Option.some('Outdated')),
-              commands: [RememberRoom({ maybeCode: Option.none() })],
-              outMessage: OutMessage.NeededNewerBuild(),
+              commands: [RememberRoom.make({ maybeCode: Option.none() })],
+              notice: CoopNotice.NeededNewerBuild(),
             }
           : receiveSessionFrame(model, room, refused, bytes, atMs),
     },
@@ -344,7 +362,7 @@ const receiveSessionFrame = (
   frame: ServerFrame,
   bytes: number,
   atMs: number,
-): UpdateReturn =>
+): CoopResult =>
   Result.match(Session.receive(coopWorld, room.session, frame, bytes, atMs), {
     onFailure: () => ({ model }),
     onSuccess: session => ({
@@ -355,7 +373,9 @@ const receiveSessionFrame = (
         droppedAtMs: Option.none(),
       }),
       commands:
-        session.isResyncing && !room.session.isResyncing ? [ResyncRoom()] : [],
+        session.isResyncing && !room.session.isResyncing
+          ? [ResyncRoom.make()]
+          : [],
     }),
   })
 
@@ -364,7 +384,7 @@ const receiveFrame = (
   room: Room,
   event: RoomEvent,
   atMs: number,
-): UpdateReturn =>
+): CoopResult =>
   RoomEvent.match(event, {
     Received: ({ frame, bytes }) =>
       receiveServerFrame(model, room, frame, bytes, atMs),
@@ -387,11 +407,11 @@ const receiveFrame = (
         session: Session.heardPong(room.session, ponged.sentMs, ponged.atMs),
       }),
     }),
-    Stopped: stopped =>
-      stepWhen(
-        (_: Model) => stopped.reason === 'Kicked',
-        current => leaveFor(current, 'Kicked'),
-      )(model),
+    Stopped: ({ reason }) =>
+      Match.value(reason).pipe(
+        Match.when('Kicked', () => leaveFor(model, 'Kicked')),
+        Match.orElse(() => kept(model)),
+      ),
   })
 
 // NOTE: the time a link went down is on the frame's clock, noted by the
@@ -420,27 +440,17 @@ const hasGivenUp = (room: Room, nowMs: number): boolean =>
 // to draw and the events it reached come out. The parent reads `maybeWorld`
 // and `frameEvents` after it (src/app/update/coopPlay.ts). While the parent holds its
 // picture still for hit-stop, the events wait in the session for it.
-export const tickRoom: {
-  (
-    controls: PlayerInput,
-    nowMs: number,
-    isPictureHeld?: boolean,
-  ): (model: Model) => UpdateReturn
-  (
-    model: Model,
-    controls: PlayerInput,
-    nowMs: number,
-    isPictureHeld?: boolean,
-  ): UpdateReturn
-} = Function.dual(
-  // NOTE: data-first has the clock third; data-last has it second.
-  (args: IArguments): boolean => typeof args[2] === 'number',
-  (
-    model: Model,
-    controls: PlayerInput,
-    nowMs: number,
-    isPictureHeld: boolean = false,
-  ): UpdateReturn =>
+// NOTE: this client's controls for one room frame, the time on the frame's
+// clock, and whether the root holds its picture still for hit-stop.
+export type RoomFrame = Readonly<{
+  controls: PlayerInput
+  nowMs: number
+  isPictureHeld: boolean
+}>
+
+export const tickRoom =
+  ({ controls, nowMs, isPictureHeld }: RoomFrame) =>
+  (model: Model): CoopResult =>
     inRoom(model, room => {
       if (hasGivenUp(room, nowMs)) {
         return leaveFor(model, 'Dropped')
@@ -488,13 +498,12 @@ export const tickRoom: {
       return Array.isReadonlyArrayNonEmpty(ticked.outgoing)
         ? {
             model: next,
-            commands: [SendRoomFrames({ frames: ticked.outgoing })],
+            commands: [SendRoomFrames.make({ frames: ticked.outgoing })],
           }
         : { model: next }
-    }),
-)
+    })
 
-const toggleReady = (model: Model, room: Room): UpdateReturn =>
+const toggleReady = (model: Model, room: Room): CoopResult =>
   Option.match(meIn(room), {
     onNone: () => ({ model }),
     onSome: me =>
@@ -502,7 +511,7 @@ const toggleReady = (model: Model, room: Room): UpdateReturn =>
         ? {
             model,
             commands: [
-              ChangeLobby({
+              ChangeLobby.make({
                 change: LobbyChange.ChangedReady({
                   ready: !me.ready,
                   pingMs: Math.round(room.session.rttMs),
@@ -513,17 +522,17 @@ const toggleReady = (model: Model, room: Room): UpdateReturn =>
         : { model },
   })
 
-const leave = (model: Model, room: Room): UpdateReturn =>
+const leave = (model: Model, room: Room): CoopResult =>
   room.departure === 'Leaving'
     ? { model }
     : {
         model: withRoom(model, { ...room, departure: 'Leaving' }),
-        commands: [LeaveRoom()],
+        commands: [LeaveRoom.make()],
       }
 
-const close = (model: Model): UpdateReturn => ({
+const close = (model: Model): CoopResult => ({
   model: withScreen(model, Screen.Closed()),
-  outMessage: OutMessage.ClosedCoop(),
+  notice: CoopNotice.ClosedCoop(),
 })
 
 const pick = (
@@ -531,7 +540,7 @@ const pick = (
   room: Room,
   mode: PickedMode,
   difficulty: RoomDifficulty,
-): UpdateReturn =>
+): CoopResult =>
   Option.match(room.maybeLobby, {
     onNone: () => ({ model }),
     onSome: lobby =>
@@ -542,7 +551,7 @@ const pick = (
         ? {
             model,
             commands: [
-              ChangeLobby({
+              ChangeLobby.make({
                 change: LobbyChange.ChangedPicks({ mode, difficulty }),
               }),
             ],
@@ -550,7 +559,7 @@ const pick = (
         : { model },
   })
 
-const pickFromKey = (model: Model, room: Room, code: string): UpdateReturn =>
+const pickFromKey = (model: Model, room: Room, code: string): CoopResult =>
   Option.match(room.maybeLobby, {
     onNone: () => ({ model }),
     onSome: lobby => {
@@ -578,8 +587,8 @@ const pickFromKey = (model: Model, room: Room, code: string): UpdateReturn =>
     },
   })
 
-const keyOnScreen = (model: Model, code: string): UpdateReturn =>
-  Screen.match<UpdateReturn>(model.screen, {
+const keyOnScreen = (model: Model, code: string): CoopResult =>
+  Screen.match(model.screen, {
     Closed: () => ({ model }),
     Hub: () => {
       if (code === ESCAPE) {
@@ -599,7 +608,7 @@ const keyOnScreen = (model: Model, code: string): UpdateReturn =>
       if (code === ESCAPE) {
         return {
           model: hub(model, Option.none()),
-          commands: [CancelQuickPlay()],
+          commands: [CancelQuickPlay.make()],
         }
       } else if (code === ENTER && queue.offerPlayers > 0) {
         return answer(model, queue, true)
@@ -611,10 +620,7 @@ const keyOnScreen = (model: Model, code: string): UpdateReturn =>
       if (!isInLobby(room)) {
         return { model }
       } else if (Option.isSome(room.maybeNameDraft)) {
-        return stepWhen<Model, UpdateReturn>(
-          () => code === ESCAPE,
-          () => edits.stopNaming(model, room),
-        )(model)
+        return code === ESCAPE ? edits.stopNaming(model, room) : kept(model)
       } else if (code === ENTER) {
         return toggleReady(model, room)
       } else {
@@ -623,21 +629,21 @@ const keyOnScreen = (model: Model, code: string): UpdateReturn =>
     },
   })
 
-const answer = (model: Model, queue: Queue, accept: boolean): UpdateReturn => ({
+const answer = (model: Model, queue: Queue, accept: boolean): CoopResult => ({
   model: withScreen(
     model,
     Screen.Queue({
       queue: { ...queue, answer: accept ? 'Accepted' : 'Waiting' },
     }),
   ),
-  commands: [AnswerOffer({ accept })],
+  commands: [AnswerOffer.make({ accept })],
 })
 
 const heardInQueue = (
   model: Model,
   queue: Queue,
   event: QuickPlayEvent,
-): UpdateReturn =>
+): CoopResult =>
   QuickPlayEvent.match(event, {
     Dropped: () => ({ model: hub(model, Option.some('Dropped')) }),
     Connecting: () => ({ model }),
@@ -668,76 +674,49 @@ const heardInQueue = (
 
 // NOTE: the parent hands co-op every key while it is open, so the home
 // menu's keys stay out of the way.
-export const pressKey: {
-  (code: string): (model: Model) => UpdateReturn
-  (model: Model, code: string): UpdateReturn
-} = Function.dual(2, (model: Model, code: string): UpdateReturn =>
-  keyOnScreen(model, code),
-)
+const pressKey =
+  (code: string) =>
+  (model: Model): CoopResult =>
+    keyOnScreen(model, code)
 
 // OPEN
 
 // NOTE: opening co-op lands on the hub, or straight in a room's join when a
 // `?room=` link brought the player here.
-export const open: {
-  (
-    name: string,
-    maybeCode: Option.Option<string>,
-    look?: string,
-    rank?: number,
-    calling?: Calling,
-    bought?: SavedBoughtCosmetics,
-    bones?: number,
-    rngState?: number,
-    introSeen?: boolean,
-  ): (model: Model) => UpdateReturn
-  (
-    model: Model,
-    name: string,
-    maybeCode: Option.Option<string>,
-    look?: string,
-    rank?: number,
-    calling?: Calling,
-    bought?: SavedBoughtCosmetics,
-    bones?: number,
-    rngState?: number,
-    introSeen?: boolean,
-  ): UpdateReturn
-} = Function.dual(
-  // NOTE: data-first has the name, a string, second; data-last has the
-  // maybe code, an Option, there.
-  (args: IArguments): boolean => typeof args[1] === 'string',
-  (
-    model: Model,
-    name: string,
-    maybeCode: Option.Option<string>,
-    look: string = '',
-    rank: number = 1,
-    calling: Calling = 'You',
-    bought: SavedBoughtCosmetics = [],
-    bones: number = 0,
-    rngState: number = 0,
-    introSeen: boolean = false,
-  ): UpdateReturn => {
-    const named = modifyFields(model, {
-      name: () => name,
-      look: () => look,
-      rank: () => rank,
-      calling: () => calling,
-      rngState: () => rngState,
-      introSeen: () => introSeen,
-      bought: () => bought,
-      bones: () => bones,
+// NOTE: who joins from this device, handed by the root as co-op opens.
+export type Joiner = Readonly<{
+  name: string
+  maybeCode: Option.Option<string>
+  look: string
+  rank: number
+  calling: Calling
+  bought: SavedBoughtCosmetics
+  bones: number
+  rngState: number
+  introSeen: boolean
+}>
+
+export const open =
+  (joiner: Joiner) =>
+  (model: Model): CoopResult => {
+    const named = UiStruct.evolve(model, {
+      name: () => joiner.name,
+      look: () => joiner.look,
+      rank: () => joiner.rank,
+      calling: () => joiner.calling,
+      rngState: () => joiner.rngState,
+      introSeen: () => joiner.introSeen,
+      bought: () => joiner.bought,
+      bones: () => joiner.bones,
     })
-    return Option.match(maybeCode, {
+    return Option.match(joiner.maybeCode, {
       onNone: () => ({
         model: hub(named, Option.none()),
-        commands: [FocusCoopElement({ id: QUICK_PLAY_BUTTON_ID })],
+        commands: [focusCoop('QuickPlay')],
       }),
       onSome: code => ask(named, RoomRequest.Join({ code })),
     })
-  },
-)
+  }
 
 export const isOpen = (model: Model): boolean =>
   !Screen.isAnyOf(['Closed'])(model.screen)
@@ -746,32 +725,32 @@ export const isOpen = (model: Model): boolean =>
 
 const inRoom = (
   model: Model,
-  toReturn: (room: Room) => UpdateReturn,
-): UpdateReturn =>
+  toReturn: (room: Room) => CoopResult,
+): CoopResult =>
   Option.match(maybeRoomOf(model), {
     onNone: () => ({ model }),
     onSome: toReturn,
   })
 
-// NOTE: READY and LEAVE by button here, or by the parent's request
-// (inMessageUpdate.ts).
-export const toggleReadyInRoom = (model: Model): UpdateReturn =>
+// NOTE: READY and LEAVE by button here, or by the root's end card
+// (src/app/update/coop.ts, toggleCoopReady and leaveCoopRoom).
+export const toggleReadyInRoom = (model: Model): CoopResult =>
   inRoom(model, room => toggleReady(model, room))
 
-export const leaveRoom = (model: Model): UpdateReturn =>
+export const leaveRoom = (model: Model): CoopResult =>
   inRoom(model, room => leave(model, room))
 
 const inQueue = (
   model: Model,
-  toReturn: (queue: Queue) => UpdateReturn,
-): UpdateReturn =>
+  toReturn: (queue: Queue) => CoopResult,
+): CoopResult =>
   Screen.matchOrElse(
     model.screen,
     { Queue: ({ queue }) => toReturn(queue) },
     () => ({ model }),
   )
 
-const submitCode = (model: Model, typed: string): UpdateReturn =>
+const submitCode = (model: Model, typed: string): CoopResult =>
   Option.match(normalizeRoomCode(typed), {
     onNone: () => ({
       model: withScreen(
@@ -782,49 +761,51 @@ const submitCode = (model: Model, typed: string): UpdateReturn =>
     onSome: code => ask(model, RoomRequest.Join({ code })),
   })
 
-const failedRequest = (model: Model, problem: CoopProblem): UpdateReturn =>
+const failedRequest = (model: Model, problem: CoopProblem): CoopResult =>
   Screen.matchOrElse(
     model.screen,
     {
       Asking: ({ request }) =>
-        RoomRequest.match<UpdateReturn>(request, {
+        RoomRequest.match(request, {
           Create: () => ({ model: hub(model, Option.some(problem)) }),
           Join: ({ code }) => ({
             model: withScreen(
               model,
               Screen.Code({ typed: code, maybeProblem: Option.some(problem) }),
             ),
-            commands: [RememberRoom({ maybeCode: Option.none() })],
+            commands: [RememberRoom.make({ maybeCode: Option.none() })],
           }),
         }),
     },
     () => ({ model }),
   )
 
-const updateMessage = (model: Model, message: Message): UpdateReturn =>
-  Message.match<UpdateReturn>(message, {
-    ClickedQuickPlayButton: () => ({
+// NOTE: the Messages co-op's rules handle, every one but the room's frame
+// clock (the root's TickedRoomFrame, src/app/update/coop.ts).
+const updateMessage = (model: Model, message: CoopMessage): CoopResult =>
+  CoopMessage.match(message, {
+    ClickedCoopQuickPlayButton: () => ({
       model: withScreen(model, Screen.Queue({ queue: emptyQueue })),
     }),
 
-    ClickedCodeButton: () => ({
+    ClickedCoopCodeButton: () => ({
       model: withScreen(
         model,
         Screen.Code({ typed: '', maybeProblem: Option.none() }),
       ),
-      commands: [FocusCoopElement({ id: CODE_INPUT_ID })],
+      commands: [focusCoop('Code')],
     }),
 
-    ClickedCreateButton: () => ask(model, RoomRequest.Create()),
+    ClickedCoopCreateButton: () => ask(model, RoomRequest.Create()),
 
-    ClickedBackButton: () => ({
+    ClickedCoopBackButton: () => ({
       model: hub(model, Option.none()),
-      commands: [FocusCoopElement({ id: QUICK_PLAY_BUTTON_ID })],
+      commands: [focusCoop('QuickPlay')],
     }),
 
-    ClickedCloseButton: () => close(model),
+    ClickedCoopCloseButton: () => close(model),
 
-    UpdatedCode: ({ value }) => {
+    UpdatedCoopCode: ({ value }) => {
       const typed = cleanCode(value)
       return typed.length === ROOM_CODE_LENGTH
         ? submitCode(model, typed)
@@ -836,18 +817,18 @@ const updateMessage = (model: Model, message: Message): UpdateReturn =>
           }
     },
 
-    SubmittedCode: () =>
+    SubmittedCoopCode: () =>
       Screen.matchOrElse(
         model.screen,
         { Code: ({ typed }) => submitCode(model, typed) },
-        () => ({ model }),
+        () => kept(model),
       ),
 
     SucceededRequestRoom: ({ code, slot }) =>
       Screen.matchOrElse(
         model.screen,
         { Asking: () => enterRoom(model, code, slot) },
-        () => ({ model }),
+        () => kept(model),
       ),
 
     FailedRequestRoom: ({ problem }) => failedRequest(model, problem),
@@ -855,26 +836,22 @@ const updateMessage = (model: Model, message: Message): UpdateReturn =>
     ReceivedQuickPlayEvent: ({ event }) =>
       inQueue(model, queue => heardInQueue(model, queue, event)),
 
-    ClickedAcceptOfferButton: () =>
+    ClickedCoopAcceptOfferButton: () =>
       inQueue(model, queue => answer(model, queue, true)),
 
-    ClickedKeepWaitingButton: () =>
+    ClickedCoopKeepWaitingButton: () =>
       inQueue(model, queue => answer(model, queue, false)),
 
-    ClickedCancelQueueButton: () => ({
+    ClickedCoopCancelQueueButton: () => ({
       model: hub(model, Option.none()),
-      commands: [CancelQuickPlay()],
+      commands: [CancelQuickPlay.make()],
     }),
-
-    CompletedAnswerOffer: () => ({ model }),
-
-    CompletedCancelQuickPlay: () => ({ model }),
 
     ReceivedLobbyEvent: ({ event }) =>
       inRoom(model, room =>
         Match.value(event).pipe(
           Match.tag('Updated', ({ lobby }) => lobbyUpdated(model, room, lobby)),
-          Match.orElse(() => ({ model })),
+          Match.orElse(() => kept(model)),
         ),
       ),
 
@@ -891,84 +868,79 @@ const updateMessage = (model: Model, message: Message): UpdateReturn =>
         }),
       })),
 
-    ClickedReadyButton: () => toggleReadyInRoom(model),
+    ClickedCoopReadyButton: () => toggleReadyInRoom(model),
 
-    ClickedKickButton: ({ playerId }) =>
+    ClickedCoopKickButton: ({ playerId }) =>
       inRoom(model, room =>
         isHost(room)
           ? {
               model,
               commands: [
-                ChangeLobby({ change: LobbyChange.KickedPlayer({ playerId }) }),
+                ChangeLobby.make({
+                  change: LobbyChange.KickedPlayer({ playerId }),
+                }),
               ],
             }
-          : { model },
+          : kept(model),
       ),
 
-    ClickedModePick: ({ mode }) =>
+    ClickedCoopModePick: ({ mode }) =>
       inRoom(model, room =>
         Option.match(room.maybeLobby, {
-          onNone: () => ({ model }),
+          onNone: () => kept(model),
           onSome: lobby => pick(model, room, mode, lobby.difficulty),
         }),
       ),
 
-    ClickedDifficultyPick: ({ difficulty }) =>
+    ClickedCoopDifficultyPick: ({ difficulty }) =>
       inRoom(model, room =>
         Option.match(room.maybeLobby, {
-          onNone: () => ({ model }),
+          onNone: () => kept(model),
           onSome: lobby => pick(model, room, pickedModeOf(lobby), difficulty),
         }),
       ),
 
-    ClickedModifierPick: ({ modifier }) =>
+    ClickedCoopModifierPick: ({ modifier }) =>
       inRoom(model, room => edits.pickModifier(model, room, modifier)),
-    ClickedEasyBreakPick: () =>
+    ClickedCoopEasyBreakPick: () =>
       inRoom(model, room => edits.pickEasyBreak(model, room)),
-    ClickedDareMarkPick: ({ mark }) =>
+    ClickedCoopDareMarkPick: ({ mark }) =>
       inRoom(model, room => edits.pickDareMark(model, room, mark)),
 
-    // NOTE: the pill opens the hero picker, a child Block, so `update`
-    // below gives it its own Step (togglePicker) and never comes here.
-    ClickedCallingPill: () => ({ model }),
+    // NOTE: the pill opens the hero picker, and closes it again.
+    ClickedCoopCallingPill: () => togglePicker(model),
 
-    ClickedPickNudge: ({ reason }) =>
+    ClickedCoopPickNudge: ({ reason }) =>
       inRoom(model, room => edits.nudge(model, room, reason)),
 
-    ClickedNameButton: () =>
+    ClickedCoopNameButton: () =>
       inRoom(model, room => edits.startNaming(model, room)),
 
-    UpdatedNameDraft: ({ value }) =>
+    UpdatedCoopNameDraft: ({ value }) =>
       inRoom(model, room => edits.typeName(model, room, value)),
 
-    SubmittedName: () => inRoom(model, room => edits.keepName(model, room)),
+    SubmittedCoopName: () => inRoom(model, room => edits.keepName(model, room)),
 
-    ClickedNameDice: () =>
+    ClickedCoopNameDice: () =>
       inRoom(model, room => edits.rollNameDraft(model, room)),
 
-    ClickedNameCancel: () =>
+    ClickedCoopNameCancel: () =>
       inRoom(model, room => edits.stopNaming(model, room)),
 
-    CompletedChangeLobby: () => ({ model }),
-
-    FailedChangeLobby: () => ({ model }),
-
-    ClickedLeaveButton: () => leaveRoom(model),
-
-    CompletedResyncRoom: () => ({ model }),
+    ClickedCoopLeaveButton: () => leaveRoom(model),
 
     CompletedLeaveRoom: () => ({
       model: hub(model, Option.none()),
       commands: [
-        RememberRoom({ maybeCode: Option.none() }),
-        FocusCoopElement({ id: QUICK_PLAY_BUTTON_ID }),
+        RememberRoom.make({ maybeCode: Option.none() }),
+        focusCoop('QuickPlay'),
       ],
     }),
 
-    ClickedShareButton: () =>
+    ClickedCoopShareButton: () =>
       inRoom(model, room => ({
         model,
-        commands: [ShareRoomLink({ code: room.code })],
+        commands: [ShareRoomLink.make({ code: room.code })],
       })),
 
     CompletedShareRoomLink: ({ share }) =>
@@ -976,10 +948,10 @@ const updateMessage = (model: Model, message: Message): UpdateReturn =>
         model: withRoom(model, { ...room, share }),
       })),
 
-    ClickedRoomCode: () =>
+    ClickedCoopRoomCode: () =>
       inRoom(model, room => ({
         model,
-        commands: [CopyRoomCode({ code: room.code })],
+        commands: [CopyRoomCode.make({ code: room.code })],
       })),
 
     CompletedCopyRoomCode: ({ copy }) =>
@@ -990,87 +962,72 @@ const updateMessage = (model: Model, message: Message): UpdateReturn =>
             : model,
       })),
 
-    CompletedRememberRoom: () => ({ model }),
+    // NOTE: the hero picker's events (src/features/heroes/block.ts): a card,
+    // BUY, and its close button or keys.
+    PickedCoopHero: ({ calling }) => pickHero(calling)(model),
 
-    CompletedFocusCoopElement: () => ({ model }),
+    RequestedBuyCoopHero: ({ calling }) => buyHero(calling)(model),
+
+    RequestedCloseCoopHeroPicker: () => closePicker(model),
   })
 
-// NOTE: a delivered Message that drops the room tells the parent, unless it
-// already says something (NeededNewerBuild drops the room too).
-const delivered = (model: Model, message: Message): UpdateReturn => {
-  const result = updateMessage(model, message)
-  return result.outMessage === undefined &&
-    Option.isSome(maybeRoomOf(model)) &&
-    Option.isNone(maybeRoomOf(result.model))
-    ? { ...result, outMessage: OutMessage.LeftRoom() }
-    : result
-}
+// NOTE: a rule that drops the room tells the root, unless it already says
+// something (NeededNewerBuild drops the room too), and an open hero picker
+// closes once the room leaves its lobby (closeStrayPicker).
+const settled =
+  (rule: (model: Model) => CoopResult) =>
+  (model: Model): CoopResult => {
+    const result = rule(model)
+    const notice =
+      result.notice === undefined &&
+      Option.isSome(maybeRoomOf(model)) &&
+      Option.isNone(maybeRoomOf(result.model))
+        ? CoopNotice.LeftRoom()
+        : result.notice
+    return {
+      model: closeStrayPicker(result.model),
+      ...(result.commands === undefined ? {} : { commands: result.commands }),
+      ...(notice === undefined ? {} : { notice }),
+    }
+  }
 
-const handlers = CoopComposition.makeUpdate({
-  ClickedQuickPlayButton: delivered,
-  ClickedCodeButton: delivered,
-  ClickedCreateButton: delivered,
-  ClickedBackButton: delivered,
-  ClickedCloseButton: delivered,
-  UpdatedCode: delivered,
-  SubmittedCode: delivered,
-  SucceededRequestRoom: delivered,
-  FailedRequestRoom: delivered,
-  ReceivedQuickPlayEvent: delivered,
-  ClickedAcceptOfferButton: delivered,
-  ClickedKeepWaitingButton: delivered,
-  ClickedCancelQueueButton: delivered,
-  CompletedAnswerOffer: delivered,
-  CompletedCancelQuickPlay: delivered,
-  ReceivedLobbyEvent: delivered,
-  ReceivedRoomEvent: delivered,
-  CompletedSendRoomFrames: delivered,
-  ClickedReadyButton: delivered,
-  ClickedKickButton: delivered,
-  ClickedModePick: delivered,
-  ClickedDifficultyPick: delivered,
-  ClickedModifierPick: delivered,
-  ClickedEasyBreakPick: delivered,
-  ClickedDareMarkPick: delivered,
-  ClickedCallingPill: togglePicker,
-  ClickedPickNudge: delivered,
-  ClickedNameButton: delivered,
-  UpdatedNameDraft: delivered,
-  SubmittedName: delivered,
-  ClickedNameDice: delivered,
-  ClickedNameCancel: delivered,
-  CompletedChangeLobby: delivered,
-  FailedChangeLobby: delivered,
-  ClickedLeaveButton: delivered,
-  CompletedLeaveRoom: delivered,
-  CompletedResyncRoom: delivered,
-  ClickedShareButton: delivered,
-  CompletedShareRoomLink: delivered,
-  ClickedRoomCode: delivered,
-  CompletedCopyRoomCode: delivered,
-  CompletedRememberRoom: delivered,
-  CompletedFocusCoopElement: delivered,
-})
+// NOTE: one of co-op's Messages, as the root's handler runs it.
+export const updateCoop =
+  (message: CoopMessage) =>
+  (model: Model): CoopResult =>
+    settled(current => updateMessage(current, message))(model)
 
-// NOTE: an open hero picker closes once the room leaves its lobby, on any
-// Message (src/features/coop/steps.ts, closeStrayPicker).
-export const update = CoopComposition.makeUpdate.compose(
-  handlers,
-  CoopComposition.makeUpdate.each(closeStrayPicker),
-)
+// THE ROOT'S REQUESTS
 
-// HANDLERS
+// NOTE: what the rest of the root asks of co-op (src/app/update/coop.ts):
+// a key, the room's frame, a press, the frame's tracers, READY, LEAVE, and
+// a hero bought. A request runs as it is: one that drops the room says
+// nothing more, as the root asked for it (only a Message's rule tells of a
+// dropped room, `settled`), and an open hero picker closes once the room
+// leaves its lobby.
+export const asRequest =
+  (rule: (model: Model) => CoopResult) =>
+  (model: Model): CoopResult => {
+    const result = rule(model)
+    return { ...result, model: closeStrayPicker(result.model) }
+  }
 
-export const CommandsLayer = Layer.mergeAll(
-  FocusCoopElement.layer,
-  RequestRoom.layer,
-  AnswerOffer.layer,
-  CancelQuickPlay.layer,
-  ChangeLobby.layer,
-  SendRoomFrames.layer,
-  LeaveRoom.layer,
-  ShareRoomLink.layer,
-  CopyRoomCode.layer,
-  RememberRoom.layer,
-  ResyncRoom.layer,
-)
+const isNaming = (model: Model): boolean =>
+  Option.exists(maybeRoomOf(model), room => Option.isSome(room.maybeNameDraft))
+
+// NOTE: in the room's lobby, with no name being typed, the hero picker takes
+// the keys while it is open (its own Subscription closes it on Escape and
+// Y, and the rest wait: Enter belongs to the card in focus), and Y opens it.
+// Every other key is the screen's.
+export const pressKeyWithPicker =
+  (code: string) =>
+  (model: Model): CoopResult => {
+    const isPickingHero = Option.isSome(lobbyMeOf(model)) && !isNaming(model)
+    if (isPickingHero && model.heroPick.isOpen) {
+      return kept(model)
+    } else if (isPickingHero && code === CALLING_KEY) {
+      return togglePicker(model)
+    } else {
+      return pressKey(code)(model)
+    }
+  }

@@ -1,336 +1,366 @@
 import { Effect, Option } from 'effect'
-import { Story } from 'foldkit'
 
+import { Component, UiStruct } from '@effect/ui'
+import { Story } from '@effect/ui/testing'
 import { describe, expect, it } from '@effect/vitest'
-import { Tabs } from '@foldkit/ui'
 
+import { Message } from '../../../app/message'
+import type { Model } from '../../../app/model'
+import { profilePropsOf } from '../../../app/profileView'
+import {
+  FocusProfileElement,
+  RequestLinkCode,
+  takeSyncedName,
+} from '../../../app/update/profile'
 import { LinkFlow } from '../../../platform/playerSync'
-import { ProfileBlock } from '../block'
-import * as Character from '../blocks/look/block'
-import { CharacterBinding, TabsBinding } from '../composition'
-import { InMessage } from '../inMessage'
-import { FocusLookOption } from '../inMessageUpdate'
-import { ProfileLayer } from '../layer'
-import { Message, OutMessage } from '../message'
-import { type Model as ProfileModel, ProfileTabsBlock } from '../model'
+import { readyAfterRead } from '../../../test/model.fixture'
+import {
+  type StoryStep,
+  checkModel,
+  closeProfile,
+  send,
+  settleRunCommands,
+  steps,
+  storyOf,
+} from '../../../test/testing'
+import { noRank } from '../../../world/heroes/rank'
+import { Profile } from '../block'
+import { Events, Message as ProfileMessage } from '../message'
 import { KEEP_TUTORIAL_BUTTON_ID, RESET_TUTORIAL_BUTTON_ID } from '../profile'
-import { FocusTutorialReset, RequestLinkCode } from '../update'
+import { profileOpenOn } from './profile.fixture'
 
-// The Profile Block on its own: what it keeps, what it tells the root, and
-// what it does with the root's answers. The root's side (the name saved,
-// the dice's generator, the look and the Bones) is in profile.story.test.ts.
+// The Profile on its own and the root's rules behind it. The Profile
+// component keeps no state: every click and field change goes up as an
+// event (src/features/profile/block.ts). The root owns the panel's state
+// (`profile`) and judges each event (src/app/update/profile.ts): the tab,
+// the name kept, the dice, the tutorial reset, the try-on, and the link
+// flow. The root's side of the name saved and the look is in
+// profile.story.test.ts.
 
-const PROFILE = { block: ProfileBlock, layer: ProfileLayer }
+const PROPS = profilePropsOf(profileOpenOn('Settings'))
 
-const openOn = (tab: (typeof InMessage.RequestedOpen.Type)['tab']) =>
-  Story.inMessage(InMessage.RequestedOpen({ tab, name: 'Hambone' }))
+const focused =
+  (id: string): StoryStep =>
+  s =>
+    s.resolve(FocusProfileElement.make({ selector: `#${id}` }), Component.noop)
 
-describe('the Profile Block', () => {
-  it.effect('opens on the tab asked for, with the saved name to edit', () =>
-    Story.story(
-      PROFILE,
-      Story.init(),
-      openOn('Name'),
-      Story.model(model => {
-        expect(model.tab).toBe('Name')
-        expect(model.nameDraft).toBe('Hambone')
-        expect(model.fx).toBe('Still')
-        expect(model.tutorialReset).toBe('Idle')
-      }),
-      Story.expectNoOutMessage(),
-    ),
+describe('the Profile component', () => {
+  it.effect('says what happened and keeps nothing of its own', () =>
+    Effect.gen(function* () {
+      const s = yield* Story.make(Profile, PROPS)
+      s.send(ProfileMessage.SelectedTab({ value: 'Account' }))
+        .emitted(Events.SwitchedTab({ tab: 'Account' }))
+        .send(ProfileMessage.UpdatedNameDraft({ value: 'Gobbler ' }))
+        .emitted(Events.UpdatedNameDraft({ value: 'Gobbler ' }))
+        .send(ProfileMessage.ClickedNameDiceButton())
+        .emitted(Events.RolledNameDice())
+        .send(ProfileMessage.ClickedSettingTile({ setting: 'Rotation' }))
+        .emitted(Events.ClickedSetting({ setting: 'Rotation' }))
+        .send(ProfileMessage.ClickedConfirmResetTutorialButton())
+        .emitted(Events.ConfirmedTutorialReset())
+        .send(ProfileMessage.ClickedBuyLook({ part: 'Hat', value: 'Fez' }))
+        .emitted(Events.ClickedBuyLook({ part: 'Hat', value: 'Fez' }))
+        .send(
+          ProfileMessage.SucceededReadClipboard({ text: 'KZ7QWM', typed: '' }),
+        )
+        .emitted(Events.ReadClipboard({ text: 'KZ7QWM', typed: '' }))
+        .expectNone()
+      expect(s.model).toEqual({})
+    }),
   )
 
-  it.effect('keeps the name cleaned when the root asks, and says so', () =>
-    Story.story(
-      PROFILE,
-      Story.init(),
-      openOn('Name'),
-      Story.message(Message.UpdatedNameDraft({ value: '  Sir   Nibbles ' })),
-      Story.expectNoOutMessage(),
-      Story.inMessage(InMessage.RequestedKeepName()),
-      Story.model(model => {
-        expect(model.nameDraft).toBe('Sir Nibbles')
-      }),
-      Story.expectOutMessage(OutMessage.KeptName({ name: 'Sir Nibbles' })),
-    ),
+  it.effect('a tab it does not know says nothing', () =>
+    Effect.gen(function* () {
+      const s = yield* Story.make(Profile, PROPS)
+      s.send(ProfileMessage.SelectedTab({ value: 'Cosmetics' }))
+      expect(s.current.emitted).toEqual([])
+    }),
+  )
+})
+
+describe('the Profile on the root', () => {
+  it.effect('opens on the tab asked for, with the saved name to edit', () =>
+    Effect.gen(function* () {
+      const named = UiStruct.evolve(readyAfterRead, {
+        playerName: () => 'Hambone',
+        profile: profile =>
+          UiStruct.evolve(profile, {
+            nameDraft: () => 'x',
+            tutorialReset: () => 'Done',
+            fx: () => 'Spin',
+          }),
+      })
+      yield* Effect.forEach(
+        [
+          { open: Message.ClickedSettingsButton(), tab: 'Settings' },
+          { open: Message.ClickedCharacterButton(), tab: 'Look' },
+        ],
+        ({ open, tab }) =>
+          Effect.gen(function* () {
+            const s = yield* storyOf(named)
+            s.pipe(
+              send(open),
+              checkModel(({ profile, profileDialog }) => {
+                expect(profileDialog.isOpen).toBe(true)
+                expect(profile.tab).toBe(tab)
+                expect(profile.nameDraft).toBe('Hambone')
+                expect(profile.fx).toBe('Still')
+                expect(profile.tutorialReset).toBe('Idle')
+              }),
+              settleRunCommands,
+            )
+          }),
+        { discard: true },
+      )
+    }),
+  )
+
+  it.effect('closing keeps the name cleaned', () =>
+    Effect.gen(function* () {
+      const s = yield* storyOf(profileOpenOn('Name'))
+      s.pipe(
+        send(Message.UpdatedProfileNameDraft({ value: '  Sir   Nibbles ' })),
+        checkModel(({ playerName }) => {
+          expect(playerName).toBe('')
+        }),
+        closeProfile,
+        checkModel(({ playerName, profile }) => {
+          expect(profile.nameDraft).toBe('Sir Nibbles')
+          expect(playerName).toBe('Sir Nibbles')
+        }),
+        settleRunCommands,
+      )
+    }),
   )
 
   it.effect(
     'a name kept on another device replaces the draft, unless one is typed',
     () =>
-      Story.story(
-        PROFILE,
-        Story.init(),
-        openOn('Account'),
-        Story.inMessage(
-          InMessage.InformedOfSyncedName({ was: 'Hambone', name: 'Zed' }),
-        ),
-        Story.model(model => {
-          expect(model.nameDraft).toBe('Zed')
+      Effect.gen(function* () {
+        const on = (name: string, draft: string): Model =>
+          UiStruct.evolve(profileOpenOn('Account'), {
+            playerName: () => name,
+            profile: profile =>
+              UiStruct.evolve(profile, { nameDraft: () => draft }),
+          })
+        expect(
+          takeSyncedName(on('Zed', 'Hambone'), 'Hambone').profile.nameDraft,
+        ).toBe('Zed')
+        expect(takeSyncedName(on('Bea', 'Mo'), 'Zed').profile.nameDraft).toBe(
+          'Mo',
+        )
+      }),
+  )
+
+  it.effect('a tab switch keeps the name', () =>
+    Effect.gen(function* () {
+      const s = yield* storyOf(profileOpenOn('Name'))
+      s.pipe(
+        send(Message.UpdatedProfileNameDraft({ value: 'Gobbler ' })),
+        send(Message.SwitchedProfileTab({ tab: 'Account' })),
+        checkModel(({ playerName, profile }) => {
+          expect(profile.tab).toBe('Account')
+          expect(profile.nameDraft).toBe('Gobbler')
+          expect(playerName).toBe('Gobbler')
         }),
-        Story.message(Message.UpdatedNameDraft({ value: 'Mo' })),
-        Story.inMessage(
-          InMessage.InformedOfSyncedName({ was: 'Zed', name: 'Bea' }),
-        ),
-        Story.model(model => {
-          expect(model.nameDraft).toBe('Mo')
+        settleRunCommands,
+      )
+    }),
+  )
+
+  it.effect('the name dice rolls on the root, then spins to its name', () =>
+    Effect.gen(function* () {
+      const s = yield* storyOf(profileOpenOn('Name'))
+      s.pipe(
+        checkModel(({ profile }) => {
+          expect(profile.fxCount).toBe(0)
         }),
-        Story.expectNoOutMessage(),
-      ),
-  )
-
-  it.effect('a tab switch keeps the name and tells the root both', () =>
-    Story.story(
-      PROFILE,
-      Story.init(),
-      openOn('Name'),
-      Story.message(Message.UpdatedNameDraft({ value: 'Gobbler ' })),
-      Story.messageIn(
-        TabsBinding,
-        ProfileTabsBlock.Message.SelectedTab({ index: 2, value: 'Account' }),
-      ),
-      Story.expectOutMessage(
-        OutMessage.SwitchedTab({ tab: 'Account', name: 'Gobbler' }),
-      ),
-      Story.Command.resolve(
-        Tabs.test.FocusTab({ id: 'profile-tabs', index: 2 }),
-        ProfileTabsBlock.Message.CompletedFocusTab(),
-      ),
-      Story.model(model => {
-        expect(model.tab).toBe('Account')
-        expect(model.nameDraft).toBe('Gobbler')
-      }),
-    ),
-  )
-
-  it.effect('the name dice asks the root to roll, then spins to its name', () =>
-    Story.story(
-      PROFILE,
-      Story.init(),
-      Story.inMessage(InMessage.RequestedOpen({ tab: 'Name', name: '' })),
-      Story.message(Message.ClickedNameDiceButton()),
-      Story.expectOutMessage(
-        OutMessage.RolledNameDice({ current: 'Survivor' }),
-      ),
-      Story.model(model => {
-        expect(model.fxCount).toBe(0)
-      }),
-      Story.inMessage(InMessage.InformedOfRolledName({ name: 'Gravy Dave' })),
-      Story.model(model => {
-        expect(model.nameDraft).toBe('Gravy Dave')
-        expect(model.fx).toBe('Spin')
-        expect(model.fxCount).toBe(1)
-      }),
-    ),
-  )
-
-  it.effect('a settings tile only says which one was clicked', () =>
-    Story.story(
-      PROFILE,
-      Story.init(),
-      openOn('Settings'),
-      Story.message(Message.ClickedSettingTile({ setting: 'Rotation' })),
-      Story.expectOutMessage(
-        OutMessage.ClickedSetting({ setting: 'Rotation' }),
-      ),
-      Story.Command.expectNone(),
-    ),
+        send(Message.RolledProfileNameDice()),
+        checkModel(({ playerName, profile }) => {
+          expect(profile.nameDraft).toBe(playerName)
+          expect(playerName).not.toBe('')
+          expect(profile.fx).toBe('Spin')
+          expect(profile.fxCount).toBe(1)
+        }),
+        settleRunCommands,
+      )
+    }),
   )
 
   it.effect(
-    'the tutorial reset asks first and tells the root only on RESET',
+    'the tutorial reset asks first and forgets the tips only on RESET',
     () =>
-      Story.story(
-        PROFILE,
-        Story.init(),
-        openOn('Settings'),
-        Story.message(Message.ClickedConfirmResetTutorialButton()),
-        Story.expectNoOutMessage(),
-        Story.message(Message.ClickedResetTutorialButton()),
-        Story.Command.resolve(
-          FocusTutorialReset({ id: KEEP_TUTORIAL_BUTTON_ID }),
-          Message.CompletedFocusTutorialReset(),
-        ),
-        Story.message(Message.ClickedConfirmResetTutorialButton()),
-        Story.expectOutMessage(OutMessage.ConfirmedTutorialReset()),
-        Story.model(model => {
-          expect(model.tutorialReset).toBe('Done')
-        }),
-        Story.Command.resolve(
-          FocusTutorialReset({ id: RESET_TUTORIAL_BUTTON_ID }),
-          Message.CompletedFocusTutorialReset(),
-        ),
-      ),
+      Effect.gen(function* () {
+        const s = yield* storyOf(profileOpenOn('Settings'))
+        s.pipe(
+          send(Message.ConfirmedTutorialReset()),
+          checkModel(({ profile }) => {
+            expect(profile.tutorialReset).toBe('Idle')
+          }),
+        ).expectNone()
+        s.pipe(
+          send(Message.ClickedResetTutorial()),
+          checkModel(({ profile }) => {
+            expect(profile.tutorialReset).toBe('Asking')
+          }),
+          focused(KEEP_TUTORIAL_BUTTON_ID),
+          send(Message.ConfirmedTutorialReset()),
+          checkModel(({ profile }) => {
+            expect(profile.tutorialReset).toBe('Done')
+          }),
+          focused(RESET_TUTORIAL_BUTTON_ID),
+          settleRunCommands,
+        )
+      }),
   )
 })
 
-describe("the Profile's Look tab", () => {
+describe("the Profile's Look tab on the root", () => {
+  const withBones = (earnedBones: number) => (model: Model) =>
+    UiStruct.evolve(model, { rank: () => ({ ...noRank, earnedBones }) })
+
   it.effect('BUY says nothing without a try-on', () =>
-    Story.story(
-      PROFILE,
-      Story.init(),
-      openOn('Look'),
-      Story.messageIn(CharacterBinding, Character.Message.ClickedBuyButton()),
-      Story.expectNoOutMessage(),
-    ),
+    Effect.gen(function* () {
+      const before = profileOpenOn('Look')
+      const s = yield* storyOf(before)
+      s.pipe(
+        send(Message.ClickedBuyProfileLook({ part: 'Hat', value: 'Fez' })),
+        checkModel(current => {
+          expect(current.profile).toEqual(before.profile)
+          expect(current.boughtCosmetics).toEqual(before.boughtCosmetics)
+        }),
+      ).expectNone()
+    }),
   )
 
   it.effect(
-    'a try-on poofs, BUY asks the root, and a buy cues and focuses',
+    'a try-on poofs, BUY short of Bones shakes, and a buy cues and focuses',
     () =>
-      Story.story(
-        PROFILE,
-        Story.init(),
-        openOn('Look'),
-        Story.messageIn(
-          CharacterBinding,
-          Character.Message.ClickedGearOption({ part: 'Hat', value: 'Crown' }),
-        ),
-        Story.expectOutMessage(
-          OutMessage.ChoseLook({ part: 'Hat', value: 'Crown' }),
-        ),
-        Story.inMessage(
-          InMessage.InformedOfLookOutcome({
-            part: 'Hat',
-            value: 'Crown',
-            outcome: 'Preview',
+      Effect.gen(function* () {
+        const s = yield* storyOf(withBones(0)(profileOpenOn('Look')))
+        s.pipe(
+          send(Message.ChoseProfileLook({ part: 'Hat', value: 'Fez' })),
+          checkModel(({ profile }) => {
+            expect(profile.maybePreview).toEqual(
+              Option.some({ part: 'Hat', value: 'Fez' }),
+            )
+            expect(profile.fx).toBe('Poof')
           }),
-        ),
-        Story.model(model => {
-          expect(model.maybePreview).toEqual(
-            Option.some({ part: 'Hat', value: 'Crown' }),
-          )
-          expect(model.fx).toBe('Poof')
-        }),
-        Story.messageIn(CharacterBinding, Character.Message.ClickedBuyButton()),
-        Story.expectOutMessage(
-          OutMessage.ClickedBuyLook({ part: 'Hat', value: 'Crown' }),
-        ),
-        Story.inMessage(
-          InMessage.InformedOfLookOutcome({
-            part: 'Hat',
-            value: 'Crown',
-            outcome: 'Short',
+          send(Message.ClickedBuyProfileLook({ part: 'Hat', value: 'Fez' })),
+          checkModel(({ profile }) => {
+            expect(Option.isSome(profile.maybePreview)).toBe(true)
+            expect(profile.closetCue.kind).toBe('Short')
           }),
-        ),
-        Story.model(model => {
-          expect(Option.isSome(model.maybePreview)).toBe(true)
-          expect(model.closetCue.kind).toBe('Short')
-        }),
-        Story.Command.expectNone(),
-        Story.inMessage(
-          InMessage.InformedOfLookOutcome({
-            part: 'Hat',
-            value: 'Crown',
-            outcome: 'Bought',
+        ).expectNone()
+        s.given(withBones(80)).pipe(
+          send(Message.ClickedBuyProfileLook({ part: 'Hat', value: 'Fez' })),
+          checkModel(({ profile }) => {
+            expect(profile.maybePreview).toEqual(Option.none())
+            expect(profile.closetCue).toEqual({
+              part: 'Hat',
+              value: 'Fez',
+              kind: 'Bought',
+              count: 2,
+            })
+            expect(profile.fx).toBe('Poof')
           }),
-        ),
-        Story.model(model => {
-          expect(model.maybePreview).toEqual(Option.none())
-          expect(model.closetCue).toEqual({
-            part: 'Hat',
-            value: 'Crown',
-            kind: 'Bought',
-            count: 2,
-          })
-          expect(model.fx).toBe('Poof')
-        }),
-        Story.Command.resolve(
-          FocusLookOption({ part: 'Hat', value: 'Crown' }),
-          Message.CompletedFocusLookOption(),
-        ),
-      ),
+          story =>
+            story.resolve(
+              FocusProfileElement.make({
+                selector: '[data-look-option="Hat.Fez"]',
+              }),
+              Component.noop,
+            ),
+          settleRunCommands,
+        )
+      }),
   )
 
-  it.effect('a flip and the dice play at once and tell the root', () =>
-    Story.story(
-      PROFILE,
-      Story.init(),
-      openOn('Look'),
-      Story.messageIn(
-        CharacterBinding,
-        Character.Message.ClickedToggle({ toggle: 'Beard' }),
-      ),
-      Story.expectOutMessage(OutMessage.FlippedLook({ toggle: 'Beard' })),
-      Story.model(model => {
-        expect(model.fx).toBe('Poof')
-      }),
-      Story.messageIn(CharacterBinding, Character.Message.ClickedDiceButton()),
-      Story.expectOutMessage(OutMessage.RolledLookDice()),
-      Story.model(model => {
-        expect(model.fx).toBe('Spin')
-        expect(model.fxCount).toBe(2)
-      }),
-    ),
+  it.effect('a flip and the dice play at once', () =>
+    Effect.gen(function* () {
+      const s = yield* storyOf(profileOpenOn('Look'))
+      s.pipe(
+        send(Message.FlippedProfileLook({ toggle: 'Beard' })),
+        checkModel(({ profile }) => {
+          expect(profile.fx).toBe('Poof')
+        }),
+        send(Message.RolledProfileLookDice()),
+        checkModel(({ profile }) => {
+          expect(profile.fx).toBe('Spin')
+          expect(profile.fxCount).toBe(2)
+        }),
+        settleRunCommands,
+      )
+    }),
   )
 })
 
 describe("the Profile's link code", () => {
-  const entering = (code: string) =>
-    Story.steps(
-      openOn('Account'),
-      Story.message(Message.ClickedUseCodeButton()),
-      Story.message(Message.UpdatedLinkCode({ value: code })),
+  const entering = (code: string): StoryStep =>
+    steps(
+      send(Message.ClickedUseLinkCode()),
+      send(Message.UpdatedLinkCode({ value: code })),
     )
 
-  const codeIs = (expected: string) =>
-    Story.model((model: ProfileModel) => {
-      expect(model.linkFlow).toEqual(LinkFlow.Entering({ code: expected }))
+  const codeIs = (expected: string): StoryStep =>
+    checkModel(({ profile }) => {
+      expect(profile.linkFlow).toEqual(LinkFlow.Entering({ code: expected }))
     })
 
   it.effect(
     'a copy counts, so COPIED! flashes afresh, and a new code starts over',
     () =>
-      Story.story(
-        PROFILE,
-        Story.init(),
-        openOn('Account'),
-        Story.message(Message.ClickedLinkDeviceButton()),
-        Story.Command.resolve(
-          RequestLinkCode,
-          Message.SucceededRequestLinkCode({ code: 'KZ7QWM' }),
-        ),
-        Story.message(Message.SucceededCopyLinkCode()),
-        Story.message(Message.SucceededCopyLinkCode()),
-        Story.model(model => {
-          expect(model.linkCodeCopies).toBe(2)
-        }),
-        Story.message(Message.ClickedLinkDeviceButton()),
-        Story.Command.resolve(
-          RequestLinkCode,
-          Message.SucceededRequestLinkCode({ code: 'PQ23RS' }),
-        ),
-        Story.model(model => {
-          expect(model.linkFlow).toEqual(LinkFlow.Showing({ code: 'PQ23RS' }))
-          expect(model.linkCodeCopies).toBe(0)
-        }),
-        Story.expectOutMessage(OutMessage.ShowedLinkCode()),
-      ),
+      Effect.gen(function* () {
+        const s = yield* storyOf(profileOpenOn('Account'))
+        s.pipe(
+          send(Message.ClickedLinkDevice()),
+          story =>
+            story.resolve(
+              RequestLinkCode,
+              Message.SucceededRequestLinkCode({ code: 'KZ7QWM' }),
+            ),
+          send(Message.CopiedLinkCode()),
+          send(Message.CopiedLinkCode()),
+          checkModel(({ profile }) => {
+            expect(profile.linkCodeCopies).toBe(2)
+          }),
+          send(Message.ClickedLinkDevice()),
+          story =>
+            story.resolve(
+              RequestLinkCode,
+              Message.SucceededRequestLinkCode({ code: 'PQ23RS' }),
+            ),
+          checkModel(({ profile }) => {
+            expect(profile.linkFlow).toEqual(
+              LinkFlow.Showing({ code: 'PQ23RS' }),
+            )
+            expect(profile.linkCodeCopies).toBe(0)
+          }),
+        )
+      }),
   )
 
+  const pasted = (
+    code: string,
+    text: string,
+    typed: string,
+    expected: string,
+  ) =>
+    Effect.gen(function* () {
+      const s = yield* storyOf(profileOpenOn('Account'))
+      s.pipe(
+        entering(code),
+        send(Message.ReadLinkClipboard({ text, typed })),
+        codeIs(expected),
+      )
+    })
+
   it.effect('a tap pastes a code from the clipboard, cleaned', () =>
-    Story.story(
-      PROFILE,
-      Story.init(),
-      entering(''),
-      Story.message(
-        Message.SucceededReadClipboard({ text: ' kz7-qwm\n', typed: '' }),
-      ),
-      codeIs('KZ7QWM'),
-    ),
+    pasted('', ' kz7-qwm\n', '', 'KZ7QWM'),
   )
 
   it.effect('a fresh tap pastes over what the field held', () =>
-    Story.story(
-      PROFILE,
-      Story.init(),
-      entering('ABC'),
-      Story.message(
-        Message.SucceededReadClipboard({ text: 'KZ7 QWM', typed: 'ABC' }),
-      ),
-      codeIs('KZ7QWM'),
-    ),
+    pasted('ABC', 'KZ7 QWM', 'ABC', 'KZ7QWM'),
   )
 
   it.effect(
@@ -338,43 +368,26 @@ describe("the Profile's link code", () => {
     () =>
       Effect.forEach(
         ['hello there', 'KZ7QW', 'KZ7QWMX', 'KZ7QW0', ''],
-        text =>
-          Story.story(
-            PROFILE,
-            Story.init(),
-            entering(''),
-            Story.message(Message.SucceededReadClipboard({ text, typed: '' })),
-            codeIs(''),
-          ),
+        text => pasted('', text, '', ''),
         { discard: true },
       ),
   )
 
   it.effect('never pastes over letters typed since the tap', () =>
-    Story.story(
-      PROFILE,
-      Story.init(),
-      entering(''),
-      Story.message(Message.UpdatedLinkCode({ value: 'ab' })),
-      Story.message(
-        Message.SucceededReadClipboard({ text: 'KZ7QWM', typed: '' }),
-      ),
-      codeIs('AB'),
-    ),
+    pasted('ab', 'KZ7QWM', '', 'AB'),
   )
 
   it.effect('a clipboard read lands nowhere once the field is gone', () =>
-    Story.story(
-      PROFILE,
-      Story.init(),
-      entering(''),
-      Story.message(Message.ClickedCancelLinkButton()),
-      Story.message(
-        Message.SucceededReadClipboard({ text: 'KZ7QWM', typed: '' }),
-      ),
-      Story.model(model => {
-        expect(model.linkFlow).toEqual(LinkFlow.Idle())
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(profileOpenOn('Account'))
+      s.pipe(
+        entering(''),
+        send(Message.ClickedCancelLink()),
+        send(Message.ReadLinkClipboard({ text: 'KZ7QWM', typed: '' })),
+        checkModel(({ profile }) => {
+          expect(profile.linkFlow).toEqual(LinkFlow.Idle())
+        }),
+      )
+    }),
   )
 })

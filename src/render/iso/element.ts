@@ -6,7 +6,8 @@
 // element joins the page.
 
 import { Effect, Option, Schedule, pipe } from 'effect'
-import { CustomElement } from 'foldkit'
+
+import { Html } from '@effect/ui/html'
 
 import { toBrowserError } from '../../shared/describeError'
 import { DIORAMA_FRAME_MS, IsoLens } from './diorama'
@@ -19,10 +20,9 @@ import { unsupportedNode } from './support'
 
 const TAG = 'munch-world'
 
-export const worldElement = CustomElement.define({
+export const worldElement = Html.customElement({
   tag: TAG,
   properties: { frame: IsoFrameSchema },
-  events: {},
 })
 
 const startScene = (host: HTMLElement, onLoaded: () => void) =>
@@ -156,20 +156,14 @@ const worldElementClass = () =>
       })
     }
 
-    // NOTE: the frame drawn again and copied at once, in the same task, since
-    // WebGL clears its canvas once the page shows it: Munch Studio's pixel
-    // loupe and a note's picture (tools/studio/worldStage.ts).
+    // NOTE: the frame drawn again and the world's own canvas handed back,
+    // read at once, in the same task, since WebGL clears its canvas once the
+    // page shows it: Munch Studio's pixel loupe and a note's picture
+    // (tools/studio/worldStage.ts) draw from it straight away.
     snapshot(): HTMLCanvasElement | undefined {
       this.draw()
       const canvas = this.querySelector('canvas.world-canvas')
-      if (!(canvas instanceof HTMLCanvasElement)) {
-        return undefined
-      }
-      const copy = document.createElement('canvas')
-      copy.width = canvas.width
-      copy.height = canvas.height
-      copy.getContext('2d')?.drawImage(canvas, 0, 0)
-      return copy
+      return canvas instanceof HTMLCanvasElement ? canvas : undefined
     }
 
     // NOTE: a plinth's picture drawn with this renderer, so the page keeps
@@ -230,8 +224,9 @@ export const drawPlinthOnWorld = (
     : Option.none()
 }
 
-// NOTE: the world's frame on the page drawn again and copied, for the dev
-// tools that read its pixels; none before the renderer is in.
+// NOTE: the world's frame on the page drawn again, its canvas to be read in
+// the same task, for the dev tools that read its pixels; none before the
+// renderer is in.
 export const snapshotWorld = (): Option.Option<HTMLCanvasElement> => {
   const world = document.querySelector(TAG)
   return isWorldElement(world)

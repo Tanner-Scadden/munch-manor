@@ -62,6 +62,16 @@
   },
   "overrides": [
     {
+      // NOTE: the game is an app on Effect UI's preview, which marks its
+      // whole surface experimental, so every module of the game's own code
+      // hands out its types (the same exception as tsconfig.base.json). The
+      // packages, which are packages, keep the rule.
+      "files": ["src/**", "tools/**"],
+      "rules": {
+        "effecttsgo/api-stability-leak": "off"
+      }
+    },
+    {
       // NOTE: the service worker runs outside the Effect runtime and speaks
       // the Fetch API (the same exception as tsconfig.base.json).
       "files": ["src/platform/sw/worker.ts"],

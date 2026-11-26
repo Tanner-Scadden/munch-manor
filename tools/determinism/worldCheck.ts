@@ -31,10 +31,10 @@ import {
   String,
 } from 'effect'
 import { FetchHttpClient, HttpClientRequest } from 'effect/http'
-import { modifyFields } from 'foldkit/struct'
 
 import * as NodeRuntime from '@effect/platform-node/NodeRuntime'
 import * as NodeServices from '@effect/platform-node/NodeServices'
+import { UiStruct } from '@effect/ui'
 import { PlayerInput } from '@munch/netcode'
 
 import { refreshIntent } from '../../src/app/frame'
@@ -93,7 +93,7 @@ const INFRA_OWN_MODULES: ReadonlyArray<RegExp> = [
 
 const ALLOWED_PACKAGES: ReadonlyArray<RegExp> = [
   /node_modules\/effect\//,
-  /node_modules\/foldkit\/dist\/(struct|schema)\//,
+  /node_modules\/@effect\/ui\//,
 ]
 
 const relativeOf =
@@ -133,7 +133,7 @@ const bundle = Effect.gen(function* () {
   )
 })
 
-// NOTE: a package other than Effect and Foldkit's pure modules, any of the
+// NOTE: a package other than Effect and Effect UI's pure modules, any of the
 // netcode package's runtime code, or a game module outside the room's
 // folders.
 const problemsOf = (inputs: ReadonlyArray<string>): ReadonlyArray<string> =>
@@ -313,7 +313,7 @@ const requestFor = (players: number) =>
   Effect.map(
     worldToJson(
       modifySeat(seatCrew(intended, players), KNIFE_SEAT, {
-        player: player => modifyFields(player, { wield: () => 'Melee' }),
+        player: player => UiStruct.evolve(player, { wield: () => 'Melee' }),
       }),
     ),
     (world): PlayRequest => ({

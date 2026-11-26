@@ -1,9 +1,10 @@
-// The art studio's Block contract: its Model, Messages, and the flags it
-// starts from. The update is ./update.ts, the Commands and Subscriptions
+// The art studio's component as defined: its Model, Messages, and the flags
+// it starts from. The update is ./update.ts, the Commands and Subscriptions
 // ./commands.ts, the view ./view.ts.
 import { Array, Function, Option, Schema } from 'effect'
-import { Block } from 'foldkit'
-import { defineMessageUnion } from 'foldkit/message'
+
+import { UiSchema, type View } from '@effect/ui'
+import { Html } from '@effect/ui/html'
 
 import { FacingChoice, Tab, Tone } from './catalog'
 import { LabEdits } from './lab'
@@ -115,7 +116,7 @@ export const DEFAULT_VIEW: SavedView = {
 
 // MESSAGE
 
-export const Message = defineMessageUnion({
+export const Message = UiSchema.TaggedEnum({
   ClickedTab: { tab: Tab },
   ClickedZoom: { zoom: Schema.Finite },
   ClickedBackdrop: { backdrop: Backdrop },
@@ -156,26 +157,25 @@ export const Message = defineMessageUnion({
   ChangedLab: { id: Schema.String, text: Schema.String },
   ClickedLabReset: {},
   ClickedPropose: {},
-  CompletedSaveView: {},
-  CompletedSaveSeen: {},
 })
 export type Message = typeof Message.Type
 
-// BLOCK
+// COMPONENT
 
-const StudioKey = Symbol('Studio')
-export const StudioBlock = Block.make('Studio', {
-  key: StudioKey,
-  InitArgs: Schema.Tuple([Flags]),
-  view: { kind: 'Document' },
-  Model,
-  Message,
+// NOTE: the studio as defined. Its update is ./update.ts, its Commands and
+// Subscriptions ./commands.ts, its view ./view.ts, and ./entry.ts makes and
+// mounts it.
+export const StudioDef = Html.component({
+  name: 'Studio',
+  props: Schema.Struct({ flags: Flags }),
+  model: Model,
+  message: Message,
+  restore: false,
 })
 
-export const { makeFieldsStep, makeNoopStep } = StudioBlock
-
-export const StudioComposition = StudioBlock.makeComposition()
-export type StudioViewBuilder = Block.ViewBuilderFor<typeof StudioComposition>
+// NOTE: the view vocabulary every studio view is written against.
+export type StudioH = Html.H<Message>
+export type StudioHtml = View.Content<Message>
 
 // NOTE: a picked thing's done notes the person has not looked at since.
 export const freshDoneOf: {

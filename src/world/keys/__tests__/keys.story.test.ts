@@ -1,10 +1,10 @@
 import { Array, Effect, Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
 import {
+  BreakClock,
   GameEvent,
   type Model,
   Pantry,
@@ -22,13 +22,15 @@ import {
   withKeys,
 } from '../../../test/model.fixture'
 import {
-  APPLICATION,
   BELOW_KITCHEN_DOOR,
   HOLD_TICKS,
   bulletInto,
+  checkModel,
   holdToBuy,
   isKitchenOpen,
+  modelAfter,
   press,
+  steps,
   tick,
   ticks,
   zombieOf,
@@ -52,7 +54,7 @@ const shotDown = (
   victims: ReadonlyArray<Zombie>,
   base: Model = atFridge(0),
 ): Model =>
-  modifyFields(base, {
+  UiStruct.evolve(base, {
     phase: () => Phase.Wave({ wave: 5, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
     zombies: () => victims,
     bullets: () =>
@@ -65,9 +67,7 @@ const oneDown = (kind: Zombie['kind']): Zombie =>
   zombieOf(kind, 100, 60, 85, { hp: 1 })
 
 const keysAfterFrame = (start: Model) =>
-  Story.story(APPLICATION, Story.given(start), tick(FRAME_MS)).pipe(
-    Effect.map(({ keys }) => keys),
-  )
+  modelAfter(start, tick(FRAME_MS)).pipe(Effect.map(({ keys }) => keys))
 
 describe('key drops by kind', () => {
   it.effect('a Big Lug drops two keys, a Kaboomer one', () =>
@@ -81,34 +81,34 @@ describe('key drops by kind', () => {
   )
 
   it.effect('a Groaner drops one only sometimes, with a key popup', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        shotDown(
-          Array.makeBy(12, index =>
-            zombieOf('Shambler', 100 + index, 40 + index * 10, 85, { hp: 1 }),
-          ),
+    modelAfter(
+      shotDown(
+        Array.makeBy(12, index =>
+          zombieOf('Shambler', 100 + index, 40 + index * 10, 85, { hp: 1 }),
         ),
       ),
-      tick(FRAME_MS),
-      Story.model(current => {
-        expect(current.keys.held).toBeGreaterThan(0)
-        expect(current.keys.held).toBeLessThan(12)
-        expect(
-          Array.filter(current.frameEvents, GameEvent.isAnyOf(['KeysFound']))
-            .length,
-        ).toBe(current.keys.held)
-        expect(
-          Array.some(current.cosmetics.popups, ({ kind }) => kind === 'Kill'),
-        ).toBe(true)
-      }),
+      steps(
+        tick(FRAME_MS),
+        checkModel(current => {
+          expect(current.keys.held).toBeGreaterThan(0)
+          expect(current.keys.held).toBeLessThan(12)
+          expect(
+            Array.filter(current.frameEvents, GameEvent.isAnyOf(['KeysFound']))
+              .length,
+          ).toBe(current.keys.held)
+          expect(
+            Array.some(current.cosmetics.popups, ({ kind }) => kind === 'Kill'),
+          ).toBe(true)
+        }),
+      ),
     ),
   )
 
   it.effect('Broke drops half: a Big Lug gives one', () =>
     Effect.gen(function* () {
-      const broke = modifyFields(atFridge(0), {
-        modifiers: modifiers => modifyFields(modifiers, { broke: () => true }),
+      const broke = UiStruct.evolve(atFridge(0), {
+        modifiers: modifiers =>
+          UiStruct.evolve(modifiers, { broke: () => true }),
       })
       const keys = yield* keysAfterFrame(shotDown([oneDown('Tank')], broke))
       expect(keys.held).toBe(1)
@@ -119,7 +119,7 @@ describe('key drops by kind', () => {
     Effect.gen(function* () {
       const penny = modifyFocus(atFridge(0), {
         player: player =>
-          modifyFields(player, { calling: () => 'PennyPincher' as const }),
+          UiStruct.evolve(player, { calling: () => 'PennyPincher' as const }),
       })
       const keys = yield* keysAfterFrame(shotDown([oneDown('Tank')], penny))
       expect(keys.held).toBe(3)
@@ -130,25 +130,26 @@ describe('key drops by kind', () => {
 describe('the crew shares one ring', () => {
   it.effect('a kill by seat 1 adds to the ring and to its own count', () => {
     const victim = oneDown('Tank')
-    const crew = modifyFields(crewInWave(2), {
+    const crew = UiStruct.evolve(crewInWave(2), {
       zombies: () => [victim],
       bullets: () => [
         { ...bulletInto(500, victim, { knockback: 0 }), shooter: 1 },
       ],
     })
-    return Story.story(
-      APPLICATION,
-      Story.given(crew),
-      tick(FRAME_MS),
-      Story.model(current => {
-        expect(current.keys.held).toBe(2)
-        expect(
-          Option.map(maybePlayerAt(current, 1), ({ seat }) => seat.keysFound),
-        ).toEqual(Option.some(2))
-        expect(
-          Option.map(maybePlayerAt(current, 0), ({ seat }) => seat.keysFound),
-        ).toEqual(Option.some(0))
-      }),
+    return modelAfter(
+      crew,
+      steps(
+        tick(FRAME_MS),
+        checkModel(current => {
+          expect(current.keys.held).toBe(2)
+          expect(
+            Option.map(maybePlayerAt(current, 1), ({ seat }) => seat.keysFound),
+          ).toEqual(Option.some(2))
+          expect(
+            Option.map(maybePlayerAt(current, 0), ({ seat }) => seat.keysFound),
+          ).toEqual(Option.some(0))
+        }),
+      ),
     )
   })
 })
@@ -156,9 +157,10 @@ describe('the crew shares one ring', () => {
 describe('spending keys', () => {
   const atBoards = (keys: number): Model =>
     modifyFocus(
-      modifyFields(withKeys(pastTimedBreaks(freshRunModel()), keys), {
+      UiStruct.evolve(withKeys(pastTimedBreaks(freshRunModel()), keys), {
         phase: () =>
           Phase.Preparation({
+            clock: BreakClock.Counting(),
             wave: 3,
             remainingMs: 15_000,
             durationMs: 20_000,
@@ -167,7 +169,7 @@ describe('spending keys', () => {
       }),
       {
         player: player =>
-          modifyFields(player, {
+          UiStruct.evolve(player, {
             x: () => BELOW_KITCHEN_DOOR.x,
             y: () => BELOW_KITCHEN_DOOR.y,
           }),
@@ -179,41 +181,44 @@ describe('spending keys', () => {
     () =>
       Effect.gen(function* () {
         expect(exitKeysOf(MANOR, KITCHEN_EXIT)).toBe(EXIT_RULES.kitchenKeys)
-        yield* Story.story(
-          APPLICATION,
-          Story.given(atBoards(EXIT_RULES.kitchenKeys - 1)),
-          press('Enter'),
-          ...ticks(HOLD_TICKS, FRAME_MS),
-          Story.model(current => {
-            expect(isKitchenOpen(current)).toBe(false)
-            expect(current.keys.held).toBe(EXIT_RULES.kitchenKeys - 1)
-          }),
+        yield* modelAfter(
+          atBoards(EXIT_RULES.kitchenKeys - 1),
+          steps(
+            press('Enter'),
+            ticks(HOLD_TICKS, FRAME_MS),
+            checkModel(current => {
+              expect(isKitchenOpen(current)).toBe(false)
+              expect(current.keys.held).toBe(EXIT_RULES.kitchenKeys - 1)
+            }),
+          ),
         )
-        yield* Story.story(
-          APPLICATION,
-          Story.given(atBoards(EXIT_RULES.kitchenKeys)),
-          press('Enter'),
-          ...ticks(HOLD_TICKS, FRAME_MS),
-          Story.model(current => {
-            expect(isKitchenOpen(current)).toBe(true)
-            expect(current.keys.held).toBe(0)
-            expect(current.keys.spent).toBe(EXIT_RULES.kitchenKeys)
-          }),
+        yield* modelAfter(
+          atBoards(EXIT_RULES.kitchenKeys),
+          steps(
+            press('Enter'),
+            ticks(HOLD_TICKS, FRAME_MS),
+            checkModel(current => {
+              expect(isKitchenOpen(current)).toBe(true)
+              expect(current.keys.held).toBe(0)
+              expect(current.keys.spent).toBe(EXIT_RULES.kitchenKeys)
+            }),
+          ),
         )
       }),
   )
 
   it.effect('a fridge pull costs two, and the Dud gives one back', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(fridgeSeededFor(atFridge(2), 'Dud')),
-      holdToBuy,
-      Story.model(current => {
-        expect(current.keys.held).toBe(
-          2 - FRIDGE_RULES.keys + FRIDGE_RULES.dudRefund,
-        )
-        expect(current.keys.spent).toBe(FRIDGE_RULES.keys)
-      }),
+    modelAfter(
+      fridgeSeededFor(atFridge(2), 'Dud'),
+      steps(
+        holdToBuy,
+        checkModel(current => {
+          expect(current.keys.held).toBe(
+            2 - FRIDGE_RULES.keys + FRIDGE_RULES.dudRefund,
+          )
+          expect(current.keys.spent).toBe(FRIDGE_RULES.keys)
+        }),
+      ),
     ),
   )
 })
@@ -222,22 +227,23 @@ describe('the pantry', () => {
   it.effect('its key goodie goes onto the ring', () => {
     const spot = Option.getOrThrow(pantrySpotOf(levelOf(atFridge(0))))
     const stocked = modifyFocus(
-      modifyFields(atFridge(0), {
+      UiStruct.evolve(atFridge(0), {
         pantry: () => Pantry.Stocked({ round: 5, goodie: 'Key' }),
       }),
       {
         player: player =>
-          modifyFields(player, { x: () => spot.x, y: () => spot.y }),
+          UiStruct.evolve(player, { x: () => spot.x, y: () => spot.y }),
       },
     )
-    return Story.story(
-      APPLICATION,
-      Story.given(stocked),
-      tick(FRAME_MS),
-      Story.model(current => {
-        expect(current.keys.held).toBe(PANTRY_RULES.keys)
-        expect(current.pantry).toEqual(Pantry.Bare({ round: 5 }))
-      }),
+    return modelAfter(
+      stocked,
+      steps(
+        tick(FRAME_MS),
+        checkModel(current => {
+          expect(current.keys.held).toBe(PANTRY_RULES.keys)
+          expect(current.pantry).toEqual(Pantry.Bare({ round: 5 }))
+        }),
+      ),
     )
   })
 })

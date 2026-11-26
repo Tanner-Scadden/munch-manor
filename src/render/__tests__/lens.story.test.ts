@@ -1,7 +1,6 @@
 import { Array, Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
 import { Message } from '../../app/message'
@@ -9,9 +8,12 @@ import { STICK_RADIUS_PX } from '../../shared/constants'
 import { nearly } from '../../test/lensTesting'
 import { playingModel } from '../../test/model.fixture'
 import {
-  APPLICATION,
   FRAME_MS,
   WIDE_SURFACE,
+  checkModel,
+  modelAfter,
+  send,
+  steps,
   ticks,
   touchDown,
   touchMove,
@@ -152,45 +154,47 @@ describe('the lens', () => {
 })
 
 // NOTE: a run under way on a window four times the game's size.
-const fighting = modifyFields(playingModel, {
+const fighting = UiStruct.evolve(playingModel, {
   maybeSurface: () => Option.some(WIDE_SURFACE),
 })
 
 describe('input through the lens', () => {
   it.effect('W walks the player straight up the screen', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(fighting),
-      Story.message(Message.PressedKey({ code: 'KeyW' })),
-      ...ticks(10, FRAME_MS),
-      Story.model(current => {
-        const camera = cameraOf(current)
-        const before = worldToView(camera, focusOf(fighting).player)
-        const after = worldToView(camera, focusOf(current).player)
-        expect(after.y).toBeLessThan(before.y - 5)
-        // NOTE: up is the lens's up at the view's middle; off the middle the
-        // floor's lines run a hair toward the far vanishing point.
-        expect(Math.abs(after.x - before.x)).toBeLessThan(0.25)
-      }),
+    modelAfter(
+      fighting,
+      steps(
+        send(Message.PressedKey({ code: 'KeyW' })),
+        ticks(10, FRAME_MS),
+        checkModel(current => {
+          const camera = cameraOf(current)
+          const before = worldToView(camera, focusOf(fighting).player)
+          const after = worldToView(camera, focusOf(current).player)
+          expect(after.y).toBeLessThan(before.y - 5)
+          // NOTE: up is the lens's up at the view's middle; off the middle the
+          // floor's lines run a hair toward the far vanishing point.
+          expect(Math.abs(after.x - before.x)).toBeLessThan(0.25)
+        }),
+      ),
     ),
   )
 
   it.effect(
     'the move stick pushed right walks straight right on the screen',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(fighting),
-        touchDown(11, 100, 300),
-        touchMove(11, 100 + STICK_RADIUS_PX, 300),
-        ...ticks(10, FRAME_MS),
-        Story.model(current => {
-          const camera = cameraOf(current)
-          const before = worldToView(camera, focusOf(fighting).player)
-          const after = worldToView(camera, focusOf(current).player)
-          expect(after.x).toBeGreaterThan(before.x + 5)
-          expect(Math.abs(after.y - before.y)).toBeLessThan(0.01)
-        }),
+      modelAfter(
+        fighting,
+        steps(
+          touchDown(11, 100, 300),
+          touchMove(11, 100 + STICK_RADIUS_PX, 300),
+          ticks(10, FRAME_MS),
+          checkModel(current => {
+            const camera = cameraOf(current)
+            const before = worldToView(camera, focusOf(fighting).player)
+            const after = worldToView(camera, focusOf(current).player)
+            expect(after.x).toBeGreaterThan(before.x + 5)
+            expect(Math.abs(after.y - before.y)).toBeLessThan(0.01)
+          }),
+        ),
       ),
   )
 
@@ -198,17 +202,18 @@ describe('input through the lens', () => {
     const player = focusOf(fighting).player
     const target = { x: player.x + 30, y: player.y - 40 }
     const cursor = worldToView(cameraOf(fighting), target)
-    return Story.story(
-      APPLICATION,
-      Story.given(fighting),
-      Story.message(
-        Message.MovedMouse({ clientX: cursor.x * 4, clientY: cursor.y * 4 }),
+    return modelAfter(
+      fighting,
+      steps(
+        send(
+          Message.MovedMouse({ clientX: cursor.x * 4, clientY: cursor.y * 4 }),
+        ),
+        checkModel(current => {
+          expect(
+            nearly(Option.getOrThrow(focusOf(current).intent.maybeAim)),
+          ).toEqual(nearly({ x: 30 / 50, y: -40 / 50 }))
+        }),
       ),
-      Story.model(current => {
-        expect(
-          nearly(Option.getOrThrow(focusOf(current).intent.maybeAim)),
-        ).toEqual(nearly({ x: 30 / 50, y: -40 / 50 }))
-      }),
     )
   })
 })

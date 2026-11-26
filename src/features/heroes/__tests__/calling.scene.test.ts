@@ -1,65 +1,157 @@
-import { Scene } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
+import { Effect } from 'effect'
 
-import { describe, it } from '@effect/vitest'
+import { UiStruct } from '@effect/ui'
+import { Dialog } from '@effect/ui-kit'
+import { HtmlLocator, HtmlScene } from '@effect/ui/html/testing'
+import { Locator } from '@effect/ui/testing'
+import { describe, expect, it } from '@effect/vitest'
 
+import { defaultAppearance } from '../../../domain/clientSchema'
 import type { Calling } from '../../../shared/playerData'
 import { heroesBoughtBy, home } from '../../../test/model.fixture'
+import { button, byClass, firstOf, withAttrs } from '../../../test/sceneTesting'
 import {
-  APPLICATION,
-  closeDialogInScene,
-  emitPressedKey,
-  measureSurface,
-  openLobbyInScene,
-  showDialogInScene,
+  modelAfter,
+  openLobbyByKey,
+  send,
+  steps,
+  tapLobbyHero,
 } from '../../../test/testing'
 import { pointsForRank } from '../../../world/heroes/rank'
+import { noModifiers } from '../../../world/run/modifiers'
+import { Lobby } from '../../lobby/block'
+import { HERO_DIALOG_ID } from '../../lobby/lobby'
+import { Events as LobbyEvents, LobbyMessage } from '../../lobby/message'
+import {
+  type LobbyProps,
+  initialLobby,
+  isHeroPickerUp,
+  openedLobby,
+} from '../../lobby/model'
+import { HeroPicker, type HeroPickerProps } from '../block'
+import { startingCallingOf } from '../callingPick'
+import { Events } from '../message'
 
-// The lobby's hero card and the picker it opens (src/features/lobby/lobbyView.ts,
-// src/features/heroes/callingView.ts).
-
-const callingPill = (name: string | RegExp) => Scene.role('button', { name })
+// The lobby's hero card and the picker it opens (src/features/lobby/view.ts,
+// src/features/heroes/callingCards.ts). The lobby and the picker are each a
+// child component, drawn here on their own from the props the root hands
+// them; the root's side of a pick is its LobbyMessages, and Y opening the
+// picker is in calling.story.test.ts.
 
 const atRank = (rank: number, calling: Calling) =>
-  modifyFields(home, {
+  UiStruct.evolve(home, {
     rank: current => ({ ...current, earnedPoints: pointsForRank(rank) }),
     boughtCosmetics: () => heroesBoughtBy(rank),
     calling: () => calling,
   })
 
+// NOTE: the lobby as the root draws it for a player of this rank wearing
+// this hero, with the hero picker open or not.
+const lobbyAt = (
+  rank: number,
+  calling: Calling,
+  isHeroPickerOpen: boolean,
+): LobbyProps => ({
+  lobby: UiStruct.evolve(openedLobby(initialLobby), {
+    isHeroPickerOpen: () => isHeroPickerOpen,
+  }),
+  picks: {
+    mode: 'Campaign',
+    difficulty: { chosen: 'Normal', nightmare: 'Locked' },
+    modifiers: noModifiers,
+    easyBreakSeconds: 0,
+    dareMark: 0,
+    bestMark: 0,
+    bots: [],
+    botSeats: 3,
+    lock: 'Open',
+  },
+  name: 'Pal',
+  look: defaultAppearance,
+  rank,
+  calling,
+  isHeroNew: false,
+  bought: heroesBoughtBy(rank),
+  bones: 0,
+  fresh: [],
+  isKeyboard: true,
+})
+
+// NOTE: the picker as the lobby draws it: a player of this rank with these
+// Bones and heroes bought, and a hero tried on or none.
+const pickerAt = (
+  rank: number,
+  bones: number,
+  bought: ReadonlyArray<string>,
+  trying: Calling | null,
+): HeroPickerProps => ({
+  look: defaultAppearance,
+  chosen: 'You',
+  trying,
+  rank,
+  bought,
+  bones,
+  fresh: [],
+  layout: 'Panel',
+})
+
+// NOTE: ui-kit's Dialog draws its panel once its own Model says it is
+// shown, which its Mount sets on the page and a Scene never runs.
+const SHOWN_DIALOG = {
+  mounted: true,
+  started: true,
+  nestedOpen: 0,
+  trigger: null,
+  reason: null,
+  openMethod: null,
+  closeMethod: null,
+}
+
+const card = (calling: Calling) =>
+  withAttrs({ 'data-calling': calling })(byClass('calling-card'))
+
+// NOTE: a card's first perk or drawback line.
+const lineOf = (calling: Calling, sign: 'Perk' | 'Drawback') =>
+  firstOf(
+    Locator.inside(
+      Locator.inside(
+        card(calling),
+        withAttrs({ 'data-sign': sign })(byClass('calling-special')),
+      ),
+      byClass('calling-special-line'),
+    ),
+  )
+
+const handymanPill = button(/^Hero: Handyman\./)
+
+const lockedTrackStar = HtmlLocator.role('button', {
+  name: /^Track Star, locked\. Reach rank 6 to unlock/,
+})
+
+const shortBuy = HtmlLocator.role('button', {
+  name: 'Buy for 60 Bones, too few',
+})
+
+// NOTE: an attribute of what a child's Scene draws (`expectAttr` steps the
+// root's Scene).
+const attrOf = (node: Locator.Node, name: string): string | undefined =>
+  node.attrs?.[name]
+
 describe('the hero card', () => {
   it.effect(
     'shows the calling picked, with its key, and opens the picker',
     () =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(atRank(3, 'Handyman')),
-        measureSurface,
-        ...openLobbyInScene(),
-        Scene.expect(callingPill(/^Hero: Handyman\./)).toHaveAttr(
-          'aria-keyshortcuts',
-          'Y',
-        ),
-        Scene.expect(callingPill(/^Hero: Handyman\./)).toHaveAttr(
-          'aria-haspopup',
-          'dialog',
-        ),
-        Scene.click(callingPill(/^Hero: Handyman\./)),
-        ...showDialogInScene(),
-        Scene.expect(Scene.role('dialog', { name: 'Hero' })).toExist(),
-      ),
-  )
-
-  it.effect('Y opens the picker on a keyboard', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(atRank(1, 'You')),
-      measureSurface,
-      ...openLobbyInScene(),
-      emitPressedKey('KeyY'),
-      ...showDialogInScene(),
-      Scene.expect(Scene.role('dialog', { name: 'Hero' })).toExist(),
-    ),
+      Effect.gen(function* () {
+        const s = yield* HtmlScene.make(Lobby, lobbyAt(3, 'Handyman', false))
+        expect(attrOf(s.get(handymanPill), 'aria-keyshortcuts')).toBe('Y')
+        expect(attrOf(s.get(handymanPill), 'aria-haspopup')).toBe('dialog')
+        s.click(handymanPill).emitted(LobbyEvents.RequestedHeroPicker())
+        const open = yield* HtmlScene.make(Lobby, lobbyAt(3, 'Handyman', true))
+        open
+          .givenChild(Dialog, HERO_DIALOG_ID, SHOWN_DIALOG)
+          .expect(HtmlLocator.role('dialog', { name: 'Hero' }))
+          .toExist()
+      }),
   )
 })
 
@@ -67,158 +159,149 @@ describe('the picker', () => {
   it.effect(
     'deals five cards: the unlocked ones to pick and the locked ones dark with their rank',
     () =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(atRank(3, 'You')),
-        measureSurface,
-        ...openLobbyInScene(),
-        Scene.click(callingPill(/^Hero: YOU\./)),
-        ...showDialogInScene(),
-        Scene.expect(
-          Scene.selector(".calling-card[data-lock='Owned']"),
-        ).toExist(),
-        Scene.expect(
-          Scene.role('button', {
-            name: /^Handyman\. Plus: Traps 50% sturdier/,
-          }),
-        ).toExist(),
-        Scene.expect(
-          Scene.role('button', {
-            name: /^Track Star, locked\. Reach rank 6 to unlock/,
-          }),
-        ).toHaveAttr('aria-disabled', 'true'),
-        Scene.expect(
-          Scene.role('button', {
-            name: /^Line Cook, locked\. Reach rank 15 to unlock/,
-          }),
-        ).toExist(),
-        Scene.expect(Scene.selector('.calling-need .rank-chip')).toExist(),
-      ),
+      Effect.gen(function* () {
+        const s = yield* HtmlScene.make(
+          HeroPicker,
+          pickerAt(3, 0, heroesBoughtBy(3), null),
+        )
+        s.expect(withAttrs({ 'data-lock': 'Owned' })(byClass('calling-card')))
+          .toExist()
+          .expect(
+            HtmlLocator.role('button', {
+              name: /^Handyman\. Plus: Traps 50% sturdier/,
+            }),
+          )
+          .toExist()
+          .expect(
+            HtmlLocator.role('button', {
+              name: /^Line Cook, locked\. Reach rank 15 to unlock/,
+            }),
+          )
+          .toExist()
+          .expect(Locator.inside(byClass('calling-need'), byClass('rank-chip')))
+          .toExist()
+        expect(attrOf(s.get(lockedTrackStar), 'aria-disabled')).toBe('true')
+      }),
   )
 
   it.effect(
     'each card reads its specials, perks and drawbacks, locked or not',
     () =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(atRank(3, 'You')),
-        measureSurface,
-        ...openLobbyInScene(),
-        Scene.click(callingPill(/^Hero: YOU\./)),
-        ...showDialogInScene(),
-        Scene.expect(
-          Scene.selector(
-            ".calling-card[data-calling='Handyman'] [data-sign='Perk'] .calling-special-line",
-          ),
-        ).toHaveText('Traps 50% sturdier'),
-        Scene.expect(
-          Scene.selector(
-            ".calling-card[data-calling='Handyman'] [data-sign='Drawback'] .calling-special-line",
-          ),
-        ).toHaveText('4 max hearts'),
-        Scene.expect(
-          Scene.selector(
-            ".calling-card[data-calling='TrackStar'][data-lock='Locked'] [data-sign='Drawback'] .calling-special-line",
-          ),
-        ).toHaveText('Mags 5% smaller'),
-      ),
+      Effect.gen(function* () {
+        const s = yield* HtmlScene.make(
+          HeroPicker,
+          pickerAt(3, 0, heroesBoughtBy(3), null),
+        )
+        s.expect(lineOf('Handyman', 'Perk'))
+          .toHaveText('Traps 50% sturdier')
+          .expect(lineOf('Handyman', 'Drawback'))
+          .toHaveText('4 max hearts')
+          .expect(
+            Locator.inside(
+              withAttrs({ 'data-lock': 'Locked' })(card('TrackStar')),
+              Locator.inside(
+                withAttrs({ 'data-sign': 'Drawback' })(
+                  byClass('calling-special'),
+                ),
+                byClass('calling-special-line'),
+              ),
+            ),
+          )
+          .toHaveText('Mags 5% smaller')
+      }),
   )
 
   it.effect(
     'picking an unlocked calling closes the picker and changes the card',
     () =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(atRank(3, 'You')),
-        measureSurface,
-        ...openLobbyInScene(),
-        Scene.click(callingPill(/^Hero: YOU\./)),
-        ...showDialogInScene(),
-        Scene.click(Scene.role('button', { name: /^Handyman\./ })),
-        ...closeDialogInScene(),
-        Scene.expect(callingPill(/^Hero: Handyman\./)).toExist(),
-      ),
+      Effect.gen(function* () {
+        const s = yield* HtmlScene.make(
+          HeroPicker,
+          pickerAt(3, 0, heroesBoughtBy(3), null),
+        )
+        s.click(HtmlLocator.role('button', { name: /^Handyman\./ })).emitted(
+          Events.Picked({ calling: 'Handyman' }),
+        )
+        const picked = yield* modelAfter(
+          atRank(3, 'You'),
+          steps(
+            openLobbyByKey,
+            send(LobbyMessage.RequestedLobbyHeroPicker()),
+            tapLobbyHero('Handyman'),
+          ),
+        )
+        expect(isHeroPickerUp(picked.lobby)).toBe(false)
+        expect(startingCallingOf(picked)).toBe('Handyman')
+        const lobby = yield* HtmlScene.make(
+          Lobby,
+          lobbyAt(3, startingCallingOf(picked), false),
+        )
+        lobby.expect(handymanPill).toExist()
+      }),
   )
 
   it.effect('a locked card is disabled, so a tap on it picks nothing', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(atRank(3, 'You')),
-      measureSurface,
-      ...openLobbyInScene(),
-      Scene.click(callingPill(/^Hero: YOU\./)),
-      ...showDialogInScene(),
-      Scene.expect(
-        Scene.role('button', {
-          name: /^Track Star, locked\. Reach rank 6 to unlock/,
-        }),
-      ).toHaveAttr('aria-disabled', 'true'),
-      Scene.expect(callingPill(/^Hero: YOU\./)).toExist(),
-    ),
+    Effect.gen(function* () {
+      const s = yield* HtmlScene.make(
+        HeroPicker,
+        pickerAt(3, 0, heroesBoughtBy(3), null),
+      )
+      expect(attrOf(s.get(lockedTrackStar), 'aria-disabled')).toBe('true')
+      const tried = yield* modelAfter(
+        atRank(3, 'You'),
+        steps(
+          openLobbyByKey,
+          send(LobbyMessage.RequestedLobbyHeroPicker()),
+          tapLobbyHero('TrackStar'),
+        ),
+      )
+      expect(startingCallingOf(tried)).toBe('You')
+    }),
   )
 })
 
 describe('a hero for sale', () => {
-  const shopper = (bones: number) =>
-    modifyFields(atRank(6, 'You'), {
-      boughtCosmetics: () => [],
-      rank: current => ({ ...current, earnedBones: bones }),
-    })
-
   it.effect(
     'shows its price, and a tap tries it on with a BUY pill that buys',
     () =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(shopper(100)),
-        measureSurface,
-        ...openLobbyInScene(),
-        Scene.click(callingPill(/^Hero: YOU\./)),
-        ...showDialogInScene(),
-        Scene.expect(
-          Scene.selector(
-            ".calling-card[data-calling='Handyman'][data-lock='ForSale']",
-          ),
-        ).toExist(),
-        Scene.expect(
-          Scene.selector(
-            ".calling-card[data-calling='Handyman'] .calling-price",
-          ),
-        ).toExist(),
-        Scene.expect(
-          Scene.selector(
-            ".calling-card[data-calling='LineCook'][data-lock='Locked']",
-          ),
-        ).toExist(),
-        Scene.expect(Scene.selector('.calling-balance')).toHaveText('100'),
-        Scene.expect(Scene.selector('.calling-buy')).toBeAbsent(),
-        Scene.click(
-          Scene.role('button', { name: /^Handyman, for sale, 60 Bones/ }),
-        ),
-        Scene.expect(
-          Scene.selector(".calling-card[data-trying='true']"),
-        ).toExist(),
-        Scene.expect(
-          Scene.role('button', { name: 'Buy for 60 Bones' }),
-        ).toExist(),
-        Scene.click(Scene.role('button', { name: 'Buy for 60 Bones' })),
-        ...closeDialogInScene(),
-        Scene.expect(callingPill(/^Hero: Handyman\./)).toExist(),
-      ),
+      Effect.gen(function* () {
+        const s = yield* HtmlScene.make(HeroPicker, pickerAt(6, 100, [], null))
+        s.expect(withAttrs({ 'data-lock': 'ForSale' })(card('Handyman')))
+          .toExist()
+          .expect(Locator.inside(card('Handyman'), byClass('calling-price')))
+          .toExist()
+          .expect(withAttrs({ 'data-lock': 'Locked' })(card('LineCook')))
+          .toExist()
+          .expect(byClass('calling-balance'))
+          .toHaveText(/100/)
+          .expect(byClass('calling-buy'))
+          .toBeAbsent()
+          .click(
+            HtmlLocator.role('button', {
+              name: /^Handyman, for sale, 60 Bones/,
+            }),
+          )
+          .emitted(Events.Picked({ calling: 'Handyman' }))
+        const trying = yield* HtmlScene.make(
+          HeroPicker,
+          pickerAt(6, 100, [], 'Handyman'),
+        )
+        trying
+          .expect(withAttrs({ 'data-trying': 'true' })(byClass('calling-card')))
+          .toExist()
+          .click(HtmlLocator.role('button', { name: 'Buy for 60 Bones' }))
+          .emitted(Events.RequestedBuy({ calling: 'Handyman' }))
+      }),
   )
 
   it.effect('with too few Bones the BUY pill is disabled and red', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(shopper(10)),
-      measureSurface,
-      ...openLobbyInScene(),
-      Scene.click(callingPill(/^Hero: YOU\./)),
-      ...showDialogInScene(),
-      Scene.click(Scene.role('button', { name: /^Handyman, for sale/ })),
-      Scene.expect(
-        Scene.role('button', { name: 'Buy for 60 Bones, too few' }),
-      ).toHaveAttr('disabled', 'true'),
-    ),
+    Effect.gen(function* () {
+      const s = yield* HtmlScene.make(
+        HeroPicker,
+        pickerAt(6, 10, [], 'Handyman'),
+      )
+      expect(attrOf(s.get(shortBuy), 'data-short')).toBe('true')
+      s.expect(shortBuy).toBeDisabled()
+    }),
   )
 })

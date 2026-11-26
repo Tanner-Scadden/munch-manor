@@ -1,38 +1,31 @@
 import { Layer } from 'effect'
 
-import { Dialog } from '@foldkit/ui'
+import { Component, Head } from '@effect/ui'
 
-import { CoopLayer } from '../features/coop'
-import { LobbyLayer } from '../features/lobby/layer'
-import { MunchopediaLayer } from '../features/munchopedia/layer'
-import { ProfileLayer } from '../features/profile/layer'
-import { ProofShelfLayer } from '../features/proof/layer'
-import { ApplicationBlock } from './definition'
-import { EffectsLayer } from './layer'
+import { GAME_TITLE } from '../shared/constants'
+import { ApplicationDef } from './definition'
+import { CommandsLayer } from './layer'
 import { init, update } from './main'
+import { ApplicationLayer } from './services'
 import { subscriptions } from './subscriptions'
-import { managedResources } from './update/sound'
 import { view } from './view'
 
-// NOTE: every child's implementation Layer: the dialogs, the
-// Munchopedia, the Proof Shelf, the Profile, the lobby, and co-op. The audit
-// harness (tools/audit/harness/entry.ts) completes the root with them too.
-export const ChildLayers = Layer.mergeAll(
-  Dialog.layer,
-  MunchopediaLayer,
-  ProofShelfLayer,
-  ProfileLayer,
-  LobbyLayer,
-  CoopLayer,
-)
-
-// NOTE: the root's implementation Layer, with every child's. The Program
-// and the tests take it with the Block, `{ block: ApplicationBlock, layer }`.
-export const layer = ApplicationBlock.makeLayer({
+// NOTE: the root component as defined, requiring its Command services. The
+// tests and the audit harness provide their own Layers to it.
+// NOTE: a component is a function Effect UI makes, with no data-last form
+// to give it.
+// @effect-diagnostics-next-line missingPipeableSignature:off
+export const ApplicationNoDeps = ApplicationDef.make({
   init,
   update,
-  view,
   subscriptions,
-  managedResources,
-  EffectsLayer,
-}).pipe(Layer.provide(ChildLayers))
+  view,
+  head: () => [Head.title(GAME_TITLE)],
+})
+
+// NOTE: the root the page mounts, with every Command's service and the
+// services they capture (the store, co-op's network, the install prompt).
+// @effect-diagnostics-next-line missingPipeableSignature:off
+export const Application = ApplicationNoDeps.pipe(
+  Component.provide(Layer.provideMerge(CommandsLayer, ApplicationLayer)),
+)

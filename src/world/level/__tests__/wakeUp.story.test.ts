@@ -1,10 +1,14 @@
 import { Array, Effect } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { type Model, Phase, type PlannedSpawn } from '../../../app/model'
+import {
+  BreakClock,
+  type Model,
+  Phase,
+  type PlannedSpawn,
+} from '../../../app/model'
 import { FIXED_STEP_MS, PACK_WARNING_MS } from '../../../shared/constants'
 import {
   DISTANT_SPAWN,
@@ -15,11 +19,12 @@ import {
   withKeys,
 } from '../../../test/model.fixture'
 import {
-  APPLICATION,
   BELOW_KITCHEN_DOOR,
   holdToBuy,
+  modelAfter,
   settleRunCommands,
   startWave,
+  steps,
   tick,
 } from '../../../test/testing'
 import { modifyFocus } from '../../party/party'
@@ -46,12 +51,12 @@ const rushOf = (model: Model): ReadonlyArray<PlannedSpawn> =>
 
 const atKitchenBoards = (phase: Phase): Model =>
   modifyFocus(
-    modifyFields(withKeys(pastTimedBreaks(freshRunModel()), KEYS), {
+    UiStruct.evolve(withKeys(pastTimedBreaks(freshRunModel()), KEYS), {
       phase: () => phase,
     }),
     {
       player: player =>
-        modifyFields(player, {
+        UiStruct.evolve(player, {
           x: () => BELOW_KITCHEN_DOOR.x,
           y: () => BELOW_KITCHEN_DOOR.y,
         }),
@@ -66,6 +71,7 @@ const fighting = atKitchenBoards(
 
 const resting = atKitchenBoards(
   Phase.Preparation({
+    clock: BreakClock.Counting(),
     wave: 4,
     remainingMs: 15_000,
     durationMs: 20_000,
@@ -74,7 +80,7 @@ const resting = atKitchenBoards(
 )
 
 const bought = (model: Model) =>
-  Story.story(APPLICATION, Story.given(model), holdToBuy, settleRunCommands)
+  modelAfter(model, steps(holdToBuy, settleRunCommands))
 
 describe('opening a room wakes it', () => {
   it.effect(
@@ -115,11 +121,9 @@ describe('opening a room wakes it', () => {
         expect(Math.min(...Array.map(rush, ({ atMs }) => atMs))).toBe(
           PACK_WARNING_MS,
         )
-        const started = yield* Story.story(
-          APPLICATION,
-          Story.given(after),
-          startWave,
-          settleRunCommands,
+        const started = yield* modelAfter(
+          after,
+          steps(startWave, settleRunCommands),
         )
         expect(Phase.isAnyOf(['Wave'])(started.phase)).toBe(true)
         expect(rushOf(started)).toEqual(rush)
@@ -132,7 +136,7 @@ describe('opening a room wakes it', () => {
       const again = yield* bought(fighting)
       expect(rushOf(again)).toEqual(rushOf(first))
       const other = yield* bought(
-        modifyFields(fighting, { rngState: seed => seed + 7919 }),
+        UiStruct.evolve(fighting, { rngState: seed => seed + 7919 }),
       )
       expect(Array.map(rushOf(other), ({ offset }) => offset)).not.toEqual(
         Array.map(rushOf(first), ({ offset }) => offset),
@@ -141,22 +145,18 @@ describe('opening a room wakes it', () => {
   )
 
   it.effect('a wave does not clear while its rush is still to come', () => {
-    const emptyWave = modifyFields(fighting, {
+    const emptyWave = UiStruct.evolve(fighting, {
       phase: () => Phase.Wave({ wave: 4, elapsedMs: 0, spawns: [] }),
     })
     const woken = withWorld(emptyWave, world => wakeRoom(world, ['Back']))
     return Effect.gen(function* () {
-      const cleared = yield* Story.story(
-        APPLICATION,
-        Story.given(emptyWave),
-        tick(FIXED_STEP_MS),
-        settleRunCommands,
+      const cleared = yield* modelAfter(
+        emptyWave,
+        steps(tick(FIXED_STEP_MS), settleRunCommands),
       )
-      const held = yield* Story.story(
-        APPLICATION,
-        Story.given(woken),
-        tick(FIXED_STEP_MS),
-        settleRunCommands,
+      const held = yield* modelAfter(
+        woken,
+        steps(tick(FIXED_STEP_MS), settleRunCommands),
       )
       expect(Phase.isAnyOf(['Preparation'])(cleared.phase)).toBe(true)
       expect(Phase.isAnyOf(['Wave'])(held.phase)).toBe(true)

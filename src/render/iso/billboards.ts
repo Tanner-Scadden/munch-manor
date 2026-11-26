@@ -3,7 +3,6 @@
 // stands near the player; and the hidden stand-ins its shadow is cast
 // through.
 
-import type { Canvas } from 'foldkit'
 import { Texture } from 'pixi.js'
 
 import {
@@ -14,6 +13,7 @@ import {
   Sprite3D,
 } from '@pixi/3d'
 
+import type * as Draw from '../draw'
 import type { Leaf } from './flatten'
 import { UNIT, standingPointOf, zOf } from './space'
 import { type Textures, colorOf } from './textures'
@@ -40,7 +40,7 @@ const WHITE = { color: 0xffffff, alpha: 1 }
 
 const textureAndTint = (
   textures: Textures,
-  shape: Canvas.Image | Canvas.Rect,
+  shape: Draw.Image | Draw.Rect,
   isFlipped: boolean,
 ): Readonly<{ texture: Texture; color: number; alpha: number }> | undefined => {
   if (shape._tag === 'Image') {

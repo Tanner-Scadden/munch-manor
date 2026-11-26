@@ -1,4 +1,4 @@
-import { defineMessageUnion } from 'foldkit/message'
+import { UiSchema } from '@effect/ui'
 
 import { TutorialChoice } from '../../shared/nameKeys'
 import { Difficulty } from '../../shared/playerData'
@@ -18,7 +18,6 @@ export const homeCases = {
   ClickedHowToPlayButton: {},
   ClickedSettingsButton: {},
   ClickedSupportButton: {},
-  CompletedClickSupportLink: {},
   ClickedMenuButton: {},
   ClickedLeaveRunButton: {},
   ClickedStayButton: {},
@@ -27,8 +26,6 @@ export const homeCases = {
   ClickedTutorialChoiceButton: { choice: TutorialChoice },
   FocusedHomeButton: { button: HomeButton },
   BlurredHomeButton: {},
-  CompletedFocusHomeButton: {},
-  CompletedFocusEndMenuButton: {},
   ClickedWhatsNewButton: {},
   ClickedMunchopediaButton: {},
   ClickedProofButton: {},
@@ -38,7 +35,6 @@ export const homeCases = {
   ClickedDismissBeatMyRunButton: {},
   ClickedTurnHint: {},
   SteppedHandFocus: { card: HandCard },
-  CompletedFocusHandCard: {},
 }
-export const HomeMessage = defineMessageUnion(homeCases)
+export const HomeMessage = UiSchema.TaggedEnum(homeCases)
 export type HomeMessage = typeof HomeMessage.Type

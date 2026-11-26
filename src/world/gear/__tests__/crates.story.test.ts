@@ -1,7 +1,6 @@
 import { Array, Effect, Option, Order } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
 import {
@@ -23,9 +22,11 @@ import {
   trapReady,
 } from '../../../test/model.fixture'
 import {
-  APPLICATION,
   BELOW_NORTH_DOOR,
+  checkModel,
+  modelAfter,
   press,
+  steps,
   tick,
   ticks,
 } from '../../../test/testing'
@@ -46,7 +47,7 @@ const readyModel: Model = trapReady
 const standingAt = (base: Model, { x, y }: Vector): Model =>
   modifyFocus(base, {
     player: player =>
-      modifyFields(player, {
+      UiStruct.evolve(player, {
         x: () => x,
         y: () => y,
         invulnerability: () =>
@@ -66,10 +67,10 @@ const stockedBreak = (
   crates: ReadonlyArray<Crate>,
   phase: Phase = breakBefore(wave),
 ): Model =>
-  modifyFields(readyModel, {
+  UiStruct.evolve(readyModel, {
     phase: () => phase,
     crates: current =>
-      modifyFields(current, { wave: () => wave, crates: () => crates }),
+      UiStruct.evolve(current, { wave: () => wave, crates: () => crates }),
   })
 
 const onCrate = (base: Model): Model =>
@@ -82,31 +83,32 @@ describe('trap crates', () => {
   it.effect(
     'walking onto an open crate takes its trap, and the first one brings up the hint',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(onCrate(stockedBreak(3, [diningCrate('Turret')]))),
-        tick(FRAME_MS),
-        Story.model(current => {
-          expect(focusOf(current).trapStock).toEqual({
-            Barricade: 0,
-            Turret: 1,
-          })
-          expect(focusOf(current).selectedTrap).toBe('Turret')
-          expect(stocksOf(current)).toEqual([CrateStock.Taken()])
-          expect(current.trapHint).toEqual(TrapHint.Showing())
-          expect(
-            Array.filter(current.frameEvents, GameEvent.guards.CrateTaken),
-          ).toEqual([
-            GameEvent.CrateTaken({
-              ...crateSpotOf(START_LEVEL, 'Dining'),
-              trap: 'Turret',
-            }),
-          ])
-        }),
-        ...ticks(10, FRAME_MS),
-        Story.model(current => {
-          expect(focusOf(current).trapStock.Turret).toBe(1)
-        }),
+      modelAfter(
+        onCrate(stockedBreak(3, [diningCrate('Turret')])),
+        steps(
+          tick(FRAME_MS),
+          checkModel(current => {
+            expect(focusOf(current).trapStock).toEqual({
+              Barricade: 0,
+              Turret: 1,
+            })
+            expect(focusOf(current).selectedTrap).toBe('Turret')
+            expect(stocksOf(current)).toEqual([CrateStock.Taken()])
+            expect(current.trapHint).toEqual(TrapHint.Showing())
+            expect(
+              Array.filter(current.frameEvents, GameEvent.guards.CrateTaken),
+            ).toEqual([
+              GameEvent.CrateTaken({
+                ...crateSpotOf(START_LEVEL, 'Dining'),
+                trap: 'Turret',
+              }),
+            ])
+          }),
+          ticks(10, FRAME_MS),
+          checkModel(current => {
+            expect(focusOf(current).trapStock.Turret).toBe(1)
+          }),
+        ),
       ),
   )
 
@@ -119,27 +121,27 @@ describe('trap crates', () => {
         spawns: [DISTANT_SPAWN],
       })
       return Effect.gen(function* () {
-        yield* Story.story(
-          APPLICATION,
-          Story.given(stockedBreak(3, [diningCrate('Barricade')], inWave)),
-          ...ticks(10, FRAME_MS),
-          Story.model(current => {
-            expect(current.crates.wave).toBe(3)
-            expect(stocksOf(current)).toEqual([
-              CrateStock.Stocked({ trap: 'Barricade' }),
-            ])
-          }),
-        )
-        yield* Story.story(
-          APPLICATION,
-          Story.given(
-            onCrate(stockedBreak(3, [diningCrate('Barricade')], inWave)),
+        yield* modelAfter(
+          stockedBreak(3, [diningCrate('Barricade')], inWave),
+          steps(
+            ticks(10, FRAME_MS),
+            checkModel(current => {
+              expect(current.crates.wave).toBe(3)
+              expect(stocksOf(current)).toEqual([
+                CrateStock.Stocked({ trap: 'Barricade' }),
+              ])
+            }),
           ),
-          tick(FRAME_MS),
-          Story.model(current => {
-            expect(focusOf(current).trapStock.Barricade).toBe(1)
-            expect(stocksOf(current)).toEqual([CrateStock.Taken()])
-          }),
+        )
+        yield* modelAfter(
+          onCrate(stockedBreak(3, [diningCrate('Barricade')], inWave)),
+          steps(
+            tick(FRAME_MS),
+            checkModel(current => {
+              expect(focusOf(current).trapStock.Barricade).toBe(1)
+              expect(stocksOf(current)).toEqual([CrateStock.Taken()])
+            }),
+          ),
         )
       })
     },
@@ -148,33 +150,32 @@ describe('trap crates', () => {
   it.effect(
     'a crate still shut from the last round rolls when a wave starts one',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(
-          stockedBreak(
-            3,
-            [{ room: 'Dining', stock: CrateStock.Taken() }],
-            Phase.Wave({ wave: 4, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
-          ),
+      modelAfter(
+        stockedBreak(
+          3,
+          [{ room: 'Dining', stock: CrateStock.Taken() }],
+          Phase.Wave({ wave: 4, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
         ),
-        tick(FRAME_MS),
-        Story.model(current => {
-          expect(current.crates.wave).toBe(4)
-          expect(
-            Array.map(stocksOf(current), ({ _tag }) => _tag),
-          ).not.toContain('Taken')
-        }),
+        steps(
+          tick(FRAME_MS),
+          checkModel(current => {
+            expect(current.crates.wave).toBe(4)
+            expect(
+              Array.map(stocksOf(current), ({ _tag }) => _tag),
+            ).not.toContain('Taken')
+          }),
+        ),
       ),
   )
 
   it.effect(
     'a player with two Plank Piles, placed or carried, leaves a plank crate be',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(
-          modifyFocus(
-            modifyFields(onCrate(stockedBreak(3, [diningCrate('Barricade')])), {
+      modelAfter(
+        modifyFocus(
+          UiStruct.evolve(
+            onCrate(stockedBreak(3, [diningCrate('Barricade')])),
+            {
               traps: () => [
                 Trap.Barricade({
                   id: 1,
@@ -184,50 +185,51 @@ describe('trap crates', () => {
                   hitRemainingMs: 0,
                 }),
               ],
-            }),
-            { trapStock: () => ({ Barricade: 1, Turret: 0 }) },
+            },
           ),
+          { trapStock: () => ({ Barricade: 1, Turret: 0 }) },
         ),
-        tick(FRAME_MS),
-        Story.model(current => {
-          expect(focusOf(current).trapStock.Barricade).toBe(1)
-          expect(stocksOf(current)).toEqual([
-            CrateStock.Stocked({ trap: 'Barricade' }),
-          ])
-        }),
+        steps(
+          tick(FRAME_MS),
+          checkModel(current => {
+            expect(focusOf(current).trapStock.Barricade).toBe(1)
+            expect(stocksOf(current)).toEqual([
+              CrateStock.Stocked({ trap: 'Barricade' }),
+            ])
+          }),
+        ),
       ),
   )
 
   it.effect(
     'each break every crate rolls a fresh find, and the kitchen gets its own once open',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(
-          modifyFields(readyModel, {
-            phase: () => breakBefore(4),
-            level: level =>
-              modifyFields(level, { openExits: () => [KITCHEN_EXIT] }),
-            crates: current =>
-              modifyFields(current, {
-                wave: () => 3,
-                crates: () => [{ room: 'Dining', stock: CrateStock.Taken() }],
-              }),
+      modelAfter(
+        UiStruct.evolve(readyModel, {
+          phase: () => breakBefore(4),
+          level: level =>
+            UiStruct.evolve(level, { openExits: () => [KITCHEN_EXIT] }),
+          crates: current =>
+            UiStruct.evolve(current, {
+              wave: () => 3,
+              crates: () => [{ room: 'Dining', stock: CrateStock.Taken() }],
+            }),
+        }),
+        steps(
+          tick(FRAME_MS),
+          checkModel(current => {
+            expect(current.crates.wave).toBe(4)
+            expect(
+              Array.map(current.crates.crates, ({ room, stock }) => [
+                room,
+                stock._tag,
+              ]),
+            ).toEqual([
+              ['Dining', 'Stocked'],
+              ['Kitchen', 'Stocked'],
+            ])
           }),
         ),
-        tick(FRAME_MS),
-        Story.model(current => {
-          expect(current.crates.wave).toBe(4)
-          expect(
-            Array.map(current.crates.crates, ({ room, stock }) => [
-              room,
-              stock._tag,
-            ]),
-          ).toEqual([
-            ['Dining', 'Stocked'],
-            ['Kitchen', 'Stocked'],
-          ])
-        }),
       ),
   )
 
@@ -235,15 +237,12 @@ describe('trap crates', () => {
     'the finds roll from the crates own stream: both traps turn up across seeds',
     () =>
       Effect.forEach([1, 2, 3, 4, 5, 6, 7, 8], seed =>
-        Story.story(
-          APPLICATION,
-          Story.given(
-            modifyFields(readyModel, {
-              phase: () => breakBefore(3),
-              crates: current =>
-                modifyFields(current, { rngState: () => seed * 104_729 }),
-            }),
-          ),
+        modelAfter(
+          UiStruct.evolve(readyModel, {
+            phase: () => breakBefore(3),
+            crates: current =>
+              UiStruct.evolve(current, { rngState: () => seed * 104_729 }),
+          }),
           tick(FRAME_MS),
         ).pipe(
           Effect.map(current =>
@@ -275,20 +274,17 @@ const restockedFrom = (
   last: CrateStock,
   change: (base: Model) => Model = base => base,
 ) =>
-  Story.story(
-    APPLICATION,
-    Story.given(
-      change(
-        modifyFields(readyModel, {
-          phase: () => breakBefore(4),
-          crates: current =>
-            modifyFields(current, {
-              wave: () => 3,
-              rngState: () => seed * 104_729,
-              crates: () => [{ room: 'Dining', stock: last }],
-            }),
-        }),
-      ),
+  modelAfter(
+    change(
+      UiStruct.evolve(readyModel, {
+        phase: () => breakBefore(4),
+        crates: current =>
+          UiStruct.evolve(current, {
+            wave: () => 3,
+            rngState: () => seed * 104_729,
+            crates: () => [{ room: 'Dining', stock: last }],
+          }),
+      }),
     ),
     tick(FRAME_MS),
   ).pipe(Effect.map(stocksOf))
@@ -330,27 +326,25 @@ describe('what a crate rolls', () => {
 describe('a heart in a crate', () => {
   const hurt = (base: Model): Model =>
     modifyFocus(base, {
-      player: player => modifyFields(player, { hp: () => PLAYER_MAX_HP - 2 }),
+      player: player =>
+        UiStruct.evolve(player, { hp: () => PLAYER_MAX_HP - 2 }),
     })
 
   const glass = (base: Model): Model =>
-    modifyFields(base, {
-      modifiers: modifiers => modifyFields(modifiers, { glass: () => true }),
+    UiStruct.evolve(base, {
+      modifiers: modifiers => UiStruct.evolve(modifiers, { glass: () => true }),
     })
 
   // NOTE: the break before wave 3, its crates not yet rolled, from each of
   // `seeds` as the crates' stream.
   const rolledFrom = (start: Model, seeds: ReadonlyArray<number>) =>
     Effect.forEach(seeds, seed =>
-      Story.story(
-        APPLICATION,
-        Story.given(
-          modifyFields(start, {
-            phase: () => breakBefore(3),
-            crates: current =>
-              modifyFields(current, { rngState: () => seed * 104_729 }),
-          }),
-        ),
+      modelAfter(
+        UiStruct.evolve(start, {
+          phase: () => breakBefore(3),
+          crates: current =>
+            UiStruct.evolve(current, { rngState: () => seed * 104_729 }),
+        }),
         tick(FRAME_MS),
       ).pipe(Effect.map(current => stocksOf(current))),
     )
@@ -383,44 +377,40 @@ describe('a heart in a crate', () => {
   )
 
   it.effect('walking onto it heals a hurt player one heart', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        hurt(
-          onCrate(
-            stockedBreak(3, [{ room: 'Dining', stock: CrateStock.Heart() }]),
-          ),
-        ),
-      ),
-      tick(FRAME_MS),
-      Story.model(current => {
-        expect(focusOf(current).player.hp).toBe(PLAYER_MAX_HP - 1)
-        expect(stocksOf(current)).toEqual([CrateStock.Taken()])
-        expect(
-          Array.filter(current.frameEvents, GameEvent.guards.PickupGrabbed),
-        ).toEqual([
-          GameEvent.PickupGrabbed({
-            ...crateSpotOf(START_LEVEL, 'Dining'),
-            kind: 'Heart',
-          }),
-        ])
-      }),
-    ),
-  )
-
-  it.effect('a player with every heart leaves it for someone hurt', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
+    modelAfter(
+      hurt(
         onCrate(
           stockedBreak(3, [{ room: 'Dining', stock: CrateStock.Heart() }]),
         ),
       ),
-      tick(FRAME_MS),
-      Story.model(current => {
-        expect(focusOf(current).player.hp).toBe(PLAYER_MAX_HP)
-        expect(stocksOf(current)).toEqual([CrateStock.Heart()])
-      }),
+      steps(
+        tick(FRAME_MS),
+        checkModel(current => {
+          expect(focusOf(current).player.hp).toBe(PLAYER_MAX_HP - 1)
+          expect(stocksOf(current)).toEqual([CrateStock.Taken()])
+          expect(
+            Array.filter(current.frameEvents, GameEvent.guards.PickupGrabbed),
+          ).toEqual([
+            GameEvent.PickupGrabbed({
+              ...crateSpotOf(START_LEVEL, 'Dining'),
+              kind: 'Heart',
+            }),
+          ])
+        }),
+      ),
+    ),
+  )
+
+  it.effect('a player with every heart leaves it for someone hurt', () =>
+    modelAfter(
+      onCrate(stockedBreak(3, [{ room: 'Dining', stock: CrateStock.Heart() }])),
+      steps(
+        tick(FRAME_MS),
+        checkModel(current => {
+          expect(focusOf(current).player.hp).toBe(PLAYER_MAX_HP)
+          expect(stocksOf(current)).toEqual([CrateStock.Heart()])
+        }),
+      ),
     ),
   )
 })
@@ -429,7 +419,7 @@ describe('mending traps', () => {
   // NOTE: a Plank Pile across the north door, chewed down to `hp`, and the
   // player standing still just below it.
   const chewedPlank = (hp: number, phase: Phase = breakBefore(3)): Model =>
-    modifyFields(standingAt(readyModel, BELOW_NORTH_DOOR), {
+    UiStruct.evolve(standingAt(readyModel, BELOW_NORTH_DOOR), {
       phase: () => phase,
       traps: () => [
         Trap.Barricade({
@@ -454,41 +444,43 @@ describe('mending traps', () => {
   it.effect(
     'standing still beside a damaged trap in a break mends it for free',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(chewedPlank(1)),
-        ...ticks(Math.floor(FULL_MEND_TICKS / 2), FRAME_MS),
-        Story.model(current => {
-          expect(hpOf(current)).toBeGreaterThan(TRAPS.Barricade.hp / 3)
-          expect(hpOf(current)).toBeLessThan(TRAPS.Barricade.hp)
-        }),
-        ...ticks(Math.ceil(FULL_MEND_TICKS / 2) + 1, FRAME_MS),
-        Story.model(current => {
-          expect(hpOf(current)).toBe(TRAPS.Barricade.hp)
-          expect(current.keys).toEqual(readyModel.keys)
-        }),
+      modelAfter(
+        chewedPlank(1),
+        steps(
+          ticks(Math.floor(FULL_MEND_TICKS / 2), FRAME_MS),
+          checkModel(current => {
+            expect(hpOf(current)).toBeGreaterThan(TRAPS.Barricade.hp / 3)
+            expect(hpOf(current)).toBeLessThan(TRAPS.Barricade.hp)
+          }),
+          ticks(Math.ceil(FULL_MEND_TICKS / 2) + 1, FRAME_MS),
+          checkModel(current => {
+            expect(hpOf(current)).toBe(TRAPS.Barricade.hp)
+            expect(current.keys).toEqual(readyModel.keys)
+          }),
+        ),
       ),
   )
 
   it.effect('the last bit of a mend says so', () =>
     Effect.gen(function* () {
       const events: Array<GameEvent> = []
-      yield* Story.story(
-        APPLICATION,
-        Story.given(chewedPlank(TRAPS.Barricade.hp - 1)),
-        ...Array.flatMap(
-          Array.makeBy(5, () => 0),
-          () => [
-            tick(FRAME_MS),
-            Story.model((current: Model) => {
-              events.push(
-                ...Array.filter(
-                  current.frameEvents,
-                  GameEvent.guards.TrapMended,
-                ),
-              )
-            }),
-          ],
+      yield* modelAfter(
+        chewedPlank(TRAPS.Barricade.hp - 1),
+        steps(
+          ...Array.flatMap(
+            Array.makeBy(5, () => 0),
+            () => [
+              tick(FRAME_MS),
+              checkModel((current: Model) => {
+                events.push(
+                  ...Array.filter(
+                    current.frameEvents,
+                    GameEvent.guards.TrapMended,
+                  ),
+                )
+              }),
+            ],
+          ),
         ),
       )
       expect(events).toHaveLength(1)
@@ -496,38 +488,38 @@ describe('mending traps', () => {
   )
 
   it.effect('in a wave it mends at half the speed of a break', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        chewedPlank(
-          1,
-          Phase.Wave({ wave: 3, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
+    modelAfter(
+      chewedPlank(
+        1,
+        Phase.Wave({ wave: 3, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
+      ),
+      steps(
+        ticks(FULL_MEND_TICKS + 1, FRAME_MS),
+        checkModel(current => {
+          expect(hpOf(current)).toBeGreaterThan(TRAPS.Barricade.hp / 3)
+          expect(hpOf(current)).toBeLessThan(TRAPS.Barricade.hp)
+        }),
+        ticks(
+          Math.ceil(FULL_MEND_TICKS / MEND_RULES.waveScale) - FULL_MEND_TICKS,
+          FRAME_MS,
         ),
+        checkModel(current => {
+          expect(hpOf(current)).toBe(TRAPS.Barricade.hp)
+        }),
       ),
-      ...ticks(FULL_MEND_TICKS + 1, FRAME_MS),
-      Story.model(current => {
-        expect(hpOf(current)).toBeGreaterThan(TRAPS.Barricade.hp / 3)
-        expect(hpOf(current)).toBeLessThan(TRAPS.Barricade.hp)
-      }),
-      ...ticks(
-        Math.ceil(FULL_MEND_TICKS / MEND_RULES.waveScale) - FULL_MEND_TICKS,
-        FRAME_MS,
-      ),
-      Story.model(current => {
-        expect(hpOf(current)).toBe(TRAPS.Barricade.hp)
-      }),
     ),
   )
 
   it.effect('nothing mends while the player moves', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(chewedPlank(10)),
-      press('KeyD'),
-      ...ticks(30, FRAME_MS),
-      Story.model(current => {
-        expect(hpOf(current)).toBe(10)
-      }),
+    modelAfter(
+      chewedPlank(10),
+      steps(
+        press('KeyD'),
+        ticks(30, FRAME_MS),
+        checkModel(current => {
+          expect(hpOf(current)).toBe(10)
+        }),
+      ),
     ),
   )
 })
@@ -535,38 +527,37 @@ describe('mending traps', () => {
 describe("the Handyman's traps", () => {
   const asHandyman = (base: Model): Model =>
     modifyFocus(base, {
-      player: player => modifyFields(player, { calling: () => 'Handyman' }),
+      player: player => UiStruct.evolve(player, { calling: () => 'Handyman' }),
     })
 
   it.effect('a Plank Pile he sets down is half again as sturdy', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        modifyFocus(
-          asHandyman(
-            modifyFields(standingAt(readyModel, BELOW_NORTH_DOOR), {
-              phase: () => breakBefore(3),
-              trapHint: () => TrapHint.Showing(),
-            }),
-          ),
-          {
-            trapStock: () => ({ Barricade: 1, Turret: 0 }),
-            selectedTrap: () => 'Barricade',
-          },
+    modelAfter(
+      modifyFocus(
+        asHandyman(
+          UiStruct.evolve(standingAt(readyModel, BELOW_NORTH_DOOR), {
+            phase: () => breakBefore(3),
+            trapHint: () => TrapHint.Showing(),
+          }),
         ),
+        {
+          trapStock: () => ({ Barricade: 1, Turret: 0 }),
+          selectedTrap: () => 'Barricade',
+        },
       ),
-      press('KeyT'),
-      Story.model(({ traps }) => {
-        expect(Array.map(traps, ({ hp, maxHp }) => [hp, maxHp])).toEqual([
-          [TRAPS.Barricade.hp * 1.5, TRAPS.Barricade.hp * 1.5],
-        ])
-      }),
+      steps(
+        press('KeyT'),
+        checkModel(({ traps }) => {
+          expect(Array.map(traps, ({ hp, maxHp }) => [hp, maxHp])).toEqual([
+            [TRAPS.Barricade.hp * 1.5, TRAPS.Barricade.hp * 1.5],
+          ])
+        }),
+      ),
     ),
   )
 
   it.effect('he mends twice as fast', () => {
     const chewed = (base: Model): Model =>
-      modifyFields(standingAt(base, BELOW_NORTH_DOOR), {
+      UiStruct.evolve(standingAt(base, BELOW_NORTH_DOOR), {
         phase: () => breakBefore(3),
         traps: () => [
           Trap.Barricade({
@@ -581,11 +572,7 @@ describe("the Handyman's traps", () => {
       })
     const halfMend = Math.ceil(MEND_RULES.fullMs / FRAME_MS / 2) + 1
     const mendedBy = (start: Model) =>
-      Story.story(
-        APPLICATION,
-        Story.given(start),
-        ...ticks(halfMend, FRAME_MS),
-      ).pipe(
+      modelAfter(start, ticks(halfMend, FRAME_MS)).pipe(
         Effect.map(({ traps }) =>
           Array.map(traps, ({ hp, maxHp }) => hp / maxHp),
         ),

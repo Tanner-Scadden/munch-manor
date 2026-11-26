@@ -1,10 +1,10 @@
 import { Array } from 'effect'
-import { Canvas } from 'foldkit'
 
 import { describe, expect, it } from '@effect/vitest'
 
 import { crewInWave, withSeatLife } from '../../test/model.fixture'
 import { Life } from '../../world/schema/worldSchema'
+import * as Draw from '../draw'
 import {
   isLeadArmed,
   isLeadInHouse,
@@ -21,7 +21,7 @@ describe('a player who stepped out', () => {
     expect(Array.map(mateModelsOf(crew), ({ seat }) => seat.slot)).toEqual([2])
   })
 
-  const BODY = [Canvas.Rect({ x: 0, y: 0, width: 1, height: 1, fill: '#fff' })]
+  const BODY = [Draw.Rect({ x: 0, y: 0, width: 1, height: 1, fill: '#fff' })]
 
   it('leaves no body, gun, or shadow of their own', () => {
     const out = withSeatLife(crewInWave(2), 0, Life.Out())

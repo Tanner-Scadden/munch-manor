@@ -1,11 +1,11 @@
 import { Array, Function, Option } from 'effect'
-import type { Canvas } from 'foldkit'
 
 import type { Model } from '../../app/model'
 import { DARE_ICONS, DARE_ICON_SIZE } from '../../art/dareArt'
 import { textShapes, textWidth } from '../../art/font'
 import { group, placeAt } from '../../art/sprite'
 import { runDifficultyOf } from '../../domain/onlineRun'
+import type * as Draw from '../../render/draw'
 import { isBetterRun } from '../../shared/playerData'
 import { isCoop } from '../../world/party/party'
 import { type BestRun, Phase, RunMode } from '../../world/schema/worldSchema'
@@ -34,11 +34,11 @@ export const maybeGhostOf = (model: Model): Option.Option<BestRun> =>
 
 // NOTE: the ghost centered on `centerX` at the text's top `y`.
 export const ghostShapes: {
-  (centerX: number, y: number): (best: BestRun) => Canvas.Shape
-  (best: BestRun, centerX: number, y: number): Canvas.Shape
+  (centerX: number, y: number): (best: BestRun) => Draw.Shape
+  (best: BestRun, centerX: number, y: number): Draw.Shape
 } = Function.dual(
   3,
-  (best: BestRun, centerX: number, y: number): Canvas.Shape => {
+  (best: BestRun, centerX: number, y: number): Draw.Shape => {
     const label = `BEST ${best.wave}`
     const iconsWidth = best.things.length * ICON_STRIDE
     const width =

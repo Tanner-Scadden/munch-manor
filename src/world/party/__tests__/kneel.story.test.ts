@@ -1,7 +1,6 @@
 import { Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
 import { Life, type Model, Trap, TurretGun } from '../../../app/model'
@@ -12,7 +11,14 @@ import {
   placeSeat,
   withSeatLife,
 } from '../../../test/model.fixture'
-import { APPLICATION, press, release, ticks } from '../../../test/testing'
+import {
+  checkModel,
+  modelAfter,
+  press,
+  release,
+  steps,
+  ticks,
+} from '../../../test/testing'
 import { TRAPS } from '../../gear/traps'
 import type { World } from '../../schema/world'
 import type { Vector } from '../../schema/worldSchema'
@@ -77,7 +83,7 @@ const gnomeAt = (id: number, column: number, row: number): Trap =>
 const withTraps =
   (traps: ReadonlyArray<Trap>) =>
   (current: Model): Model =>
-    modifyFields(current, { traps: () => traps })
+    UiStruct.evolve(current, { traps: () => traps })
 
 // NOTE: seat 1 down on BODY, the lead seat at `reviver`.
 const downedWith = (reviver: Vector, count = 2): Model =>
@@ -91,110 +97,111 @@ describe('CPR at the body side', () => {
   it.effect(
     'a reviver standing in front slides to the side and kneels there',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(downedWith(IN_FRONT)),
-        ...ticks(1, TICK_MS),
-        Story.model(current => {
-          const moved = positionOf(current, 0)
-          expect(moved.x).toBeGreaterThan(BODY.x)
-          expect(distanceBetween(moved, RIGHT_SIDE)).toBeGreaterThan(5)
-        }),
-        ...ticks(SLIDE_TICKS, TICK_MS),
-        Story.model(current => {
-          expectAt(current, 0, RIGHT_SIDE)
-          expect(lifeOf(current, 1)._tag).toBe('Downed')
-        }),
+      modelAfter(
+        downedWith(IN_FRONT),
+        steps(
+          ticks(1, TICK_MS),
+          checkModel(current => {
+            const moved = positionOf(current, 0)
+            expect(moved.x).toBeGreaterThan(BODY.x)
+            expect(distanceBetween(moved, RIGHT_SIDE)).toBeGreaterThan(5)
+          }),
+          ticks(SLIDE_TICKS, TICK_MS),
+          checkModel(current => {
+            expectAt(current, 0, RIGHT_SIDE)
+            expect(lifeOf(current, 1)._tag).toBe('Downed')
+          }),
+        ),
       ),
   )
 
   it.effect('the nearer side wins', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(downedWith(FRONT_LEFT)),
-      ...ticks(SLIDE_TICKS, TICK_MS),
-      Story.model(current => {
-        expectAt(current, 0, LEFT_SIDE)
-      }),
+    modelAfter(
+      downedWith(FRONT_LEFT),
+      steps(
+        ticks(SLIDE_TICKS, TICK_MS),
+        checkModel(current => {
+          expectAt(current, 0, LEFT_SIDE)
+        }),
+      ),
     ),
   )
 
   it.effect('the revive takes the same 2 s with the slide', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(downedWith({ x: BODY.x, y: BODY.y + 15 })),
-      ...ticks(REVIVE_TICKS - 1, TICK_MS),
-      Story.model(current => {
-        expect(lifeOf(current, 1)._tag).toBe('Downed')
-      }),
-      ...ticks(1, TICK_MS),
-      Story.model(current => {
-        expect(lifeOf(current, 1)._tag).toBe('Standing')
-      }),
+    modelAfter(
+      downedWith({ x: BODY.x, y: BODY.y + 15 }),
+      steps(
+        ticks(REVIVE_TICKS - 1, TICK_MS),
+        checkModel(current => {
+          expect(lifeOf(current, 1)._tag).toBe('Downed')
+        }),
+        ticks(1, TICK_MS),
+        checkModel(current => {
+          expect(lifeOf(current, 1)._tag).toBe('Standing')
+        }),
+      ),
     ),
   )
 
   it.effect('a blocked side sends the reviver to the other', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(withTraps([gnomeAt(1, 16, 8)])(downedWith(FRONT_LEFT))),
-      ...ticks(SLIDE_TICKS, TICK_MS),
-      Story.model(current => {
-        expectAt(current, 0, RIGHT_SIDE)
-      }),
+    modelAfter(
+      withTraps([gnomeAt(1, 16, 8)])(downedWith(FRONT_LEFT)),
+      steps(
+        ticks(SLIDE_TICKS, TICK_MS),
+        checkModel(current => {
+          expectAt(current, 0, RIGHT_SIDE)
+        }),
+      ),
     ),
   )
 
   it.effect('with both sides blocked the reviver stays where they are', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        withTraps([gnomeAt(1, 16, 8), gnomeAt(2, 19, 8)])(
-          downedWith(FRONT_LEFT),
-        ),
+    modelAfter(
+      withTraps([gnomeAt(1, 16, 8), gnomeAt(2, 19, 8)])(downedWith(FRONT_LEFT)),
+      steps(
+        ticks(SLIDE_TICKS, TICK_MS),
+        checkModel(current => {
+          expectAt(current, 0, FRONT_LEFT)
+          expect(reviveMsOf(current, 1)).toBeGreaterThan(0)
+        }),
       ),
-      ...ticks(SLIDE_TICKS, TICK_MS),
-      Story.model(current => {
-        expectAt(current, 0, FRONT_LEFT)
-        expect(reviveMsOf(current, 1)).toBeGreaterThan(0)
-      }),
     ),
   )
 
   it.effect('two revivers take a side each', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        placeSeat(
-          2,
-          BODY.x + 3,
-          BODY.y - 12,
-        )(downedWith({ x: BODY.x + 2, y: BODY.y + 12 }, 3)),
+    modelAfter(
+      placeSeat(
+        2,
+        BODY.x + 3,
+        BODY.y - 12,
+      )(downedWith({ x: BODY.x + 2, y: BODY.y + 12 }, 3)),
+      steps(
+        ticks(SLIDE_TICKS, TICK_MS),
+        checkModel(current => {
+          expectAt(current, 0, RIGHT_SIDE)
+          expectAt(current, 2, LEFT_SIDE)
+        }),
       ),
-      ...ticks(SLIDE_TICKS, TICK_MS),
-      Story.model(current => {
-        expectAt(current, 0, RIGHT_SIDE)
-        expectAt(current, 2, LEFT_SIDE)
-      }),
     ),
   )
 
   it.effect('a held stick still cancels the revive and stops the slide', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(downedWith(IN_FRONT)),
-      ...ticks(3, TICK_MS),
-      Story.model(current => {
-        expect(reviveMsOf(current, 1)).toBeGreaterThan(0)
-        expect(positionOf(current, 0).x).toBeGreaterThan(IN_FRONT.x)
-      }),
-      press('KeyA'),
-      ...ticks(6, TICK_MS),
-      Story.model(current => {
-        expect(reviveMsOf(current, 1)).toBe(0)
-        expect(positionOf(current, 0).x).toBeLessThan(IN_FRONT.x)
-      }),
-      release('KeyA'),
+    modelAfter(
+      downedWith(IN_FRONT),
+      steps(
+        ticks(3, TICK_MS),
+        checkModel(current => {
+          expect(reviveMsOf(current, 1)).toBeGreaterThan(0)
+          expect(positionOf(current, 0).x).toBeGreaterThan(IN_FRONT.x)
+        }),
+        press('KeyA'),
+        ticks(6, TICK_MS),
+        checkModel(current => {
+          expect(reviveMsOf(current, 1)).toBe(0)
+          expect(positionOf(current, 0).x).toBeLessThan(IN_FRONT.x)
+        }),
+        release('KeyA'),
+      ),
     ),
   )
 })

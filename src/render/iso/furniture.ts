@@ -8,7 +8,6 @@
 // culls in or out or fades past casting (shadowWatch.ts).
 
 import { Array, Option } from 'effect'
-import type { Canvas } from 'foldkit'
 import type { Texture } from 'pixi.js'
 
 import {
@@ -23,6 +22,7 @@ import {
 import { eyePixelsOf, isGlowingShape } from '../../art/sprite'
 import type { Level } from '../../world/level/arena'
 import { TALL_MOST } from '../depth'
+import type * as Draw from '../draw'
 import { type TallCover, tallCoverOf } from '../room/tallCover'
 import { type ViewBox, isNearView } from './cull'
 import { type Leaf, flatten } from './flatten'
@@ -122,7 +122,7 @@ export class Furniture {
   private readonly level: Level
   private readonly parent: Container3D
   private readonly voxels: VoxelBatch
-  private readonly byShapes: ReadonlyMap<ReadonlyArray<Canvas.Shape>, TallCover>
+  private readonly byShapes: ReadonlyMap<ReadonlyArray<Draw.Shape>, TallCover>
   private pieces: ReadonlyArray<Piece> | undefined = undefined
   private batch: BatchedMesh3D | undefined = undefined
   private casters: BatchedMesh3D | undefined = undefined
@@ -145,7 +145,7 @@ export class Furniture {
   // them at its fade, while someone stands behind it: the piece and its
   // opacity.
   fadeOf(
-    shapes: ReadonlyArray<Canvas.Shape>,
+    shapes: ReadonlyArray<Draw.Shape>,
   ): Option.Option<Readonly<{ cover: TallCover; opacity: number }>> {
     const whole = this.byShapes.get(shapes)
     if (whole !== undefined) {

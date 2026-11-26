@@ -1,24 +1,22 @@
 import { Effect, Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
-import { Dialog } from '@foldkit/ui'
 
-import { LobbyBinding } from '../../../app/bindings'
-import { Message } from '../../../app/message'
 import { type Model } from '../../../app/model'
 import { WriteSave } from '../../../app/update/save'
-import { Message as LobbyMessage } from '../../../features/lobby/message'
+import { LobbyMessage } from '../../../features/lobby/message'
 import { PLAYER_MAX_HP, PLAYER_SPEED } from '../../../shared/constants'
 import type { Calling } from '../../../shared/playerData'
 import { heroesBoughtBy, readyAfterRead } from '../../../test/model.fixture'
 import {
-  APPLICATION,
-  closeDialog,
+  type StoryStep,
+  modelAfter,
+  openLobbyByTap,
   press,
-  resolveFocusLobby,
-  showDialog,
+  send,
+  steps,
+  storyOf,
   tapLobbyHero,
   writeSave,
 } from '../../../test/testing'
@@ -41,41 +39,26 @@ import { isHeroPickerUp } from '../../lobby/model'
 // it, and each quirk playing out in the World.
 
 const ranked = (rank: number, calling: Calling): Model =>
-  modifyFields(readyAfterRead, {
+  UiStruct.evolve(readyAfterRead, {
     rank: current => ({ ...current, earnedPoints: pointsForRank(rank) }),
     boughtCosmetics: () => heroesBoughtBy(rank),
     calling: () => calling,
   })
 
-// NOTE: PLAY opens the lobby with START focused.
-const openLobby = Story.steps(
-  Story.message(Message.ClickedPlayButton()),
-  resolveFocusLobby(),
-)
-
-const clickStart = Story.messageIn(
-  LobbyBinding,
-  LobbyMessage.ClickedStartButton(),
-)
+const clickStart: StoryStep = send(LobbyMessage.RequestedStartFromLobby())
 
 // NOTE: the hero card opens the picker, which marks the heroes this rank
 // has reached as seen, and a card is tapped in it.
-const pickInPicker = (calling: Calling) =>
-  Story.steps(
-    Story.messageIn(LobbyBinding, LobbyMessage.ClickedHeroButton()),
-    showDialog(),
-    writeSave(),
+const pickInPicker = (calling: Calling): StoryStep =>
+  steps(
+    send(LobbyMessage.RequestedLobbyHeroPicker()),
+    writeSave,
     tapLobbyHero(calling),
   )
 
 // NOTE: the run a player of this rank and calling starts from the lobby.
-const startedAs = (rank: number, calling: Calling) =>
-  Story.story(
-    APPLICATION,
-    Story.given(ranked(rank, calling)),
-    openLobby,
-    clickStart,
-  )
+const startedAs = (rank: number, calling: Calling): Effect.Effect<Model> =>
+  modelAfter(ranked(rank, calling), steps(openLobbyByTap, clickStart))
 
 describe('a run starts with the calling picked', () => {
   it.effect('YOU holds the pistol and every heart', () =>
@@ -122,68 +105,49 @@ describe('a run starts with the calling picked', () => {
 
 describe('the picker', () => {
   it.effect('the key opens it', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(ranked(3, 'You')),
-      openLobby,
-      press('KeyY'),
-      Story.model(current => {
-        expect(isHeroPickerUp(current.lobby)).toBe(true)
-      }),
-      showDialog(),
-      writeSave(),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(ranked(3, 'You'))
+      s.pipe(openLobbyByTap, press('KeyY'))
+      expect(isHeroPickerUp(s.model.lobby)).toBe(true)
+      writeSave(s)
+    }),
   )
 
   it.effect(
     'picks an unlocked calling, which closes it, and dresses the player',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(ranked(3, 'You')),
-        openLobby,
-        pickInPicker('Handyman'),
-        Story.model(picked => {
-          expect(picked.calling).toBe('Handyman')
-          expect(focusOf(picked).player.calling).toBe('Handyman')
-          expect(isHeroPickerUp(picked.lobby)).toBe(false)
-        }),
-        Story.Command.expectExact(Dialog.test.CloseDialog, WriteSave),
-        closeDialog(),
-        writeSave(),
-      ),
+      Effect.gen(function* () {
+        const s = yield* storyOf(ranked(3, 'You'))
+        s.pipe(openLobbyByTap, pickInPicker('Handyman'))
+        expect(s.model.calling).toBe('Handyman')
+        expect(focusOf(s.model).player.calling).toBe('Handyman')
+        expect(isHeroPickerUp(s.model.lobby)).toBe(false)
+        s.expectExact(WriteSave)
+        writeSave(s)
+      }),
   )
 
   it.effect('refuses a locked calling', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(ranked(5, 'You')),
-      openLobby,
-      pickInPicker('PennyPincher'),
-      Story.model(refused => {
-        expect(refused.calling).toBe('You')
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(ranked(5, 'You'))
+      s.pipe(openLobbyByTap, pickInPicker('PennyPincher'))
+      expect(s.model.calling).toBe('You')
+    }),
   )
 
   it.effect('is never picked during a run', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(ranked(6, 'You')),
-      openLobby,
-      clickStart,
-      tapLobbyHero('TrackStar'),
-      Story.model(tried => {
-        expect(tried.calling).toBe('You')
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(ranked(6, 'You'))
+      s.pipe(openLobbyByTap, clickStart, tapLobbyHero('TrackStar'))
+      expect(s.model.calling).toBe('You')
+    }),
   )
 })
 
 describe('the quirks in play', () => {
   const asCalling = (model: Model, calling: Calling): Model =>
     modifyFocus(model, {
-      player: player => modifyFields(player, { calling: () => calling }),
+      player: player => UiStruct.evolve(player, { calling: () => calling }),
     })
 
   test('the Track Star runs faster and fills a smaller magazine', () => {
@@ -197,7 +161,7 @@ describe('the quirks in play', () => {
   test("the Penny Pincher's kills drop half again as many keys", () => {
     const keysFrom = (calling: Calling): number =>
       dropKeys(
-        modifyFields(asCalling(readyAfterRead, calling), {
+        UiStruct.evolve(asCalling(readyAfterRead, calling), {
           frameEvents: () => [
             GameEvent.ZombieKilled({
               x: 100,

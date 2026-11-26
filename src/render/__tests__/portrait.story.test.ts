@@ -1,7 +1,6 @@
 import { Array, Effect, Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
 import { refreshIntent } from '../../app/frame'
@@ -20,11 +19,14 @@ import {
 import { floorSeenOf } from '../../test/lensTesting'
 import { DISTANT_SPAWN, withKeys } from '../../test/model.fixture'
 import {
-  APPLICATION,
   PHONE_LANDSCAPE,
   PHONE_PORTRAIT,
+  checkModel,
+  modelAfter,
   modelAfterMessages,
   scoring,
+  send,
+  steps,
   ticks,
 } from '../../test/testing'
 import { asVeteran } from '../../test/veteran'
@@ -66,14 +68,14 @@ const LEFT_THUMB = 11
 const RIGHT_THUMB = 12
 const FRAME_MS = FIXED_STEP_MS
 
-const fightingInPortrait: Model = modifyFields(asVeteran(initialModel), {
+const fightingInPortrait: Model = UiStruct.evolve(asVeteran(initialModel), {
   lastDevice: () => 'Touch',
   orientation: () => 'Portrait',
   maybeSurface: () => Option.some(PHONE_PORTRAIT),
   phase: () => Phase.Wave({ wave: 3, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
 })
 
-const fightingInLandscape: Model = modifyFields(fightingInPortrait, {
+const fightingInLandscape: Model = UiStruct.evolve(fightingInPortrait, {
   orientation: () => 'Landscape',
   maybeSurface: () => Option.some(PHONE_LANDSCAPE),
 })
@@ -87,15 +89,13 @@ const standingAt = (base: Model, x: number, y: number): Model =>
   modifyFocus(base, { player: player => ({ ...player, x, y }) })
 
 const pressThumb = (pointerId: number, clientX: number, clientY: number) =>
-  Story.message(
-    Message.PressedPointer({ pointerId, device: 'Touch', clientX, clientY }),
-  )
+  send(Message.PressedPointer({ pointerId, device: 'Touch', clientX, clientY }))
 
 const moveThumb = (pointerId: number, clientX: number, clientY: number) =>
-  Story.message(Message.MovedPointer({ pointerId, clientX, clientY }))
+  send(Message.MovedPointer({ pointerId, clientX, clientY }))
 
 const rotateTo = (surface: typeof PHONE_PORTRAIT) =>
-  Story.message(Message.MeasuredGameSurface(surface))
+  send(Message.MeasuredGameSurface(surface))
 
 describe('the portrait screen', () => {
   test('is a touch phone held upright, as wide as a landscape phone is tall', () => {
@@ -103,7 +103,9 @@ describe('the portrait screen', () => {
     expect(isPortrait(fightingInLandscape)).toBe(false)
     expect(
       isPortrait(
-        modifyFields(fightingInPortrait, { lastDevice: () => 'KeyboardMouse' }),
+        UiStruct.evolve(fightingInPortrait, {
+          lastDevice: () => 'KeyboardMouse',
+        }),
       ),
     ).toBe(false)
 
@@ -188,12 +190,12 @@ describe('the landscape phone screen', () => {
   })
 
   test('keeps 320 by 180 on a 16:9 phone and before the surface is measured', () => {
-    const sixteenByNine = modifyFields(fightingInLandscape, {
+    const sixteenByNine = UiStruct.evolve(fightingInLandscape, {
       maybeSurface: () =>
         Option.some({ left: 0, top: 0, width: 667, height: 375 }),
     })
     expect(screenOf(sixteenByNine)).toEqual(LANDSCAPE_TOUCH_SCREEN)
-    const unmeasured = modifyFields(fightingInLandscape, {
+    const unmeasured = UiStruct.evolve(fightingInLandscape, {
       maybeSurface: () => Option.none(),
     })
     expect(screenOf(unmeasured)).toEqual(LANDSCAPE_TOUCH_SCREEN)
@@ -231,7 +233,7 @@ describe('the landscape phone screen', () => {
 
   test('a wider screen shows more of the room, and nothing bigger', () => {
     const narrow = screenOf(
-      modifyFields(fightingInLandscape, {
+      UiStruct.evolve(fightingInLandscape, {
         maybeSurface: () =>
           Option.some({ left: 0, top: 0, width: 667, height: 375 }),
       }),
@@ -251,7 +253,7 @@ describe('the landscape phone screen', () => {
     const { player } = focusOf(fightingInLandscape)
     Array.forEach(['Landscape', 'Portrait'] as const, orientation => {
       Array.forEach([PHONE_LANDSCAPE, PHONE_PORTRAIT], surface => {
-        const desktop = modifyFields(fightingInLandscape, {
+        const desktop = UiStruct.evolve(fightingInLandscape, {
           lastDevice: () => 'KeyboardMouse',
           orientation: () => orientation,
           maybeSurface: () => Option.some(surface),
@@ -355,7 +357,7 @@ describe('the portrait camera', () => {
   })
 
   test('on a phone on its side, reaches the kitchen once it opens and stays in its walls', () => {
-    const kitchen = modifyFields(fightingInLandscape, {
+    const kitchen = UiStruct.evolve(fightingInLandscape, {
       level: level => openExitIn(level, 'Kitchen'),
     })
     const { bounds } = levelOf(kitchen)
@@ -384,18 +386,18 @@ describe('the portrait camera', () => {
 
 describe('the aim lean', () => {
   test('eases toward the aim and never goes past its cap', () => {
-    const steps = Array.scan(
+    const leans = Array.scan(
       Array.makeBy(240, () => FRAME_MS),
       { x: 0, y: 0 },
       (lean, deltaMs) => leanCamera(lean, Option.some({ x: 1, y: 0 }), deltaMs),
     )
-    Array.forEach(steps, ({ x, y }) => {
+    Array.forEach(leans, ({ x, y }) => {
       expect(x).toBeLessThanOrEqual(CAMERA_LEAN_PX)
       expect(x).toBeGreaterThanOrEqual(0)
       expect(y).toBe(0)
     })
-    expect(steps[1]!.x).toBeLessThan(CAMERA_LEAN_PX / 4)
-    expect(steps[steps.length - 1]).toEqual({ x: CAMERA_LEAN_PX, y: 0 })
+    expect(leans[1]!.x).toBeLessThan(CAMERA_LEAN_PX / 4)
+    expect(leans[leans.length - 1]).toEqual({ x: CAMERA_LEAN_PX, y: 0 })
     expect(
       leanCamera({ x: 0, y: 0 }, Option.some({ x: 1, y: 0 }), 10_000),
     ).toEqual({ x: CAMERA_LEAN_PX, y: 0 })
@@ -404,28 +406,29 @@ describe('the aim lean', () => {
   it.effect(
     'the right thumb leans the camera toward the aim, and letting go brings it back',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(standingAt(fightingInPortrait, 160, 120)),
-        pressThumb(RIGHT_THUMB, 300, 700),
-        moveThumb(RIGHT_THUMB, 300 + STICK_RADIUS_PX, 700),
-        ...ticks(90, FRAME_MS),
-        Story.model(current => {
-          const lean = Math.hypot(current.cameraLean.x, current.cameraLean.y)
-          expect(lean).toBeGreaterThan(CAMERA_LEAN_PX - 1)
-          expect(lean).toBeLessThanOrEqual(CAMERA_LEAN_PX + 1e-9)
-          expect(
-            Math.abs(floorToScreenDirection(current.cameraLean).y),
-          ).toBeLessThan(0.5)
-          const camera = cameraOf(current)
-          expect(camera.x).toBeGreaterThan(93)
-          expect(focusOf(current).player.x - camera.x).toBeLessThan(135 / 2)
-        }),
-        Story.message(Message.ReleasedPointer({ pointerId: RIGHT_THUMB })),
-        ...ticks(120, FRAME_MS),
-        Story.model(current => {
-          expect(current.cameraLean).toEqual({ x: 0, y: 0 })
-        }),
+      modelAfter(
+        standingAt(fightingInPortrait, 160, 120),
+        steps(
+          pressThumb(RIGHT_THUMB, 300, 700),
+          moveThumb(RIGHT_THUMB, 300 + STICK_RADIUS_PX, 700),
+          ticks(90, FRAME_MS),
+          checkModel(current => {
+            const lean = Math.hypot(current.cameraLean.x, current.cameraLean.y)
+            expect(lean).toBeGreaterThan(CAMERA_LEAN_PX - 1)
+            expect(lean).toBeLessThanOrEqual(CAMERA_LEAN_PX + 1e-9)
+            expect(
+              Math.abs(floorToScreenDirection(current.cameraLean).y),
+            ).toBeLessThan(0.5)
+            const camera = cameraOf(current)
+            expect(camera.x).toBeGreaterThan(93)
+            expect(focusOf(current).player.x - camera.x).toBeLessThan(135 / 2)
+          }),
+          send(Message.ReleasedPointer({ pointerId: RIGHT_THUMB })),
+          ticks(120, FRAME_MS),
+          checkModel(current => {
+            expect(current.cameraLean).toEqual({ x: 0, y: 0 })
+          }),
+        ),
       ),
   )
 
@@ -605,7 +608,7 @@ describe('aiming on a phone on its side', () => {
     const zombie = { x: 260, y: 60 }
     const onScreen = worldToView(screenCameraOf(fighting), zombie)
     const aimed = refreshIntent(
-      modifyFields(fighting, {
+      UiStruct.evolve(fighting, {
         input: input => ({
           ...input,
           maybeMouseInView: Option.some(onScreen),
@@ -623,11 +626,11 @@ describe('the hint band on a zoomed phone', () => {
   test('moves away from the player where the player is on the screen, not in the room', () => {
     const at = (base: Model) =>
       moveHintBand(
-        modifyFields(standingAt(base, 160, 64), { hintBand: () => 'Top' }),
+        UiStruct.evolve(standingAt(base, 160, 64), { hintBand: () => 'Top' }),
       ).hintBand
     expect(
       at(
-        modifyFields(fightingInLandscape, {
+        UiStruct.evolve(fightingInLandscape, {
           lastDevice: () => 'KeyboardMouse',
         }),
       ),
@@ -641,38 +644,41 @@ describe('turning the phone', () => {
     'mid-wave, the run, the keys, and both thumbs carry over, with no pause',
     () => {
       const rich = withKeys(
-        modifyFields(standingAt(fightingInLandscape, 120, 90), {
+        UiStruct.evolve(standingAt(fightingInLandscape, 120, 90), {
           stats: scoring(340),
         }),
         7,
       )
-      return Story.story(
-        APPLICATION,
-        Story.given(rich),
-        pressThumb(LEFT_THUMB, 120, 300),
-        pressThumb(RIGHT_THUMB, 700, 300),
-        moveThumb(RIGHT_THUMB, 700 + STICK_RADIUS_PX, 300),
-        rotateTo(PHONE_PORTRAIT),
-        Story.model(current => {
-          expect(isPortrait(current)).toBe(true)
-          expect(Phase.isAnyOf(['Wave'])(current.phase)).toBe(true)
-          expect(scoreOf(current.stats)).toBe(340)
-          expect(current.keys.held).toBe(7)
-          expect(Stick.isAnyOf(['Active'])(current.input.moveStick)).toBe(true)
-          expect(Stick.isAnyOf(['Active'])(current.input.aimStick)).toBe(true)
-          expect(focusOf(current).intent.trigger).toBe('Held')
-        }),
-        ...ticks(3, FRAME_MS),
-        Story.model(current => {
-          expect(Phase.isAnyOf(['Wave'])(current.phase)).toBe(true)
-          expect(current.stats.shotsFired).toBeGreaterThan(0)
-        }),
-        rotateTo(PHONE_LANDSCAPE),
-        Story.model(current => {
-          expect(isPortrait(current)).toBe(false)
-          expect(Phase.isAnyOf(['Wave'])(current.phase)).toBe(true)
-          expect(Stick.isAnyOf(['Active'])(current.input.aimStick)).toBe(true)
-        }),
+      return modelAfter(
+        rich,
+        steps(
+          pressThumb(LEFT_THUMB, 120, 300),
+          pressThumb(RIGHT_THUMB, 700, 300),
+          moveThumb(RIGHT_THUMB, 700 + STICK_RADIUS_PX, 300),
+          rotateTo(PHONE_PORTRAIT),
+          checkModel(current => {
+            expect(isPortrait(current)).toBe(true)
+            expect(Phase.isAnyOf(['Wave'])(current.phase)).toBe(true)
+            expect(scoreOf(current.stats)).toBe(340)
+            expect(current.keys.held).toBe(7)
+            expect(Stick.isAnyOf(['Active'])(current.input.moveStick)).toBe(
+              true,
+            )
+            expect(Stick.isAnyOf(['Active'])(current.input.aimStick)).toBe(true)
+            expect(focusOf(current).intent.trigger).toBe('Held')
+          }),
+          ticks(3, FRAME_MS),
+          checkModel(current => {
+            expect(Phase.isAnyOf(['Wave'])(current.phase)).toBe(true)
+            expect(current.stats.shotsFired).toBeGreaterThan(0)
+          }),
+          rotateTo(PHONE_LANDSCAPE),
+          checkModel(current => {
+            expect(isPortrait(current)).toBe(false)
+            expect(Phase.isAnyOf(['Wave'])(current.phase)).toBe(true)
+            expect(Stick.isAnyOf(['Active'])(current.input.aimStick)).toBe(true)
+          }),
+        ),
       )
     },
   )

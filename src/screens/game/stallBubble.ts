@@ -1,5 +1,4 @@
 import { Array, Function, Option } from 'effect'
-import { Canvas } from 'foldkit'
 
 import type { Model } from '../../app/model'
 import { DARE_BIG_ICONS, DARE_BIG_ICON_SIZE } from '../../art/dareArt'
@@ -31,6 +30,7 @@ import {
   maybeRattlesLine,
 } from '../../features/onboarding/rattlesIntro'
 import { type Camera, viewBoxOf, worldToView } from '../../render/camera'
+import * as Draw from '../../render/draw'
 import { FULL_TURN, placeSprite } from '../../render/drawing'
 import { type Keepout, clearOfKeepouts } from '../../render/keepout'
 import { doorArrowBox } from '../../render/powerupView'
@@ -181,37 +181,37 @@ const frameRects = (
   width: number,
   height: number,
   edge: string,
-): ReadonlyArray<Canvas.Shape> => [
-  Canvas.Rect({
+): ReadonlyArray<Draw.Shape> => [
+  Draw.Rect({
     x: 1,
     y: 0,
     width: width - 2,
     height,
     fill: edge,
   }),
-  Canvas.Rect({ x: 0, y: 1, width, height: height - 2, fill: edge }),
-  Canvas.Rect({
+  Draw.Rect({ x: 0, y: 1, width, height: height - 2, fill: edge }),
+  Draw.Rect({
     x: 1,
     y: 1,
     width: width - 2,
     height: height - 2,
     fill: BUBBLE_FILL,
   }),
-  Canvas.Rect({
+  Draw.Rect({
     x: width - TAIL - 3,
     y: height,
     width: TAIL,
     height: 1,
     fill: edge,
   }),
-  Canvas.Rect({
+  Draw.Rect({
     x: width - 4,
     y: height + 1,
     width: 2,
     height: 1,
     fill: edge,
   }),
-  Canvas.Rect({
+  Draw.Rect({
     x: width - 3,
     y: height + 2,
     width: 1,
@@ -289,13 +289,13 @@ const arrowRects = (
   width: number,
   height: number,
   color: string,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const midY = y + Math.floor(height / 2)
   const midX = x + Math.floor(width / 2)
   return Array.makeBy(ARROW_LENGTH, step => {
     const reach = ARROW_LENGTH - step
     if (side === 'Right') {
-      return Canvas.Rect({
+      return Draw.Rect({
         x: x + width + 1 + step,
         y: midY - reach + 1,
         width: 1,
@@ -303,7 +303,7 @@ const arrowRects = (
         fill: color,
       })
     } else if (side === 'Left') {
-      return Canvas.Rect({
+      return Draw.Rect({
         x: x - 2 - step,
         y: midY - reach + 1,
         width: 1,
@@ -311,7 +311,7 @@ const arrowRects = (
         fill: color,
       })
     } else if (side === 'Down') {
-      return Canvas.Rect({
+      return Draw.Rect({
         x: midX - reach + 1,
         y: y + height + TAIL + 1 + step,
         width: reach * 2 - 1,
@@ -319,7 +319,7 @@ const arrowRects = (
         fill: color,
       })
     } else {
-      return Canvas.Rect({
+      return Draw.Rect({
         x: midX - reach + 1,
         y: y - 2 - step,
         width: reach * 2 - 1,
@@ -337,10 +337,10 @@ const goodsShapes = (
   x: number,
   y: number,
   height: number,
-): ReadonlyArray<Canvas.Shape> =>
+): ReadonlyArray<Draw.Shape> =>
   Array.reduce(
     goods,
-    { left: x + PAD, shapes: Array.empty<Canvas.Shape>() },
+    { left: x + PAD, shapes: Array.empty<Draw.Shape>() },
     ({ left, shapes }, good) => {
       const top = y + Math.floor((height - good.height) / 2)
       return {
@@ -386,7 +386,7 @@ const bubbleShapes = (
   tipInWorld: Vector,
   model: Model,
   camera: Camera,
-): ReadonlyArray<Canvas.Shape> =>
+): ReadonlyArray<Draw.Shape> =>
   placedBubble(
     {
       bubble: bubbleOfKind(kind),
@@ -453,7 +453,7 @@ const placedBubble = (
   { bubble, tipInWorld, isPointing, inset, maybeUnder }: Placing,
   model: Model,
   camera: Camera,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const { goods, frame, width, height } = bubble
   const view = viewBoxOf(camera)
   const tip = worldToView(camera, tipInWorld)
@@ -513,11 +513,11 @@ const LEAVE_TIP_RIGHT = 26
 const LEAVE_TIP_DROP = 32
 
 const kitchenBubbleShapes: {
-  (camera: Camera): (model: Model) => ReadonlyArray<Canvas.Shape>
-  (model: Model, camera: Camera): ReadonlyArray<Canvas.Shape>
+  (camera: Camera): (model: Model) => ReadonlyArray<Draw.Shape>
+  (model: Model, camera: Camera): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   2,
-  (model: Model, camera: Camera): ReadonlyArray<Canvas.Shape> =>
+  (model: Model, camera: Camera): ReadonlyArray<Draw.Shape> =>
     Option.match(kitchenStepOf(model), {
       onNone: () => [],
       onSome: step =>
@@ -547,11 +547,11 @@ const SOUP_KINDS: ReadonlyArray<BubbleKind> = ['Soup0', 'Soup1', 'Soup2']
 // NOTE: Rattles' holler about the kitchen's boards, pinned to the window's
 // edge with an arrow toward them when they are out of view.
 export const soupBubbleShapes: {
-  (camera: Camera): (model: Model) => ReadonlyArray<Canvas.Shape>
-  (model: Model, camera: Camera): ReadonlyArray<Canvas.Shape>
+  (camera: Camera): (model: Model) => ReadonlyArray<Draw.Shape>
+  (model: Model, camera: Camera): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   2,
-  (model: Model, camera: Camera): ReadonlyArray<Canvas.Shape> =>
+  (model: Model, camera: Camera): ReadonlyArray<Draw.Shape> =>
     Option.match(maybeCallTarget(model), {
       onNone: () => [],
       onSome: target =>
@@ -594,11 +594,11 @@ const HINT_UNDER_GAP = 6
 // over the thing it is about, pinned to the window's edge with an arrow
 // toward it when it is out of view, or from his own spot, pointing nowhere.
 export const dareHintShapes: {
-  (camera: Camera): (model: Model) => ReadonlyArray<Canvas.Shape>
-  (model: Model, camera: Camera): ReadonlyArray<Canvas.Shape>
+  (camera: Camera): (model: Model) => ReadonlyArray<Draw.Shape>
+  (model: Model, camera: Camera): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   2,
-  (model: Model, camera: Camera): ReadonlyArray<Canvas.Shape> =>
+  (model: Model, camera: Camera): ReadonlyArray<Draw.Shape> =>
     Option.match(
       isPocketCardOut(model) ? Option.none() : maybeHintCall(model),
       {
@@ -661,11 +661,11 @@ const INTRO_BUBBLES: ReadonlyMap<string, Bubble> = new Map(
 // NOTE: his hello hangs from his own spot and points at it, so with him off
 // screen the bubble waits at the window's edge with an arrow toward him.
 const rattlesIntroShapes: {
-  (camera: Camera): (model: Model) => ReadonlyArray<Canvas.Shape>
-  (model: Model, camera: Camera): ReadonlyArray<Canvas.Shape>
+  (camera: Camera): (model: Model) => ReadonlyArray<Draw.Shape>
+  (model: Model, camera: Camera): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   2,
-  (model: Model, camera: Camera): ReadonlyArray<Canvas.Shape> =>
+  (model: Model, camera: Camera): ReadonlyArray<Draw.Shape> =>
     Option.match(
       Option.flatMap(maybeRattlesLine(model), line =>
         Option.fromNullishOr(INTRO_BUBBLES.get(line)),
@@ -694,7 +694,7 @@ const rattlesIntroShapes: {
 // up over each other: the kitchen tour's first, then his hello, then his
 // holler about the kitchen, then a hint about the dare.
 const RATTLES_BUBBLES: ReadonlyArray<
-  (model: Model, camera: Camera) => ReadonlyArray<Canvas.Shape>
+  (model: Model, camera: Camera) => ReadonlyArray<Draw.Shape>
 > = [
   (model, camera) => kitchenBubbleShapes(model, camera),
   (model, camera) => rattlesIntroShapes(model, camera),
@@ -703,11 +703,11 @@ const RATTLES_BUBBLES: ReadonlyArray<
 ]
 
 export const rattlesBubbleShapes: {
-  (camera: Camera): (model: Model) => ReadonlyArray<Canvas.Shape>
-  (model: Model, camera: Camera): ReadonlyArray<Canvas.Shape>
+  (camera: Camera): (model: Model) => ReadonlyArray<Draw.Shape>
+  (model: Model, camera: Camera): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   2,
-  (model: Model, camera: Camera): ReadonlyArray<Canvas.Shape> => {
+  (model: Model, camera: Camera): ReadonlyArray<Draw.Shape> => {
     for (const bubble of RATTLES_BUBBLES) {
       const shapes = bubble(model, camera)
       if (shapes.length > 0) {

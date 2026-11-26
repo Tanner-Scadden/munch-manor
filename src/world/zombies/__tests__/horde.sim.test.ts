@@ -3,13 +3,13 @@
 // `bun run test`. The kind table, exploders, and spawn tables are in
 // horde.story.test.ts.
 import { Array, Effect, Option, Order, Result, pipe } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
 import { Message } from '../../../app/message'
 import {
+  BreakClock,
   type DoorId,
   Invulnerability,
   type Model,
@@ -25,11 +25,14 @@ import {
 } from '../../../shared/constants'
 import { quietWave, withActors } from '../../../test/model.fixture'
 import {
-  APPLICATION,
   blastFrames,
+  checkModel,
   holdFire,
+  modelAfter,
   recordTicks,
-  ticks,
+  send,
+  steps,
+  tick,
   zombieOf,
 } from '../../../test/testing'
 import {
@@ -79,19 +82,15 @@ describe('exploders', () => {
         const play = (seed: number) =>
           Effect.suspend(() => {
             const frames: Array<Model> = []
-            return Story.story(
-              APPLICATION,
-              Story.given(
-                modifyFocus(
-                  modifyFields(withScene(cluster), { rngState: () => seed }),
-                  {
-                    player: player =>
-                      modifyFields(player, { x: () => 150, y: () => 72 }),
-                  },
-                ),
+            return modelAfter(
+              modifyFocus(
+                UiStruct.evolve(withScene(cluster), { rngState: () => seed }),
+                {
+                  player: player =>
+                    UiStruct.evolve(player, { x: () => 150, y: () => 72 }),
+                },
               ),
-              holdFire,
-              ...recordTicks(300, FRAME_MS, frames),
+              steps(holdFire, recordTicks(300, FRAME_MS, frames)),
             ).pipe(Effect.as<ReadonlyArray<Model>>(frames))
           })
 
@@ -122,52 +121,54 @@ describe('spawn tables', () => {
           Readonly<{ kind: ZombieKind; door: DoorId | 'Floor' }>
         >()
         const preparation = Phase.Preparation({
+          clock: BreakClock.Counting(),
           wave,
           remainingMs: 5000,
           durationMs: 5000,
           spawns,
         })
 
-        yield* Story.story(
-          APPLICATION,
-          Story.given(
-            modifyFocus(
-              modifyFields(quietWave(1), {
-                phase: () => preparation,
-                rngState: () => rngState,
-              }),
-              {
-                player: player =>
-                  modifyFields(player, {
-                    hp: () => 1e6,
-                    invulnerability: () =>
-                      Invulnerability.Invulnerable({
-                        remainingMs: 1e9,
-                        durationMs: 1e9,
-                      }),
-                  }),
-              },
+        yield* modelAfter(
+          modifyFocus(
+            UiStruct.evolve(quietWave(1), {
+              phase: () => preparation,
+              rngState: () => rngState,
+            }),
+            {
+              player: player =>
+                UiStruct.evolve(player, {
+                  hp: () => 1e6,
+                  invulnerability: () =>
+                    Invulnerability.Invulnerable({
+                      remainingMs: 1e9,
+                      durationMs: 1e9,
+                    }),
+                }),
+            },
+          ),
+          steps(
+            send(Message.PressedKey({ code: 'Enter' })),
+            ...Array.makeBy(4000, () =>
+              steps(
+                tick(50),
+                checkModel((current: Model) => {
+                  Array.forEach(current.zombies, zombie => {
+                    if (
+                      roundWaveOf(current.phase) === wave &&
+                      !seen.has(zombie.id)
+                    ) {
+                      seen.set(zombie.id, {
+                        kind: zombie.kind,
+                        door: ZombieAction.isAnyOf(['Burrowed'])(zombie.action)
+                          ? 'Floor'
+                          : nearestDoor(PARLOUR, zombie).id,
+                      })
+                    }
+                  })
+                }),
+              ),
             ),
           ),
-          Story.message(Message.PressedKey({ code: 'Enter' })),
-          ...Array.flatMap(ticks(4000, 50), frame => [
-            frame,
-            Story.model((current: Model) => {
-              Array.forEach(current.zombies, zombie => {
-                if (
-                  roundWaveOf(current.phase) === wave &&
-                  !seen.has(zombie.id)
-                ) {
-                  seen.set(zombie.id, {
-                    kind: zombie.kind,
-                    door: ZombieAction.isAnyOf(['Burrowed'])(zombie.action)
-                      ? 'Floor'
-                      : nearestDoor(PARLOUR, zombie).id,
-                  })
-                }
-              })
-            }),
-          ]),
         )
 
         const arrivals = Array.fromIterable(seen.values())
@@ -246,33 +247,30 @@ describe('tank pathing', () => {
     Effect.suspend(() => {
       const start = doorSpawnPoint(level, door, offset)
       const frames: Array<Model> = []
-      return Story.story(
-        APPLICATION,
-        Story.given(
-          modifyFocus(
-            modifyFields(
-              withScene([
-                zombieOf('Tank', 1, start.x, start.y, {
-                  speed: TANK_TEST_SPEED,
-                }),
-              ]),
-              { level: () => state },
-            ),
-            {
-              player: player =>
-                modifyFields(player, {
-                  x: () => target.x,
-                  y: () => target.y,
-                  invulnerability: () =>
-                    Invulnerability.Invulnerable({
-                      remainingMs: 1e9,
-                      durationMs: 1e9,
-                    }),
-                }),
-            },
+      return modelAfter(
+        modifyFocus(
+          UiStruct.evolve(
+            withScene([
+              zombieOf('Tank', 1, start.x, start.y, {
+                speed: TANK_TEST_SPEED,
+              }),
+            ]),
+            { level: () => state },
           ),
+          {
+            player: player =>
+              UiStruct.evolve(player, {
+                x: () => target.x,
+                y: () => target.y,
+                invulnerability: () =>
+                  Invulnerability.Invulnerable({
+                    remainingMs: 1e9,
+                    durationMs: 1e9,
+                  }),
+              }),
+          },
         ),
-        ...recordTicks(400, 50, frames),
+        recordTicks(400, 50, frames),
       ).pipe(Effect.as<ReadonlyArray<Model>>(frames))
     })
 

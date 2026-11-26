@@ -1,8 +1,8 @@
 // @vitest-environment happy-dom
 import { Array, Effect, Fiber, Option, Ref, Schema, Stream } from 'effect'
 import { TestClock } from 'effect/testing'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { afterEach, describe, expect, it, vi } from '@effect/vitest'
 
 import { initialModel } from '../../app/pureApp'
@@ -86,8 +86,8 @@ const fakeStore = (
           ? Option.none()
           : Option.some(
               saveOf(
-                modifyFields(asVeteran(initialModel), {
-                  settings: modifyFields({ shareStats: () => shareStats }),
+                UiStruct.evolve(asVeteran(initialModel), {
+                  settings: UiStruct.evolve({ shareStats: () => shareStats }),
                 }),
               ),
             ),

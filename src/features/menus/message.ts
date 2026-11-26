@@ -1,5 +1,6 @@
 import { Schema } from 'effect'
-import { defineMessageUnion } from 'foldkit/message'
+
+import { UiSchema } from '@effect/ui'
 
 // NOTE: the How to play cards (src/features/menus/pauseHelp.ts). One card at a time shows
 // its line of how to do it: the one focused or tapped last, until the
@@ -26,4 +27,4 @@ export const helpCases = {
   FocusedHelpCard: { card: HelpCard },
   ClickedHelpCard: { card: HelpCard },
 }
-export const HelpMessage = defineMessageUnion(helpCases)
+export const HelpMessage = UiSchema.TaggedEnum(helpCases)

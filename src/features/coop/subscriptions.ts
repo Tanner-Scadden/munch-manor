@@ -1,115 +1,66 @@
-import { Clock, Effect, Option, Schema, Stream } from 'effect'
+import { Clock, Effect, Option, Stream } from 'effect'
+
+import { Subscription } from '@effect/ui'
 
 import { Screen, maybeRoomOf } from '../../domain/coopRoom'
-import { Calling } from '../../shared/playerData'
-import { makeSubscriptions } from './block'
-import { Message } from './message'
+import { CoopMessage } from './message'
 import { type Model } from './model'
 import { CoopNet } from './net'
 
-// NOTE: co-op's streams, each running while the Model needs it: the QUICK
-// PLAY socket while queued, and the lobby and the game socket while in a
-// room. Ending a stream closes its socket. The room's frame clock is the
-// root's (src/app/subscriptions.ts), which ticks the room through its Binding.
+// NOTE: co-op's streams, the root's Subscriptions while co-op needs them:
+// the QUICK PLAY socket while queued, and the lobby and the game socket
+// while in a room. Ending a stream closes its socket. The room's frame clock
+// is the root's own (src/app/subscriptions.ts, TickedRoomFrame). The root
+// lists them as `...coopSubscriptions(model.coop)`.
 
-const MaybeJoiner = Schema.Option(
-  Schema.Struct({
-    name: Schema.String,
-    look: Schema.String,
-    rank: Schema.Finite,
-    calling: Calling,
-    introSeen: Schema.Boolean,
-  }),
-)
-const MaybeCode = Schema.Option(Schema.String)
+// NOTE: a stream over the CoopNet service, the root's (src/app/services.ts).
+const overNet = <A>(
+  toStream: (net: CoopNet['Service']) => Stream.Stream<A>,
+): Stream.Stream<A, never, CoopNet> =>
+  Stream.unwrap(
+    Effect.gen(function* () {
+      const net = yield* CoopNet
+      return toStream(net)
+    }),
+  )
 
-const maybeQueueJoiner = (
-  model: Model,
-): Option.Option<
-  Readonly<{
-    name: string
-    look: string
-    rank: number
-    calling: Calling
-    introSeen: boolean
-  }>
-> =>
-  Screen.isAnyOf(['Queue'])(model.screen)
-    ? Option.some({
-        name: model.name,
-        look: model.look,
-        rank: model.rank,
-        calling: model.calling,
-        introSeen: model.introSeen,
-      })
-    : Option.none()
+const quickPlay = (model: Model) =>
+  Subscription.make(
+    'CoopQuickPlay',
+    [model.name, model.look, model.rank, model.calling, model.introSeen],
+    ([name, look, rank, calling, introSeen]) =>
+      overNet(net =>
+        Stream.map(net.quickPlay(name, look, rank, calling, introSeen), event =>
+          CoopMessage.ReceivedQuickPlayEvent({ event }),
+        ),
+      ),
+  )
 
-const maybeRoomCode = (model: Model): Option.Option<string> =>
-  Option.map(maybeRoomOf(model), room => room.code)
+const lobby = (code: string) =>
+  Subscription.make('CoopLobby', code, deps =>
+    overNet(net =>
+      Stream.map(net.lobby(deps), event =>
+        CoopMessage.ReceivedLobbyEvent({ event }),
+      ),
+    ),
+  )
 
-const whenSome = <A, B>(
-  maybeValue: Option.Option<A>,
-  toStream: (value: A) => Stream.Stream<B>,
-): Stream.Stream<B> =>
-  Option.match(maybeValue, { onNone: () => Stream.empty, onSome: toStream })
+const room = (code: string) =>
+  Subscription.make('CoopRoom', code, deps =>
+    overNet(net =>
+      Stream.mapEffect(net.room(deps), event =>
+        Effect.map(Clock.currentTimeMillis, atMs =>
+          CoopMessage.ReceivedRoomEvent({ event, atMs }),
+        ),
+      ),
+    ),
+  )
 
-export const subscriptions = makeSubscriptions(entry => ({
-  quickPlay: entry(
-    'QuickPlay',
-    { maybeJoiner: MaybeJoiner },
-    {
-      messages: [Message.ReceivedQuickPlayEvent],
-      modelToDependencies: model => ({
-        maybeJoiner: maybeQueueJoiner(model),
-      }),
-      handler: function* () {
-        const net = yield* CoopNet
-        return ({ maybeJoiner }) =>
-          whenSome(maybeJoiner, ({ name, look, rank, calling, introSeen }) =>
-            Stream.map(
-              net.quickPlay(name, look, rank, calling, introSeen),
-              event => Message.ReceivedQuickPlayEvent({ event }),
-            ),
-          )
-      },
-    },
-  ),
-
-  lobby: entry(
-    'Lobby',
-    { maybeCode: MaybeCode },
-    {
-      messages: [Message.ReceivedLobbyEvent],
-      modelToDependencies: model => ({ maybeCode: maybeRoomCode(model) }),
-      handler: function* () {
-        const net = yield* CoopNet
-        return ({ maybeCode }) =>
-          whenSome(maybeCode, code =>
-            Stream.map(net.lobby(code), event =>
-              Message.ReceivedLobbyEvent({ event }),
-            ),
-          )
-      },
-    },
-  ),
-
-  room: entry(
-    'Room',
-    { maybeCode: MaybeCode },
-    {
-      messages: [Message.ReceivedRoomEvent],
-      modelToDependencies: model => ({ maybeCode: maybeRoomCode(model) }),
-      handler: function* () {
-        const net = yield* CoopNet
-        return ({ maybeCode }) =>
-          whenSome(maybeCode, code =>
-            Stream.mapEffect(net.room(code), event =>
-              Effect.map(Clock.currentTimeMillis, atMs =>
-                Message.ReceivedRoomEvent({ event, atMs }),
-              ),
-            ),
-          )
-      },
-    },
-  ),
-}))
+export const coopSubscriptions = (model: Model) => {
+  const maybeCode = Option.map(maybeRoomOf(model), ({ code }) => code)
+  return [
+    Screen.isAnyOf(['Queue'])(model.screen) && quickPlay(model),
+    Option.isSome(maybeCode) && lobby(maybeCode.value),
+    Option.isSome(maybeCode) && room(maybeCode.value),
+  ] as const
+}

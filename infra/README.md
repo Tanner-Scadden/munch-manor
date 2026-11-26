@@ -1,24 +1,24 @@
 # Infra
 
-The Cloudflare side of Munch Manor, declared with [Alchemy](https://alchemy.run/). It has its own `package.json`, with Alchemy 2.0.0-beta.85 on `effect` 4.1.0, the same Effect the game, the packages, and the Foldkit Block preview use. Versions are pinned exactly, since Alchemy v2 is still in beta; move `effect` here and in the root `package.json` together.
+The Cloudflare side of Munch Manor, declared with [Alchemy](https://alchemy.run/). It has its own `package.json`, with Alchemy 2.0.0-beta.85 on `effect` 4.1.4, the same Effect the game, the packages, and Effect UI use. Versions are pinned exactly, since Alchemy v2 is still in beta; move `effect` here and in the root `package.json` together.
 
-| File                                               | What it holds                                                                                           |
-| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `alchemy.run.ts`                                   | The game as a `Cloudflare.Website.Foldkit` Worker, the analytics API Worker and its D1, and the comment |
-| `github.ts`                                        | The narrow CI token and the two GitHub Actions secrets it is written to                                 |
-| `worker/api.ts`                                    | The analytics `HttpApi`: `POST /api/runs` and `GET /api/health`, its errors, and the handlers           |
-| `worker/rules.ts`                                  | The pure rules: the size cap, the rate limit decision, the daily address hash input, and the D1 row     |
-| `worker/main.ts`                                   | The Worker entry: `/sync` paths to sync, the rest to analytics, and the daily retention cleanup         |
-| `worker/sync.ts`                                   | The sync Durable Objects (`SyncScope`, `SyncDirectory`) and the `/sync` routes                          |
-| `worker/syncCore.ts`                               | The sync logic they run, kept apart so the tests cover it without the Workers runtime                   |
-| `worker/gameRoom.ts`                               | The co-op `GameRoom` Durable Object (a room's lobby scope and its run) and the `/room` routes           |
-| `worker/gameRoomCore.ts`                           | The room's logic apart from the runtime: the scope host, reactions, the Hello answer, the alarm         |
-| `worker/matchmaker.ts`, `worker/matchmakerCore.ts` | QUICK PLAY's `Matchmaker` Durable Object and its logic                                                  |
-| `worker/roomCalls.ts`                              | The internal calls between the Worker, the rooms, and the Matchmaker                                    |
-| `worker/workerd.d.ts`                              | Types for the Workers globals the sync object uses (`WebSocketPair`, auto-responses)                    |
-| `worker/*.test.ts`                                 | `it.effect` tests for the rules and the handler, over in-memory SQLite with the real migration          |
-| `migrations/`                                      | The analytics D1 migrations, applied in order on deploy                                                 |
-| `vitest.config.ts`                                 | The tests, run by vitest under Bun, with the shared game files and the sync engine on infra's Effect    |
+| File                                               | What it holds                                                                                        |
+| -------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `alchemy.run.ts`                                   | The game as a `Cloudflare.Website.Vite` Worker, the analytics API Worker and its D1, and the comment |
+| `github.ts`                                        | The narrow CI token and the two GitHub Actions secrets it is written to                              |
+| `worker/api.ts`                                    | The analytics `HttpApi`: `POST /api/runs` and `GET /api/health`, its errors, and the handlers        |
+| `worker/rules.ts`                                  | The pure rules: the size cap, the rate limit decision, the daily address hash input, and the D1 row  |
+| `worker/main.ts`                                   | The Worker entry: `/sync` paths to sync, the rest to analytics, and the daily retention cleanup      |
+| `worker/sync.ts`                                   | The sync Durable Objects (`SyncScope`, `SyncDirectory`) and the `/sync` routes                       |
+| `worker/syncCore.ts`                               | The sync logic they run, kept apart so the tests cover it without the Workers runtime                |
+| `worker/gameRoom.ts`                               | The co-op `GameRoom` Durable Object (a room's lobby scope and its run) and the `/room` routes        |
+| `worker/gameRoomCore.ts`                           | The room's logic apart from the runtime: the scope host, reactions, the Hello answer, the alarm      |
+| `worker/matchmaker.ts`, `worker/matchmakerCore.ts` | QUICK PLAY's `Matchmaker` Durable Object and its logic                                               |
+| `worker/roomCalls.ts`                              | The internal calls between the Worker, the rooms, and the Matchmaker                                 |
+| `worker/workerd.d.ts`                              | Types for the Workers globals the sync object uses (`WebSocketPair`, auto-responses)                 |
+| `worker/*.test.ts`                                 | `it.effect` tests for the rules and the handler, over in-memory SQLite with the real migration       |
+| `migrations/`                                      | The analytics D1 migrations, applied in order on deploy                                              |
+| `vitest.config.ts`                                 | The tests, run by vitest under Bun, with the shared game files and the sync engine on infra's Effect |
 
 ## Stages
 
@@ -42,7 +42,7 @@ State lives in Alchemy's Cloudflare state store (the `alchemy-state-store` Worke
 - **Pull request.** The same checks, then a preview at `https://munch-manor-pr-<number>.tanner-scadden.workers.dev`, with its URL in a comment on the pull request. Closing the pull request destroys the preview.
 - **By hand.** Run the workflow from the Actions tab on `main` to redeploy production, or deploy from this machine with the commands below.
 
-Alchemy skips the build and the upload when none of `src/`, `packages/*/src/`, `packages/*/package.json`, `public/`, `patches/`, `index.html`, `CHANGELOG.md`, `vite.config.ts`, `tsconfig.json`, `package.json`, or `bun.lock` changed (`memo` in `alchemy.run.ts`).
+Alchemy skips the build and the upload when none of `src/`, `packages/*/src/`, `packages/*/package.json`, `public/`, `index.html`, `CHANGELOG.md`, `vite.config.ts`, `tsconfig.json`, `package.json`, or `bun.lock` changed (`memo` in `alchemy.run.ts`).
 
 **The static build.** `bun run build` writes a static site to `dist/`. Vite's `base` is `'./'`, so every asset path is relative and `dist/` works from any sub-path. Check it with `bunx vite preview` before publishing. It needs an HTTP server: opening `dist/index.html` straight from disk does not load the module script.
 
@@ -105,7 +105,7 @@ On every stage the API Worker also serves co-op rooms (see "What Phases 2 and 3 
 
 The game posts one run summary per run to its stage's API Worker (see "Analytics" in `PLATFORM.md`). The Website gets the API Worker's URL as `VITE_API_ORIGIN`, which Vite inlines into the game.
 
-- **Two Effects.** The Worker imports `src/platform/analytics.ts`, which the game shares. Its `effect` import would otherwise resolve from the game's `node_modules`, a second copy of Effect 4.1.0 beside infra's, so three things point it at infra's own copy: the Worker bundle's `resolve.alias` in `alchemy.run.ts`, `paths` in `tsconfig.json`, and the `one-effect` plugin in `vitest.config.ts` for the tests, which also inlines `foldkit` so it uses that copy. Keep `src/platform/analytics.ts` importing only `effect`.
+- **Two Effects.** The Worker imports `src/platform/analytics.ts`, which the game shares. Its `effect` import would otherwise resolve from the game's `node_modules`, a second copy of Effect beside infra's, so three things point it at infra's own copy: the Worker bundle's `resolve.alias` in `alchemy.run.ts`, `paths` in `tsconfig.json`, and the `one-effect` plugin in `vitest.config.ts` for the tests. Keep `src/platform/analytics.ts` importing only `effect`.
 - **Migrations.** Add a new numbered file to `migrations/`, such as `0002_add_column.sql`. Never edit one that has shipped: Alchemy records each file's hash in the database's `__alchemy_migrations` table and applies new files in order on the next deploy.
 - **Secrets.** The address salt is an `Alchemy.Random`, made once per stage and kept in Alchemy's state. It reaches the Worker as a `secret_text` binding.
 - **Rate limits.** Cloudflare Rate Limiting bindings, namespaces 7101 (per visit) and 7102 (per address bucket), shared by every stage.

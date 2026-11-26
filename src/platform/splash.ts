@@ -2,8 +2,8 @@ import { Effect, Function, Option, Schedule, pipe } from 'effect'
 
 import { type BrowserError, toBrowserError } from '../shared/describeError'
 
-// NOTE: the splash is plain HTML and CSS in index.html, outside the Foldkit
-// root, so it paints before any script runs. These effects are its only
+// NOTE: the splash is plain HTML and CSS in index.html, outside the Effect
+// UI root, so it paints before any script runs. These effects are its only
 // readers and writers, and run from Commands once the game reports progress.
 
 const SPLASH_ID = 'splash'

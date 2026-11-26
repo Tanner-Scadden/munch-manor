@@ -1,10 +1,10 @@
 import { Array, Option, Result } from 'effect'
-import type { Canvas } from 'foldkit'
 
 import type { Model } from '../../app/model'
 import { type Sprite, bakeShapes, placeAt } from '../../art/sprite'
 import { runDifficultyOf } from '../../domain/onlineRun'
 import type { Drawable } from '../../render/depth'
+import type * as Draw from '../../render/draw'
 import { rect } from '../../render/drawing'
 import { SET_UP_RINGS, ringStepOf } from '../../render/workRing'
 import { findStyleOf, isInOpenRoom } from '../../world/dare/dare'
@@ -208,7 +208,7 @@ export const findDrawables = (model: Model): ReadonlyArray<Drawable> =>
   }))
 
 // NOTE: over everything: the gold work ring while a find is worked.
-export const findOverheadShapes = (model: Model): ReadonlyArray<Canvas.Shape> =>
+export const findOverheadShapes = (model: Model): ReadonlyArray<Draw.Shape> =>
   Array.filterMap(findViewsOf(model), ({ spot, share }) =>
     share > 0
       ? Result.succeed(

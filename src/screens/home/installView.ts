@@ -1,9 +1,9 @@
 import { Array, Function } from 'effect'
-import type { Html } from 'foldkit/html'
 
-import type { Dialog } from '@foldkit/ui'
-
-import type { ApplicationViewBuilder } from '../../app/composition'
+import type {
+  ApplicationHtml,
+  ApplicationViewBuilder,
+} from '../../app/definition'
 import type { Model } from '../../app/model'
 import { pixelArtStyle } from '../../art/artSize'
 import {
@@ -14,6 +14,7 @@ import {
 } from '../../art/icons'
 import { InstallMessage } from '../../platform/message'
 import { closeButtonView } from '../../ui/cornerButtons'
+import type { DialogParts } from '../../ui/dialog'
 import { isInstallTileShown } from './home'
 
 // TILE
@@ -27,33 +28,30 @@ const tileLabel = (model: Model): string =>
 // until its first tap. Chrome shows its own install prompt; an iPhone gets
 // the picture guide.
 export const installTileView: {
-  (h: ApplicationViewBuilder): (model: Model) => Html
-  (model: Model, h: ApplicationViewBuilder): Html
-} = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html =>
-  isInstallTileShown(model)
-    ? h.button(
-        [
-          h.Type('button'),
-          h.Id('home-install'),
-          h.Class('home-corner-button home-install'),
-          h.DataAttribute('tip', model.homeScreenTip),
-          h.AriaLabel(tileLabel(model)),
-          ...(model.release.installOffer === 'Ready'
-            ? []
-            : [h.AriaHasPopup('dialog')]),
-          h.OnClick(InstallMessage.ClickedInstallButton(), {
-            propagation: 'Stop',
-          }),
-        ],
-        [
-          h.span([
-            h.Class('home-corner-icon home-install-icon'),
-            h.AriaHidden(true),
-            h.Style(pixelArtStyle(INSTALL_ICON)),
-          ]),
-        ],
-      )
-    : h.empty,
+  (h: ApplicationViewBuilder): (model: Model) => ApplicationHtml | null
+  (model: Model, h: ApplicationViewBuilder): ApplicationHtml | null
+} = Function.dual(
+  2,
+  (model: Model, h: ApplicationViewBuilder): ApplicationHtml | null =>
+    isInstallTileShown(model)
+      ? h.button
+          .attr('type', 'button')
+          .id('home-install')
+          .class('home-corner-button home-install')
+          .attr('data-tip', model.homeScreenTip)
+          .attr('aria-label', tileLabel(model))
+          .attr(
+            'aria-haspopup',
+            model.release.installOffer === 'Ready' ? undefined : 'dialog',
+          )
+          .on('click', InstallMessage.ClickedInstallButton())
+          .children(
+            h.span
+              .class('home-corner-icon home-install-icon')
+              .attr('aria-hidden', 'true')
+              .style(pixelArtStyle(INSTALL_ICON)),
+          )
+      : null,
 )
 
 // GUIDE
@@ -72,45 +70,48 @@ const stepView = (
   { icon, word }: Step,
   index: number,
   h: ApplicationViewBuilder,
-): Html =>
-  h.li(
-    [h.Class('install-step'), h.Style({ '--step': `${index}` })],
-    [
-      h.span(
-        [h.Class('install-step-number'), h.AriaHidden(true)],
-        [`${index + 1}`],
-      ),
-      h.span(
-        [h.Class('install-step-face'), h.AriaHidden(true)],
-        [
-          h.span([h.Class('install-step-icon'), h.Style(pixelArtStyle(icon))]),
+): ApplicationHtml =>
+  h.li
+    .class('install-step')
+    .style({ '--step': `${index}` })
+    .children(
+      h.span
+        .class('install-step-number')
+        .attr('aria-hidden', 'true')
+        .children(`${index + 1}`),
+      h.span
+        .class('install-step-face')
+        .attr('aria-hidden', 'true')
+        .children(
+          h.span.class('install-step-icon').style(pixelArtStyle(icon)),
           ...(index === 0
-            ? [h.span([h.Class('install-step-more')], ['•••'])]
+            ? [h.span.class('install-step-more').children('•••')]
             : []),
-        ],
-      ),
-      h.span([h.Class('install-step-word'), h.AriaHidden(true)], [word]),
-    ],
-  )
+        ),
+      h.span
+        .class('install-step-word')
+        .attr('aria-hidden', 'true')
+        .children(word),
+    )
 
 const guidePanelView = (
-  { title, description, closeButton, initialFocus }: Dialog.RenderInfo,
+  parts: DialogParts,
   h: ApplicationViewBuilder,
-): ReadonlyArray<Html> => [
-  h.h2([...title, h.Class('panel-title')], ['Home Screen']),
-  h.p(
-    [...description, h.Class('sr-only')],
-    [
+): ReadonlyArray<ApplicationHtml> => [
+  parts.title(h.h2).class('panel-title').children('Home Screen'),
+  parts
+    .description(h.p)
+    .class('sr-only')
+    .children(
       'Tap Share (behind ••• by the address bar on newer iPhones), choose Add to Home Screen, then play Munch Manor full screen from your Home Screen.',
-    ],
-  ),
-  h.ol(
-    [h.Class('install-steps'), h.AriaHidden(true)],
-    Array.map(STEPS, (step, index) => stepView(step, index, h)),
-  ),
+    ),
+  h.ol
+    .class('install-steps')
+    .attr('aria-hidden', 'true')
+    .children(Array.map(STEPS, (step, index) => stepView(step, index, h))),
   closeButtonView(
     {
-      attributes: [...closeButton, ...initialFocus],
+      button: parts.initialFocus(parts.close(h.button)),
       className: 'panel-close',
       label: 'Close',
     },
@@ -123,9 +124,9 @@ const guidePanelView = (
 export const homeScreenGuideInsidesView: {
   (
     h: ApplicationViewBuilder,
-  ): (renderInfo: Dialog.RenderInfo) => ReadonlyArray<Html>
+  ): (parts: DialogParts) => ReadonlyArray<ApplicationHtml>
   (
-    renderInfo: Dialog.RenderInfo,
+    parts: DialogParts,
     h: ApplicationViewBuilder,
-  ): ReadonlyArray<Html>
+  ): ReadonlyArray<ApplicationHtml>
 } = Function.dual(2, guidePanelView)

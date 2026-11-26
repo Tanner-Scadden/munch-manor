@@ -38,16 +38,43 @@ const Brightness = Schema.Finite
 
 // NOTE: the average brightness of a picture the Studio copies for a note
 // (`.stage-shot` or `.live-shot`), 0 to 255, read in the page; -1 with none.
+// The shot is a `bitmaprenderer` canvas, so it is read through WebGL2: taken
+// up as a texture on a framebuffer and read back with `readPixels`. It runs
+// inside the page, where Effect is not loaded.
 const readBrightness = (selector: string): number => {
   const canvas = document.querySelector(selector)
   if (!(canvas instanceof HTMLCanvasElement) || canvas.width === 0) {
     return -1
   }
-  const context = canvas.getContext('2d')
-  if (context === null) {
+  const gl = document.createElement('canvas').getContext('webgl2')
+  if (gl === null) {
     return -1
   }
-  const { data } = context.getImageData(0, 0, canvas.width, canvas.height)
+  const texture = gl.createTexture()
+  gl.bindTexture(gl.TEXTURE_2D, texture)
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, canvas)
+  const framebuffer = gl.createFramebuffer()
+  gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer)
+  gl.framebufferTexture2D(
+    gl.FRAMEBUFFER,
+    gl.COLOR_ATTACHMENT0,
+    gl.TEXTURE_2D,
+    texture,
+    0,
+  )
+  const data = new Uint8Array(canvas.width * canvas.height * 4)
+  gl.readPixels(
+    0,
+    0,
+    canvas.width,
+    canvas.height,
+    gl.RGBA,
+    gl.UNSIGNED_BYTE,
+    data,
+  )
+  gl.deleteFramebuffer(framebuffer)
+  gl.deleteTexture(texture)
+  gl.getExtension('WEBGL_lose_context')?.loseContext()
   let sum = 0
   for (let index = 0; index < data.length; index += 4) {
     sum += (data[index] ?? 0) + (data[index + 1] ?? 0) + (data[index + 2] ?? 0)

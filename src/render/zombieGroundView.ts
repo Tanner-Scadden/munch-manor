@@ -1,5 +1,4 @@
 import { Array, Function, Record, Result } from 'effect'
-import { Canvas } from 'foldkit'
 
 import { group } from '../art/sprite'
 import {
@@ -19,6 +18,7 @@ import { clamp } from '../world/step/geometry'
 import { CHUCKER_RULES } from '../world/zombies/chucker'
 import { surfacingProgress } from '../world/zombies/crawler'
 import { Behavior, ZOMBIE_KINDS, statsOf } from '../world/zombies/zombies'
+import * as Draw from './draw'
 import { footShadow, tellAlpha } from './drawing'
 import { bakeDiscs, bakeRings, pixelDisc, pixelRing } from './pixelCircle'
 
@@ -48,7 +48,7 @@ export const zombieFootY = (zombie: Zombie): number =>
     Reeling: () => 0,
   })
 
-const zombieFootShadow = (zombie: Zombie, fill: string): Canvas.Shape => {
+const zombieFootShadow = (zombie: Zombie, fill: string): Draw.Shape => {
   const stats = statsOf(zombie)
   return footShadow(
     zombie,
@@ -71,17 +71,15 @@ const hasShadow = ZombieAction.isAnyOf([
   'Reeling',
 ])
 
-export const zombieShadow = (
-  zombie: Zombie,
-): Result.Result<Canvas.Shape, void> =>
+export const zombieShadow = (zombie: Zombie): Result.Result<Draw.Shape, void> =>
   ZombieState.match(zombie.state, {
-    Walking: (): Result.Result<Canvas.Shape, void> =>
+    Walking: (): Result.Result<Draw.Shape, void> =>
       hasShadow(zombie.action)
         ? Result.succeed(zombieFootShadow(zombie, SHADOW_COLOR))
         : Result.failVoid,
-    Fusing: (): Result.Result<Canvas.Shape, void> =>
+    Fusing: (): Result.Result<Draw.Shape, void> =>
       Result.succeed(zombieFootShadow(zombie, SHADOW_COLOR)),
-    Dying: ({ remainingMs }): Result.Result<Canvas.Shape, void> => {
+    Dying: ({ remainingMs }): Result.Result<Draw.Shape, void> => {
       const progress = 1 - remainingMs / Math.max(1, statsOf(zombie).dyingMs)
       if (progress < SHADOW_FADE_START) {
         return Result.succeed(zombieFootShadow(zombie, SHADOW_COLOR))
@@ -109,7 +107,7 @@ const tellRingShapes = (
   at: Vector,
   radius: number,
   progress: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const x = Math.round(at.x)
   const y = Math.round(at.y)
   return [
@@ -147,7 +145,7 @@ const fuseLengthOf = (zombie: Zombie): number =>
 const fuseRingShapes = (
   zombie: Zombie,
   remainingMs: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const radius = blastRadiusOf(zombie)
   return radius > 0
     ? tellRingShapes(
@@ -158,7 +156,7 @@ const fuseRingShapes = (
     : []
 }
 
-const landingShapes = (zombie: Zombie): ReadonlyArray<Canvas.Shape> => {
+const landingShapes = (zombie: Zombie): ReadonlyArray<Draw.Shape> => {
   if (!ZombieAction.isAnyOf(['Flying'])(zombie.action)) {
     return []
   }
@@ -221,7 +219,7 @@ const CRACKS: ReadonlyArray<Crack> = [
 const crackShapes = (
   zombie: Zombie,
   elapsedMs: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const progress = surfacingProgress(zombie)
   const x = Math.round(zombie.x)
   const y = Math.round(zombie.y)
@@ -235,7 +233,7 @@ const crackShapes = (
   )
   const cracks = Array.map(CRACKS, ({ dx, dy, length }) => {
     const reach = Math.max(1, Math.round(length * Math.min(1, progress * 1.4)))
-    return Canvas.Rect({
+    return Draw.Rect({
       x: dx < 0 ? x - reach : x + (dx > 0 ? 1 : 0),
       y: dy < 0 ? y - reach : y + (dy > 0 ? 1 : 0),
       width: dx === 0 ? 1 : reach,
@@ -246,7 +244,7 @@ const crackShapes = (
   const hole =
     progress > 0.4
       ? [
-          Canvas.Rect({
+          Draw.Rect({
             x: x - 2,
             y: y - 1,
             width: progress > 0.7 ? 5 : 3,
@@ -257,12 +255,12 @@ const crackShapes = (
       : []
   const claw =
     progress > 0.8 && jump === 0
-      ? [Canvas.Rect({ x, y: y - 2, width: 1, height: 2, fill: CLAW_COLOR })]
+      ? [Draw.Rect({ x, y: y - 2, width: 1, height: 2, fill: CLAW_COLOR })]
       : []
   const dust =
     progress > 0.2
       ? [
-          Canvas.Rect({
+          Draw.Rect({
             x: x - 4 + jump * 7,
             y: y - 2 - Math.round(progress * 4),
             width: 2,
@@ -276,7 +274,7 @@ const crackShapes = (
 
 const groundTellShapes =
   (elapsedMs: number) =>
-  (zombie: Zombie): ReadonlyArray<Canvas.Shape> =>
+  (zombie: Zombie): ReadonlyArray<Draw.Shape> =>
     ZombieState.match(zombie.state, {
       Walking: () =>
         ZombieAction.isAnyOf(['Burrowed'])(zombie.action)
@@ -289,16 +287,13 @@ const groundTellShapes =
 export const zombieGroundShapes: {
   (
     elapsedMs: number,
-  ): (zombies: ReadonlyArray<Zombie>) => ReadonlyArray<Canvas.Shape>
-  (
-    zombies: ReadonlyArray<Zombie>,
-    elapsedMs: number,
-  ): ReadonlyArray<Canvas.Shape>
+  ): (zombies: ReadonlyArray<Zombie>) => ReadonlyArray<Draw.Shape>
+  (zombies: ReadonlyArray<Zombie>, elapsedMs: number): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   2,
   (
     zombies: ReadonlyArray<Zombie>,
     elapsedMs: number,
-  ): ReadonlyArray<Canvas.Shape> =>
+  ): ReadonlyArray<Draw.Shape> =>
     Array.flatMap(zombies, groundTellShapes(elapsedMs)),
 )

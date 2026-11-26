@@ -1,12 +1,12 @@
 import { Array, Effect, Option } from 'effect'
-import { type Canvas, Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
 import {
   Boss,
   BossMove,
+  BreakClock,
   type DoorId,
   type GameEvent,
   type Model,
@@ -17,12 +17,15 @@ import {
 import { BOSS_ICON } from '../../../art/sprites/zombies'
 import { wavePreviewShapes } from '../../../features/hud/wavePreview'
 import { cameraOf } from '../../../render/camera'
+import type * as Draw from '../../../render/draw'
 import { PACK_WARNING_MS } from '../../../shared/constants'
 import { newPlayerReady, withPlayerAt } from '../../../test/model.fixture'
 import {
-  APPLICATION,
   FRAME_MS,
   bulletInto,
+  checkModel,
+  modelAfter,
+  steps,
   tick,
   ticks,
   ticksFor,
@@ -62,7 +65,7 @@ const DOOMED: Zombie = zombieOf('Shambler', 100, CENTER_X + 30, CENTER_Y, {
 })
 
 const clearing = (wave: number): Model =>
-  modifyFields(newPlayerReady, {
+  UiStruct.evolve(newPlayerReady, {
     phase: () => Phase.Wave({ wave, elapsedMs: 0, spawns: [] }),
     zombies: () => [DOOMED],
     bullets: () => [bulletInto(500, DOOMED)],
@@ -74,7 +77,7 @@ const preparationOf = (current: Model) =>
   )
 
 const inEndless = (model: Model): Model =>
-  modifyFields(model, { mode: () => RunMode.Endless() })
+  UiStruct.evolve(model, { mode: () => RunMode.Endless() })
 
 describe('planning the boss', () => {
   test('only every tenth wave has a boss', () => {
@@ -88,110 +91,111 @@ describe('planning the boss', () => {
   })
 
   it.effect('an escape run never plans him by wave number', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(clearing(FINAL_WAVE - 1)),
-      tick(FRAME_MS),
-      Story.model(current => {
-        expect(preparationOf(current).wave).toBe(FINAL_WAVE)
-        expect(current.boss).toEqual(Boss.Absent())
-      }),
+    modelAfter(
+      clearing(FINAL_WAVE - 1),
+      steps(
+        tick(FRAME_MS),
+        checkModel(current => {
+          expect(preparationOf(current).wave).toBe(FINAL_WAVE)
+          expect(current.boss).toEqual(Boss.Absent())
+        }),
+      ),
     ),
   )
 
   it.effect(
     'in endless, clearing wave 9 plans a boss at a door that waits out two thirds of wave 10',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(inEndless(clearing(FINAL_WAVE - 1))),
-        tick(FRAME_MS),
-        Story.model(current => {
-          const preparation = preparationOf(current)
-          expect(preparation.wave).toBe(FINAL_WAVE)
-          const waiting = Option.getOrThrow(
-            Option.liftPredicate(current.boss, Boss.guards.Waiting),
-          )
-          expect(DOOR_IDS).toContain(waiting.door)
-          expect(waiting.waitBelow).toBe(
-            Math.round(preparation.spawns.length / 3),
-          )
-          expect(waiting.hp).toBe(
-            scaledHp(
-              ZOMBIE_KINDS.Boss.hp,
-              (WAVE_PLANS[FINAL_WAVE - 1]?.hpScale ?? 1) *
-                DIFFICULTIES.Normal.healthScale,
-            ),
-          )
-        }),
+      modelAfter(
+        inEndless(clearing(FINAL_WAVE - 1)),
+        steps(
+          tick(FRAME_MS),
+          checkModel(current => {
+            const preparation = preparationOf(current)
+            expect(preparation.wave).toBe(FINAL_WAVE)
+            const waiting = Option.getOrThrow(
+              Option.liftPredicate(current.boss, Boss.guards.Waiting),
+            )
+            expect(DOOR_IDS).toContain(waiting.door)
+            expect(waiting.waitBelow).toBe(
+              Math.round(preparation.spawns.length / 3),
+            )
+            expect(waiting.hp).toBe(
+              scaledHp(
+                ZOMBIE_KINDS.Boss.hp,
+                (WAVE_PLANS[FINAL_WAVE - 1]?.hpScale ?? 1) *
+                  DIFFICULTIES.Normal.healthScale,
+              ),
+            )
+          }),
+        ),
       ),
   )
 
   it.effect.each(['Hard', 'Nightmare'] as const)(
     'on %s he takes his own boss health on top of the level health',
     level =>
-      Story.story(
-        APPLICATION,
-        Story.given(
-          modifyFields(inEndless(clearing(FINAL_WAVE - 1)), {
-            difficulty: setting =>
-              modifyFields(setting, { chosen: () => level }),
+      modelAfter(
+        UiStruct.evolve(inEndless(clearing(FINAL_WAVE - 1)), {
+          difficulty: setting =>
+            UiStruct.evolve(setting, { chosen: () => level }),
+        }),
+        steps(
+          tick(FRAME_MS),
+          checkModel(current => {
+            const waiting = Option.getOrThrow(
+              Option.liftPredicate(current.boss, Boss.guards.Waiting),
+            )
+            const { healthScale, bossHealthScale } = DIFFICULTIES[level]
+            expect(bossHealthScale).toBeGreaterThan(1)
+            expect(waiting.hp).toBe(
+              scaledHp(
+                ZOMBIE_KINDS.Boss.hp,
+                (WAVE_PLANS[FINAL_WAVE - 1]?.hpScale ?? 1) *
+                  healthScale *
+                  bossHealthScale,
+              ),
+            )
+            expect(waiting.hp).toBe({ Hard: 214, Nightmare: 323 }[level])
           }),
         ),
-        tick(FRAME_MS),
-        Story.model(current => {
-          const waiting = Option.getOrThrow(
-            Option.liftPredicate(current.boss, Boss.guards.Waiting),
-          )
-          const { healthScale, bossHealthScale } = DIFFICULTIES[level]
-          expect(bossHealthScale).toBeGreaterThan(1)
-          expect(waiting.hp).toBe(
-            scaledHp(
-              ZOMBIE_KINDS.Boss.hp,
-              (WAVE_PLANS[FINAL_WAVE - 1]?.hpScale ?? 1) *
-                healthScale *
-                bossHealthScale,
-            ),
-          )
-          expect(waiting.hp).toBe({ Hard: 214, Nightmare: 323 }[level])
-        }),
       ),
   )
 
   it.effect(
     'endless brings him back every tenth wave with the wave health bonus',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(
-          modifyFields(clearing(19), { mode: () => RunMode.Endless() }),
+      modelAfter(
+        UiStruct.evolve(clearing(19), { mode: () => RunMode.Endless() }),
+        steps(
+          tick(FRAME_MS),
+          checkModel(current => {
+            expect(preparationOf(current).wave).toBe(20)
+            const waiting = Option.getOrThrow(
+              Option.liftPredicate(current.boss, Boss.guards.Waiting),
+            )
+            expect(waiting.hp).toBe(
+              scaledHp(
+                ZOMBIE_KINDS.Boss.hp,
+                hpScaleFor(20) * DIFFICULTIES.Normal.healthScale,
+              ),
+            )
+            expect(waiting.hp).toBeGreaterThan(BOSS_HP)
+          }),
         ),
-        tick(FRAME_MS),
-        Story.model(current => {
-          expect(preparationOf(current).wave).toBe(20)
-          const waiting = Option.getOrThrow(
-            Option.liftPredicate(current.boss, Boss.guards.Waiting),
-          )
-          expect(waiting.hp).toBe(
-            scaledHp(
-              ZOMBIE_KINDS.Boss.hp,
-              hpScaleFor(20) * DIFFICULTIES.Normal.healthScale,
-            ),
-          )
-          expect(waiting.hp).toBeGreaterThan(BOSS_HP)
-        }),
       ),
   )
 
   it.effect('clearing wave 3 plans no boss', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(clearing(3)),
-      tick(FRAME_MS),
-      Story.model(current => {
-        expect(preparationOf(current).wave).toBe(4)
-        expect(current.boss).toEqual(Boss.Absent())
-      }),
+    modelAfter(
+      clearing(3),
+      steps(
+        tick(FRAME_MS),
+        checkModel(current => {
+          expect(preparationOf(current).wave).toBe(4)
+          expect(current.boss).toEqual(Boss.Absent())
+        }),
+      ),
     ),
   )
 
@@ -227,35 +231,35 @@ describe('the entrance', () => {
     () =>
       Effect.gen(function* () {
         const later = Array.makeBy(4, index => spawnAt(1e9, index + 1))
-        yield* Story.story(
-          APPLICATION,
-          Story.given(
-            inWave(FINAL_WAVE, [spawnAt(0, 0), ...later], waitingAt('East', 3)),
+        yield* modelAfter(
+          inWave(FINAL_WAVE, [spawnAt(0, 0), ...later], waitingAt('East', 3)),
+          steps(
+            tick(FRAME_MS),
+            checkModel(current => {
+              expect(Boss.isAnyOf(['Waiting'])(current.boss)).toBe(true)
+              expect(eventsTagged(current.frameEvents, 'BossRoared')).toEqual(
+                [],
+              )
+            }),
           ),
-          tick(FRAME_MS),
-          Story.model(current => {
-            expect(Boss.isAnyOf(['Waiting'])(current.boss)).toBe(true)
-            expect(eventsTagged(current.frameEvents, 'BossRoared')).toEqual([])
-          }),
         )
-        yield* Story.story(
-          APPLICATION,
-          Story.given(
-            inWave(
-              FINAL_WAVE,
-              [spawnAt(0, 0), ...Array.take(later, 3)],
-              waitingAt('East', 3),
-            ),
+        yield* modelAfter(
+          inWave(
+            FINAL_WAVE,
+            [spawnAt(0, 0), ...Array.take(later, 3)],
+            waitingAt('East', 3),
           ),
-          tick(FRAME_MS),
-          Story.model(current => {
-            expect(Boss.isAnyOf(['Arriving'])(current.boss)).toBe(true)
-            const [roar] = eventsTagged(current.frameEvents, 'BossRoared')
-            expect(roar).toMatchObject({ _tag: 'BossRoared', door: 'East' })
-            expect(
-              Array.some(current.zombies, ({ kind }) => kind === 'Boss'),
-            ).toBe(false)
-          }),
+          steps(
+            tick(FRAME_MS),
+            checkModel(current => {
+              expect(Boss.isAnyOf(['Arriving'])(current.boss)).toBe(true)
+              const [roar] = eventsTagged(current.frameEvents, 'BossRoared')
+              expect(roar).toMatchObject({ _tag: 'BossRoared', door: 'East' })
+              expect(
+                Array.some(current.zombies, ({ kind }) => kind === 'Boss'),
+              ).toBe(false)
+            }),
+          ),
         )
       }),
   )
@@ -263,43 +267,42 @@ describe('the entrance', () => {
   it.effect(
     'it walks in at its door once the entrance ends, at full health',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(
-          inWave(
-            FINAL_WAVE,
-            [spawnAt(1e9, 0)],
-            Boss.Arriving({
-              door: 'West',
-              hp: BOSS_HP,
-              guestHpScale: 1,
-              remainingMs: 40,
-              durationMs: BOSS_RULES.entranceMs,
-            }),
-          ),
+      modelAfter(
+        inWave(
+          FINAL_WAVE,
+          [spawnAt(1e9, 0)],
+          Boss.Arriving({
+            door: 'West',
+            hp: BOSS_HP,
+            guestHpScale: 1,
+            remainingMs: 40,
+            durationMs: BOSS_RULES.entranceMs,
+          }),
         ),
-        tick(FRAME_MS),
-        Story.model(current => {
-          expect(Boss.isAnyOf(['Arriving'])(current.boss)).toBe(true)
-        }),
-        tick(FRAME_MS),
-        tick(FRAME_MS),
-        Story.model(current => {
-          const boss = Option.getOrThrow(
-            Array.findFirst(current.zombies, ({ kind }) => kind === 'Boss'),
-          )
-          expect(boss.hp).toBe(BOSS_HP)
-          expect(boss.maxHp).toBe(BOSS_HP)
-          const door = doorSpawnPoint(START_LEVEL, 'West', 0)
-          expect(Math.hypot(boss.x - door.x, boss.y - door.y)).toBeLessThan(4)
-          expect(current.boss).toEqual(
-            freshFight(
-              boss.id,
-              BossMove.Stalking({ cooldownMs: BOSS_RULES.firstAttackMs }),
-              1,
-            ),
-          )
-        }),
+        steps(
+          tick(FRAME_MS),
+          checkModel(current => {
+            expect(Boss.isAnyOf(['Arriving'])(current.boss)).toBe(true)
+          }),
+          tick(FRAME_MS),
+          tick(FRAME_MS),
+          checkModel(current => {
+            const boss = Option.getOrThrow(
+              Array.findFirst(current.zombies, ({ kind }) => kind === 'Boss'),
+            )
+            expect(boss.hp).toBe(BOSS_HP)
+            expect(boss.maxHp).toBe(BOSS_HP)
+            const door = doorSpawnPoint(START_LEVEL, 'West', 0)
+            expect(Math.hypot(boss.x - door.x, boss.y - door.y)).toBeLessThan(4)
+            expect(current.boss).toEqual(
+              freshFight(
+                boss.id,
+                BossMove.Stalking({ cooldownMs: BOSS_RULES.firstAttackMs }),
+                1,
+              ),
+            )
+          }),
+        ),
       ),
   )
 })
@@ -325,31 +328,32 @@ describe('the boss has the floor', () => {
           ? current.phase.spawns.length
           : -1
       const rejoinFrames = Math.ceil(REJOIN_MS / FRAME_MS)
-      return Story.story(
-        APPLICATION,
-        Story.given(sturdy(inWave(FINAL_WAVE, soon, arriving))),
-        ...ticks(Math.ceil(1000 / FRAME_MS) + 10, FRAME_MS),
-        Story.model(current => {
-          expect(Boss.isAnyOf(['Fighting'])(current.boss)).toBe(true)
-          expect(waveClock(current)).toBe(0)
-          expect(pending(current)).toBe(soon.length)
-        }),
-        ...ticks(rejoinFrames - 30, FRAME_MS),
-        Story.model(current => {
-          expect(waveClock(current)).toBe(0)
-          expect(pending(current)).toBe(soon.length)
-          expect(current.pacing.warnedPacks).toEqual([])
-        }),
-        ...ticks(50, FRAME_MS),
-        Story.model(current => {
-          expect(waveClock(current)).toBeGreaterThan(0)
-          expect(current.pacing.warnedPacks).toEqual([0])
-          expect(pending(current)).toBe(soon.length)
-        }),
-        ...ticksFor(PACK_WARNING_MS, FRAME_MS),
-        Story.model(current => {
-          expect(pending(current)).toBe(soon.length - 1)
-        }),
+      return modelAfter(
+        sturdy(inWave(FINAL_WAVE, soon, arriving)),
+        steps(
+          ticks(Math.ceil(1000 / FRAME_MS) + 10, FRAME_MS),
+          checkModel(current => {
+            expect(Boss.isAnyOf(['Fighting'])(current.boss)).toBe(true)
+            expect(waveClock(current)).toBe(0)
+            expect(pending(current)).toBe(soon.length)
+          }),
+          ticks(rejoinFrames - 30, FRAME_MS),
+          checkModel(current => {
+            expect(waveClock(current)).toBe(0)
+            expect(pending(current)).toBe(soon.length)
+            expect(current.pacing.warnedPacks).toEqual([])
+          }),
+          ticks(50, FRAME_MS),
+          checkModel(current => {
+            expect(waveClock(current)).toBeGreaterThan(0)
+            expect(current.pacing.warnedPacks).toEqual([0])
+            expect(pending(current)).toBe(soon.length)
+          }),
+          ticksFor(PACK_WARNING_MS, FRAME_MS),
+          checkModel(current => {
+            expect(pending(current)).toBe(soon.length - 1)
+          }),
+        ),
       )
     },
   )
@@ -375,24 +379,23 @@ describe('the health bar', () => {
         }),
       )
       expect(maybeBossBar(newPlayerReady)).toEqual(Option.none())
-      return Story.story(
-        APPLICATION,
-        Story.given(
-          modifyFields(start, {
-            bullets: () => [bulletInto(1, boss, { damage: 5 })],
+      return modelAfter(
+        UiStruct.evolve(start, {
+          bullets: () => [bulletInto(1, boss, { damage: 5 })],
+        }),
+        steps(
+          tick(FRAME_MS),
+          checkModel(current => {
+            expect(maybeBossBar(current)).toEqual(
+              Option.some({
+                name: 'Uncle Chunk',
+                hp: BOSS_HP - 5,
+                maxHp: BOSS_HP,
+                isEnraged: false,
+              }),
+            )
           }),
         ),
-        tick(FRAME_MS),
-        Story.model(current => {
-          expect(maybeBossBar(current)).toEqual(
-            Option.some({
-              name: 'Uncle Chunk',
-              hp: BOSS_HP - 5,
-              maxHp: BOSS_HP,
-              isEnraged: false,
-            }),
-          )
-        }),
       )
     },
   )
@@ -409,54 +412,53 @@ describe('a boss wave', () => {
           hp: BOSS_HP,
           guestHpScale: 1,
         })
-        yield* Story.story(
-          APPLICATION,
-          Story.given(inWave(FINAL_WAVE, [], waiting)),
-          tick(FRAME_MS),
-          Story.model(current => {
-            expect(Phase.isAnyOf(['Wave'])(current.phase)).toBe(true)
-            expect(Boss.isAnyOf(['Arriving'])(current.boss)).toBe(true)
-          }),
-          // NOTE: one tick more than the entrance, as summing 1000/60 ms ticks
-          // can leave a hair of it still to run.
-          ...ticks(Math.ceil(BOSS_RULES.entranceMs / FRAME_MS) + 1, FRAME_MS),
-          Story.model(current => {
-            expect(Phase.isAnyOf(['Wave'])(current.phase)).toBe(true)
-            expect(Boss.isAnyOf(['Fighting'])(current.boss)).toBe(true)
-          }),
+        yield* modelAfter(
+          inWave(FINAL_WAVE, [], waiting),
+          steps(
+            tick(FRAME_MS),
+            checkModel(current => {
+              expect(Phase.isAnyOf(['Wave'])(current.phase)).toBe(true)
+              expect(Boss.isAnyOf(['Arriving'])(current.boss)).toBe(true)
+            }), // NOTE: one tick more than the entrance, as summing 1000/60 ms ticks
+            // can leave a hair of it still to run.
+            ticks(Math.ceil(BOSS_RULES.entranceMs / FRAME_MS) + 1, FRAME_MS),
+            checkModel(current => {
+              expect(Phase.isAnyOf(['Wave'])(current.phase)).toBe(true)
+              expect(Boss.isAnyOf(['Fighting'])(current.boss)).toBe(true)
+            }),
+          ),
         )
 
         const lastLegs = bossWithHpAt(1, CENTER_X + 60, CENTER_Y)
         const frames = Math.ceil(ZOMBIE_KINDS.Boss.dyingMs / FRAME_MS) + 120
-        yield* Story.story(
-          APPLICATION,
-          Story.given(
-            modifyFields(
-              inWave(
-                FINAL_WAVE,
-                [],
-                fightingBoss(BossMove.Stalking({ cooldownMs: 60_000 })),
-                [lastLegs],
-              ),
-              { bullets: () => [bulletInto(1, lastLegs)] },
+        yield* modelAfter(
+          UiStruct.evolve(
+            inWave(
+              FINAL_WAVE,
+              [],
+              fightingBoss(BossMove.Stalking({ cooldownMs: 60_000 })),
+              [lastLegs],
             ),
+            { bullets: () => [bulletInto(1, lastLegs)] },
           ),
-          tick(FRAME_MS),
-          Story.model(current => {
-            expect(
-              eventsTagged(current.frameEvents, 'ZombieKilled'),
-            ).toMatchObject([{ kind: 'Boss' }])
-            expect(current.hitStop).toMatchObject({
-              _tag: 'Slowed',
-              carryMs: 0,
-            })
-            expect(Phase.isAnyOf(['Wave'])(current.phase)).toBe(true)
-          }),
-          ...ticks(frames, FRAME_MS),
-          Story.model(current => {
-            expect(preparationOf(current).wave).toBe(FINAL_WAVE + 1)
-            expect(current.boss).toEqual(Boss.Absent())
-          }),
+          steps(
+            tick(FRAME_MS),
+            checkModel(current => {
+              expect(
+                eventsTagged(current.frameEvents, 'ZombieKilled'),
+              ).toMatchObject([{ kind: 'Boss' }])
+              expect(current.hitStop).toMatchObject({
+                _tag: 'Slowed',
+                carryMs: 0,
+              })
+              expect(Phase.isAnyOf(['Wave'])(current.phase)).toBe(true)
+            }),
+            ticks(frames, FRAME_MS),
+            checkModel(current => {
+              expect(preparationOf(current).wave).toBe(FINAL_WAVE + 1)
+              expect(current.boss).toEqual(Boss.Absent())
+            }),
+          ),
         )
       }),
   )
@@ -466,27 +468,26 @@ describe('a boss wave', () => {
     () => {
       const lastLegs = bossWithHpAt(1, CENTER_X + 60, CENTER_Y)
       const straggler = zombieOf('Shambler', 300, 30, 30, { hp: 3 })
-      return Story.story(
-        APPLICATION,
-        Story.given(
-          modifyFields(
-            inWave(
-              FINAL_WAVE,
-              [],
-              fightingBoss(BossMove.Stalking({ cooldownMs: 60_000 })),
-              [lastLegs, straggler],
-            ),
-            { bullets: () => [bulletInto(1, lastLegs)] },
+      return modelAfter(
+        UiStruct.evolve(
+          inWave(
+            FINAL_WAVE,
+            [],
+            fightingBoss(BossMove.Stalking({ cooldownMs: 60_000 })),
+            [lastLegs, straggler],
           ),
+          { bullets: () => [bulletInto(1, lastLegs)] },
         ),
-        ...ticks(
-          Math.ceil(ZOMBIE_KINDS.Boss.dyingMs / FRAME_MS) + 120,
-          FRAME_MS,
+        steps(
+          ticks(
+            Math.ceil(ZOMBIE_KINDS.Boss.dyingMs / FRAME_MS) + 120,
+            FRAME_MS,
+          ),
+          checkModel(current => {
+            expect(Phase.isAnyOf(['Wave'])(current.phase)).toBe(true)
+            expect(current.boss).toEqual(Boss.Absent())
+          }),
         ),
-        Story.model(current => {
-          expect(Phase.isAnyOf(['Wave'])(current.phase)).toBe(true)
-          expect(current.boss).toEqual(Boss.Absent())
-        }),
       )
     },
   )
@@ -494,15 +495,15 @@ describe('a boss wave', () => {
 
 describe('the door preview', () => {
   const isSameImage =
-    (shape: Canvas.Shape) =>
-    (wanted: Canvas.Shape): boolean =>
+    (shape: Draw.Shape) =>
+    (wanted: Draw.Shape): boolean =>
       shape._tag === 'Image' &&
       wanted._tag === 'Image' &&
       shape.src === wanted.src
 
   const containsShapes = (
-    shapes: ReadonlyArray<Canvas.Shape>,
-    wanted: ReadonlyArray<Canvas.Shape>,
+    shapes: ReadonlyArray<Draw.Shape>,
+    wanted: ReadonlyArray<Draw.Shape>,
   ): boolean =>
     Array.some(
       shapes,
@@ -514,10 +515,11 @@ describe('the door preview', () => {
 
   const preparing = (wave: number, boss: Boss): Model => {
     const [rngState, spawns] = rollSpawns(newPlayerReady.rngState, wave)
-    return modifyFields(newPlayerReady, {
+    return UiStruct.evolve(newPlayerReady, {
       rngState: () => rngState,
       phase: () =>
         Phase.Preparation({
+          clock: BreakClock.Counting(),
           wave,
           remainingMs: 15_000,
           durationMs: 20_000,
@@ -557,7 +559,7 @@ describe('determinism', () => {
       // (rows 7 to 9), where a charge's lane has room on both sides.
       const AISLE_Y = 85
       const start = (seed: number): Model =>
-        modifyFields(
+        UiStruct.evolve(
           withPlayerAt(
             inWave(
               FINAL_WAVE,
@@ -566,7 +568,7 @@ describe('determinism', () => {
                 belchMs: 0,
               }),
               [
-                modifyFields(bossAt(CENTER_X + 120, AISLE_Y), {
+                UiStruct.evolve(bossAt(CENTER_X + 120, AISLE_Y), {
                   speed: () => 10,
                 }),
               ],
@@ -581,15 +583,20 @@ describe('determinism', () => {
       const play = (seed: number) =>
         Effect.suspend(() => {
           const tags: Array<GameEvent['_tag']> = []
-          return Story.story(
-            APPLICATION,
-            Story.given(start(seed)),
-            ...Array.flatMap(ticks(700, FRAME_MS), frame => [
-              frame,
-              Story.model((current: Model) => {
-                tags.push(...Array.map(current.frameEvents, ({ _tag }) => _tag))
-              }),
-            ]),
+          return modelAfter(
+            start(seed),
+            steps(
+              ...Array.makeBy(700, () =>
+                steps(
+                  tick(FRAME_MS),
+                  checkModel((current: Model) => {
+                    tags.push(
+                      ...Array.map(current.frameEvents, ({ _tag }) => _tag),
+                    )
+                  }),
+                ),
+              ),
+            ),
           ).pipe(Effect.map(end => ({ end, tags })))
         })
       const first = yield* play(5)
@@ -604,7 +611,7 @@ describe('determinism', () => {
   it.effect('the same seed and the same frames play the same boss fight', () =>
     Effect.gen(function* () {
       const start = (seed: number): Model =>
-        modifyFields(
+        UiStruct.evolve(
           inWave(
             FINAL_WAVE,
             Array.makeBy(6, index => spawnAt(index * 300, index)),
@@ -621,11 +628,7 @@ describe('determinism', () => {
           },
         )
       const finish = (seed: number) =>
-        Story.story(
-          APPLICATION,
-          Story.given(start(seed)),
-          ...ticks(600, FRAME_MS),
-        )
+        modelAfter(start(seed), ticks(600, FRAME_MS))
       const first = yield* finish(9)
       const second = yield* finish(9)
       expect(Boss.isAnyOf(['Fighting'])(first.boss)).toBe(true)

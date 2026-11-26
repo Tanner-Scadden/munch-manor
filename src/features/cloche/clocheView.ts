@@ -1,5 +1,4 @@
 import { Function } from 'effect'
-import type { Canvas } from 'foldkit'
 
 import type { Model } from '../../app/model'
 import { ROOM_ICONS } from '../../art/roomIcons'
@@ -13,6 +12,7 @@ import {
 } from '../../art/sprite'
 import { ClocheLift } from '../../domain/clientSchema'
 import { type Camera, placedAt } from '../../render/camera'
+import type * as Draw from '../../render/draw'
 import type { SlotRoomId, Vector } from '../../world/schema/entitySchema'
 import { clamp, easeOut } from '../../world/step/geometry'
 import { CLOCHE_RULES } from './clocheReveal'
@@ -68,8 +68,8 @@ const stepped = (share: number): number =>
 
 const faded = (
   opacity: number,
-  shapes: ReadonlyArray<Canvas.Shape>,
-): ReadonlyArray<Canvas.Shape> =>
+  shapes: ReadonlyArray<Draw.Shape>,
+): ReadonlyArray<Draw.Shape> =>
   opacity >= 1 ? shapes : opacity <= 0 ? [] : [group({ opacity, shapes })]
 
 // NOTE: the icon grows past its size and settles, a squash and stretch.
@@ -85,7 +85,7 @@ const liftShapes = (
   room: SlotRoomId,
   at: Vector,
   ageMs: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const { rattleMs, liftMs, holdMs, fadeMs } = CLOCHE_RULES
   const plate = placeAt(at.x, at.y + PLATE_DROP_PX, PLATE)
   if (ageMs < rattleMs) {
@@ -110,11 +110,11 @@ const liftShapes = (
 // NOTE: the reveal for everyone in the room, placed in the world by the
 // screen camera like the fridge's.
 export const clocheShapes: {
-  (camera: Camera): (model: Model) => ReadonlyArray<Canvas.Shape>
-  (model: Model, camera: Camera): ReadonlyArray<Canvas.Shape>
+  (camera: Camera): (model: Model) => ReadonlyArray<Draw.Shape>
+  (model: Model, camera: Camera): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   2,
-  (model: Model, camera: Camera): ReadonlyArray<Canvas.Shape> =>
+  (model: Model, camera: Camera): ReadonlyArray<Draw.Shape> =>
     ClocheLift.match(model.cosmetics.clocheLift, {
       Resting: () => [],
       Lifting: ({ room, at, ageMs }) => [

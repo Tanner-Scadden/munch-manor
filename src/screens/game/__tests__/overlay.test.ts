@@ -1,6 +1,7 @@
 import { Array, Option } from 'effect'
-import { modifyFields } from 'foldkit/struct'
 import { expect, test } from 'vitest'
+
+import { UiStruct } from '@effect/ui'
 
 import { Phase } from '../../../app/model'
 import { LANDSCAPE_SCREEN } from '../../../render/screen'
@@ -14,7 +15,7 @@ import { overlayShapes } from '../overlay'
 
 const PLATE_COLOR = 'rgba(8, 10, 12, 0.55)'
 
-const waveStart = modifyFields(quietWave(4), {
+const waveStart = UiStruct.evolve(quietWave(4), {
   phase: () => Phase.Wave({ wave: 4, elapsedMs: 400, spawns: [DISTANT_SPAWN] }),
 })
 

@@ -1,5 +1,6 @@
 import { Array, Function, Option, String, pipe } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import type { Model } from '../../app/model'
 import { isDareTaken } from '../../domain/beatMyRun'
@@ -126,8 +127,8 @@ export const isTurnHintShown = (model: Model): boolean =>
   isOnHome(model.phase) && isPortrait(model) && !model.home.isTurnHintSeen
 
 export const seeTurnHint = (model: Model): Model =>
-  modifyFields(model, {
-    home: home => modifyFields(home, { isTurnHintSeen: () => true }),
+  UiStruct.evolve(model, {
+    home: home => UiStruct.evolve(home, { isTurnHintSeen: () => true }),
   })
 
 export const homeButtonId = (button: HomeButton): string =>
@@ -267,8 +268,8 @@ export const isInstallTileShown = (model: Model): boolean =>
 export const runModeOf = (mode: HomeMode): RunMode =>
   mode === 'Campaign' ? RunMode.Campaign() : RunMode.Endless()
 
-// NOTE: what the single player lobby picks from, as the root keeps it: its
-// update context and view input (LobbyBinding in src/app/bindings.ts).
+// NOTE: what the single player lobby picks from, as the root keeps it and
+// hands the lobby.
 // NOTE: a friend's dare taken holds the picks to its link's (src/domain/beatMyRun.ts):
 // its mark shows whatever this player has opened, and no bot sits in.
 export const lobbyPicksOf = (model: Model): LobbyPicks => {
@@ -289,9 +290,9 @@ export const lobbyPicksOf = (model: Model): LobbyPicks => {
 }
 
 export const switchMode = (model: Model): Model =>
-  modifyFields(model, {
+  UiStruct.evolve(model, {
     home: home =>
-      modifyFields(home, {
+      UiStruct.evolve(home, {
         mode: mode => (mode === 'Campaign' ? 'Endless' : 'Campaign'),
       }),
   })
@@ -305,9 +306,9 @@ export const isNewsUnseen = (model: Model): boolean =>
   })
 
 export const seeNews = (model: Model): Model =>
-  modifyFields(model, {
+  UiStruct.evolve(model, {
     home: home =>
-      modifyFields(home, {
+      UiStruct.evolve(home, {
         newsPage: () => 0,
         maybeSeenNewsDay: seen =>
           Option.match(maybeNewestNewsDay, {
@@ -321,9 +322,9 @@ export const turnNewsPage: {
   (step: number, dayCount: number): (model: Model) => Model
   (model: Model, step: number, dayCount: number): Model
 } = Function.dual(3, (model: Model, step: number, dayCount: number): Model =>
-  modifyFields(model, {
+  UiStruct.evolve(model, {
     home: home =>
-      modifyFields(home, {
+      UiStruct.evolve(home, {
         newsPage: page => Math.max(0, Math.min(dayCount - 1, page + step)),
       }),
   }),
@@ -337,9 +338,9 @@ export const openedEntry: {
   (kind: ZombieKind): (model: Model) => Model
   (model: Model, kind: ZombieKind): Model
 } = Function.dual(2, (model: Model, kind: ZombieKind): Model =>
-  modifyFields(model, {
+  UiStruct.evolve(model, {
     home: home =>
-      modifyFields(home, {
+      UiStruct.evolve(home, {
         newEntries: Array.filter(fresh => fresh !== kind),
         openedEntries: opened =>
           isDiscovered(model.bests.killsByKind, kind)
@@ -378,28 +379,28 @@ const countRun = (
     Counted: ({ kills: countedKills }) => killsSince(kills, countedKills),
   })
   const killsByKind = addKills(model.bests.killsByKind, newKills)
-  const counted = modifyFields(model, {
+  const counted = UiStruct.evolve(model, {
     bests: bests =>
-      modifyFields(bests, {
+      UiStruct.evolve(bests, {
         runsPlayed: runs => (isFirstCount ? runs + 1 : runs),
         totalKills: total => total + killTotal(newKills),
         killsByKind: () => killsByKind,
       }),
     home: home =>
-      modifyFields(home, {
+      UiStruct.evolve(home, {
         newEntries: fresh =>
           Array.union(
             fresh,
             newlyDiscovered(model.bests.killsByKind, killsByKind),
           ),
       }),
-    runGains: modifyFields({ runTally: () => RunTally.Counted({ kills }) }),
+    runGains: UiStruct.evolve({ runTally: () => RunTally.Counted({ kills }) }),
   })
   return isWin
     ? withBests(
         counted,
         bests =>
-          modifyFields(bests, {
+          UiStruct.evolve(bests, {
             maybeFastestWinMs: maybeFastestMs =>
               fasterWin(maybeFastestMs, model.stats.runMs),
           }),
@@ -432,7 +433,7 @@ export const countRunFrom: {
         played,
       )
     } else if (isInRun(before.phase) && isOnHome(after.phase)) {
-      return modifyFields(
+      return UiStruct.evolve(
         countRun(
           after,
           before.runGains.runTally,
@@ -441,7 +442,7 @@ export const countRunFrom: {
           played,
         ),
         {
-          runGains: modifyFields({ runTally: () => RunTally.Uncounted() }),
+          runGains: UiStruct.evolve({ runTally: () => RunTally.Uncounted() }),
         },
       )
     } else {
@@ -461,8 +462,8 @@ export const forgetNewEntriesFrom: {
   !Phase.isAnyOf(['Arriving'])(before.phase) &&
   Phase.isAnyOf(['Arriving', 'Preparation'])(after.phase) &&
   Array.isReadonlyArrayNonEmpty(after.home.newEntries)
-    ? modifyFields(after, {
-        home: home => modifyFields(home, { newEntries: () => [] }),
+    ? UiStruct.evolve(after, {
+        home: home => UiStruct.evolve(home, { newEntries: () => [] }),
       })
     : after,
 )

@@ -1,5 +1,6 @@
 import { Array, Function, Option, Result } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import { crewBotSlots, isBotCrew } from '../domain/bots'
 import { withBests } from '../domain/run'
@@ -98,7 +99,7 @@ const withAimAssist = (model: Model, intent: Intent): Intent =>
     onNone: () => intent,
     onSome: strength =>
       intent.trigger === 'Held'
-        ? modifyFields(intent, {
+        ? UiStruct.evolve(intent, {
             maybeAim: Option.map(aim =>
               assistAim(
                 levelOf(model),
@@ -133,7 +134,7 @@ const recordedTick = (
   inputs: InputsByPlayer,
 ): Model =>
   RunRecorder.isAnyOf(['Recording'])(model.recorder)
-    ? modifyFields(model, {
+    ? UiStruct.evolve(model, {
         recorder: noteTick({
           before,
           inputs,
@@ -150,7 +151,7 @@ type Ticks = Readonly<{ count: number; carryMs: number }>
 export const withFirePressSeen = (model: Model): Model =>
   model.input.firePress === 'Seen'
     ? model
-    : modifyFields(model, { input: seeFirePress })
+    : UiStruct.evolve(model, { input: seeFirePress })
 
 // NOTE: every seat's intent for a tick: the human's from the client, the
 // couch players' from their keys, and each teammate bot's from its brain
@@ -255,7 +256,7 @@ const ageCallouts = (
     : Array.filterMap(callouts, callout =>
         callout.ageMs + deltaMs < CALLOUT_LIFETIME_MS[callout.look]
           ? Result.succeed(
-              modifyFields(callout, { ageMs: ageMs => ageMs + deltaMs }),
+              UiStruct.evolve(callout, { ageMs: ageMs => ageMs + deltaMs }),
             )
           : Result.failVoid,
       )
@@ -272,9 +273,9 @@ const calloutFor = (model: Model, kind: PickupKind): Model => {
     y: focusOf(model).player.y,
     ageMs: 0,
   }
-  return modifyFields(model, {
+  return UiStruct.evolve(model, {
     seenPowerUps: seen => (isSeen ? seen : Array.append(seen, kind)),
-    cosmetics: modifyFields({
+    cosmetics: UiStruct.evolve({
       callouts: callouts =>
         Array.takeRight([...callouts, callout], CALLOUT_MAX),
     }),
@@ -285,8 +286,8 @@ const calloutFor = (model: Model, kind: PickupKind): Model => {
 // what changed. A teammate's level up only sparkles and rings.
 const levelCalloutFor = (model: Model, event: GunLeveled): Model =>
   event.slot === focusOf(model).seat.slot
-    ? modifyFields(model, {
-        cosmetics: modifyFields({
+    ? UiStruct.evolve(model, {
+        cosmetics: UiStruct.evolve({
           levelCallouts: callouts =>
             Array.takeRight(
               [
@@ -314,7 +315,7 @@ const ageLevelCallouts = (
     : Array.filterMap(callouts, callout =>
         callout.ageMs + deltaMs < LEVEL_CALLOUT_LIFETIME_MS
           ? Result.succeed(
-              modifyFields(callout, { ageMs: ageMs => ageMs + deltaMs }),
+              UiStruct.evolve(callout, { ageMs: ageMs => ageMs + deltaMs }),
             )
           : Result.failVoid,
       )
@@ -333,8 +334,8 @@ const advanceCallouts = (model: Model, worldMs: number): Model => {
       () => current,
     ),
   )
-  return modifyFields(called, {
-    cosmetics: modifyFields({
+  return UiStruct.evolve(called, {
+    cosmetics: UiStruct.evolve({
       trapNotice: notice => ageTrapNotice(notice, worldMs),
       callouts: callouts => ageCallouts(callouts, worldMs),
       levelCallouts: callouts => ageLevelCallouts(callouts, worldMs),
@@ -383,7 +384,7 @@ const advanceFlourishes = (
 const noticeFoundTrap = (model: Model): Model =>
   TrapHint.isAnyOf(['Unseen'])(model.trapHint) &&
   Array.some(TRAP_KIND_ORDER, kind => focusOf(model).trapStock[kind] > 0)
-    ? modifyFields(model, { trapHint: () => TrapHint.Showing() })
+    ? UiStruct.evolve(model, { trapHint: () => TrapHint.Showing() })
     : model
 
 // NOTE: the blow that clears a wave starts the camera's glide to it, aged
@@ -402,7 +403,7 @@ const noteFinisher = (model: Model, frameMs: number): Model => {
       Array.findLast(model.frameEvents, GameEvent.isAnyOf(['ZombieKilled'])),
       () => fallback,
     )
-  return modifyFields(model, {
+  return UiStruct.evolve(model, {
     maybeFinisher: maybeFinisher =>
       Option.match(cleared, {
         onSome: clear => {
@@ -440,7 +441,7 @@ export const leanFor: {
   (model: Model, frameMs: number): Model
 } = Function.dual(2, (model: Model, frameMs: number): Model => {
   const screen = screenOf(model)
-  return modifyFields(model, {
+  return UiStruct.evolve(model, {
     cameraLean: lean =>
       leanCamera(lean, aimReachOf(model.input, screenCameraOf(model)), frameMs),
     cameraGlide: glide =>
@@ -465,7 +466,7 @@ const recordBestWave = (
     ? withBests(
         model,
         bests =>
-          modifyFields(bests, {
+          UiStruct.evolve(bests, {
             maybeBestEndlessWave: maybeBest =>
               Option.some(
                 Option.match(maybeBest, {
@@ -497,7 +498,7 @@ export const endRoundOnClient: {
     ) {
       return after
     }
-    const shown = modifyFields(after, { screenMs: () => 0 })
+    const shown = UiStruct.evolve(after, { screenMs: () => 0 })
     return Phase.isAnyOf(['GameOver'])(after.phase)
       ? recordBestWave(shown, roundWave(after.phase), played)
       : shown
@@ -525,7 +526,7 @@ export const advanceGame: {
   const stepped = runTicks(
     {
       model: RunRecorder.isAnyOf(['Recording'])(model.recorder)
-        ? modifyFields(model, { frameEvents: emptied })
+        ? UiStruct.evolve(model, { frameEvents: emptied })
         : model,
       events: [],
       worldMs: 0,
@@ -540,7 +541,7 @@ export const advanceGame: {
         leanFor(
           followRound(
             model,
-            modifyFields(stepped.model, {
+            UiStruct.evolve(stepped.model, {
               stepCarryMs: () => ticks.carryMs,
               frameEvents: () => stepped.events,
             }),

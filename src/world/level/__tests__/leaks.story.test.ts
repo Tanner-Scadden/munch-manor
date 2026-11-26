@@ -1,7 +1,6 @@
 import { Array, Effect, Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
 import { AudioState, type Model } from '../../../app/model'
@@ -9,10 +8,12 @@ import { PlayPlaced } from '../../../app/update/sound'
 import { FIXED_STEP_MS, PLAYER_FOOT_OFFSET } from '../../../shared/constants'
 import { quietWave } from '../../../test/model.fixture'
 import {
-  APPLICATION,
   checkPendingArgs,
+  modelAfter,
   press,
   settleRunCommands,
+  steps,
+  tick,
   ticks,
   zombieOf,
 } from '../../../test/testing'
@@ -51,36 +52,29 @@ const SPLASH_STEPS = 12
 
 const playerAt = (at: Readonly<{ x: number; y: number }>): Model =>
   modifyFocus(wave, {
-    player: player => modifyFields(player, { x: () => at.x, y: () => at.y }),
+    player: player => UiStruct.evolve(player, { x: () => at.x, y: () => at.y }),
   })
 
 const playerWalked = (at: Readonly<{ x: number; y: number }>) =>
-  Story.story(
-    APPLICATION,
-    Story.given(playerAt(at)),
-    press('KeyD'),
-    ...ticks(STEPS, FRAME_MS),
-  ).pipe(Effect.map(model => distanceBetween(focusOf(model).player, at)))
+  modelAfter(playerAt(at), steps(press('KeyD'), ticks(STEPS, FRAME_MS))).pipe(
+    Effect.map(model => distanceBetween(focusOf(model).player, at)),
+  )
 
 // NOTE: one Groaner at the spot, the player well east of it on its row, so
 // it walks east toward them.
 const zombieAt = (at: Readonly<{ x: number; y: number }>): Model =>
   modifyFocus(
-    modifyFields(wave, {
+    UiStruct.evolve(wave, {
       zombies: () => [zombieOf('Shambler', 900, at.x, at.y, { speed: 40 })],
     }),
     {
       player: player =>
-        modifyFields(player, { x: () => at.x + 90, y: () => at.y }),
+        UiStruct.evolve(player, { x: () => at.x + 90, y: () => at.y }),
     },
   )
 
 const zombieWalked = (at: Readonly<{ x: number; y: number }>) =>
-  Story.story(
-    APPLICATION,
-    Story.given(zombieAt(at)),
-    ...ticks(STEPS, FRAME_MS),
-  ).pipe(
+  modelAfter(zombieAt(at), ticks(STEPS, FRAME_MS)).pipe(
     Effect.map(({ zombies }) =>
       distanceBetween(Option.getOrThrow(Array.head(zombies)), at),
     ),
@@ -109,17 +103,20 @@ describe('wading through a roof leak', () => {
     const steppedIn = (at: Readonly<{ x: number; y: number }>) =>
       Effect.suspend(() => {
         const sounds: Array<string> = []
-        return Story.story(
-          APPLICATION,
-          Story.given(
-            modifyFields(playerAt(at), { audio: () => AudioState.Ready() }),
+        return modelAfter(
+          UiStruct.evolve(playerAt(at), { audio: () => AudioState.Ready() }),
+          steps(
+            press('KeyD'),
+            ...Array.makeBy(SPLASH_STEPS, () =>
+              steps(
+                tick(FRAME_MS),
+                checkPendingArgs(PlayPlaced)(placed => {
+                  sounds.push(...Array.map(placed, ({ sound }) => sound))
+                }),
+                settleRunCommands,
+              ),
+            ),
           ),
-          press('KeyD'),
-          ...ticks(SPLASH_STEPS, FRAME_MS),
-          checkPendingArgs(Story.Command.argsOf(PlayPlaced))(placed => {
-            sounds.push(...Array.map(placed, ({ sound }) => sound))
-          }),
-          settleRunCommands,
         ).pipe(
           Effect.map(({ cosmetics }) => ({
             isSloshing: Array.contains(sounds, 'Wade'),

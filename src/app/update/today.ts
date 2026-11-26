@@ -1,5 +1,4 @@
 import { Option } from 'effect'
-import { modifyFields } from 'foldkit/struct'
 
 import { defineHandlers } from './step'
 
@@ -9,7 +8,5 @@ import { defineHandlers } from './step'
 // the first one arrives nothing pays by the day.
 
 export const todayHandlers = defineHandlers({
-  ChangedToday: (model, { day }) => ({
-    model: modifyFields(model, { maybeToday: () => Option.some(day) }),
-  }),
+  ChangedToday: ($, { day }) => $.evolve({ maybeToday: Option.some(day) }),
 })

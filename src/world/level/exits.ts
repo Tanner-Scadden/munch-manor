@@ -1,5 +1,6 @@
 import { Array, Function, Option, Order, Record, Result, pipe } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import { KITCHEN_FIRST_WAVE } from '../../shared/constants'
 import { countWork } from '../../shared/workCount'
@@ -287,7 +288,7 @@ export const buyExit: {
       return Option.none()
     }
     const box = maybeBox.value
-    const opened = modifyFields(spendKeys(model, price), {
+    const opened = UiStruct.evolve(spendKeys(model, price), {
       level: state => openExitIn(state, exit),
       frameEvents: frameEvents => [
         ...frameEvents,

@@ -1,6 +1,6 @@
-import { Array, Function, Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
+import { Array, type Effect, Function } from 'effect'
+
+import { UiStruct } from '@effect/ui'
 
 import { Message } from '../../../app/message'
 import { type Model, Phase, RunMode } from '../../../app/model'
@@ -15,9 +15,12 @@ import {
   withDareThings,
 } from '../../../test/model.fixture'
 import {
-  APPLICATION,
-  closeDialog,
-  showDialog,
+  type RootStep,
+  type StoryStep,
+  modelAfter,
+  pendingArgsOf,
+  send,
+  steps,
   tick,
   writeSave,
 } from '../../../test/testing'
@@ -28,7 +31,7 @@ import { noKills } from '../../../world/schema/worldSchema'
 // from: a Normal run at a wave, one that dies on wave 7 (60 points, 6
 // Bones), and one about to walk out the front door on wave 10.
 
-export const frame = tick(FIXED_STEP_MS)
+export const frame: StoryStep = tick(FIXED_STEP_MS)
 
 // NOTE: a run in `phase` that has cleared `wavesCleared` waves, on Normal.
 export const runAt: {
@@ -37,11 +40,11 @@ export const runAt: {
 } = Function.dual(
   3,
   (phase: Phase, wavesCleared: number, bosses: number): Model =>
-    modifyFields(readyAfterRead, {
+    UiStruct.evolve(readyAfterRead, {
       phase: () => phase,
       mode: () => RunMode.Campaign(),
       stats: stats =>
-        modifyFields(stats, {
+        UiStruct.evolve(stats, {
           wavesCleared: () => wavesCleared,
           kills: () => ({ ...noKills, Boss: bosses }),
         }),
@@ -66,7 +69,7 @@ export const FOUND_THINGS: ReadonlyArray<DareThing> = [
 // open, and the player on its sill: the next tick walks out.
 export const lastWave = escaping(
   withDareThings(
-    modifyFields(
+    UiStruct.evolve(
       runAt(
         Phase.Wave({ wave: 10, elapsedMs: 4000, spawns: [DISTANT_SPAWN] }),
         9,
@@ -74,8 +77,8 @@ export const lastWave = escaping(
       ),
       {
         stats: stats =>
-          modifyFields(stats, {
-            kills: kills => modifyFields(kills, { Boss: () => 1 }),
+          UiStruct.evolve(stats, {
+            kills: kills => UiStruct.evolve(kills, { Boss: () => 1 }),
           }),
       },
     ),
@@ -84,31 +87,25 @@ export const lastWave = escaping(
 )
 
 // NOTE: the Model one frame after `model`, its run ended and the end saved.
-export const ended = (model: Model) =>
-  Story.story(APPLICATION, Story.given(model), frame, writeSave())
+export const ended = (model: Model): Effect.Effect<Model> =>
+  modelAfter(model, steps(frame, writeSave))
 
 // NOTE: a step that hands the save's pending changes to a check.
 export const checkSavedChanges =
-  (check: (changes: ReadonlyArray<PlayerChange>) => void) =>
-  <StoryModel, StoryMessage, OutMessage>(
-    simulation: Story.StorySimulation<StoryModel, StoryMessage, OutMessage>,
-  ): Story.StorySimulation<StoryModel, StoryMessage, OutMessage> => {
+  (check: (changes: ReadonlyArray<PlayerChange>) => void): RootStep =>
+  s => {
     check(
-      Array.flatMap(simulation.commands, command =>
-        Option.match(Story.Command.argsOf(WriteSave)(command), {
-          onNone: () => [],
-          onSome: ({ changes }) => changes,
-        }),
+      Array.flatMap(pendingArgsOf(WriteSave)(s.pending), ({ changes }) =>
+        Array.fromIterable(changes),
       ),
     )
-    return simulation
+    return s
   }
 
-// NOTE: pause, MENU, and leave the run for home.
-export const leave = Story.steps(
-  Story.message(Message.ClickedPauseButton()),
-  Story.message(Message.ClickedMenuButton()),
-  showDialog(),
-  Story.message(Message.ClickedLeaveRunButton()),
-  closeDialog(),
+// NOTE: pause, MENU, and leave the run for home. The menu's dialog opens
+// and closes on the Model, with no Command to resolve.
+export const leave: StoryStep = steps(
+  send(Message.ClickedPauseButton()),
+  send(Message.ClickedMenuButton()),
+  send(Message.ClickedLeaveRunButton()),
 )

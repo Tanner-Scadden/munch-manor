@@ -145,8 +145,7 @@ export const FIELD_CLASSES = {
   playerName: 'Client',
   profile: 'Client',
   lobby: 'Client',
-  munchopedia: 'Client',
-  proofShelf: 'Client',
+  munchopediaPage: 'Client',
   profileDialog: 'Client',
   localPlayers: 'Client',
   beatMyRun: 'Client',
@@ -175,9 +174,14 @@ const LEGACY_SEAT_FIELDS = [
 // hashes as a client field too. Then the fields nested into the Model's
 // groups (`saving`, `roomRun`, `runGains`, `endCard`, `release`,
 // `runStart`, and `settings`), and `trapNotice`, now in `cosmetics`, at the
-// root before them. A run before those changes hashes them as the client
-// fields they are, so it and a run after it hash alike.
+// root before them. The Munchopedia's and the Proof Shelf's Block models
+// (`munchopedia`, `proofShelf`) sat at the root until the Effect UI port,
+// where the root keeps only the Munchopedia's page. A run before those
+// changes hashes them as the client fields they are, so it and a run after
+// it hash alike.
 const LEGACY_CLIENT_FIELDS = [
+  'munchopedia',
+  'proofShelf',
   'character',
   'profileTabs',
   'linkFlow',

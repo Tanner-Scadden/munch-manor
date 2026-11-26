@@ -1,13 +1,10 @@
 import { Array, Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { Component, UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
 import { BeatMyRun } from '../../../domain/beatLink'
 import { Screen } from '../../../domain/coopRoom'
-import { Message as LobbyMessage } from '../../../features/lobby/message'
-import { FocusLobbyControl, FoldLobby } from '../../../features/lobby/steps'
 import type { ProfileTab } from '../../../features/profile/model'
 import {
   home,
@@ -16,9 +13,14 @@ import {
   veteranFighting,
 } from '../../../test/model.fixture'
 import {
-  APPLICATION,
-  closeDialog,
+  type AppStory,
+  type StoryStep,
+  checkModel,
+  foldLobby,
+  modelAfter,
   resolveFocusLobby,
+  send,
+  steps,
 } from '../../../test/testing'
 import { DebutCard } from '../../../world/schema/worldSchema'
 import { pause } from '../../../world/waves/waves'
@@ -26,6 +28,7 @@ import { menuState } from '../../menuState'
 import { Message } from '../../message'
 import { type Model, Phase } from '../../model'
 import { FocusHomeButton } from '../home'
+import { FocusLobbyControl } from '../lobby'
 import {
   ClickPadFocus,
   EscapePadDialog,
@@ -60,19 +63,20 @@ const padOf = ({
     ),
   })
 
-const poll = (reading: Parameters<typeof padOf>[0]) =>
-  Story.message(padOf(reading))
+const poll = (reading: Parameters<typeof padOf>[0]): StoryStep =>
+  send(padOf(reading))
 
 const rest = poll({})
 
-// NOTE: a button pressed and let go, as a thumb does.
-const tapPad = (button: number) => Story.steps(poll({ held: [button] }), rest)
+// NOTE: a button pressed. A Command it issues is settled before the
+// thumb lets go (`rest`), since a Story sends nothing while one is pending.
+const pressPad = (button: number): StoryStep => poll({ held: [button] })
 
 // NOTE: a pad already in hand and resting, so the first press is an edge.
 const withPad = (model: Model): Model =>
-  modifyFields(model, {
+  UiStruct.evolve(model, {
     input: input =>
-      modifyFields(input, {
+      UiStruct.evolve(input, {
         maybeGamepad: () =>
           Option.some({
             index: 0,
@@ -83,387 +87,405 @@ const withPad = (model: Model): Model =>
   })
 
 const withPanel = (model: Model, panel: Model['panel']): Model =>
-  modifyFields(model, { panel: () => panel, panelDialog: openedDialog })
+  UiStruct.evolve(model, { panel: () => panel, panelDialog: openedDialog })
 
 const onProfileTab = (tab: ProfileTab): Model =>
-  modifyFields(withPad(home), {
-    profile: profile => modifyFields(profile, { tab: () => tab }),
+  UiStruct.evolve(withPad(home), {
+    profile: profile => UiStruct.evolve(profile, { tab: () => tab }),
     profileDialog: openedDialog,
   })
 
-const inHand: Model = modifyFields(withPad(home), { handDialog: openedDialog })
+const inHand: Model = UiStruct.evolve(withPad(home), {
+  handDialog: openedDialog,
+})
 
-const inCoop: Model = modifyFields(withPad(home), {
+const inCoop: Model = UiStruct.evolve(withPad(home), {
   coop: coop =>
-    modifyFields(coop, {
+    UiStruct.evolve(coop, {
       screen: () => Screen.Hub({ maybeProblem: Option.none() }),
     }),
 })
 
-const inLobby: Model = modifyFields(withPad(home), {
-  lobby: lobby => modifyFields(lobby, { status: () => 'Open' }),
+const inLobby: Model = UiStruct.evolve(withPad(home), {
+  lobby: lobby => UiStruct.evolve(lobby, { status: () => 'Open' }),
 })
 
-const inHeroPicker: Model = modifyFields(inLobby, {
-  lobby: lobby => modifyFields(lobby, { heroDialog: openedDialog }),
+const inHeroPicker: Model = UiStruct.evolve(inLobby, {
+  lobby: lobby => UiStruct.evolve(lobby, { isHeroPickerOpen: () => true }),
 })
 
-const onEndCard: Model = modifyFields(withPad(home), {
+const onEndCard: Model = UiStruct.evolve(withPad(home), {
   phase: () => Phase.GameOver({ wave: 3 }),
   screenMs: () => 60_000,
 })
 
 const paused: Model = withPad(pause(veteranFighting))
 
-const pageFocus = (direction: 'Up' | 'Down' | 'Left' | 'Right') =>
-  Story.Command.expectExact(MovePadFocus({ scope: 'Page', direction }))
+const pageFocus =
+  (direction: 'Up' | 'Down' | 'Left' | 'Right'): StoryStep =>
+  s =>
+    s.expectExact(MovePadFocus.make({ scope: 'Page', direction }))
 
-const dialogFocus = (direction: 'Up' | 'Down' | 'Left' | 'Right') =>
-  Story.Command.expectExact(MovePadFocus({ scope: 'TopDialog', direction }))
+const dialogFocus =
+  (direction: 'Up' | 'Down' | 'Left' | 'Right'): StoryStep =>
+  s =>
+    s.expectExact(MovePadFocus.make({ scope: 'TopDialog', direction }))
 
-const resolveMoved = Story.Command.resolve(
-  MovePadFocus,
-  Message.CompletedPadMenu(),
-)
+const resolveMoved = (s: AppStory) => s.resolve(MovePadFocus, Component.noop)
 
-const resolveTab = Story.Command.resolve(StepPadTab, Message.CompletedPadMenu())
+const resolveTab = (s: AppStory) => s.resolve(StepPadTab, Component.noop)
 
-const resolveEscape = Story.Command.resolve(
-  EscapePadDialog,
-  Message.CompletedPadMenu(),
-)
+const resolveEscape = (s: AppStory) =>
+  s.resolve(EscapePadDialog, Component.noop)
 
-const resolveClicked = Story.Command.resolve(
-  ClickPadFocus,
-  Message.ClickedPadFocus({ scope: 'TopDialog', outcome: 'Clicked' }),
-)
+const resolveClicked = (s: AppStory) =>
+  s.resolve(
+    ClickPadFocus,
+    Message.ClickedPadFocus({ scope: 'TopDialog', outcome: 'Clicked' }),
+  )
 
-const resolveHomeFocus = Story.Command.resolve(
-  FocusHomeButton,
-  Message.CompletedFocusHomeButton(),
-)
+const resolveHomeFocus = (s: AppStory) =>
+  s.resolve(FocusHomeButton, Component.noop)
 
-const onDebutCard: Model = modifyFields(withPad(veteranFighting), {
+const onDebutCard: Model = UiStruct.evolve(withPad(veteranFighting), {
   debutCard: () => DebutCard.Showing({ kind: 'Runner', ageMs: 60_000 }),
 })
 
 describe('a controller in the menus', () => {
   describe('the home menu', () => {
     it.effect('the d-pad steps the menu ring, as an arrow key does', () =>
-      Story.story(
-        APPLICATION,
-        Story.given(withPad(home)),
-        poll({ held: [DPAD_DOWN] }),
-        Story.model(current => {
-          expect(current.lastDevice).toBe('Gamepad')
-          expect(current.maybeHomeFocus).toEqual(Option.some('Play'))
-        }),
-        Story.Command.expectExact(FocusHomeButton({ button: 'Play' })),
-        resolveHomeFocus,
-        rest,
-        poll({ held: [DPAD_DOWN] }),
-        Story.model(current => {
-          expect(current.maybeHomeFocus).toEqual(Option.some('Coop'))
-        }),
-        resolveHomeFocus,
+      modelAfter(
+        withPad(home),
+        steps(
+          poll({ held: [DPAD_DOWN] }),
+          checkModel(current => {
+            expect(current.lastDevice).toBe('Gamepad')
+            expect(current.maybeHomeFocus).toEqual(Option.some('Play'))
+          }),
+          s => s.expectExact(FocusHomeButton.make({ button: 'Play' })),
+          resolveHomeFocus,
+          rest,
+          poll({ held: [DPAD_DOWN] }),
+          checkModel(current => {
+            expect(current.maybeHomeFocus).toEqual(Option.some('Coop'))
+          }),
+          resolveHomeFocus,
+        ),
       ),
     )
 
     it.effect('the left stick flicks focus once, then repeats when held', () =>
-      Story.story(
-        APPLICATION,
-        Story.given(withPad(home)),
-        poll({ axes: [0, 0.9, 0, 0] }),
-        resolveHomeFocus,
-        poll({ axes: [0.1, 0.95, 0, 0] }),
-        Story.Command.expectNone(),
-        Story.message(Message.RepeatedPadDirection({ direction: 'Down' })),
-        Story.model(current => {
-          expect(current.maybeHomeFocus).toEqual(Option.some('Coop'))
-        }),
-        resolveHomeFocus,
+      modelAfter(
+        withPad(home),
+        steps(
+          poll({ axes: [0, 0.9, 0, 0] }),
+          resolveHomeFocus,
+          poll({ axes: [0.1, 0.95, 0, 0] }),
+          s => s.expectNone(),
+          send(Message.RepeatedPadDirection({ direction: 'Down' })),
+          checkModel(current => {
+            expect(current.maybeHomeFocus).toEqual(Option.some('Coop'))
+          }),
+          resolveHomeFocus,
+        ),
       ),
     )
 
     it.effect('a stick nudged short of a flick moves nothing', () =>
-      Story.story(
-        APPLICATION,
-        Story.given(withPad(home)),
-        poll({ axes: [0, 0.4, 0, 0] }),
-        Story.Command.expectNone(),
+      modelAfter(
+        withPad(home),
+        steps(poll({ axes: [0, 0.4, 0, 0] }), s => s.expectNone()),
       ),
     )
 
     it.effect('A clicks what has focus, or plays when nothing does', () =>
-      Story.story(
-        APPLICATION,
-        Story.given(withPad(home)),
-        tapPad(A),
-        Story.Command.expectExact(ClickPadFocus({ scope: 'Page' })),
-        Story.Command.resolve(
-          ClickPadFocus,
-          Message.ClickedPadFocus({ scope: 'Page', outcome: 'NothingFocused' }),
+      modelAfter(
+        withPad(home),
+        steps(
+          pressPad(A),
+          s => s.expectExact(ClickPadFocus.make({ scope: 'Page' })),
+          (s: AppStory) =>
+            s.resolve(
+              ClickPadFocus,
+              Message.ClickedPadFocus({
+                scope: 'Page',
+                outcome: 'NothingFocused',
+              }),
+            ),
+          checkModel(current => {
+            expect(menuState(current)._tag).toBe('Lobby')
+          }),
+          resolveFocusLobby(),
         ),
-        Story.model(current => {
-          expect(menuState(current)._tag).toBe('Lobby')
-        }),
-        resolveFocusLobby(),
       ),
     )
   })
 
   describe('the dialogs', () => {
     it.effect('the MORE hand moves focus on the page and B puts it away', () =>
-      Story.story(
-        APPLICATION,
-        Story.given(inHand),
-        poll({ held: [DPAD_RIGHT] }),
-        dialogFocus('Right'),
-        resolveMoved,
-        rest,
-        tapPad(B),
-        Story.Command.expectExact(EscapePadDialog()),
-        resolveEscape,
+      modelAfter(
+        inHand,
+        steps(
+          poll({ held: [DPAD_RIGHT] }),
+          dialogFocus('Right'),
+          resolveMoved,
+          rest,
+          pressPad(B),
+          s => s.expectExact(EscapePadDialog.make()),
+          resolveEscape,
+        ),
       ),
     )
 
     it.effect('How to play takes A on the focused card', () =>
-      Story.story(
-        APPLICATION,
-        Story.given(withPanel(withPad(home), 'HowToPlay')),
-        tapPad(A),
-        Story.Command.expectExact(ClickPadFocus({ scope: 'TopDialog' })),
-        resolveClicked,
+      modelAfter(
+        withPanel(withPad(home), 'HowToPlay'),
+        steps(
+          pressPad(A),
+          s => s.expectExact(ClickPadFocus.make({ scope: 'TopDialog' })),
+          resolveClicked,
+        ),
       ),
     )
 
     it.effect("What's New turns its pages with the bumpers", () =>
-      Story.story(
-        APPLICATION,
-        Story.given(withPanel(withPad(home), 'WhatsNew')),
-        tapPad(RB),
-        Story.Command.expectExact(
-          StepPadTab({ scope: 'TopDialog', step: 'Next' }),
+      modelAfter(
+        withPanel(withPad(home), 'WhatsNew'),
+        steps(
+          pressPad(RB),
+          s =>
+            s.expectExact(
+              StepPadTab.make({ scope: 'TopDialog', step: 'Next' }),
+            ),
+          resolveTab,
+          rest,
+          pressPad(LB),
+          s =>
+            s.expectExact(
+              StepPadTab.make({ scope: 'TopDialog', step: 'Previous' }),
+            ),
+          resolveTab,
         ),
-        resolveTab,
-        tapPad(LB),
-        Story.Command.expectExact(
-          StepPadTab({ scope: 'TopDialog', step: 'Previous' }),
-        ),
-        resolveTab,
       ),
     )
 
     it.effect('the Munchopedia and its guide move focus in their panel', () =>
-      Story.story(
-        APPLICATION,
-        Story.given(withPanel(withPad(home), 'Munchopedia')),
-        poll({ held: [DPAD_DOWN] }),
-        dialogFocus('Down'),
-        resolveMoved,
+      modelAfter(
+        withPanel(withPad(home), 'Munchopedia'),
+        steps(poll({ held: [DPAD_DOWN] }), dialogFocus('Down'), resolveMoved),
       ),
     )
 
     it.effect('the Profile turns its tabs with the bumpers', () =>
-      Story.story(
-        APPLICATION,
-        Story.given(onProfileTab('Settings')),
-        tapPad(LB),
-        Story.Command.expectExact(
-          StepPadTab({ scope: 'TopDialog', step: 'Previous' }),
+      modelAfter(
+        onProfileTab('Settings'),
+        steps(
+          pressPad(LB),
+          s =>
+            s.expectExact(
+              StepPadTab.make({ scope: 'TopDialog', step: 'Previous' }),
+            ),
+          resolveTab,
+          rest,
+          pressPad(B),
+          s => s.expectExact(EscapePadDialog.make()),
+          resolveEscape,
         ),
-        resolveTab,
-        tapPad(B),
-        Story.Command.expectExact(EscapePadDialog()),
-        resolveEscape,
       ),
     )
 
     it.effect("the Look tab's options take the stick", () =>
-      Story.story(
-        APPLICATION,
-        Story.given(onProfileTab('Look')),
-        poll({ axes: [0.9, 0, 0, 0] }),
-        dialogFocus('Right'),
-        resolveMoved,
+      modelAfter(
+        onProfileTab('Look'),
+        steps(
+          poll({ axes: [0.9, 0, 0, 0] }),
+          dialogFocus('Right'),
+          resolveMoved,
+        ),
       ),
     )
 
     it.effect('the install guide and the update greeting close on B', () =>
-      Story.story(
-        APPLICATION,
-        Story.given(
-          modifyFields(withPad(home), {
-            homeScreenSteps: openedDialog,
-            updateGreeting: openedDialog,
-          }),
+      modelAfter(
+        UiStruct.evolve(withPad(home), {
+          homeScreenSteps: openedDialog,
+          updateGreeting: openedDialog,
+        }),
+        steps(
+          pressPad(B),
+          s => s.expectExact(EscapePadDialog.make()),
+          resolveEscape,
         ),
-        tapPad(B),
-        Story.Command.expectExact(EscapePadDialog()),
-        resolveEscape,
       ),
     )
   })
 
   describe('the lobbies', () => {
     it.effect('the solo lobby steps its own focus by the d-pad', () =>
-      Story.story(
-        APPLICATION,
-        Story.given(inLobby),
-        poll({ held: [DPAD_UP] }),
-        Story.model(current => {
-          expect(current.lastDevice).toBe('Gamepad')
-        }),
-        Story.Command.expectExact(FocusLobbyControl({ control: 'Start' })),
-        resolveFocusLobby(),
+      modelAfter(
+        inLobby,
+        steps(
+          poll({ held: [DPAD_UP] }),
+          checkModel(current => {
+            expect(current.lastDevice).toBe('Gamepad')
+          }),
+          s => s.expectExact(FocusLobbyControl.make({ control: 'Start' })),
+          resolveFocusLobby(),
+        ),
       ),
     )
 
     it.effect("B on the home menu lets a friend's dare go", () =>
-      Story.story(
-        APPLICATION,
-        Story.given(
-          withPad(
-            modifyFields(readyModel, {
-              beatMyRun: () =>
-                BeatMyRun.Offered({
-                  dare: {
-                    seed: 99,
-                    mode: 'Campaign',
-                    difficulty: 'Easy',
-                    modifiers: readyModel.modifiers,
-                    dareMark: 0,
-                    easyBreakSeconds: 0,
-                    pool: [],
-                    hero: 'You',
-                    outcome: 'Won',
-                    wave: 10,
-                    found: [],
-                    runSeconds: 600,
-                  },
-                }),
-            }),
-          ),
+      modelAfter(
+        withPad(
+          UiStruct.evolve(readyModel, {
+            beatMyRun: () =>
+              BeatMyRun.Offered({
+                dare: {
+                  seed: 99,
+                  mode: 'Campaign',
+                  difficulty: 'Easy',
+                  modifiers: readyModel.modifiers,
+                  dareMark: 0,
+                  easyBreakSeconds: 0,
+                  pool: [],
+                  hero: 'You',
+                  outcome: 'Won',
+                  wave: 10,
+                  found: [],
+                  runSeconds: 600,
+                },
+              }),
+          }),
         ),
-        tapPad(B),
-        Story.Command.resolve(
-          FocusHomeButton({ button: 'Play' }),
-          Message.CompletedFocusHomeButton(),
+        steps(
+          pressPad(B),
+          s =>
+            s.resolve(FocusHomeButton.make({ button: 'Play' }), Component.noop),
+          checkModel(({ beatMyRun }) => {
+            expect(BeatMyRun.isAnyOf(['None'])(beatMyRun)).toBe(true)
+          }),
         ),
-        Story.model(({ beatMyRun }) => {
-          expect(BeatMyRun.isAnyOf(['None'])(beatMyRun)).toBe(true)
-        }),
       ),
     )
 
     it.effect('B in the solo lobby backs out to the home menu', () =>
-      Story.story(
-        APPLICATION,
-        Story.given(inLobby),
-        tapPad(B),
-        Story.model(current => {
-          expect(menuState(current)._tag).toBe('Home')
-        }),
-        Story.Command.resolve(FoldLobby(), LobbyMessage.CompletedFold()),
-        resolveHomeFocus,
+      modelAfter(
+        inLobby,
+        steps(
+          pressPad(B),
+          checkModel(current => {
+            expect(menuState(current)._tag).toBe('Home')
+          }),
+          foldLobby,
+          resolveHomeFocus,
+        ),
       ),
     )
 
     it.effect(
       'the hero picker over the lobby moves focus and closes on B',
       () =>
-        Story.story(
-          APPLICATION,
-          Story.given(inHeroPicker),
-          poll({ held: [DPAD_RIGHT] }),
-          dialogFocus('Right'),
-          resolveMoved,
-          rest,
-          tapPad(B),
-          Story.Command.expectExact(EscapePadDialog()),
-          resolveEscape,
+        modelAfter(
+          inHeroPicker,
+          steps(
+            poll({ held: [DPAD_RIGHT] }),
+            dialogFocus('Right'),
+            resolveMoved,
+            rest,
+            pressPad(B),
+            s => s.expectExact(EscapePadDialog.make()),
+            resolveEscape,
+          ),
         ),
     )
 
     it.effect("co-op's screens move focus in co-op, and B backs out", () =>
-      Story.story(
-        APPLICATION,
-        Story.given(inCoop),
-        poll({ held: [DPAD_DOWN] }),
-        Story.Command.expectExact(
-          MovePadFocus({ scope: 'Coop', direction: 'Down' }),
+      modelAfter(
+        inCoop,
+        steps(
+          poll({ held: [DPAD_DOWN] }),
+          s =>
+            s.expectExact(
+              MovePadFocus.make({ scope: 'Coop', direction: 'Down' }),
+            ),
+          resolveMoved,
+          rest,
+          pressPad(B),
+          checkModel(current => {
+            expect(menuState(current)._tag).toBe('Home')
+          }),
+          resolveHomeFocus,
         ),
-        resolveMoved,
-        rest,
-        tapPad(B),
-        Story.model(current => {
-          expect(menuState(current)._tag).toBe('Home')
-        }),
-        resolveHomeFocus,
       ),
     )
   })
 
   describe('a run', () => {
     it.effect('the end card moves focus on the page and A presses', () =>
-      Story.story(
-        APPLICATION,
-        Story.given(onEndCard),
-        poll({ held: [DPAD_RIGHT] }),
-        pageFocus('Right'),
-        resolveMoved,
-        rest,
-        tapPad(A),
-        Story.Command.expectExact(ClickPadFocus({ scope: 'Page' })),
-        Story.Command.resolve(
-          ClickPadFocus,
-          Message.ClickedPadFocus({ scope: 'Page', outcome: 'Clicked' }),
+      modelAfter(
+        onEndCard,
+        steps(
+          poll({ held: [DPAD_RIGHT] }),
+          pageFocus('Right'),
+          resolveMoved,
+          rest,
+          pressPad(A),
+          s => s.expectExact(ClickPadFocus.make({ scope: 'Page' })),
+          (s: AppStory) =>
+            s.resolve(
+              ClickPadFocus,
+              Message.ClickedPadFocus({ scope: 'Page', outcome: 'Clicked' }),
+            ),
         ),
       ),
     )
 
     it.effect('B on pause resumes, as Escape does', () =>
-      Story.story(
-        APPLICATION,
-        Story.given(paused),
-        tapPad(B),
-        Story.model(current => {
-          expect(current.phase._tag).toBe('Wave')
-        }),
+      modelAfter(
+        paused,
+        steps(
+          pressPad(B),
+          checkModel(current => {
+            expect(current.phase._tag).toBe('Wave')
+          }),
+        ),
       ),
     )
 
     it.effect("the leave panel over pause is the pad's to answer", () =>
-      Story.story(
-        APPLICATION,
-        Story.given(withPanel(paused, 'LeaveRun')),
-        tapPad(A),
-        Story.model(current => {
-          expect(current.phase._tag).not.toBe('Paused')
-        }),
-        closeDialog(),
+      modelAfter(
+        withPanel(paused, 'LeaveRun'),
+        steps(
+          pressPad(A),
+          checkModel(current => {
+            expect(current.phase._tag).not.toBe('Paused')
+          }),
+        ),
       ),
     )
 
     it.effect('A answers the new zombie card', () =>
-      Story.story(
-        APPLICATION,
-        Story.given(onDebutCard),
-        tapPad(A),
-        Story.model(current => {
-          expect(current.debutCard).toEqual(DebutCard.Hidden())
-        }),
+      modelAfter(
+        onDebutCard,
+        steps(
+          pressPad(A),
+          checkModel(current => {
+            expect(current.debutCard).toEqual(DebutCard.Hidden())
+          }),
+        ),
       ),
     )
 
     it.effect('in a round the d-pad walks and moves no focus', () =>
-      Story.story(
-        APPLICATION,
-        Story.given(withPad(veteranFighting)),
-        poll({ held: [DPAD_DOWN] }),
-        Story.Command.expectNone(),
-        Story.message(Message.RepeatedPadDirection({ direction: 'Down' })),
-        Story.Command.expectNone(),
+      modelAfter(
+        withPad(veteranFighting),
+        steps(
+          poll({ held: [DPAD_DOWN] }),
+          s => s.expectNone(),
+          send(Message.RepeatedPadDirection({ direction: 'Down' })),
+          s => s.expectNone(),
+        ),
       ),
     )
   })

@@ -1,5 +1,5 @@
 // Circles on the game's pixel grid: a disc or a ring of whole pixels, as
-// rows of spans from its middle. A Canvas.Circle is drawn as a vector, so
+// rows of spans from its middle. A Draw.Circle is drawn as a vector, so
 // the 3D renderer's floor drew it at the device's pixels, finer than the
 // game's around every tell ring, and dropped it outright where it stands
 // or floats. A ring here is baked once per size and color as a sprite
@@ -8,9 +8,9 @@
 // (the burp's) is drawn as its spans (pixelRingSpans).
 
 import { Array, Function } from 'effect'
-import type { Canvas } from 'foldkit'
 
 import { type Sprite, bakeShapes, placeAt } from '../art/sprite'
+import type * as Draw from './draw'
 import { rect } from './drawing'
 
 // NOTE: a row of a circle: its row and left edge from the middle, and its
@@ -76,7 +76,7 @@ const spanRects = (
   y: number,
   spans: ReadonlyArray<Span>,
   color: string,
-): ReadonlyArray<Canvas.Shape> =>
+): ReadonlyArray<Draw.Shape> =>
   Array.map(spans, ([row, left, width]) =>
     rect(x + left, y + row, width, 1, color),
   )
@@ -124,14 +124,14 @@ export const pixelRing: {
     radius: number,
     thickness: number,
     color: string,
-  ): (x: number) => Canvas.Shape
+  ): (x: number) => Draw.Shape
   (
     x: number,
     y: number,
     radius: number,
     thickness: number,
     color: string,
-  ): Canvas.Shape
+  ): Draw.Shape
 } = Function.dual(
   5,
   (
@@ -140,7 +140,7 @@ export const pixelRing: {
     radius: number,
     thickness: number,
     color: string,
-  ): Canvas.Shape =>
+  ): Draw.Shape =>
     placeAt(Math.round(x), Math.round(y), ringSprite(radius, thickness, color)),
 )
 
@@ -149,11 +149,11 @@ const SOLID = Number.MAX_SAFE_INTEGER
 
 // NOTE: a disc of whole pixels round x and y.
 export const pixelDisc: {
-  (y: number, radius: number, color: string): (x: number) => Canvas.Shape
-  (x: number, y: number, radius: number, color: string): Canvas.Shape
+  (y: number, radius: number, color: string): (x: number) => Draw.Shape
+  (x: number, y: number, radius: number, color: string): Draw.Shape
 } = Function.dual(
   4,
-  (x: number, y: number, radius: number, color: string): Canvas.Shape =>
+  (x: number, y: number, radius: number, color: string): Draw.Shape =>
     pixelRing(x, y, radius, SOLID, color),
 )
 
@@ -173,14 +173,14 @@ export const pixelRingSpans: {
     radius: number,
     thickness: number,
     color: string,
-  ): (x: number) => ReadonlyArray<Canvas.Shape>
+  ): (x: number) => ReadonlyArray<Draw.Shape>
   (
     x: number,
     y: number,
     radius: number,
     thickness: number,
     color: string,
-  ): ReadonlyArray<Canvas.Shape>
+  ): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   5,
   (
@@ -189,7 +189,7 @@ export const pixelRingSpans: {
     radius: number,
     thickness: number,
     color: string,
-  ): ReadonlyArray<Canvas.Shape> =>
+  ): ReadonlyArray<Draw.Shape> =>
     spanRects(
       Math.round(x),
       Math.round(y),
@@ -204,13 +204,13 @@ export const pixelDiscSpans: {
     y: number,
     radius: number,
     color: string,
-  ): (x: number) => ReadonlyArray<Canvas.Shape>
+  ): (x: number) => ReadonlyArray<Draw.Shape>
   (
     x: number,
     y: number,
     radius: number,
     color: string,
-  ): ReadonlyArray<Canvas.Shape>
+  ): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   4,
   (
@@ -218,5 +218,5 @@ export const pixelDiscSpans: {
     y: number,
     radius: number,
     color: string,
-  ): ReadonlyArray<Canvas.Shape> => pixelRingSpans(x, y, radius, SOLID, color),
+  ): ReadonlyArray<Draw.Shape> => pixelRingSpans(x, y, radius, SOLID, color),
 )

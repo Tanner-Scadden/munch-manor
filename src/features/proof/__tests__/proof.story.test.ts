@@ -1,7 +1,6 @@
 import { Array, Effect, Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
 import { isPanelOpen } from '../../../app/menuState'
@@ -14,7 +13,14 @@ import {
   readyAfterRead,
   withDareThings,
 } from '../../../test/model.fixture'
-import { APPLICATION, showDialog, writeSave } from '../../../test/testing'
+import {
+  checkModel,
+  modelAfter,
+  send,
+  steps,
+  storyOf,
+  writeSave,
+} from '../../../test/testing'
 import { type DareThing, DareThingState } from '../../../world/dare/dareSchema'
 import { focusOf } from '../../../world/party/party'
 import { BOT } from '../../bots/__tests__/bots.fixture'
@@ -59,92 +65,87 @@ describe('a run that ends', () => {
   it.effect(
     'puts a find from a lost run on the shelf, MUNCHED, and saves it once',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(munchedWithSpoon),
-        frame,
-        Story.model(model => {
-          expect(Phase.guards.GameOver(model.phase)).toBe(true)
-          expect(model.proof).toHaveLength(1)
-          expect(maybeStampAt(model.proof, SPOON_NORMAL)).toEqual(
-            Option.some<ProofStamp>({
-              wave: 7,
-              hero: focusOf(munchedWithSpoon).player.calling,
-              crew: [],
-              day: TODAY,
-              ending: 'Munched',
-            }),
-          )
-          expect(stampOf(model, 'MusicBox')).toEqual(Option.none())
-          expect(stampOf(model, BIG_KEY)).toEqual(Option.none())
-        }),
-        checkSavedChanges(changes => {
-          expect(
-            Array.filter(changes, change => change._tag === 'ShelvedProof'),
-          ).toHaveLength(1)
-        }),
-        writeSave(),
-        frame,
-        Story.model(model => {
-          expect(model.proof).toHaveLength(1)
-        }),
-      ),
+      Effect.gen(function* () {
+        const s = yield* storyOf(munchedWithSpoon)
+        s.pipe(
+          frame,
+          checkModel(model => {
+            expect(Phase.guards.GameOver(model.phase)).toBe(true)
+            expect(model.proof).toHaveLength(1)
+            expect(maybeStampAt(model.proof, SPOON_NORMAL)).toEqual(
+              Option.some<ProofStamp>({
+                wave: 7,
+                hero: focusOf(munchedWithSpoon).player.calling,
+                crew: [],
+                day: TODAY,
+                ending: 'Munched',
+              }),
+            )
+            expect(stampOf(model, 'MusicBox')).toEqual(Option.none())
+            expect(stampOf(model, BIG_KEY)).toEqual(Option.none())
+          }),
+          checkSavedChanges(changes => {
+            expect(
+              Array.filter(changes, change => change._tag === 'ShelvedProof'),
+            ).toHaveLength(1)
+          }),
+          writeSave,
+          frame,
+          checkModel(model => {
+            expect(model.proof).toHaveLength(1)
+          }),
+        )
+      }),
   )
 
   it.effect('keeps the first stamp when a later run finds it again', () =>
     Effect.gen(function* () {
-      const first = yield* Story.story(
-        APPLICATION,
-        Story.given(munchedWithSpoon),
-        frame,
-        writeSave(),
-      )
+      const first = yield* modelAfter(munchedWithSpoon, steps(frame, writeSave))
       // NOTE: the next day, a run that escapes with the spoon.
       const again = knowingDay(
-        modifyFields(lastWave, { proof: () => first.proof }),
+        UiStruct.evolve(lastWave, { proof: () => first.proof }),
         '2026-11-14',
       )
-      return yield* Story.story(
-        APPLICATION,
-        Story.given(again),
+      const s = yield* storyOf(again)
+      s.pipe(
         frame,
-        Story.model(model => {
+        checkModel(model => {
           expect(Phase.guards.Escaped(model.phase)).toBe(true)
           expect(
-            Option.map(stampOf(model, 'SilverSpoon'), s => s.ending),
+            Option.map(stampOf(model, 'SilverSpoon'), stamp => stamp.ending),
           ).toEqual(Option.some('Munched'))
-          expect(Option.map(stampOf(model, 'MusicBox'), s => s.ending)).toEqual(
-            Option.some('Escaped'),
-          )
-          expect(Option.map(stampOf(model, BIG_KEY), s => s.day)).toEqual(
-            Option.some('2026-11-14'),
-          )
+          expect(
+            Option.map(stampOf(model, 'MusicBox'), stamp => stamp.ending),
+          ).toEqual(Option.some('Escaped'))
+          expect(
+            Option.map(stampOf(model, BIG_KEY), stamp => stamp.day),
+          ).toEqual(Option.some('2026-11-14'))
         }),
-        writeSave(),
+        writeSave,
       )
     }),
   )
 
   it.effect('a run left from the pause menu shelves nothing', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(munchedWithSpoon),
-      Story.message(Message.ClickedPauseButton()),
-      Story.message(Message.ClickedMenuButton()),
-      showDialog(),
-      Story.model(model => {
-        expect(model.proof).toEqual([])
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(munchedWithSpoon)
+      s.pipe(
+        send(Message.ClickedPauseButton()),
+        send(Message.ClickedMenuButton()),
+        checkModel(model => {
+          expect(model.proof).toEqual([])
+        }),
+      )
+    }),
   )
 })
 
 describe('the crew on a stamp', () => {
   it('names the other seats as this player saw them, a bot marked a bot', () => {
-    const crew = modifyFields(withDareThings(crewInWave(3), [SPOON]), {
-      runStart: modifyFields({ crewBots: () => [BOT, BOT] }),
+    const crew = UiStruct.evolve(withDareThings(crewInWave(3), [SPOON]), {
+      runStart: UiStruct.evolve({ crewBots: () => [BOT, BOT] }),
     })
-    const over = modifyFields(crew, {
+    const over = UiStruct.evolve(crew, {
       phase: () => Phase.GameOver({ wave: 3 }),
     })
     const shelved = shelveRun(crew, over)
@@ -175,31 +176,31 @@ describe('the NEW pip', () => {
   }
 
   it.effect('shows once a find is shelved and clears when PROOF opens', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        modifyFields(knowingDay(readyAfterRead, TODAY), {
+    Effect.gen(function* () {
+      const s = yield* storyOf(
+        UiStruct.evolve(knowingDay(readyAfterRead, TODAY), {
           proof: () => [shelvedSpoon],
         }),
-      ),
-      Story.model(model => {
-        expect(hasNewProof(model)).toBe(true)
-      }),
-      Story.message(Message.ClickedProofButton()),
-      showDialog(),
-      Story.model(model => {
-        expect(isPanelOpen(model, 'Proof')).toBe(true)
-        expect(hasNewProof(model)).toBe(false)
-        expect(model.freshUnlocks).toContain('proof:SilverSpoon:Normal')
-      }),
-      writeSave(),
-    ),
+      )
+      s.pipe(
+        checkModel(model => {
+          expect(hasNewProof(model)).toBe(true)
+        }),
+        send(Message.ClickedProofButton()),
+        checkModel(model => {
+          expect(isPanelOpen(model, 'Proof')).toBe(true)
+          expect(hasNewProof(model)).toBe(false)
+          expect(model.freshUnlocks).toContain('proof:SilverSpoon:Normal')
+        }),
+        writeSave,
+      )
+    }),
   )
 
   it('a day of missions done shows on it too', () => {
-    const stamped = modifyFields(knowingDay(readyAfterRead, TODAY), {
+    const stamped = UiStruct.evolve(knowingDay(readyAfterRead, TODAY), {
       missions: missions =>
-        modifyFields(missions, { stampedDays: () => [TODAY] }),
+        UiStruct.evolve(missions, { stampedDays: () => [TODAY] }),
     })
     expect(hasNewProof(readyAfterRead)).toBe(false)
     expect(hasNewProof(stamped)).toBe(true)

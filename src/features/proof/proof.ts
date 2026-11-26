@@ -1,5 +1,6 @@
 import { Array, Function, Number, Option, Schema, String, pipe } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import type { Model } from '../../app/model'
 import { maybeCrewBotAt } from '../../domain/bots'
@@ -291,7 +292,7 @@ export const hasNewProof = (model: Model): boolean =>
 // NEW while it stays open.
 export const markProofSeen = (model: Model): Model => {
   const unseen = unseenProofOf(model)
-  return modifyFields(model, {
+  return UiStruct.evolve(model, {
     freshUnlocks: fresh => [
       ...Array.filter(fresh, id => !isProofId(id)),
       ...unseen,
@@ -395,7 +396,7 @@ export const shelveRun: {
       )
       return proof === after.proof
         ? after
-        : modifyFields(after, { proof: () => proof })
+        : UiStruct.evolve(after, { proof: () => proof })
     },
   })
 })

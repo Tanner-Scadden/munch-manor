@@ -1,7 +1,6 @@
 import { Array, Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 import { NEUTRAL_INPUT } from '@munch/netcode'
 
@@ -28,11 +27,14 @@ import { nextRandom } from '../../../shared/prng'
 import { holdingSecond } from '../../../test/arsenals'
 import { DISTANT_SPAWN, atFridge, withSeat } from '../../../test/model.fixture'
 import {
-  APPLICATION,
   FRIDGE_OPEN_TICKS,
   SURFACE,
+  checkModel,
   holdFire,
+  modelAfter,
   press,
+  send,
+  steps,
   tick,
   tickCountFor,
   ticks,
@@ -77,7 +79,7 @@ const withPan = (pan: CarriedGun = freshGun('Pan')): Melee => Melee.Pan({ pan })
 
 const panFight = (zombies: ReadonlyArray<Zombie> = []): Model =>
   modifyFocus(
-    modifyFields(asVeteran(initialModel), {
+    UiStruct.evolve(asVeteran(initialModel), {
       maybeSurface: () => Option.some(SURFACE),
       phase: () =>
         Phase.Wave({ wave: 4, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
@@ -85,7 +87,7 @@ const panFight = (zombies: ReadonlyArray<Zombie> = []): Model =>
     }),
     {
       player: player =>
-        modifyFields(player, {
+        UiStruct.evolve(player, {
           x: () => PLAYER_X,
           y: () => ROW_Y,
           facing: () => ({ x: 1, y: 0 }),
@@ -106,9 +108,9 @@ describe('the Clang Pan in the melee slot', () => {
     'taking it from the fridge keeps both guns and puts the Pan in hand',
     () => {
       const pullsPan = modifyFocus(
-        modifyFields(atFridge(100), {
+        UiStruct.evolve(atFridge(100), {
           fridge: fridge =>
-            modifyFields(fridge, {
+            UiStruct.evolve(fridge, {
               door: () =>
                 FridgeDoor.Offering({
                   prize: 'Pan',
@@ -119,19 +121,21 @@ describe('the Clang Pan in the melee slot', () => {
             }),
         }),
         {
-          player: player => modifyFields(player, { arsenal: () => BOTH_GUNS }),
+          player: player =>
+            UiStruct.evolve(player, { arsenal: () => BOTH_GUNS }),
         },
       )
-      return Story.story(
-        APPLICATION,
-        Story.given(pullsPan),
-        press('Enter'),
-        ...ticks(FRIDGE_OPEN_TICKS, FRAME_MS),
-        Story.model(current => {
-          expect(focusOf(current).player.arsenal).toEqual(BOTH_GUNS)
-          expect(focusOf(current).player.melee).toEqual(withPan())
-          expect(inHandOf(focusOf(current).player)).toBe('Pan')
-        }),
+      return modelAfter(
+        pullsPan,
+        steps(
+          press('Enter'),
+          ticks(FRIDGE_OPEN_TICKS, FRAME_MS),
+          checkModel(current => {
+            expect(focusOf(current).player.arsenal).toEqual(BOTH_GUNS)
+            expect(focusOf(current).player.melee).toEqual(withPan())
+            expect(inHandOf(focusOf(current).player)).toBe('Pan')
+          }),
+        ),
       )
     },
   )
@@ -140,13 +144,13 @@ describe('the Clang Pan in the melee slot', () => {
     const knifeLook = meleeSlotLook(initialModel, focusOf(initialModel).player)
     expect(Option.isSome(knifeLook.maybeIcon ?? Option.none())).toBe(true)
     expect(knifeLook.maybeGun).toEqual(Option.none())
-    const dented = modifyFields(freshGun('Pan'), {
+    const dented = UiStruct.evolve(freshGun('Pan'), {
       loaded: () => 6,
       tier: () => 1,
     })
     const panLook = meleeSlotLook(
       initialModel,
-      modifyFields(focusOf(initialModel).player, {
+      UiStruct.evolve(focusOf(initialModel).player, {
         melee: () => withPan(dented),
       }),
     )
@@ -157,48 +161,53 @@ describe('the Clang Pan in the melee slot', () => {
 
   it.effect('F draws it, then fire swings it on repeat', () => {
     const bigLug = zombieOf('Tank', 900, PLAYER_X + 12, ROW_Y, { hp: 99 })
-    return Story.story(
-      APPLICATION,
-      Story.given(panFight([bigLug])),
-      press('KeyF'),
-      Story.model(current => {
-        expect(inHandOf(focusOf(current).player)).toBe('Pan')
-        expect(heldWeapon(focusOf(current).player.arsenal)).toBe('Smg')
-      }),
-      holdFire,
-      tick(FRAME_MS),
-      Story.model(current => {
-        expect(swungIn(current)).toBe(true)
-        expect(
-          Array.some(current.frameEvents, GameEvent.isAnyOf(['KnifeStabbed'])),
-        ).toBe(false)
-        expect(
-          Option.getOrThrow(maybePanOf(focusOf(current).player)).loaded,
-        ).toBe(23)
-      }),
-      ...ticks(tickCountFor(PAN_RULES.swingMs), FRAME_MS),
-      Story.model(current => {
-        expect(
-          Option.getOrThrow(maybePanOf(focusOf(current).player)).loaded,
-        ).toBe(22)
-      }),
+    return modelAfter(
+      panFight([bigLug]),
+      steps(
+        press('KeyF'),
+        checkModel(current => {
+          expect(inHandOf(focusOf(current).player)).toBe('Pan')
+          expect(heldWeapon(focusOf(current).player.arsenal)).toBe('Smg')
+        }),
+        holdFire,
+        tick(FRAME_MS),
+        checkModel(current => {
+          expect(swungIn(current)).toBe(true)
+          expect(
+            Array.some(
+              current.frameEvents,
+              GameEvent.isAnyOf(['KnifeStabbed']),
+            ),
+          ).toBe(false)
+          expect(
+            Option.getOrThrow(maybePanOf(focusOf(current).player)).loaded,
+          ).toBe(23)
+        }),
+        ticks(tickCountFor(PAN_RULES.swingMs), FRAME_MS),
+        checkModel(current => {
+          expect(
+            Option.getOrThrow(maybePanOf(focusOf(current).player)).loaded,
+          ).toBe(22)
+        }),
+      ),
     )
   })
 
   it.effect(
     'a tap on the melee slot draws it, and Q goes back to the last gun',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(panFight()),
-        Story.message(Message.ClickedMeleeSlot()),
-        Story.model(current => {
-          expect(inHandOf(focusOf(current).player)).toBe('Pan')
-        }),
-        press('KeyQ'),
-        Story.model(current => {
-          expect(inHandOf(focusOf(current).player)).toBe('Smg')
-        }),
+      modelAfter(
+        panFight(),
+        steps(
+          send(Message.ClickedMeleeSlot()),
+          checkModel(current => {
+            expect(inHandOf(focusOf(current).player)).toBe('Pan')
+          }),
+          press('KeyQ'),
+          checkModel(current => {
+            expect(inHandOf(focusOf(current).player)).toBe('Smg')
+          }),
+        ),
       ),
   )
 
@@ -206,10 +215,10 @@ describe('the Clang Pan in the melee slot', () => {
     'with every magazine empty, the next pull reloads; the Pan comes out only when drawn, and fire swings it',
     () => {
       const empty = (gun: CarriedGun): CarriedGun =>
-        modifyFields(gun, { loaded: () => 0 })
+        UiStruct.evolve(gun, { loaded: () => 0 })
       const allEmpty = modifyFocus(panFight([groanerAhead(900)]), {
         player: player =>
-          modifyFields(player, {
+          UiStruct.evolve(player, {
             arsenal: () =>
               Arsenal.HoldingSecond({
                 first: empty(freshGun('Smg')),
@@ -217,33 +226,34 @@ describe('the Clang Pan in the melee slot', () => {
               }),
           }),
       })
-      return Story.story(
-        APPLICATION,
-        Story.given(allEmpty),
-        holdFire,
-        tick(FRAME_MS),
-        Story.model(current => {
-          expect(inHandOf(focusOf(current).player)).toBe('Shotgun')
-          expect(focusOf(current).player.reload._tag).toBe('Reloading')
-        }),
-        press('KeyF'),
-        holdFire,
-        tick(FRAME_MS),
-        Story.model(current => {
-          expect(inHandOf(focusOf(current).player)).toBe('Pan')
-        }),
-        ...ticks(tickCountFor(PAN_RULES.swingMs), FRAME_MS),
-        Story.model(current => {
-          expect(
-            Option.getOrThrow(maybePanOf(focusOf(current).player)).loaded,
-          ).toBe(23)
-        }),
+      return modelAfter(
+        allEmpty,
+        steps(
+          holdFire,
+          tick(FRAME_MS),
+          checkModel(current => {
+            expect(inHandOf(focusOf(current).player)).toBe('Shotgun')
+            expect(focusOf(current).player.reload._tag).toBe('Reloading')
+          }),
+          press('KeyF'),
+          holdFire,
+          tick(FRAME_MS),
+          checkModel(current => {
+            expect(inHandOf(focusOf(current).player)).toBe('Pan')
+          }),
+          ticks(tickCountFor(PAN_RULES.swingMs), FRAME_MS),
+          checkModel(current => {
+            expect(
+              Option.getOrThrow(maybePanOf(focusOf(current).player)).loaded,
+            ).toBe(23)
+          }),
+        ),
       )
     },
   )
 
   test('a second Pan never comes out of the fridge: its share goes to the rest', () => {
-    const holder = modifyFields(focusOf(atFridge(500)).player, {
+    const holder = UiStruct.evolve(focusOf(atFridge(500)).player, {
       melee: () => withPan(),
     })
     const weights = prizeWeights(atFridge(500).fridge, holder)
@@ -260,11 +270,11 @@ describe('the Clang Pan in the melee slot', () => {
   })
 
   test('a Pan given over a Pan keeps its tier and is banged flat', () => {
-    const worn = modifyFields(freshGun('Pan'), {
+    const worn = UiStruct.evolve(freshGun('Pan'), {
       loaded: () => 3,
       tier: () => 2,
     })
-    const holder = modifyFields(focusOf(initialModel).player, {
+    const holder = UiStruct.evolve(focusOf(initialModel).player, {
       melee: () => withPan(worn),
     })
     const retaken = takePan(holder, freshGun('Pan'))
@@ -274,17 +284,18 @@ describe('the Clang Pan in the melee slot', () => {
   })
 
   it.effect('a new run starts with the knife in the melee slot again', () => {
-    const over = modifyFields(panFight(), {
+    const over = UiStruct.evolve(panFight(), {
       phase: () => Phase.GameOver({ wave: 6 }),
       screenMs: () => 5000,
     })
-    return Story.story(
-      APPLICATION,
-      Story.given(over),
-      press('Enter'),
-      Story.model(current => {
-        expect(focusOf(current).player.melee).toEqual(Melee.Knife())
-      }),
+    return modelAfter(
+      over,
+      steps(
+        press('Enter'),
+        checkModel(current => {
+          expect(focusOf(current).player.melee).toEqual(Melee.Knife())
+        }),
+      ),
     )
   })
 })
@@ -292,9 +303,9 @@ describe('the Clang Pan in the melee slot', () => {
 describe('the TAKE preview', () => {
   const offering = (prize: FridgePrize, melee: Melee): Model =>
     modifyFocus(
-      modifyFields(atFridge(100), {
+      UiStruct.evolve(atFridge(100), {
         fridge: fridge =>
-          modifyFields(fridge, {
+          UiStruct.evolve(fridge, {
             door: () =>
               FridgeDoor.Offering({
                 prize,
@@ -306,7 +317,7 @@ describe('the TAKE preview', () => {
       }),
       {
         player: player =>
-          modifyFields(player, {
+          UiStruct.evolve(player, {
             arsenal: () => BOTH_GUNS,
             melee: () => melee,
           }),
@@ -330,7 +341,7 @@ describe('the Clang Pan in co-op', () => {
       withSeat(world, slot, seatWorld =>
         modifyFocus(seatWorld, {
           player: player =>
-            modifyFields(player, {
+            UiStruct.evolve(player, {
               x: () => x,
               y: () => ROW_Y,
               facing: () => ({ x: 1, y: 0 }),
@@ -338,9 +349,9 @@ describe('the Clang Pan in co-op', () => {
             }),
         }),
       )
-    return modifyFields(started, {
+    return UiStruct.evolve(started, {
       world: world =>
-        modifyFields(placed(1, 200)(placed(0, 60)(world)), {
+        UiStruct.evolve(placed(1, 200)(placed(0, 60)(world)), {
           phase: () =>
             Phase.Wave({ wave: 2, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
           zombies: () => [

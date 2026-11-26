@@ -1,7 +1,6 @@
-import { Array, Effect, Option, Order, Struct } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
+import { Array, Effect, Option, Order, Record, Struct } from 'effect'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
 import { SHOTGUN, holdingFirst, withPistol } from '../../../test/arsenals'
@@ -15,10 +14,13 @@ import {
   withSeatLife,
 } from '../../../test/model.fixture'
 import {
-  APPLICATION,
   BELOW_NORTH_DOOR,
   type RootSteps,
   WORLD_KEYS,
+  modelAfter,
+  send,
+  settleRunCommands,
+  steps,
 } from '../../../test/testing'
 import {
   actionCodeOf,
@@ -51,13 +53,12 @@ const RULE_KEYS = Array.filter(WORLD_KEYS, key => !CUE_KEYS.has(key))
 const ruleFieldsOf = (world: World) => ({
   ...Struct.pick(world, RULE_KEYS),
   seats: Array.map(world.seats, state =>
-    modifyFields(state, { intent: () => idleIntent }),
+    UiStruct.evolve(state, { intent: () => idleIntent }),
   ),
 })
 
 // NOTE: a row's presses are the Story steps single player takes, as one
-// group: the root's own Messages, or a child's by its Binding, with the
-// Commands they leave resolved.
+// group: the root's own Messages, with the Commands they leave resolved.
 type Row = Readonly<{
   from: Model
   action: SeatAction
@@ -72,13 +73,13 @@ const withTraps = (base: Model, barricades: number, turrets: number): Model =>
     trapStock: () => ({ Barricade: barricades, Turret: turrets }),
     selectedTrap: () => 'Barricade',
     player: player =>
-      modifyFields(player, {
+      UiStruct.evolve(player, {
         x: () => BELOW_NORTH_DOOR.x,
         y: () => BELOW_NORTH_DOOR.y,
       }),
   })
 
-const inBreak = modifyFields(readyModel, {
+const inBreak = UiStruct.evolve(readyModel, {
   phase: () =>
     Phase.Preparation({
       wave: 2,
@@ -103,51 +104,49 @@ const ROWS: { readonly [Tag in SeatAction['_tag']]: Row } = {
   Swap: {
     from: withArsenal(inWave, holdingFirst(SHOTGUN)),
     action: SeatAction.Swap(),
-    presses: Story.steps(Story.message(Message.ClickedSwapButton())),
+    presses: send(Message.ClickedSwapButton()),
   },
   Melee: {
     from: inWave,
     action: SeatAction.Melee(),
-    presses: Story.steps(Story.message(Message.ClickedMeleeSlot())),
+    presses: send(Message.ClickedMeleeSlot()),
   },
   Draw: {
     from: withKnifeOut(withArsenal(inWave, holdingFirst(SHOTGUN))),
     action: SeatAction.Draw({ slot: 'Second' }),
-    presses: Story.steps(
-      Story.message(Message.ClickedGunSlot({ slot: 'Second' })),
-    ),
+    presses: send(Message.ClickedGunSlot({ slot: 'Second' })),
   },
   Reload: {
     from: withKnifeOut(
       modifyFocus(inWave, {
         player: player =>
           withPistol(player, pistol =>
-            modifyFields(pistol, { loaded: () => 2 }),
+            UiStruct.evolve(pistol, { loaded: () => 2 }),
           ),
       }),
     ),
     action: SeatAction.Reload(),
-    presses: Story.steps(Story.message(Message.ClickedReloadButton())),
+    presses: send(Message.ClickedReloadButton()),
   },
   PlaceTrap: {
     from: withTraps(inBreak, 1, 0),
     action: SeatAction.PlaceTrap(),
-    presses: Story.steps(Story.message(Message.ClickedPlaceTrapButton())),
+    presses: send(Message.ClickedPlaceTrapButton()),
   },
   NextTrap: {
     from: withTraps(inWave, 1, 1),
     action: SeatAction.NextTrap(),
-    presses: Story.steps(Story.message(Message.ClickedNextTrapButton())),
+    presses: send(Message.ClickedNextTrapButton()),
   },
   Ready: {
     from: inBreak,
     action: SeatAction.Ready(),
-    presses: Story.steps(Story.message(Message.ClickedStartWaveButton())),
+    presses: send(Message.ClickedStartWaveButton()),
   },
   CallMedic: {
     from: downedLead,
     action: SeatAction.CallMedic(),
-    presses: Story.steps(Story.message(Message.ClickedMedicButton())),
+    presses: send(Message.ClickedMedicButton()),
   },
 }
 
@@ -161,9 +160,7 @@ const KEY_ROWS: ReadonlyArray<readonly [string, Row]> = [
     {
       from: withArsenal(inWave, holdingFirst(SHOTGUN)),
       action: SeatAction.Draw({ slot: 'Second' }),
-      presses: Story.steps(
-        Story.message(Message.PressedKey({ code: 'Digit2' })),
-      ),
+      presses: send(Message.PressedKey({ code: 'Digit2' })),
     },
   ],
   [
@@ -171,9 +168,7 @@ const KEY_ROWS: ReadonlyArray<readonly [string, Row]> = [
     {
       from: withKnifeOut(withArsenal(inWave, holdingFirst(SHOTGUN))),
       action: SeatAction.Draw({ slot: 'First' }),
-      presses: Story.steps(
-        Story.message(Message.PressedKey({ code: 'Digit1' })),
-      ),
+      presses: send(Message.PressedKey({ code: 'Digit1' })),
     },
   ],
   [
@@ -181,9 +176,7 @@ const KEY_ROWS: ReadonlyArray<readonly [string, Row]> = [
     {
       from: inWave,
       action: SeatAction.Melee(),
-      presses: Story.steps(
-        Story.message(Message.PressedKey({ code: 'Digit3' })),
-      ),
+      presses: send(Message.PressedKey({ code: 'Digit3' })),
     },
   ],
 ]
@@ -192,9 +185,9 @@ const KEY_ROWS: ReadonlyArray<readonly [string, Row]> = [
 // table (PAD_ACTION_KEYS in src/input/keyActions.ts): a pad at rest, then
 // the button down, as the gamepad Subscription sends them.
 const padPress = (button: number) =>
-  Story.steps(
+  steps(
     ...Array.map([[], [button]], held =>
-      Story.message(
+      send(
         Message.PolledGamepad({
           index: 0,
           axes: [0, 0, 0, 0],
@@ -228,7 +221,7 @@ const PAD_ROWS: ReadonlyArray<readonly [string, Row]> = Array.map(
 
 // NOTE: single player's side: its presses through the root's update.
 const inSinglePlayer = (from: Model, presses: RootSteps) =>
-  Story.story(APPLICATION, Story.given(from), presses)
+  modelAfter(from, steps(presses, settleRunCommands))
 
 // NOTE: the room's side: the press read back from its wire code, on the
 // seat that pressed it.
@@ -242,13 +235,7 @@ const inRoom = (world: World, action: SeatAction): World => {
 describe('one rule set for player actions', () => {
   test('every seat action has a parity row', () => {
     expect(Array.sort(TAGS, Order.String)).toEqual(
-      Array.sort(
-        Array.map(
-          SeatAction.members,
-          member => member.fields._tag.schema.literal,
-        ),
-        Order.String,
-      ),
+      Array.sort(Record.keys(SeatAction.cases), Order.String),
     )
   })
 

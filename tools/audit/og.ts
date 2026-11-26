@@ -336,20 +336,31 @@ runAuditWith(
     const page = yield* attempt(() => context.newPage())
     yield* attempt(() =>
       page.setContent(
-        `<!doctype html><html><body style="margin:0"><canvas width="${WIDTH}" height="${HEIGHT}"></canvas></body></html>`,
+        `<!doctype html><html><body style="margin:0"><svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" height="${HEIGHT}" viewBox="0 0 ${WIDTH} ${HEIGHT}" shape-rendering="crispEdges" style="display:block"></svg></body></html>`,
       ),
     )
+    // NOTE: the card's rects as SVG rects, drawn in order as the 2D canvas
+    // filled them, with no canvas context.
     yield* attempt(() =>
       page.evaluate((list: ReadonlyArray<Rect>) => {
-        const canvas = document.querySelector('canvas')
-        const context2d = canvas?.getContext('2d')
-        if (context2d === null || context2d === undefined) {
-          throw new Error('no canvas')
+        const svg = document.querySelector('svg')
+        if (svg === null) {
+          throw new Error('no svg')
         }
+        const shapes: Array<SVGRectElement> = []
         for (const rect of list) {
-          context2d.fillStyle = rect.fill
-          context2d.fillRect(rect.x, rect.y, rect.width, rect.height)
+          const shape = document.createElementNS(
+            'http://www.w3.org/2000/svg',
+            'rect',
+          )
+          shape.setAttribute('x', `${rect.x}`)
+          shape.setAttribute('y', `${rect.y}`)
+          shape.setAttribute('width', `${rect.width}`)
+          shape.setAttribute('height', `${rect.height}`)
+          shape.setAttribute('fill', rect.fill)
+          shapes.push(shape)
         }
+        svg.replaceChildren(...shapes)
       }, rects),
     )
     yield* attempt(() =>

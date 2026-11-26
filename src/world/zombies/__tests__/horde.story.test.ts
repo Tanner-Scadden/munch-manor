@@ -1,7 +1,6 @@
 import { Array, Effect, Option, Result } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
 import {
@@ -30,9 +29,11 @@ import {
   withActors,
 } from '../../../test/model.fixture'
 import {
-  APPLICATION,
   blastFrames,
+  checkModel,
+  modelAfter,
   recordTicks,
+  steps,
   tick,
   ticks,
   zombieOf,
@@ -133,39 +134,41 @@ describe('the kind table', () => {
         }),
       )
 
-      return Story.story(
-        APPLICATION,
-        Story.given(
-          modifyFields(quietWave(1), {
-            phase: () =>
-              Phase.Wave({
-                wave: 3,
-                elapsedMs: 0,
-                spawns: [...spawns, DISTANT_SPAWN],
-              }),
+      return modelAfter(
+        UiStruct.evolve(quietWave(1), {
+          phase: () =>
+            Phase.Wave({
+              wave: 3,
+              elapsedMs: 0,
+              spawns: [...spawns, DISTANT_SPAWN],
+            }),
+        }),
+        steps(
+          tick(FRAME_MS),
+          checkModel(({ zombies }) => {
+            expect(Array.map(zombies, ({ kind }) => kind)).toEqual(doorKinds)
+            Array.forEach(zombies, (zombie, index) => {
+              const stats = ZOMBIE_KINDS[zombie.kind]
+              const spawn = Option.getOrThrow(Array.get(spawns, index))
+              const room = DOOR_HALF_WIDTH_PX - stats.radius
+              const nearestPoint = doorSpawnPoint(
+                START_LEVEL,
+                spawn.door,
+                Math.min(spawn.offset, room),
+              )
+              expect(zombie.hp).toBe(stats.hp)
+              expect(zombie.speed).toBeGreaterThanOrEqual(stats.speedMin * 1.1)
+              expect(zombie.speed).toBeLessThanOrEqual(stats.speedMax * 1.1)
+              expect(nearestDoor(START_LEVEL, zombie).id).toBe(spawn.door)
+              expect(
+                Math.hypot(
+                  zombie.x - nearestPoint.x,
+                  zombie.y - nearestPoint.y,
+                ),
+              ).toBeLessThan(2)
+            })
           }),
         ),
-        tick(FRAME_MS),
-        Story.model(({ zombies }) => {
-          expect(Array.map(zombies, ({ kind }) => kind)).toEqual(doorKinds)
-          Array.forEach(zombies, (zombie, index) => {
-            const stats = ZOMBIE_KINDS[zombie.kind]
-            const spawn = Option.getOrThrow(Array.get(spawns, index))
-            const room = DOOR_HALF_WIDTH_PX - stats.radius
-            const nearestPoint = doorSpawnPoint(
-              START_LEVEL,
-              spawn.door,
-              Math.min(spawn.offset, room),
-            )
-            expect(zombie.hp).toBe(stats.hp)
-            expect(zombie.speed).toBeGreaterThanOrEqual(stats.speedMin * 1.1)
-            expect(zombie.speed).toBeLessThanOrEqual(stats.speedMax * 1.1)
-            expect(nearestDoor(START_LEVEL, zombie).id).toBe(spawn.door)
-            expect(
-              Math.hypot(zombie.x - nearestPoint.x, zombie.y - nearestPoint.y),
-            ).toBeLessThan(2)
-          })
-        }),
       )
     },
   )
@@ -179,36 +182,36 @@ describe('the kind table', () => {
         const tank = zombieOf('Tank', 2, 100, 130)
         const tankHp = ZOMBIE_KINDS.Tank.hp
 
-        yield* Story.story(
-          APPLICATION,
-          Story.given(
-            withScene(
-              [runner, tank],
-              [
-                ...pistolsInto(10, ZOMBIE_KINDS.Runner.hp, runner),
-                ...pistolsInto(20, tankHp - 1, tank),
-              ],
-            ),
+        yield* modelAfter(
+          withScene(
+            [runner, tank],
+            [
+              ...pistolsInto(10, ZOMBIE_KINDS.Runner.hp, runner),
+              ...pistolsInto(20, tankHp - 1, tank),
+            ],
           ),
-          tick(FRAME_MS),
-          Story.model(({ zombies }) => {
-            const [shotRunner, shotTank] = zombies
-            expect(shotRunner?.state._tag).toBe('Dying')
-            expect(shotTank?.hp).toBe(1)
-            expect(shotTank?.state).toEqual(ZombieState.Walking())
-          }),
+          steps(
+            tick(FRAME_MS),
+            checkModel(({ zombies }) => {
+              const [shotRunner, shotTank] = zombies
+              expect(shotRunner?.state._tag).toBe('Dying')
+              expect(shotTank?.hp).toBe(1)
+              expect(shotTank?.state).toEqual(ZombieState.Walking())
+            }),
+          ),
         )
 
-        yield* Story.story(
-          APPLICATION,
-          Story.given(withScene([tank], pistolsInto(20, tankHp, tank))),
-          tick(FRAME_MS),
-          Story.model(({ zombies, keys }) => {
-            expect(Array.map(zombies, ({ state }) => state._tag)).toEqual([
-              'Dying',
-            ])
-            expect(keys.held).toBe(ZOMBIE_KINDS.Tank.keys)
-          }),
+        yield* modelAfter(
+          withScene([tank], pistolsInto(20, tankHp, tank)),
+          steps(
+            tick(FRAME_MS),
+            checkModel(({ zombies, keys }) => {
+              expect(Array.map(zombies, ({ state }) => state._tag)).toEqual([
+                'Dying',
+              ])
+              expect(keys.held).toBe(ZOMBIE_KINDS.Tank.keys)
+            }),
+          ),
         )
       }),
   )
@@ -231,16 +234,17 @@ describe('the kind table', () => {
         pierce: Pierce.Stops(),
       }
 
-      return Story.story(
-        APPLICATION,
-        Story.given(withScene([runner], [grazing])),
-        tick(LONG_FRAME_MS),
-        Story.model(({ zombies, bullets }) => {
-          expect(Array.map(zombies, ({ hp }) => hp)).toEqual([
-            ZOMBIE_KINDS.Runner.hp - 1,
-          ])
-          expect(bullets).toEqual([])
-        }),
+      return modelAfter(
+        withScene([runner], [grazing]),
+        steps(
+          tick(LONG_FRAME_MS),
+          checkModel(({ zombies, bullets }) => {
+            expect(Array.map(zombies, ({ hp }) => hp)).toEqual([
+              ZOMBIE_KINDS.Runner.hp - 1,
+            ])
+            expect(bullets).toEqual([])
+          }),
+        ),
       )
     },
   )
@@ -264,16 +268,17 @@ describe('the kind table', () => {
         pierce: Pierce.Stops(),
       }
 
-      return Story.story(
-        APPLICATION,
-        Story.given(withScene([far, near], [piercing])),
-        tick(LONG_FRAME_MS),
-        Story.model(({ zombies }) => {
-          expect(Array.map(zombies, ({ id, hp }) => [id, hp])).toEqual([
-            [2, ZOMBIE_KINDS.Shambler.hp],
-            [1, ZOMBIE_KINDS.Shambler.hp - 1],
-          ])
-        }),
+      return modelAfter(
+        withScene([far, near], [piercing]),
+        steps(
+          tick(LONG_FRAME_MS),
+          checkModel(({ zombies }) => {
+            expect(Array.map(zombies, ({ id, hp }) => [id, hp])).toEqual([
+              [2, ZOMBIE_KINDS.Shambler.hp],
+              [1, ZOMBIE_KINDS.Shambler.hp - 1],
+            ])
+          }),
+        ),
       )
     },
   )
@@ -281,38 +286,39 @@ describe('the kind table', () => {
   it.effect('a Tank bite costs two hearts and the Tank barely flinches', () =>
     Effect.gen(function* () {
       const tank = zombieOf('Tank', 1, CENTER_X + 6, CENTER_Y)
-      yield* Story.story(
-        APPLICATION,
-        Story.given(withScene([tank])),
-        tick(FRAME_MS),
-        Story.model(({ seats: [{ player }], zombies }) => {
-          expect(player.hp).toBe(PLAYER_MAX_HP - 2)
-          const bitten = Option.getOrThrow(Array.head(zombies))
-          expect(vectorLength(bitten.knockback)).toBeCloseTo(
-            ZOMBIE_BUMP_SPEED * ZOMBIE_KINDS.Tank.knockbackScale,
-            0,
-          )
-        }),
+      yield* modelAfter(
+        withScene([tank]),
+        steps(
+          tick(FRAME_MS),
+          checkModel(({ seats: [{ player }], zombies }) => {
+            expect(player.hp).toBe(PLAYER_MAX_HP - 2)
+            const bitten = Option.getOrThrow(Array.head(zombies))
+            expect(vectorLength(bitten.knockback)).toBeCloseTo(
+              ZOMBIE_BUMP_SPEED * ZOMBIE_KINDS.Tank.knockbackScale,
+              0,
+            )
+          }),
+        ),
       )
 
       const shambler = zombieOf('Shambler', 1, 200, 60)
       const sameShotTank = zombieOf('Tank', 2, 100, 130)
-      yield* Story.story(
-        APPLICATION,
-        Story.given(
-          withScene(
-            [shambler, sameShotTank],
-            [pistolInto(10, shambler), pistolInto(11, sameShotTank)],
-          ),
+      yield* modelAfter(
+        withScene(
+          [shambler, sameShotTank],
+          [pistolInto(10, shambler), pistolInto(11, sameShotTank)],
         ),
-        tick(FRAME_MS),
-        Story.model(({ zombies }) => {
-          const [shotShambler, shotTank] = Array.map(zombies, ({ knockback }) =>
-            vectorLength(knockback),
-          )
-          expect(shotShambler).toBeGreaterThan(ZOMBIE_KNOCKBACK_SPEED * 0.8)
-          expect(shotTank).toBeLessThan(ZOMBIE_KNOCKBACK_SPEED * 0.2)
-        }),
+        steps(
+          tick(FRAME_MS),
+          checkModel(({ zombies }) => {
+            const [shotShambler, shotTank] = Array.map(
+              zombies,
+              ({ knockback }) => vectorLength(knockback),
+            )
+            expect(shotShambler).toBeGreaterThan(ZOMBIE_KNOCKBACK_SPEED * 0.8)
+            expect(shotTank).toBeLessThan(ZOMBIE_KNOCKBACK_SPEED * 0.2)
+          }),
+        ),
       )
     }),
   )
@@ -322,28 +328,27 @@ describe('the kind table', () => {
     () => {
       const tank = zombieOf('Tank', 1, 100, 100)
       const runner = zombieOf('Runner', 2, 102, 100)
-      return Story.story(
-        APPLICATION,
-        Story.given(
-          modifyFocus(withScene([tank, runner]), {
-            player: player =>
-              modifyFields(player, { x: () => 280, y: () => 150 }),
+      return modelAfter(
+        modifyFocus(withScene([tank, runner]), {
+          player: player =>
+            UiStruct.evolve(player, { x: () => 280, y: () => 150 }),
+        }),
+        steps(
+          ticks(40, FRAME_MS),
+          checkModel(({ zombies }) => {
+            const [pushedTank, pushedRunner] = zombies
+            const gap = Math.hypot(
+              (pushedTank?.x ?? 0) - (pushedRunner?.x ?? 0),
+              (pushedTank?.y ?? 0) - (pushedRunner?.y ?? 0),
+            )
+            expect(gap).toBeGreaterThan(
+              ZOMBIE_KINDS.Tank.radius + ZOMBIE_KINDS.Runner.radius - 1,
+            )
+            expect(Math.abs((pushedRunner?.x ?? 0) - 102)).toBeGreaterThan(
+              Math.abs((pushedTank?.x ?? 0) - 100) * 3,
+            )
           }),
         ),
-        ...ticks(40, FRAME_MS),
-        Story.model(({ zombies }) => {
-          const [pushedTank, pushedRunner] = zombies
-          const gap = Math.hypot(
-            (pushedTank?.x ?? 0) - (pushedRunner?.x ?? 0),
-            (pushedTank?.y ?? 0) - (pushedRunner?.y ?? 0),
-          )
-          expect(gap).toBeGreaterThan(
-            ZOMBIE_KINDS.Tank.radius + ZOMBIE_KINDS.Runner.radius - 1,
-          )
-          expect(Math.abs((pushedRunner?.x ?? 0) - 102)).toBeGreaterThan(
-            Math.abs((pushedTank?.x ?? 0) - 100) * 3,
-          )
-        }),
       )
     },
   )
@@ -364,25 +369,24 @@ describe('exploders', () => {
         const tank = zombieOf('Tank', 4, CENTER_X + 18, CENTER_Y - 18)
         const frames: Array<Model> = []
 
-        yield* Story.story(
-          APPLICATION,
-          Story.given(
-            withScene(
-              [left, right, shambler, tank],
-              Array.flatten([
-                pistolsInto(10, ZOMBIE_KINDS.Exploder.hp, left),
-                pistolsInto(20, ZOMBIE_KINDS.Exploder.hp, right),
-              ]),
-            ),
+        yield* modelAfter(
+          withScene(
+            [left, right, shambler, tank],
+            Array.flatten([
+              pistolsInto(10, ZOMBIE_KINDS.Exploder.hp, left),
+              pistolsInto(20, ZOMBIE_KINDS.Exploder.hp, right),
+            ]),
           ),
-          tick(FRAME_MS),
-          Story.model(({ zombies, keys }) => {
-            expect(
-              Array.map(Array.take(zombies, 2), ({ state }) => state._tag),
-            ).toEqual(['Fusing', 'Fusing'])
-            expect(keys.held).toBe(2 * ZOMBIE_KINDS.Exploder.keys)
-          }),
-          ...recordTicks(40, FRAME_MS, frames),
+          steps(
+            tick(FRAME_MS),
+            checkModel(({ zombies, keys }) => {
+              expect(
+                Array.map(Array.take(zombies, 2), ({ state }) => state._tag),
+              ).toEqual(['Fusing', 'Fusing'])
+              expect(keys.held).toBe(2 * ZOMBIE_KINDS.Exploder.keys)
+            }),
+            recordTicks(40, FRAME_MS, frames),
+          ),
         )
 
         const bursts = blastFrames(frames)
@@ -415,21 +419,20 @@ describe('exploders', () => {
   it.effect('a shot Exploder sprays goo and never blood', () => {
     const gasbag = zombieOf('Exploder', 1, 200, 60)
 
-    return Story.story(
-      APPLICATION,
-      Story.given(
-        withScene([gasbag], pistolsInto(10, ZOMBIE_KINDS.Exploder.hp, gasbag)),
+    return modelAfter(
+      withScene([gasbag], pistolsInto(10, ZOMBIE_KINDS.Exploder.hp, gasbag)),
+      steps(
+        tick(FRAME_MS),
+        checkModel(({ zombies, cosmetics: { particles } }) => {
+          expect(Array.map(zombies, ({ state }) => state._tag)).toEqual([
+            'Fusing',
+          ])
+          expect(Array.isReadonlyArrayNonEmpty(particles)).toBe(true)
+          expect(
+            Array.filter(particles, ({ kind }) => kind === 'Blood'),
+          ).toEqual([])
+        }),
       ),
-      tick(FRAME_MS),
-      Story.model(({ zombies, cosmetics: { particles } }) => {
-        expect(Array.map(zombies, ({ state }) => state._tag)).toEqual([
-          'Fusing',
-        ])
-        expect(Array.isReadonlyArrayNonEmpty(particles)).toBe(true)
-        expect(Array.filter(particles, ({ kind }) => kind === 'Blood')).toEqual(
-          [],
-        )
-      }),
     )
   })
 
@@ -439,15 +442,12 @@ describe('exploders', () => {
       const second = zombieOf('Exploder', 2, 216, 60)
       const frames: Array<Model> = []
 
-      yield* Story.story(
-        APPLICATION,
-        Story.given(
-          withScene(
-            [first, second],
-            pistolsInto(10, ZOMBIE_KINDS.Exploder.hp, first),
-          ),
+      yield* modelAfter(
+        withScene(
+          [first, second],
+          pistolsInto(10, ZOMBIE_KINDS.Exploder.hp, first),
         ),
-        ...recordTicks(60, FRAME_MS, frames),
+        recordTicks(60, FRAME_MS, frames),
       )
 
       const bursts = blastFrames(frames)
@@ -479,17 +479,14 @@ describe('exploders', () => {
         )
         const frames: Array<Model> = []
 
-        yield* Story.story(
-          APPLICATION,
-          Story.given(
-            withScene(
-              cluster,
-              Array.flatMap(cluster, (zombie, index) =>
-                pistolsInto(10 + index * 2, 2, zombie),
-              ),
+        yield* modelAfter(
+          withScene(
+            cluster,
+            Array.flatMap(cluster, (zombie, index) =>
+              pistolsInto(10 + index * 2, 2, zombie),
             ),
           ),
-          ...recordTicks(80, FRAME_MS, frames),
+          recordTicks(80, FRAME_MS, frames),
         )
 
         const counts = Array.map(blastFrames(frames), explosionsIn)
@@ -507,18 +504,19 @@ describe('exploders', () => {
         const exploder = zombieOf('Exploder', 1, CENTER_X + 6, CENTER_Y)
         const frames: Array<Model> = []
 
-        yield* Story.story(
-          APPLICATION,
-          Story.given(withScene([exploder])),
-          tick(FRAME_MS),
-          Story.model(({ zombies, seats: [{ player }], frameEvents }) => {
-            expect(Array.map(zombies, ({ state }) => state)).toEqual([
-              ZombieState.Fusing({ remainingMs: EXPLODER.contactFuseMs }),
-            ])
-            expect(player.hp).toBe(PLAYER_MAX_HP)
-            expect(frameEvents).toEqual([])
-          }),
-          ...recordTicks(30, FRAME_MS, frames),
+        yield* modelAfter(
+          withScene([exploder]),
+          steps(
+            tick(FRAME_MS),
+            checkModel(({ zombies, seats: [{ player }], frameEvents }) => {
+              expect(Array.map(zombies, ({ state }) => state)).toEqual([
+                ZombieState.Fusing({ remainingMs: EXPLODER.contactFuseMs }),
+              ])
+              expect(player.hp).toBe(PLAYER_MAX_HP)
+              expect(frameEvents).toEqual([])
+            }),
+            recordTicks(30, FRAME_MS, frames),
+          ),
         )
 
         const last = Option.getOrThrow(Array.last(frames))

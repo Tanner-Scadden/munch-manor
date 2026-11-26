@@ -1,7 +1,7 @@
 import { Array, Match, Option, Record } from 'effect'
-import type { Canvas } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
+
+import { UiStruct } from '@effect/ui'
 
 import type { Model } from '../../app/model'
 import { initialModel } from '../../app/pureApp'
@@ -12,6 +12,7 @@ import { WEAPONS, freshGun } from '../../world/gear/weapons'
 import { levelOf } from '../../world/level/arena'
 import { modifyFocus } from '../../world/party/party'
 import type { Vector, WeaponKind } from '../../world/schema/worldSchema'
+import type * as Draw from '../draw'
 import { type Leaf, flatten } from '../iso/flatten'
 import { flameSpecsOf } from '../iso/lightSpecs'
 import { CAMERA_UP, UNIT, type Vec3, standingPointOf } from '../iso/space'
@@ -47,7 +48,7 @@ const GUNS: ReadonlyArray<WeaponKind> = Array.filter(
 const firing = (kind: WeaponKind, facing: Vector): Model =>
   modifyFocus(initialModel, {
     player: player =>
-      modifyFields(player, {
+      UiStruct.evolve(player, {
         x: () => 200,
         y: () => 100,
         facing: () => facing,
@@ -72,7 +73,7 @@ const applied = ({ a, b, c, d, e, f }: Leaf['matrix'], at: Vector): Vector => ({
   y: b * at.x + d * at.y + f,
 })
 
-const imageSources = (shapes: ReadonlyArray<Canvas.Shape>): Set<string> =>
+const imageSources = (shapes: ReadonlyArray<Draw.Shape>): Set<string> =>
   new Set(
     Array.flatMap(flatten(shapes), ({ shape }) =>
       Match.value(shape).pipe(

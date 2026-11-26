@@ -1,6 +1,5 @@
 import { Option, Schema } from 'effect'
 
-import { DialogBlock } from '@foldkit/ui'
 import { NetStats } from '@munch/netcode'
 
 import { BeatMyRun, noBeatMyRun } from '../domain/beatLink'
@@ -53,9 +52,8 @@ import {
   MissionRun,
   noMissionRun,
 } from '../features/missions/missionSchema'
-import * as Munchopedia from '../features/munchopedia/model'
+import { MunchopediaPage } from '../features/munchopedia/model'
 import * as Profile from '../features/profile/model'
-import * as ProofShelf from '../features/proof/model'
 import {
   Input,
   InputDevice,
@@ -120,6 +118,7 @@ import {
   noBonuses,
 } from '../shared/playerData'
 import { SavedProof, noProof } from '../shared/proofData'
+import { DialogState, closedDialog } from '../ui/dialog'
 import { DareKind } from '../world/dare/dareSchema'
 import { rollCases } from '../world/feats/cases'
 import { noRank } from '../world/heroes/rank'
@@ -396,18 +395,23 @@ export const Model = Schema.Struct({
   runRecords: Schema.Array(RunRecord),
   audio: AudioState,
   homeScreenTip: HomeScreenTip,
-  homeScreenSteps: DialogBlock.Model,
+  homeScreenSteps: DialogState,
   pageVisibility: PageVisibility,
   // NOTE: keys whose keyup came with no keydown: a browser extension took
   // them first (see src/input/keyGrab.ts).
   missedKeyDowns: Schema.Finite,
-  updateGreeting: DialogBlock.Model,
+  updateGreeting: DialogState,
   appearance: Appearance,
   profile: Profile.Model,
-  lobby: Lobby.Model,
-  munchopedia: Munchopedia.Model,
-  proofShelf: ProofShelf.Model,
-  profileDialog: DialogBlock.Model,
+  // NOTE: the single player lobby's state, the root's (menuState and the
+  // keys read it); the Lobby component draws it from props
+  // (src/app/lobbyView.ts).
+  lobby: Lobby.LobbyState,
+  // NOTE: the Dare Journal's page in the menu panel, the root's since the
+  // panel's blurb and NEW ENTRY read it; the Munchopedia draws it and asks
+  // for a new one (src/app/dialogs.ts).
+  munchopediaPage: MunchopediaPage,
+  profileDialog: DialogState,
   playerName: PlayerName,
   coop: Coop.Model,
   // NOTE: RECORD MY RUNS (src/platform/recording.ts): whether this device
@@ -427,8 +431,8 @@ export const Model = Schema.Struct({
   maybeHomeFocus: Schema.Option(HomeButton),
   panel: MenuPanel,
   maybeOpenHelpCard: Schema.Option(HelpCard),
-  panelDialog: DialogBlock.Model,
-  handDialog: DialogBlock.Model,
+  panelDialog: DialogState,
+  handDialog: DialogState,
   bests: PlayerBests,
   rank: SavedRank,
   // NOTE: the Bones bonuses had once (src/world/heroes/rank.ts), saved and synced.
@@ -513,26 +517,21 @@ export const noBests: PlayerBests = {
   },
 }
 
-// NOTE: the fields a child Block owns, each started by its own init through
-// its Binding (src/app/bindings.ts) when the root's init runs.
-type ChildField =
-  | 'homeScreenSteps'
-  | 'updateGreeting'
-  | 'profile'
-  | 'lobby'
-  | 'munchopedia'
-  | 'proofShelf'
-  | 'profileDialog'
-  | 'coop'
-  | 'panelDialog'
-  | 'handDialog'
-
-// NOTE: the root's own fields as a fresh game starts them. The root's init
-// (src/app/main.ts) returns these, and the Bindings add each child's.
-export type OwnModel = Omit<Model, ChildField>
+// NOTE: the root's fields as a fresh game starts them, returned by the
+// root's init (src/app/main.ts). Every field is the root's own now.
+export type OwnModel = Model
 
 export const initialModel: OwnModel = {
   phase: Phase.Ready(),
+  profile: Profile.initialModel,
+  lobby: Lobby.initialLobby,
+  homeScreenSteps: closedDialog,
+  munchopediaPage: MunchopediaPage.List(),
+  coop: Coop.initialModel,
+  updateGreeting: closedDialog,
+  profileDialog: closedDialog,
+  panelDialog: closedDialog,
+  handDialog: closedDialog,
   pacing: calmPacing,
   boss: Boss.Absent(),
   frenzyPacks: [],

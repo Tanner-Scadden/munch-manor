@@ -1,7 +1,6 @@
 import { Effect, Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
 import { Message } from '../../app/message'
@@ -12,10 +11,12 @@ import { screenToFloorDirection } from '../../render/lens'
 import { FIXED_STEP_MS, STICK_RADIUS_PX } from '../../shared/constants'
 import { DISTANT_SPAWN } from '../../test/model.fixture'
 import {
-  APPLICATION,
   PHONE_LANDSCAPE,
   PHONE_PORTRAIT,
   START_SPOT,
+  checkModel,
+  send,
+  storyOf,
   tick,
   zombieOf,
 } from '../../test/testing'
@@ -44,7 +45,7 @@ const aimingRight = (
 ): Model => {
   const zombieAngle = RIGHT_ON_SCREEN + offAim
   return modifyFocus(
-    modifyFields(asVeteran(initialModel), {
+    UiStruct.evolve(asVeteran(initialModel), {
       lastDevice: () => 'Touch',
       orientation: () => orientation,
       maybeSurface: () =>
@@ -62,7 +63,7 @@ const aimingRight = (
         ),
       ],
       input: input =>
-        modifyFields(input, {
+        UiStruct.evolve(input, {
           aimStick: () =>
             Stick.Active({
               pointerId: 12,
@@ -87,13 +88,13 @@ const aimAngleOf = (current: Model): number =>
 // zombie's side of the player instead of a thumb on the stick.
 const mouseAimingRight = (zombieAngle: number): Model => {
   const touching = aimingRight('Landscape', zombieAngle)
-  const mousing = modifyFields(touching, {
+  const mousing = UiStruct.evolve(touching, {
     lastDevice: () => 'KeyboardMouse',
     maybeSurface: () => Option.none(),
   })
-  return modifyFields(mousing, {
+  return UiStruct.evolve(mousing, {
     input: input =>
-      modifyFields(input, {
+      UiStruct.evolve(input, {
         aimStick: () => Stick.Idle(),
         mouseButton: () => MouseButton.Held({ pointerId: 1 }),
         maybeMouseInView: () =>
@@ -111,27 +112,29 @@ describe('aim assist on touch', () => {
   it.effect(
     'held upright, a held aim a few degrees off a zombie lands on it',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(aimingRight('Portrait', 0.06)),
-        tick(FIXED_STEP_MS),
-        Story.model(current => {
-          expect(aimAngleOf(current)).toBeCloseTo(RIGHT_ON_SCREEN + 0.06, 5)
-        }),
-      ),
+      Effect.gen(function* () {
+        const s = yield* storyOf(aimingRight('Portrait', 0.06))
+        s.pipe(
+          tick(FIXED_STEP_MS),
+          checkModel(current => {
+            expect(aimAngleOf(current)).toBeCloseTo(RIGHT_ON_SCREEN + 0.06, 5)
+          }),
+        )
+      }),
   )
 
   it.effect(
     'held sideways, a held aim a few degrees off a zombie lands on it',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(aimingRight('Landscape', 0.06)),
-        tick(FIXED_STEP_MS),
-        Story.model(current => {
-          expect(aimAngleOf(current)).toBeCloseTo(RIGHT_ON_SCREEN + 0.06, 5)
-        }),
-      ),
+      Effect.gen(function* () {
+        const s = yield* storyOf(aimingRight('Landscape', 0.06))
+        s.pipe(
+          tick(FIXED_STEP_MS),
+          checkModel(current => {
+            expect(aimAngleOf(current)).toBeCloseTo(RIGHT_ON_SCREEN + 0.06, 5)
+          }),
+        )
+      }),
   )
 
   it.effect(
@@ -140,51 +143,59 @@ describe('aim assist on touch', () => {
       Effect.gen(function* () {
         const between =
           (AIM_ASSIST.Touch.innerRadians + AIM_ASSIST.Touch.outerRadians) / 2
-        yield* Story.story(
-          APPLICATION,
-          Story.given(aimingRight('Landscape', between)),
-          tick(FIXED_STEP_MS),
-          Story.model(current => {
-            expect(aimAngleOf(current)).toBeCloseTo(
-              RIGHT_ON_SCREEN + between / 2,
-              5,
+        yield* Effect.scoped(
+          Effect.gen(function* () {
+            const s = yield* storyOf(aimingRight('Landscape', between))
+            s.pipe(
+              tick(FIXED_STEP_MS),
+              checkModel(current => {
+                expect(aimAngleOf(current)).toBeCloseTo(
+                  RIGHT_ON_SCREEN + between / 2,
+                  5,
+                )
+              }),
             )
           }),
         )
-        yield* Story.story(
-          APPLICATION,
-          Story.given(
-            aimingRight('Portrait', AIM_ASSIST.Touch.outerRadians + 0.05),
-          ),
-          tick(FIXED_STEP_MS),
-          Story.model(current => {
-            expect(aimAngleOf(current)).toBeCloseTo(RIGHT_ON_SCREEN, 5)
+        yield* Effect.scoped(
+          Effect.gen(function* () {
+            const s = yield* storyOf(
+              aimingRight('Portrait', AIM_ASSIST.Touch.outerRadians + 0.05),
+            )
+            s.pipe(
+              tick(FIXED_STEP_MS),
+              checkModel(current => {
+                expect(aimAngleOf(current)).toBeCloseTo(RIGHT_ON_SCREEN, 5)
+              }),
+            )
           }),
         )
       }),
   )
 
   it.effect('a held mouse goes exactly where it points', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(mouseAimingRight(0.06)),
-      tick(FIXED_STEP_MS),
-      Story.model(current => {
-        expect(aimAngleOf(current)).toBeCloseTo(RIGHT_ON_SCREEN, 5)
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(mouseAimingRight(0.06))
+      s.pipe(
+        tick(FIXED_STEP_MS),
+        checkModel(current => {
+          expect(aimAngleOf(current)).toBeCloseTo(RIGHT_ON_SCREEN, 5)
+        }),
+      )
+    }),
   )
 
   it.effect('a key press hands the aim back to the player, untouched', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(aimingRight('Landscape', 0.06)),
-      Story.message(Message.PressedKey({ code: 'KeyW' })),
-      tick(FIXED_STEP_MS),
-      Story.model(current => {
-        expect(current.lastDevice).toBe('KeyboardMouse')
-        expect(aimAngleOf(current)).toBeCloseTo(RIGHT_ON_SCREEN, 5)
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(aimingRight('Landscape', 0.06))
+      s.pipe(
+        send(Message.PressedKey({ code: 'KeyW' })),
+        tick(FIXED_STEP_MS),
+        checkModel(current => {
+          expect(current.lastDevice).toBe('KeyboardMouse')
+          expect(aimAngleOf(current)).toBeCloseTo(RIGHT_ON_SCREEN, 5)
+        }),
+      )
+    }),
   )
 })

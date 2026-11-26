@@ -1,28 +1,35 @@
-import { Array } from 'effect'
-import { Scene, Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
+import { Effect } from 'effect'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { Message } from '../../../app/message'
 import { Lesson, type Model } from '../../../app/model'
 import { MAX_FRAME_DELTA_MS } from '../../../shared/constants'
 import { home } from '../../../test/model.fixture'
 import {
-  APPLICATION,
-  SCENE_SUBSCRIPTIONS,
+  ackHudSlots,
+  emitFrame,
   emitPressedKey,
-  lobbyStartButton,
   measureSurface,
   openLobbyInScene,
+  pressSurface,
   readDareCardInScene,
-  resolveFocusLobbyInScene,
   startIntoIntroInScene,
-  startRunFromHome,
   statusLine,
   throughIntroByTapInScene,
   throughIntroInScene,
+} from '../../../test/sceneTesting'
+import {
+  type SceneStep,
+  checkModel,
+  resolveFocusLobby,
+  sceneOf,
+  startRunFromHome,
+  steps,
+  storyOf,
 } from '../../../test/testing'
+import { Lobby } from '../../lobby/block'
+import { Events } from '../../lobby/message'
 import { FOLD_MS, GATE_MS, READ_MS, UNFOLD_MS } from '../pocketCard'
 
 // The dare card in your pocket (src/features/dare/pocketCard.ts): out on
@@ -31,174 +38,189 @@ import { FOLD_MS, GATE_MS, READ_MS, UNFOLD_MS } from '../pocketCard'
 // first time alone it waits for a key or a tap instead, taken only past
 // its gate. Endless has no list, so no card.
 
-const CARD_STATUS = "Your friends' dare card"
-const BREAK_STATUS = 'Get ready for wave 1.'
-const surface = Scene.role('application', { name: 'Game surface' })
+const CARD_STATUS = /Your friends' dare card/
+const BREAK_STATUS = /Get ready for wave 1\./
 
-const framesOf = (ms: number) =>
-  Array.makeBy(Math.ceil(ms / MAX_FRAME_DELTA_MS), () =>
-    Scene.Subscription.emit(
-      SCENE_SUBSCRIPTIONS.frame,
-      Message.TickedFrame({ deltaTime: MAX_FRAME_DELTA_MS }),
-    ),
-  )
+const framesOf =
+  (ms: number): SceneStep =>
+  s => {
+    for (
+      let frame = 0;
+      frame < Math.ceil(ms / MAX_FRAME_DELTA_MS);
+      frame += 1
+    ) {
+      s.pipe(emitFrame(MAX_FRAME_DELTA_MS), ackHudSlots)
+    }
+    return s
+  }
 
-const onTouch: Model = modifyFields(home, {
+const showsStatus =
+  (text: RegExp): SceneStep =>
+  s =>
+    s.pipe(ackHudSlots).expect(statusLine).toHaveText(text)
+
+// NOTE: a finger on the surface.
+const surfaceTap = pressSurface({
+  pointerId: 4,
+  device: 'Touch',
+  clientX: 100,
+  clientY: 100,
+})
+
+const onTouch: Model = UiStruct.evolve(home, {
   lastDevice: () => 'Touch',
 })
 
 // NOTE: a player who has never read the card: it waits for them.
 const unread = (model: Model): Model =>
-  modifyFields(model, {
+  UiStruct.evolve(model, {
     lessons: lessons =>
-      modifyFields(lessons, { dareCard: () => Lesson.Pending() }),
+      UiStruct.evolve(lessons, { dareCard: () => Lesson.Pending() }),
   })
+
+// NOTE: from home through START and the intro, to the slam's card.
+const toTheCard: SceneStep = steps(
+  measureSurface,
+  startIntoIntroInScene,
+  throughIntroInScene,
+)
+
+const toTheCardByTap: SceneStep = steps(
+  measureSurface,
+  startIntoIntroInScene,
+  throughIntroByTapInScene,
+)
 
 describe('the dare card in your pocket', () => {
   it.effect('comes out on the slam, and the first break waits under it', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(home),
-      measureSurface,
-      ...startIntoIntroInScene(),
-      ...throughIntroInScene(),
-      Scene.expect(statusLine).toContainText(CARD_STATUS),
-      ...framesOf(READ_MS - 200),
-      Scene.expect(statusLine).toContainText(CARD_STATUS),
-    ),
+    Effect.gen(function* () {
+      const s = yield* sceneOf(home)
+      s.pipe(
+        toTheCard,
+        showsStatus(CARD_STATUS),
+        framesOf(READ_MS - 200),
+        showsStatus(CARD_STATUS),
+      )
+    }),
   )
 
   it.effect('folds itself away after a few seconds, and the break runs', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(home),
-      measureSurface,
-      ...startIntoIntroInScene(),
-      ...throughIntroInScene(),
-      ...framesOf(READ_MS),
-      Scene.expect(statusLine).toContainText(BREAK_STATUS),
-      ...framesOf(FOLD_MS),
-      Scene.expect(statusLine).toContainText(BREAK_STATUS),
-    ),
+    Effect.gen(function* () {
+      const s = yield* sceneOf(home)
+      s.pipe(
+        toTheCard,
+        framesOf(READ_MS),
+        showsStatus(BREAK_STATUS),
+        framesOf(FOLD_MS),
+        showsStatus(BREAK_STATUS),
+      )
+    }),
   )
 
   it.effect('a key puts it away as soon as it has opened', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(home),
-      measureSurface,
-      ...startIntoIntroInScene(),
-      ...throughIntroInScene(),
-      ...framesOf(UNFOLD_MS + 50),
-      emitPressedKey('Escape'),
-      Scene.expect(statusLine).toContainText(BREAK_STATUS),
-    ),
+    Effect.gen(function* () {
+      const s = yield* sceneOf(home)
+      s.pipe(
+        toTheCard,
+        framesOf(UNFOLD_MS + 50),
+        emitPressedKey('Escape'),
+        showsStatus(BREAK_STATUS),
+      )
+    }),
   )
 
   it.effect('the first time, it waits past its clock for a key', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(unread(home)),
-      measureSurface,
-      ...startIntoIntroInScene(),
-      ...throughIntroInScene(),
-      ...framesOf(READ_MS + FOLD_MS + 1_000),
-      Scene.expect(statusLine).toContainText(CARD_STATUS),
-      emitPressedKey('Escape'),
-      Scene.expect(statusLine).toContainText(BREAK_STATUS),
-    ),
+    Effect.gen(function* () {
+      const s = yield* sceneOf(unread(home))
+      s.pipe(
+        toTheCard,
+        framesOf(READ_MS + FOLD_MS + 1_000),
+        showsStatus(CARD_STATUS),
+        emitPressedKey('Escape'),
+        showsStatus(BREAK_STATUS),
+      )
+    }),
   )
 
   it.effect('the first time, a key before its gate leaves it up', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(unread(home)),
-      measureSurface,
-      ...startIntoIntroInScene(),
-      ...throughIntroInScene(),
-      ...framesOf(GATE_MS - 400),
-      emitPressedKey('Escape'),
-      Scene.expect(statusLine).toContainText(CARD_STATUS),
-      ...framesOf(450),
-      emitPressedKey('Escape'),
-      Scene.expect(statusLine).toContainText(BREAK_STATUS),
-    ),
+    Effect.gen(function* () {
+      const s = yield* sceneOf(unread(home))
+      s.pipe(
+        toTheCard,
+        framesOf(GATE_MS - 400),
+        emitPressedKey('Escape'),
+        showsStatus(CARD_STATUS),
+        framesOf(450),
+        emitPressedKey('Escape'),
+        showsStatus(BREAK_STATUS),
+      )
+    }),
   )
 
   it.effect('the first time, a tap before its gate leaves it up', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(unread(onTouch)),
-      measureSurface,
-      ...startIntoIntroInScene(),
-      ...throughIntroByTapInScene(),
-      ...framesOf(UNFOLD_MS + 100),
-      Scene.pointerDown(surface, {
-        pointerType: 'touch',
-        pointerId: 4,
-        clientX: 100,
-        clientY: 100,
-      }),
-      Scene.expect(statusLine).toContainText(CARD_STATUS),
-    ),
+    Effect.gen(function* () {
+      const s = yield* sceneOf(unread(onTouch))
+      s.pipe(
+        toTheCardByTap,
+        framesOf(UNFOLD_MS + 100),
+        surfaceTap,
+        showsStatus(CARD_STATUS),
+      )
+    }),
   )
 
   it.effect('reading it once learns it, so the next run keeps its clock', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(unread(home)),
-      startRunFromHome,
-      Story.model(current => {
-        expect(current.pocketCard._tag).toBe('Folding')
-        expect(current.lessons.dareCard._tag).toBe('Learned')
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(unread(home))
+      s.pipe(
+        startRunFromHome,
+        checkModel(current => {
+          expect(current.pocketCard._tag).toBe('Folding')
+          expect(current.lessons.dareCard._tag).toBe('Learned')
+        }),
+      )
+    }),
   )
 
   it.effect('a key puts it away once it has opened', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(home),
-      measureSurface,
-      ...startIntoIntroInScene(),
-      ...throughIntroInScene(),
-      emitPressedKey('Escape'),
-      Scene.expect(statusLine).toContainText(CARD_STATUS),
-      ...readDareCardInScene(),
-      Scene.expect(statusLine).toContainText(BREAK_STATUS),
-    ),
+    Effect.gen(function* () {
+      const s = yield* sceneOf(home)
+      s.pipe(
+        toTheCard,
+        emitPressedKey('Escape'),
+        showsStatus(CARD_STATUS),
+        readDareCardInScene,
+        showsStatus(BREAK_STATUS),
+      )
+    }),
   )
 
   it.effect('a tap puts it away on touch', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(onTouch),
-      measureSurface,
-      ...startIntoIntroInScene(),
-      ...throughIntroByTapInScene(),
-      Scene.expect(statusLine).toContainText(CARD_STATUS),
-      ...framesOf(500),
-      Scene.pointerDown(surface, {
-        pointerType: 'touch',
-        pointerId: 4,
-        clientX: 100,
-        clientY: 100,
-      }),
-      Scene.expect(statusLine).toContainText(BREAK_STATUS),
-    ),
+    Effect.gen(function* () {
+      const s = yield* sceneOf(onTouch)
+      s.pipe(
+        toTheCardByTap,
+        showsStatus(CARD_STATUS),
+        framesOf(500),
+        surfaceTap,
+        showsStatus(BREAK_STATUS),
+      )
+    }),
   )
 
   it.effect('stays in the pocket when you stay the night', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(home),
-      measureSurface,
-      ...openLobbyInScene(),
-      Scene.click(Scene.role('button', { name: 'Endless' })),
-      resolveFocusLobbyInScene(),
-      Scene.click(lobbyStartButton),
-      ...throughIntroInScene(),
-      Scene.expect(statusLine).toContainText('Get ready for endless wave 1.'),
-    ),
+    Effect.gen(function* () {
+      const s = yield* sceneOf(home)
+      s.pipe(
+        measureSurface,
+        openLobbyInScene,
+        c =>
+          c.childEmit(Lobby, 'lobby', Events.PickedMode({ mode: 'Endless' })),
+        resolveFocusLobby(),
+        c => c.childEmit(Lobby, 'lobby', Events.RequestedStart()),
+        throughIntroInScene,
+        showsStatus(/Get ready for endless wave 1\./),
+      )
+    }),
   )
 })

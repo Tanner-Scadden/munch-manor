@@ -1,6 +1,7 @@
 import { Option } from 'effect'
-import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
+
+import { UiStruct } from '@effect/ui'
 
 import type { Model } from '../../app/model'
 import { quietWave, withPlayerAt } from '../../test/model.fixture'
@@ -18,7 +19,7 @@ import { cellarDarkOf } from '../cellarDark'
 
 const inCellar = (model: Model): Model =>
   withPlayerAt(
-    modifyFields(model, {
+    UiStruct.evolve(model, {
       level: state => openExitIn(openExitIn(state, EAST_EXIT), FAR_EXIT),
     }),
     CELLAR_SPOT.x,
@@ -55,7 +56,7 @@ describe('the cellar dark', () => {
     const facingRight = inCellar(quietWave(4))
     const facingLeft = modifyFocus(facingRight, {
       player: player =>
-        modifyFields(player, { facing: () => ({ x: -1, y: 0 }) }),
+        UiStruct.evolve(player, { facing: () => ({ x: -1, y: 0 }) }),
     })
     const right = Option.getOrThrow(darkOf(facingRight))
     const left = Option.getOrThrow(darkOf(facingLeft))
@@ -69,7 +70,7 @@ describe('the cellar dark', () => {
   })
 
   test('a lit cellar has no dark, so it draws both', () => {
-    const lit = modifyFields(inCellar(quietWave(4)), {
+    const lit = UiStruct.evolve(inCellar(quietWave(4)), {
       stations: stations => ({
         ...stations,
         Bulb: {

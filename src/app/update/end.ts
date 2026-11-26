@@ -1,6 +1,6 @@
 import { Array, Effect, Function, Option } from 'effect'
-import { Update } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
+
+import { Command, Component, UiStruct } from '@effect/ui'
 
 import { runDifficultyOf } from '../../domain/onlineRun'
 import { isEndScreen } from '../../domain/run'
@@ -17,7 +17,6 @@ import {
   skipBeat,
 } from '../../features/end/endBeat'
 import { endOffer } from '../../features/end/endOffer'
-import { EndMessage } from '../../features/end/message'
 import type { ShareOutcome } from '../../features/end/share'
 import {
   isCharacterKey,
@@ -34,17 +33,16 @@ import { advanceJuice } from '../../render/juice'
 import { advanceParticles } from '../../render/particles/particles'
 import { stepWhen } from '../../shared/stepWhen'
 import { RunMode } from '../../world/schema/worldSchema'
-import { CoopBinding } from '../bindings'
-import { ApplicationBlock, makeStep } from '../definition'
 import type { Model } from '../model'
+import { leaveCoopRoom, toggleCoopReady } from './coop'
 import { startFromButton, startWhenAllowed } from './run'
 import { playSounds, uiCue, unlockAudio } from './sound'
 import {
   type UpdateStep,
   combine,
   defineHandlers,
+  modelStep,
   toModel,
-  unchanged,
 } from './step'
 
 // The end of a run in update (the beat itself is src/features/end/endBeat.ts): its
@@ -64,7 +62,8 @@ const STAMP_TRAUMA = 0.7
 // shakes the screen, and the beat plays its sounds as the clock passes them.
 export const advanceEndScreen =
   (frameMs: number): UpdateStep =>
-  model => {
+  $ => {
+    const model = $.model
     const fromMs = model.screenMs
     const toMs = fromMs + frameMs
     const stampAtMs = Option.match(endKindOf(model), {
@@ -74,16 +73,16 @@ export const advanceEndScreen =
     const worldMs = toMs < stampAtMs ? frameMs * SLOW_MOTION_RATE : frameMs
     const stamped =
       fromMs < stampAtMs && toMs >= stampAtMs
-        ? modifyFields(model, {
+        ? UiStruct.evolve(model, {
             shake: shake =>
-              modifyFields(shake, {
+              UiStruct.evolve(shake, {
                 trauma: trauma => Math.max(trauma, STAMP_TRAUMA),
               }),
           })
         : model
     const moved = advanceJuice(
       advanceParticles(
-        modifyFields(stamped, {
+        UiStruct.evolve(stamped, {
           screenMs: () => toMs,
           frameEvents: () => [],
         }),
@@ -93,7 +92,10 @@ export const advanceEndScreen =
       frameMs,
       0,
     )
-    return playSounds(Array.map(beatSounds(model, fromMs, toMs), uiCue))(moved)
+    return $.combine(
+      toModel(moved),
+      playSounds(Array.map(beatSounds(model, fromMs, toMs), uiCue)),
+    )
   }
 
 // RETRY
@@ -161,22 +163,17 @@ export const skipFromPointer = (model: Model): Model =>
 const isRunCardOffered = (model: Model): boolean =>
   isCoopOpen(model.coop) && endOffer(model) !== 'Nothing'
 
-const playAgain = makeStep(model =>
-  isRunCardOffered(model)
-    ? Update.combineSteps([
-        toModel(skipBeat(model)),
-        CoopBinding.requestToggleReady(),
-      ])
-    : unchanged,
+const playAgain: UpdateStep = stepWhen(
+  isRunCardOffered,
+  combine([modelStep(skipBeat), toggleCoopReady]),
 )
 
-const toRoomLobby = makeStep(model =>
-  isRunCardOffered(model) ? toModel(dropRunCard(model)) : unchanged,
+const toRoomLobby: UpdateStep = stepWhen(
+  isRunCardOffered,
+  modelStep(dropRunCard),
 )
 
-const leaveRoomFromCard = makeStep(model =>
-  isRunCardOffered(model) ? CoopBinding.requestLeave() : unchanged,
-)
+const leaveRoomFromCard: UpdateStep = stepWhen(isRunCardOffered, leaveCoopRoom)
 
 // NOTE: keys while an online room's run card is up: Enter is PLAY AGAIN,
 // L is LOBBY, H is LEAVE, M and N toggle the sound (play.ts), and any
@@ -184,115 +181,100 @@ const leaveRoomFromCard = makeStep(model =>
 export const isRunCardKey = (model: Model): boolean =>
   isCoopOpen(model.coop) && isEndScreen(model.phase) && isRunCardHeld(model)
 
-export const runCardFromKey = (code: string) =>
-  makeStep(model => {
+export const runCardFromKey =
+  (code: string): UpdateStep =>
+  $ => {
     if (Array.contains(AUDIO_KEYS, code)) {
-      return unchanged
-    } else if (!isRunCardOffered(model)) {
-      return toModel(skipBeat(model))
+      return $.model
+    } else if (!isRunCardOffered($.model)) {
+      return skipBeat($.model)
     } else if (isStartKey(code)) {
-      return playAgain
+      return playAgain($)
     } else if (isLobbyKey(code)) {
-      return toRoomLobby
+      return toRoomLobby($)
     } else if (isMenuKey(code)) {
-      return leaveRoomFromCard
+      return leaveRoomFromCard($)
     } else {
-      return toModel(skipBeat(model))
+      return skipBeat($.model)
     }
-  })
+  }
 
 // SHARE
 
 // NOTE: a tap on SHARE, sent like a run summary, as an anonymous event.
-export const SendShareEvent = ApplicationBlock.makeCommand('SendShareEvent', {
-  args: { event: ShareEvent },
-  messages: [
-    EndMessage.CompletedSendShareEvent,
-    EndMessage.FailedSendShareEvent,
-  ],
-  handler: function* () {
-    return ({ event }) =>
-      sendShareEvent(event).pipe(
-        Effect.as(EndMessage.CompletedSendShareEvent()),
-        Effect.catch(error =>
-          Effect.succeed(
-            EndMessage.FailedSendShareEvent({ reason: error.reason }),
-          ),
-        ),
-      )
-  },
-})
+// Nothing on screen waits on it, so a failure is logged and nothing is
+// reported.
+export const SendShareEvent = Command.make(
+  'SendShareEvent',
+  { args: { event: ShareEvent } },
+  ({ event }) =>
+    sendShareEvent(event).pipe(
+      Effect.asVoid,
+      Effect.catch(error =>
+        Effect.logWarning('send share event', error.reason),
+      ),
+      Effect.as(Component.noop),
+    ),
+)
 
 // NOTE: a tap is counted once, as an anonymous event with the path it took,
 // only while the player shares play stats (src/platform/analytics.ts, ShareEvent).
-const shareEventCommands = (model: Model) =>
-  model.settings.shareStats === 'On'
-    ? Option.match(model.maybeVisitId, {
-        onNone: () => [],
-        onSome: visitId => [
-          SendShareEvent({
-            event: shareEventOf(
-              model,
-              visitId,
-              RUNNING_BUILD,
-              runDifficultyOf(model),
-              sharePathOf(model),
-            ),
-          }),
-        ],
+const sendShare: UpdateStep = $ =>
+  $.model.settings.shareStats === 'On'
+    ? Option.match($.model.maybeVisitId, {
+        onNone: () => $.model,
+        onSome: visitId =>
+          $.run(
+            SendShareEvent.make({
+              event: shareEventOf(
+                $.model,
+                visitId,
+                RUNNING_BUILD,
+                runDifficultyOf($.model),
+                sharePathOf($.model),
+              ),
+            }),
+          ),
       })
-    : []
+    : $.model
 
 // NOTE: the share itself runs in the button's own click (ShareFromClick in
 // src/app/mount.ts), so the tap here only skips the beat and counts it.
-const shareFromButton: UpdateStep = model =>
-  combine(skipBeat(model), [
-    stepWhen(
-      (skipped: Model) => isEndScreen(skipped.phase),
-      skipped => ({ model: skipped, commands: shareEventCommands(skipped) }),
-    ),
-  ])
+const shareFromButton: UpdateStep = combine([
+  modelStep(skipBeat),
+  stepWhen((skipped: Model) => isEndScreen(skipped.phase), sendShare),
+])
 
 // NOTE: a post that went to the clipboard flashes COPIED! on SHARE, timed
 // by the end screen's clock. A share sheet shows itself, and a failure
 // leaves SHARE as it was, ready for another tap.
-const settleShare =
-  (outcome: ShareOutcome): UpdateStep =>
-  model =>
+const settleShare = (outcome: ShareOutcome): UpdateStep =>
+  modelStep(model =>
     outcome === 'Copied'
-      ? {
-          model: modifyFields(model, {
-            endCard: modifyFields({
-              maybeShareCopiedAtMs: () => Option.some(model.screenMs),
-            }),
+      ? UiStruct.evolve(model, {
+          endCard: UiStruct.evolve({
+            maybeShareCopiedAtMs: () => Option.some(model.screenMs),
           }),
-        }
-      : { model }
+        })
+      : model,
+  )
 
 // NOTE: the end card's buttons and SHARE (./message.ts).
 export const endHandlers = defineHandlers({
-  ClickedRetryButton: model => startFromButton(model, retry(model)),
+  ClickedRetryButton: $ => startFromButton(retry($.model))($),
 
-  ClickedShareButton: model => combine(model, [unlockAudio, shareFromButton]),
+  ClickedShareButton: combine([unlockAudio, shareFromButton]),
 
-  ClickedPlayAgainButton: model =>
-    Update.combineSteps(model, [unlockAudio, playAgain]),
+  ClickedPlayAgainButton: combine([unlockAudio, playAgain]),
 
-  ClickedRoomLobbyButton: model =>
-    Update.combineSteps(model, [unlockAudio, toRoomLobby]),
+  ClickedRoomLobbyButton: combine([unlockAudio, toRoomLobby]),
 
-  ClickedLeaveRoomButton: model =>
-    Update.combineSteps(model, [unlockAudio, leaveRoomFromCard]),
+  ClickedLeaveRoomButton: combine([unlockAudio, leaveRoomFromCard]),
 
-  SettledShare: (model, { outcome }) => settleShare(outcome)(model),
+  SettledShare: ($, { outcome }) => settleShare(outcome)($),
 
-  CompletedSendShareEvent: model => ({ model }),
-
-  FailedSendShareEvent: model => ({ model }),
-
-  CompletedDetectShareSheet: (model, { shareSheet }) => ({
-    model: modifyFields(model, {
-      endCard: modifyFields({ shareSheet: () => shareSheet }),
+  CompletedDetectShareSheet: ($, { shareSheet }) =>
+    $.evolve({
+      endCard: UiStruct.evolve({ shareSheet: () => shareSheet }),
     }),
-  }),
 })

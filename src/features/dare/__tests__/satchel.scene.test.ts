@@ -1,9 +1,11 @@
-import { Scene } from 'foldkit'
+import { Effect } from 'effect'
 
+import { HtmlLocator } from '@effect/ui/html/testing'
 import { describe, it } from '@effect/vitest'
 
 import { quietWave, withDareThings } from '../../../test/model.fixture'
-import { APPLICATION, measureSurface } from '../../../test/testing'
+import { ackHudSlots, measureHud } from '../../../test/sceneTesting'
+import { sceneOf } from '../../../test/testing'
 import { DareThingState } from '../../../world/dare/dareSchema'
 
 // The HUD's dare list as a button (src/screens/game/dareListButton.ts): a
@@ -18,28 +20,30 @@ const hunting = withDareThings(quietWave(3), [
   },
 ])
 
-const openButton = Scene.role('button', { name: 'Open the dare card' })
-const awayButton = Scene.role('button', { name: 'Put the dare card away' })
+const openButton = HtmlLocator.role('button', { name: 'Open the dare card' })
+const awayButton = HtmlLocator.role('button', {
+  name: 'Put the dare card away',
+})
 
 describe("the HUD's dare list", () => {
   it.effect('opens the dare card and puts it away', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(hunting),
-      measureSurface,
-      Scene.click(openButton),
-      Scene.expect(awayButton).toExist(),
-      Scene.click(awayButton),
-      Scene.expect(openButton).toExist(),
-    ),
+    Effect.gen(function* () {
+      const s = yield* sceneOf(hunting)
+      s.pipe(measureHud)
+        .click(openButton)
+        .expect(awayButton)
+        .toExist()
+        .click(awayButton)
+        .pipe(ackHudSlots)
+        .expect(openButton)
+        .toExist()
+    }),
   )
 
   it.effect('is no button in a run with no list', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(withDareThings(quietWave(3), [])),
-      measureSurface,
-      Scene.expect(openButton).toBeAbsent(),
-    ),
+    Effect.gen(function* () {
+      const s = yield* sceneOf(withDareThings(quietWave(3), []))
+      s.pipe(measureHud).expect(openButton).toBeAbsent()
+    }),
   )
 })

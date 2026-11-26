@@ -1,5 +1,7 @@
 import { Array, Option, pipe } from 'effect'
-import type { Html } from 'foldkit/html'
+
+import type { View } from '@effect/ui'
+import type { Html } from '@effect/ui/html'
 
 import { PROP_ICONS } from '../../art/callingArt'
 import { TIN_BOT_ICON } from '../../art/coopIcons'
@@ -27,13 +29,8 @@ import {
   PROOF_ENDING_NAMES,
 } from '../../world/names'
 import { DIFFICULTIES } from '../../world/run/difficulty'
-import type { ViewInputs } from './block'
-import {
-  ProofShelfComposition,
-  type ProofShelfViewBuilder,
-} from './composition'
 import { Message } from './message'
-import type { Model } from './model'
+import type { Model, ProofShelfProps } from './model'
 import {
   SHELF_ROWS,
   type ShelfSpot,
@@ -51,6 +48,9 @@ import {
   slotId,
   spotUnlockId,
 } from './proof'
+
+type H = Html.H<Message>
+type Content = View.Content<Message>
 
 // The Proof Shelf in the menu panel: your friends' treehouse shelf, a row
 // per difficulty (its skull at the end), the house's things along it and
@@ -116,279 +116,249 @@ const isPicked = (model: Model, spot: ShelfSpot): boolean =>
 
 const slotView = (
   model: Model,
-  inputs: ViewInputs,
+  props: ProofShelfProps,
   spot: ShelfSpot,
-  h: ProofShelfViewBuilder,
-): Html => {
-  const maybeStamp = maybeStampAt(inputs.proof, spot)
+  h: H,
+): Content => {
+  const maybeStamp = maybeStampAt(props.proof, spot)
   const isFilled = Option.isSome(maybeStamp)
-  return h.button(
-    [
-      h.Type('button'),
-      h.Id(slotId(spot)),
-      h.Class(isBigKey(spot.thing) ? 'proof-slot proof-hook' : 'proof-slot'),
-      h.DataAttribute('filled', isFilled ? 'true' : 'false'),
-      h.AriaPressed(isPicked(model, spot) ? 'true' : 'false'),
-      h.AriaLabel(slotLabel(spot, maybeStamp)),
-      h.OnClick(Message.ClickedSlot({ spot })),
-    ],
-    [
+  return h.button
+    .attr('type', 'button')
+    .id(slotId(spot))
+    .class(isBigKey(spot.thing) ? 'proof-slot proof-hook' : 'proof-slot')
+    .attr('data-filled', isFilled ? 'true' : 'false')
+    .attr('aria-pressed', String(isPicked(model, spot) ? 'true' : 'false'))
+    .attr('aria-label', slotLabel(spot, maybeStamp))
+    .on('click', Message.ClickedSlot({ spot }))
+    .children(
       iconView('proof-thing', thingIcon(spot.thing, isFilled), h),
       ...Option.match(maybeStamp, {
         onNone: () => [],
         onSome: stamp => [iconView('proof-stamp', STAMP_URLS[stamp.ending], h)],
       }),
-      ...(Array.contains(inputs.fresh, spotUnlockId(spot))
-        ? [h.span([h.Class('proof-new'), h.AriaHidden(true)], ['NEW'])]
+      ...(Array.contains(props.fresh, spotUnlockId(spot))
+        ? [
+            h.span
+              .class('proof-new')
+              .attr('aria-hidden', 'true')
+              .children('NEW'),
+          ]
         : []),
-    ],
-  )
+    )
 }
 
 const rowView = (
   model: Model,
-  inputs: ViewInputs,
+  props: ProofShelfProps,
   difficulty: Difficulty,
-  h: ProofShelfViewBuilder,
-): Html =>
-  h.li(
-    [h.Class('proof-row'), h.DataAttribute('difficulty', difficulty)],
-    [
-      h.span(
-        [h.Class('proof-row-mark')],
-        [
+  h: H,
+): Content =>
+  h.li
+    .class('proof-row')
+    .attr('data-difficulty', difficulty)
+    .children(
+      h.span
+        .class('proof-row-mark')
+        .children(
           iconView('proof-skull', SKULL_ICONS[difficulty], h),
-          h.span([h.Class('sr-only')], [DIFFICULTIES[difficulty].name]),
+          h.span.class('sr-only').children(DIFFICULTIES[difficulty].name),
           ...dareMarkBadgeView(
-            inputs.dareMarks[difficulty],
+            props.dareMarks[difficulty],
             'proof-row-dare-mark',
             h,
           ),
-        ],
-      ),
-      h.div(
-        [
-          h.Class('proof-slots'),
-          h.Style({ '--shelf-things': `${inputs.things.length}` }),
-        ],
-        Array.map(inputs.things, thing =>
-          slotView(model, inputs, { thing, difficulty }, h),
         ),
-      ),
-      h.span(
-        [h.Class('proof-plank'), h.AriaHidden(true)],
-        [
+      h.div
+        .class('proof-slots')
+        .style({ '--shelf-things': `${props.things.length}` })
+        .children(
+          Array.map(props.things, thing =>
+            slotView(model, props, { thing, difficulty }, h),
+          ),
+        ),
+      h.span
+        .class('proof-plank')
+        .attr('aria-hidden', 'true')
+        .children(
           iconView('proof-board', PLANK_URL, h),
           iconView('proof-bracket proof-bracket-left', BRACKET_URL, h),
           iconView('proof-bracket proof-bracket-right', BRACKET_URL, h),
-        ],
-      ),
-    ],
-  )
+        ),
+    )
 
-const shelfView = (
-  model: Model,
-  inputs: ViewInputs,
-  h: ProofShelfViewBuilder,
-): Html =>
-  h.ul(
-    [h.Class('proof-shelf')],
-    Array.map(SHELF_ROWS, difficulty => rowView(model, inputs, difficulty, h)),
-  )
+const shelfView = (model: Model, props: ProofShelfProps, h: H): Content =>
+  h.ul
+    .class('proof-shelf')
+    .children(
+      Array.map(SHELF_ROWS, difficulty => rowView(model, props, difficulty, h)),
+    )
 
 // THE STAMP
 
 const crewView = (
   crew: ReadonlyArray<CrewMate>,
-  h: ProofShelfViewBuilder,
-): ReadonlyArray<Html> =>
+  h: H,
+): ReadonlyArray<Content> =>
   Array.map(crew, mate =>
-    h.span(
-      [h.Class('proof-mate')],
-      [
+    h.span
+      .class('proof-mate')
+      .children(
         ...(mate.isBot ? [iconView('proof-bot', TIN_BOT_ICON, h)] : []),
         mate.name,
-      ],
-    ),
+      ),
   )
 
-const stampDetailView = (
-  stamp: ProofStamp,
-  h: ProofShelfViewBuilder,
-): ReadonlyArray<Html> => [
-  h.span(
-    [h.Class('proof-ending'), h.DataAttribute('ending', stamp.ending)],
-    [
+const stampDetailView = (stamp: ProofStamp, h: H): ReadonlyArray<Content> => [
+  h.span
+    .class('proof-ending')
+    .attr('data-ending', stamp.ending)
+    .children(
       iconView('proof-ending-icon', STAMP_URLS[stamp.ending], h),
       PROOF_ENDING_NAMES[stamp.ending],
-    ],
-  ),
-  h.span([h.Class('proof-wave')], [`WAVE ${stamp.wave}`]),
-  h.span(
-    [h.Class('proof-hero')],
+    ),
+  h.span.class('proof-wave').children(`WAVE ${stamp.wave}`),
+  h.span.class('proof-hero').children(
     Option.match(callingOfCode(stamp.hero), {
       onNone: () => [],
       onSome: calling => [
         iconView('proof-hero-icon', PROP_ICONS[calling], h),
-        h.span([h.Class('sr-only')], [CALLING_NAMES[calling]]),
+        h.span.class('sr-only').children(CALLING_NAMES[calling]),
       ],
     }),
   ),
   ...crewView(stamp.crew, h),
   ...(stamp.day === null
     ? []
-    : [h.span([h.Class('proof-day')], [dayLabel(stamp.day)])]),
+    : [h.span.class('proof-day').children(dayLabel(stamp.day))]),
 ]
 
 const pickedView = (
-  inputs: ViewInputs,
+  props: ProofShelfProps,
   spot: ShelfSpot,
-  h: ProofShelfViewBuilder,
-): ReadonlyArray<Html> => {
-  const maybeStamp = maybeStampAt(inputs.proof, spot)
+  h: H,
+): ReadonlyArray<Content> => {
+  const maybeStamp = maybeStampAt(props.proof, spot)
   return [
     iconView(
       'proof-card-thing',
       thingIcon(spot.thing, Option.isSome(maybeStamp)),
       h,
     ),
-    h.div(
-      [h.Class('proof-card-text')],
-      [
-        h.p([h.Class('proof-card-name')], [thingName(spot.thing)]),
-        h.p(
-          [h.Class('proof-card-stamp')],
-          Option.match(maybeStamp, {
-            onNone: () => [h.span([h.Class('proof-not-yet')], ['NOT YET'])],
-            onSome: stamp => stampDetailView(stamp, h),
-          }),
-        ),
-        ...(Option.isSome(maybeStamp)
-          ? [h.p([h.Class('proof-card-line')], [thingLine(spot.thing)])]
-          : []),
-      ],
+    h.div.class('proof-card-text').children(
+      h.p.class('proof-card-name').children(thingName(spot.thing)),
+      h.p.class('proof-card-stamp').children(
+        Option.match(maybeStamp, {
+          onNone: () => [h.span.class('proof-not-yet').children('NOT YET')],
+          onSome: stamp => stampDetailView(stamp, h),
+        }),
+      ),
+      ...(Option.isSome(maybeStamp)
+        ? [h.p.class('proof-card-line').children(thingLine(spot.thing))]
+        : []),
     ),
   ]
 }
 
 // NOTE: nothing picked: the trophy and how full the shelf is.
-const tallyView = (
-  inputs: ViewInputs,
-  h: ProofShelfViewBuilder,
-): ReadonlyArray<Html> => [
+const tallyView = (props: ProofShelfProps, h: H): ReadonlyArray<Content> => [
   iconView('proof-card-thing', TROPHY_ICON, h),
-  h.p(
-    [h.Class('proof-card-tally')],
-    [
-      `${filledCount(inputs.proof, inputs.things)}/${slotCountOf(inputs.things)}`,
-    ],
-  ),
+  h.p
+    .class('proof-card-tally')
+    .children(
+      `${filledCount(props.proof, props.things)}/${slotCountOf(props.things)}`,
+    ),
 ]
 
-const cardView = (
-  model: Model,
-  inputs: ViewInputs,
-  h: ProofShelfViewBuilder,
-): Html =>
-  h.div(
-    [
-      h.Class('proof-card'),
-      h.AriaLive('polite'),
-      h.DataAttribute(
-        'picked',
-        Option.isSome(model.maybePicked) ? 'true' : 'false',
-      ),
-    ],
-    Option.match(model.maybePicked, {
-      onNone: () => tallyView(inputs, h),
-      onSome: spot => pickedView(inputs, spot, h),
-    }),
-  )
+const cardView = (model: Model, props: ProofShelfProps, h: H): Content =>
+  h.div
+    .class('proof-card')
+    .attr('aria-live', 'polite')
+    .attr('data-picked', Option.isSome(model.maybePicked) ? 'true' : 'false')
+    .children(
+      Option.match(model.maybePicked, {
+        onNone: () => tallyView(props, h),
+        onSome: spot => pickedView(props, spot, h),
+      }),
+    )
 
 // THE CALENDAR
 
 const calendarDayView = (
   month: DayStamp,
   day: number,
-  inputs: ViewInputs,
-  h: ProofShelfViewBuilder,
-): Html => {
+  props: ProofShelfProps,
+  h: H,
+): Content => {
   const stamp = dayOfMonth(month, day)
-  const isStamped = Array.contains(inputs.stampedDays, stamp)
-  const isToday = Option.exists(inputs.maybeToday, today => today === stamp)
-  return h.span(
-    [
-      h.Class('proof-day-cell'),
-      h.DataAttribute('stamped', isStamped ? 'true' : 'false'),
-      h.DataAttribute('today', isToday ? 'true' : 'false'),
-    ],
-    isStamped ? [iconView('proof-day-star', DAY_STAR_URL, h)] : [`${day}`],
-  )
+  const isStamped = Array.contains(props.stampedDays, stamp)
+  const isToday = Option.exists(props.maybeToday, today => today === stamp)
+  return h.span
+    .class('proof-day-cell')
+    .attr('data-stamped', isStamped ? 'true' : 'false')
+    .attr('data-today', isToday ? 'true' : 'false')
+    .children(
+      isStamped ? [iconView('proof-day-star', DAY_STAR_URL, h)] : [`${day}`],
+    )
 }
 
-const calendarView = (
-  inputs: ViewInputs,
-  h: ProofShelfViewBuilder,
-): ReadonlyArray<Html> =>
-  Option.match(maybeCalendarDay(inputs.maybeToday, inputs.stampedDays), {
+const calendarView = (props: ProofShelfProps, h: H): ReadonlyArray<Content> =>
+  Option.match(maybeCalendarDay(props.maybeToday, props.stampedDays), {
     onNone: () => [],
     onSome: month => {
       const stampedThisMonth = Array.filter(
-        inputs.stampedDays,
+        props.stampedDays,
         day => monthLabel(day) === monthLabel(month),
       ).length
       return [
-        h.div(
-          [
-            h.Class('proof-calendar'),
-            h.AriaLabel(
-              `${monthLabel(month)}: ${stampedThisMonth} mission ${stampedThisMonth === 1 ? 'day' : 'days'} done`,
-            ),
-          ],
-          [
-            h.p(
-              [h.Class('proof-month'), h.AriaHidden(true)],
-              [monthLabel(month)],
-            ),
-            h.div(
-              [
-                h.Class('proof-days'),
-                h.AriaHidden(true),
-                h.Style({ '--first': `${firstWeekdayOf(month) + 1}` }),
-              ],
-              pipe(
-                Array.range(1, daysInMonth(month)),
-                Array.map(day => calendarDayView(month, day, inputs, h)),
+        h.div
+          .class('proof-calendar')
+          .attr(
+            'aria-label',
+            `${monthLabel(month)}: ${stampedThisMonth} mission ${stampedThisMonth === 1 ? 'day' : 'days'} done`,
+          )
+          .children(
+            h.p
+              .class('proof-month')
+              .attr('aria-hidden', 'true')
+              .children(monthLabel(month)),
+            h.div
+              .class('proof-days')
+              .attr('aria-hidden', 'true')
+              .style({ '--first': `${firstWeekdayOf(month) + 1}` })
+              .children(
+                pipe(
+                  Array.range(1, daysInMonth(month)),
+                  Array.map(day => calendarDayView(month, day, props, h)),
+                ),
               ),
-            ),
-          ],
-        ),
+          ),
       ]
     },
   })
 
-// NOTE: the panel's body under the title the root's menu panel draws.
-const view = ProofShelfComposition.makeView.withInputs<ViewInputs>(
-  (model, inputs, h) =>
-    h.div(
-      [h.Class('proof-body')],
-      [
-        h.div(
-          [h.Class('proof-house')],
-          [
-            shelfView(model, inputs, h),
-            h.div(
-              [h.Class('proof-side')],
-              [cardView(model, inputs, h), ...calendarView(inputs, h)],
-            ),
-          ],
+// NOTE: the panel's body under the title the root's menu panel draws, the
+// panel's Done (the `done` slot) in its actions row.
+export const proofShelfView = ({
+  h,
+  model,
+  props,
+  done,
+}: Readonly<{
+  h: H
+  model: Model
+  props: ProofShelfProps
+  done: View.Outlet
+}>): Content =>
+  h.div
+    .class('proof-body')
+    .children(
+      h.div
+        .class('proof-house')
+        .children(
+          shelfView(model, props, h),
+          h.div
+            .class('proof-side')
+            .children(cardView(model, props, h), calendarView(props, h)),
         ),
-        h.div([h.Class('panel-actions')], [inputs.doneButton()]),
-      ],
-    ),
-)
-
-// NOTE: the shelf's view, gathered here so it is not exported alone: a
-// view is a function of three arguments with no pipeable form, and Foldkit
-// knows a view by its identity. src/features/proof/layer.ts completes it.
-export const proofShelfImplementation = { view }
+      h.div.class('panel-actions').children(done),
+    )

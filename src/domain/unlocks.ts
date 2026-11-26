@@ -1,5 +1,6 @@
 import { Array, Function, Option, String } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import type { Model } from '../app/model'
 import type { Calling, SavedSeenUnlocks } from '../shared/playerData'
@@ -151,7 +152,7 @@ const markSeen =
       surfaceUnlocksAt(rankOf(totalPointsOf(model.rank))),
       model.seenUnlocks,
     )
-    return modifyFields(model, {
+    return UiStruct.evolve(model, {
       freshUnlocks: fresh => [
         ...Array.filter(fresh, id => !isOnSurface(id)),
         ...unseen,
@@ -173,7 +174,7 @@ export const withoutFresh: {
   (model: Model, id: string): Model
 } = Function.dual(2, (model: Model, id: string): Model =>
   Array.contains(model.freshUnlocks, id)
-    ? modifyFields(model, {
+    ? UiStruct.evolve(model, {
         freshUnlocks: fresh => Array.filter(fresh, other => other !== id),
       })
     : model,

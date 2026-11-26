@@ -1,11 +1,11 @@
 import { Array, Effect, Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
 import {
   type Arsenal,
+  BreakClock,
   type Model,
   Pantry,
   type PantryGoodie,
@@ -24,12 +24,14 @@ import {
   withSeat,
 } from '../../../test/model.fixture'
 import {
-  APPLICATION,
   FIXED_FRAME,
   FRIDGE_OPEN_TICKS,
   bulletInto,
+  checkModel,
   holdToBuy,
+  modelAfter,
   playedThrough,
+  steps,
   tick,
   ticks,
   zombieOf,
@@ -77,7 +79,7 @@ describe('the fridge is worth a pull', () => {
     expect(odds).toContainEqual(['Dud', 0.04])
     const withCooker = modifyFocus(atFridge(100), {
       player: player =>
-        modifyFields(player, {
+        UiStruct.evolve(player, {
           arsenal: () => holdingSecond(freshGun('Cooker')),
         }),
     })
@@ -92,28 +94,29 @@ describe('the fridge is worth a pull', () => {
   })
 
   it.effect('a pull costs two keys, and the Dud burps one back', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(fridgeSeededFor(atFridge(5), 'Dud')),
-      Story.model(current => {
-        expect(fridgePriceOf(current)).toEqual(Option.some(FRIDGE_RULES.keys))
-      }),
-      holdToBuy,
-      Story.model(current => {
-        expect(current.keys.held).toBe(
-          5 - FRIDGE_RULES.keys + FRIDGE_RULES.dudRefund,
-        )
-        expect(current.keys.spent).toBe(FRIDGE_RULES.keys)
-      }),
-      ...ticks(FRIDGE_OPEN_TICKS + 2, FRAME_MS),
-      Story.model(current => {
-        expect(fridgePriceOf(current)).toEqual(Option.some(FRIDGE_RULES.keys))
-        const fighting = modifyFields(current, {
-          phase: () =>
-            Phase.Wave({ wave: 5, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
-        })
-        expect(fridgePriceFor(fighting)).toBe(FRIDGE_RULES.keys)
-      }),
+    modelAfter(
+      fridgeSeededFor(atFridge(5), 'Dud'),
+      steps(
+        checkModel(current => {
+          expect(fridgePriceOf(current)).toEqual(Option.some(FRIDGE_RULES.keys))
+        }),
+        holdToBuy,
+        checkModel(current => {
+          expect(current.keys.held).toBe(
+            5 - FRIDGE_RULES.keys + FRIDGE_RULES.dudRefund,
+          )
+          expect(current.keys.spent).toBe(FRIDGE_RULES.keys)
+        }),
+        ticks(FRIDGE_OPEN_TICKS + 2, FRAME_MS),
+        checkModel(current => {
+          expect(fridgePriceOf(current)).toEqual(Option.some(FRIDGE_RULES.keys))
+          const fighting = UiStruct.evolve(current, {
+            phase: () =>
+              Phase.Wave({ wave: 5, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
+          })
+          expect(fridgePriceFor(fighting)).toBe(FRIDGE_RULES.keys)
+        }),
+      ),
     ),
   )
 
@@ -133,21 +136,20 @@ describe('the fridge is worth a pull', () => {
   })
 
   it.effect('the Sandwich heals a heart and gives no key back', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        fridgeSeededFor(
-          modifyFocus(atFridge(5), {
-            player: player => modifyFields(player, { hp: () => 2 }),
-          }),
-          'Sandwich',
-        ),
+    modelAfter(
+      fridgeSeededFor(
+        modifyFocus(atFridge(5), {
+          player: player => UiStruct.evolve(player, { hp: () => 2 }),
+        }),
+        'Sandwich',
       ),
-      holdToBuy,
-      Story.model(current => {
-        expect(focusOf(current).player.hp).toBe(3)
-        expect(current.keys.held).toBe(5 - FRIDGE_RULES.keys)
-      }),
+      steps(
+        holdToBuy,
+        checkModel(current => {
+          expect(focusOf(current).player.hp).toBe(3)
+          expect(current.keys.held).toBe(5 - FRIDGE_RULES.keys)
+        }),
+      ),
     ),
   )
 })
@@ -160,27 +162,26 @@ describe('a prize starts fresh in place of the gun it replaces', () => {
     prize: 'Cooker' | 'Freeze',
     expected: Arsenal,
   ) => {
-    const smg = modifyFields(freshGun('Smg'), {
+    const smg = UiStruct.evolve(freshGun('Smg'), {
       tier: () => smgTier,
       kills: () => 150,
     })
-    return Story.story(
-      APPLICATION,
-      Story.given(
-        fridgeSeededFor(
-          modifyFocus(atFridge(100), {
-            player: player =>
-              modifyFields(player, { arsenal: () => holdingSecond(smg) }),
-          }),
-          prize,
-        ),
+    return modelAfter(
+      fridgeSeededFor(
+        modifyFocus(atFridge(100), {
+          player: player =>
+            UiStruct.evolve(player, { arsenal: () => holdingSecond(smg) }),
+        }),
+        prize,
       ),
-      holdToBuy,
-      ...ticks(FRIDGE_OPEN_TICKS, FRAME_MS),
-      holdToBuy,
-      Story.model(current => {
-        expect(focusOf(current).player.arsenal).toEqual(expected)
-      }),
+      steps(
+        holdToBuy,
+        ticks(FRIDGE_OPEN_TICKS, FRAME_MS),
+        holdToBuy,
+        checkModel(current => {
+          expect(focusOf(current).player.arsenal).toEqual(expected)
+        }),
+      ),
     )
   }
 
@@ -201,7 +202,7 @@ const PANTRY_SPOT = Option.getOrThrow(pantrySpotOf(levelOf(atFridge(0))))
 const atPantry = (current: Model): Model =>
   modifyFocus(current, {
     player: player =>
-      modifyFields(player, {
+      UiStruct.evolve(player, {
         x: () => PANTRY_SPOT.x,
         y: () => PANTRY_SPOT.y,
       }),
@@ -212,7 +213,7 @@ const afterFrame = (current: Model): Effect.Effect<Model> =>
   playedThrough(current, [FIXED_FRAME])
 
 const stocked = (current: Model, goodie: PantryGoodie): Model =>
-  modifyFields(current, {
+  UiStruct.evolve(current, {
     pantry: () => Pantry.Stocked({ round: 5, goodie }),
   })
 describe('the pantry stash', () => {
@@ -220,24 +221,26 @@ describe('the pantry stash', () => {
     'a break with the kitchen open stocks it; a boarded kitchen never does',
     () =>
       Effect.gen(function* () {
-        yield* Story.story(
-          APPLICATION,
-          Story.given(atFridge(0)),
-          tick(FRAME_MS),
-          Story.model(current => {
-            expect(Option.isSome(maybeStash(current))).toBe(true)
-          }),
-        )
-        yield* Story.story(
-          APPLICATION,
-          Story.given(
-            modifyFields(atFridge(0), { level: () => freshRunModel().level }),
+        yield* modelAfter(
+          atFridge(0),
+          steps(
+            tick(FRAME_MS),
+            checkModel(current => {
+              expect(Option.isSome(maybeStash(current))).toBe(true)
+            }),
           ),
-          ...ticks(3, FRAME_MS),
-          Story.model(current => {
-            expect(Option.isNone(maybeStash(current))).toBe(true)
-            expect(current.pantry).toEqual(Pantry.Bare({ round: 0 }))
+        )
+        yield* modelAfter(
+          UiStruct.evolve(atFridge(0), {
+            level: () => freshRunModel().level,
           }),
+          steps(
+            ticks(3, FRAME_MS),
+            checkModel(current => {
+              expect(Option.isNone(maybeStash(current))).toBe(true)
+              expect(current.pantry).toEqual(Pantry.Bare({ round: 0 }))
+            }),
+          ),
         )
       }),
   )
@@ -247,7 +250,7 @@ describe('the pantry stash', () => {
     () =>
       Effect.gen(function* () {
         const rolls = yield* Effect.forEach(Array.range(0, 59), index => {
-          const start = modifyFields(atFridge(0), {
+          const start = UiStruct.evolve(atFridge(0), {
             rngState: () => index * 7919,
           })
           return afterFrame(start).pipe(
@@ -267,35 +270,37 @@ describe('the pantry stash', () => {
     'walking onto it takes it, once a break, and the next break restocks',
     () =>
       Effect.gen(function* () {
-        const taken = yield* Story.story(
-          APPLICATION,
-          Story.given(atPantry(stocked(atFridge(0), 'Key'))),
-          tick(FRAME_MS),
-          Story.model(current => {
-            expect(current.keys.held).toBe(PANTRY_RULES.keys)
-            expect(current.pantry).toEqual(Pantry.Bare({ round: 5 }))
-            expect(
-              Array.some(
-                current.frameEvents,
-                event => event._tag === 'PantryTaken',
-              ),
-            ).toBe(true)
-            expect(
-              Array.some(
-                current.frameEvents,
-                event => event._tag === 'KeysFound',
-              ),
-            ).toBe(true)
-          }),
-          ...ticks(30, FRAME_MS),
-          Story.model(current => {
-            expect(current.keys.held).toBe(PANTRY_RULES.keys)
-            expect(Option.isNone(maybeStash(current))).toBe(true)
-          }),
+        const taken = yield* modelAfter(
+          atPantry(stocked(atFridge(0), 'Key')),
+          steps(
+            tick(FRAME_MS),
+            checkModel(current => {
+              expect(current.keys.held).toBe(PANTRY_RULES.keys)
+              expect(current.pantry).toEqual(Pantry.Bare({ round: 5 }))
+              expect(
+                Array.some(
+                  current.frameEvents,
+                  event => event._tag === 'PantryTaken',
+                ),
+              ).toBe(true)
+              expect(
+                Array.some(
+                  current.frameEvents,
+                  event => event._tag === 'KeysFound',
+                ),
+              ).toBe(true)
+            }),
+            ticks(30, FRAME_MS),
+            checkModel(current => {
+              expect(current.keys.held).toBe(PANTRY_RULES.keys)
+              expect(Option.isNone(maybeStash(current))).toBe(true)
+            }),
+          ),
         )
-        const nextBreak = modifyFields(taken, {
+        const nextBreak = UiStruct.evolve(taken, {
           phase: () =>
             Phase.Preparation({
+              clock: BreakClock.Counting(),
               wave: 6,
               remainingMs: 60_000,
               durationMs: 60_000,
@@ -320,7 +325,7 @@ describe('the pantry stash', () => {
           withSeat(seatCrew(world, 2), 1, seat =>
             modifyFocus(seat, {
               player: player =>
-                modifyFields(player, {
+                UiStruct.evolve(player, {
                   x: () => PANTRY_SPOT.x + 2,
                   y: () => PANTRY_SPOT.y,
                 }),
@@ -338,7 +343,7 @@ describe('the pantry stash', () => {
     () =>
       Effect.gen(function* () {
         const inWave = (current: Model): Model =>
-          modifyFields(current, {
+          UiStruct.evolve(current, {
             phase: () =>
               Phase.Wave({ wave: 5, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
           })
@@ -350,7 +355,7 @@ describe('the pantry stash', () => {
         const bare = yield* afterFrame(
           inWave(
             atPantry(
-              modifyFields(atFridge(0), {
+              UiStruct.evolve(atFridge(0), {
                 pantry: () => Pantry.Bare({ round: 5 }),
               }),
             ),
@@ -366,16 +371,16 @@ describe('the pantry stash', () => {
     () =>
       Effect.gen(function* () {
         const hurt = modifyFocus(atPantry(stocked(atFridge(0), 'Heart')), {
-          player: player => modifyFields(player, { hp: () => 2 }),
+          player: player => UiStruct.evolve(player, { hp: () => 2 }),
         })
         const healed = yield* afterFrame(hurt)
         expect(focusOf(healed).player.hp).toBe(3)
         expect(healed.keys.held).toBe(0)
         const whole = yield* afterFrame(atPantry(stocked(atFridge(0), 'Heart')))
         expect(whole.keys.held).toBe(PANTRY_RULES.keys)
-        const glass = modifyFields(hurt, {
+        const glass = UiStruct.evolve(hurt, {
           modifiers: modifiers =>
-            modifyFields(modifiers, { glass: () => true }),
+            UiStruct.evolve(modifiers, { glass: () => true }),
         })
         const paid = yield* afterFrame(glass)
         expect(focusOf(paid).player.hp).toBe(2)
@@ -395,7 +400,7 @@ describe('kitchen key odds', () => {
     kind: Zombie['kind'] = 'Shambler',
   ): Model => {
     const victim = zombieOf(kind, 100, at.x, at.y, { hp: 1 })
-    return modifyFields(atFridge(0), {
+    return UiStruct.evolve(atFridge(0), {
       phase: () =>
         Phase.Wave({ wave: 5, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
       zombies: () => [victim],
@@ -406,28 +411,33 @@ describe('kitchen key odds', () => {
   it.effect(
     'a Big Lug on a kitchen tile drops its two keys and sometimes a third',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(shotDown(KITCHEN_SPOT, 'Tank')),
-        tick(FRAME_MS),
-        Story.model(current => {
-          expect(current.keys.held).toBeGreaterThanOrEqual(2)
-          expect(current.keys.held).toBeLessThanOrEqual(3)
-          expect(
-            Array.some(current.cosmetics.popups, ({ kind }) => kind === 'Kill'),
-          ).toBe(true)
-        }),
+      modelAfter(
+        shotDown(KITCHEN_SPOT, 'Tank'),
+        steps(
+          tick(FRAME_MS),
+          checkModel(current => {
+            expect(current.keys.held).toBeGreaterThanOrEqual(2)
+            expect(current.keys.held).toBeLessThanOrEqual(3)
+            expect(
+              Array.some(
+                current.cosmetics.popups,
+                ({ kind }) => kind === 'Kill',
+              ),
+            ).toBe(true)
+          }),
+        ),
       ),
   )
 
   it.effect('in the dining room a Big Lug drops exactly two', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(shotDown(START_SPOT, 'Tank')),
-      tick(FRAME_MS),
-      Story.model(current => {
-        expect(current.keys.held).toBe(2)
-      }),
+    modelAfter(
+      shotDown(START_SPOT, 'Tank'),
+      steps(
+        tick(FRAME_MS),
+        checkModel(current => {
+          expect(current.keys.held).toBe(2)
+        }),
+      ),
     ),
   )
 

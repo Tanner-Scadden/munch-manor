@@ -35,18 +35,13 @@ const ROOT = `${import.meta.dir}/../..`
 const VITE = `${ROOT}/node_modules/.bin/vite`
 
 // NOTE: the folders and files the harness build reads. `public` is copied
-// into the build, `tools/sprites` builds the sprite atlas, and `patches`
-// changes what `foldkit` is.
+// into the build, and `tools/sprites` builds the sprite atlas.
 const INPUT_DIRS = [
   'src',
   'tools/audit/harness',
   'tools/sprites',
   'tools/vite',
   'public',
-  'patches',
-  // NOTE: the installed Foldkit, as patched, so a local edit to its dist while
-  // trying a change to the patch rebuilds the harness, as the patch file does.
-  'node_modules/foldkit/dist',
 ]
 const INPUT_FILES = ['package.json', 'bun.lock', 'tsconfig.json']
 const SKIPPED_DIRS = new Set(['dist', 'dist-profile', 'node_modules'])

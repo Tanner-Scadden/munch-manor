@@ -1,7 +1,6 @@
 import { Array, Context, Effect, Layer, Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { expect, layer } from '@effect/vitest'
 
 import { Message } from '../../../app/message'
@@ -11,12 +10,14 @@ import { addBot } from '../../../domain/bots'
 import { FIXED_STEP_MS } from '../../../shared/constants'
 import { atSeat } from '../../../test/model.fixture'
 import {
-  APPLICATION,
   SURFACE,
+  type StoryStep,
   isPlaying,
   messageIfAny,
+  modelAfter,
   settleRunCommands,
   startedRun,
+  steps,
 } from '../../../test/testing'
 import { asVeteran } from '../../../test/veteran'
 import { modifyFocus, playersOf } from '../../../world/party/party'
@@ -40,7 +41,7 @@ const withThreeBots = Effect.map(
     addBot(
       addBot(
         addBot(
-          modifyFields(asVeteran(initialModel), {
+          UiStruct.evolve(asVeteran(initialModel), {
             maybeSurface: () => Option.some(SURFACE),
           }),
         ),
@@ -51,7 +52,7 @@ const withThreeBots = Effect.map(
     Array.reduce(Array.range(1, 3), started, (current, slot) =>
       atSeat(current, slot, world =>
         modifyFocus(world, {
-          player: player => modifyFields(player, { hp: () => 3 }),
+          player: player => UiStruct.evolve(player, { hp: () => 3 }),
         }),
       ),
     ),
@@ -59,8 +60,8 @@ const withThreeBots = Effect.map(
 
 // NOTE: one frame of the human: in a break, every READY_EVERY frames, READY
 // pressed and let go; then the frame, while the run is still on.
-const humanFrame = (frame: number) =>
-  Story.steps(
+const humanFrame = (frame: number): StoryStep =>
+  steps(
     ...(frame % READY_EVERY === 0
       ? [
           messageIfAny(current =>
@@ -83,12 +84,10 @@ const humanFrame = (frame: number) =>
     ),
   )
 
-const play = (start: Model) =>
-  Story.story(
-    APPLICATION,
-    Story.given(start),
-    ...Array.makeBy(FRAMES, humanFrame),
-    settleRunCommands,
+const play = (start: Model): Effect.Effect<Model> =>
+  modelAfter(
+    start,
+    steps(...Array.makeBy(FRAMES, humanFrame), settleRunCommands),
   )
 
 const waveOf = (current: Model): number =>

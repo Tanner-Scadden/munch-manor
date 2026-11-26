@@ -1,10 +1,10 @@
 import { Array, Function, Result } from 'effect'
-import type { Canvas } from 'foldkit'
 
 import { type Palette, bakeShapes } from '../../art/sprite'
 import { TILE_SIZE } from '../../shared/constants'
 import type { Level } from '../../world/level/arena'
 import { LIBRARY_RUG } from '../../world/level/rugs'
+import type * as Draw from '../draw'
 import { pixelArt, rect } from '../drawing'
 import { WALL_FACE_ROWS } from '../iso/space'
 import {
@@ -75,11 +75,11 @@ const DUST_COLOR = 'rgba(200, 190, 170, 0.22)'
 // NOTE: the parlour's planks under a dusk of shade, so the wood reads dark.
 export const libraryFloorShadeShapes = (
   room: Box,
-): ReadonlyArray<Canvas.Shape> => [
+): ReadonlyArray<Draw.Shape> => [
   rect(room.x, room.y, room.width, room.height, FLOOR_SHADE_COLOR),
 ]
 
-export const libraryRugShapes = (room: Box): ReadonlyArray<Canvas.Shape> => {
+export const libraryRugShapes = (room: Box): ReadonlyArray<Draw.Shape> => {
   const x = room.x + LIBRARY_RUG.x
   const y = room.y + LIBRARY_RUG.y
   const { width, height } = LIBRARY_RUG
@@ -107,7 +107,7 @@ export const libraryRugShapes = (room: Box): ReadonlyArray<Canvas.Shape> => {
 
 // WALLS
 
-const paperShapes = ({ x, y, width }: Span): ReadonlyArray<Canvas.Shape> => {
+const paperShapes = ({ x, y, width }: Span): ReadonlyArray<Draw.Shape> => {
   const top = y - TILE_SIZE * 2 + FACE_TOP + 2
   const railY = y - TILE_SIZE * 2 + CHAIR_RAIL_Y
   const columns = Array.makeBy(width, index => x + index)
@@ -129,9 +129,9 @@ const paperShapes = ({ x, y, width }: Span): ReadonlyArray<Canvas.Shape> => {
 // NOTE: green paper with a fine stripe over the parlour's wainscot, on the
 // north wall faces in the library's own block.
 export const libraryWallShapes: {
-  (room: Box): (level: Level) => ReadonlyArray<Canvas.Shape>
-  (level: Level, room: Box): ReadonlyArray<Canvas.Shape>
-} = Function.dual(2, (level: Level, room: Box): ReadonlyArray<Canvas.Shape> =>
+  (room: Box): (level: Level) => ReadonlyArray<Draw.Shape>
+  (level: Level, room: Box): ReadonlyArray<Draw.Shape>
+} = Function.dual(2, (level: Level, room: Box): ReadonlyArray<Draw.Shape> =>
   Array.flatMap(spansWithin(level, room), paperShapes),
 )
 
@@ -219,7 +219,7 @@ export const libraryWindowPaneOf = (room: Box): Box => {
 // up from her book.
 export const libraryWallDecorShapes = (
   room: Box,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const { x: windowX, y: windowY } = windowSpotOf(room)
   return [
     rect(windowX - 1, windowY, 14, 16, '#3a2616'),
@@ -248,7 +248,7 @@ export const stackShapes = ({
   y,
   width,
   height,
-}: Box): ReadonlyArray<Canvas.Shape> => {
+}: Box): ReadonlyArray<Draw.Shape> => {
   const top = y - 6
   const faceTop = y + height - 9
   const bottom = y + height
@@ -315,7 +315,7 @@ export const stackShapes = ({
 
 // NOTE: the rolling ladder, hooked on a stack's end and standing in the
 // aisle beside it (the stack nearest the nook), placed by hand on the map.
-export const ladderShapes = (room: Box): ReadonlyArray<Canvas.Shape> => {
+export const ladderShapes = (room: Box): ReadonlyArray<Draw.Shape> => {
   const x = room.x + 173
   const top = room.y + 46
   const bottom = room.y + 87
@@ -341,7 +341,7 @@ export const ladderShapes = (room: Box): ReadonlyArray<Canvas.Shape> => {
 const readingChair = (
   centerX: number,
   y: number,
-): ReadonlyArray<Canvas.Shape> => [
+): ReadonlyArray<Draw.Shape> => [
   rect(centerX - 6, y - 10, 13, 11, LEATHER_DARK_COLOR),
   rect(centerX - 5, y - 11, 11, 3, LEATHER_COLOR),
   rect(centerX - 5, y - 11, 11, 1, LEATHER_LIGHT_COLOR),
@@ -356,7 +356,7 @@ const readingChair = (
   rect(centerX, y - 6, 1, 1, '#1a3229'),
 ]
 
-const bankerLamp = (x: number, y: number): ReadonlyArray<Canvas.Shape> => [
+const bankerLamp = (x: number, y: number): ReadonlyArray<Draw.Shape> => [
   rect(x - 6, y - 4, 16, 12, 'rgba(255, 230, 150, 0.08)'),
   rect(x, y + 5, 4, 2, GOLD_DARK_COLOR),
   rect(x + 1, y, 1, 5, GOLD_COLOR),
@@ -369,11 +369,7 @@ const bankerLamp = (x: number, y: number): ReadonlyArray<Canvas.Shape> => [
 // open book, papers, an inkwell and quill, a pile of books, drawers to the
 // front, and two wingback chairs pulled up behind it. Its west drawer is
 // open a crack.
-export const deskShapes = ({
-  x,
-  y,
-  width,
-}: Box): ReadonlyArray<Canvas.Shape> => {
+export const deskShapes = ({ x, y, width }: Box): ReadonlyArray<Draw.Shape> => {
   const right = x + width
   const middle = x + Math.floor(width / 2)
   return [
@@ -420,7 +416,7 @@ export const deskShapes = ({
 
 // NOTE: a globe on a tripod, oceans and two continents, its brass
 // meridian, taller than the desk.
-export const globeShapes = ({ x, y }: Box): ReadonlyArray<Canvas.Shape> => {
+export const globeShapes = ({ x, y }: Box): ReadonlyArray<Draw.Shape> => {
   const centerX = x + 5
   const centerY = y - 3
   const radius = 4
@@ -467,9 +463,9 @@ const SHELF_LENGTH = TILE_SIZE * 2
 // NOTE: the shelf is drawn as if in the west wall, with x counting into the
 // room from the wall tile's left edge; the east wall's is the same flipped.
 const flipped = (
-  shapes: ReadonlyArray<Canvas.Shape>,
+  shapes: ReadonlyArray<Draw.Shape>,
   wall: ShelfWall,
-): ReadonlyArray<Canvas.Shape> =>
+): ReadonlyArray<Draw.Shape> =>
   wall === 'West'
     ? shapes
     : Array.map(shapes, shape =>
@@ -478,7 +474,7 @@ const flipped = (
           : shape,
       )
 
-const bookTops = (seed: number): ReadonlyArray<Canvas.Shape> =>
+const bookTops = (seed: number): ReadonlyArray<Draw.Shape> =>
   Array.filterMap(
     Array.makeBy(SHELF_LENGTH - 2, row => row),
     row =>
@@ -499,7 +495,7 @@ const bookTops = (seed: number): ReadonlyArray<Canvas.Shape> =>
 // set in: its books' tops show from above, as any wall's top wears its art.
 // Its face, the red book sticking out of it, stands carved
 // (src/render/room/shelfCarve.ts).
-const shutShapes = (): ReadonlyArray<Canvas.Shape> => [
+const shutShapes = (): ReadonlyArray<Draw.Shape> => [
   rect(0, -1, TILE_SIZE, SHELF_LENGTH + 2, SHELF_WOOD_COLOR),
   rect(1, 0, TILE_SIZE - 2, SHELF_LENGTH, SHELF_BACK_COLOR),
   ...bookTops(3),
@@ -513,7 +509,7 @@ const shutShapes = (): ReadonlyArray<Canvas.Shape> => [
 // case, `SWUNG_SHELF_SPRITES`), its arc scraped in the dust and two books
 // shaken loose. The wall it stood in is a passage, planks running through
 // it from the room next door, the library's shade over its own half.
-const openShapes = (): ReadonlyArray<Canvas.Shape> => [
+const openShapes = (): ReadonlyArray<Draw.Shape> => [
   ...Array.flatMap(
     Array.makeBy(SHELF_LENGTH / PLANK_HEIGHT, row => row * PLANK_HEIGHT),
     y => [
@@ -563,7 +559,7 @@ const BOOK_ROWS: ReadonlyArray<number> = [1, LEDGE_ROW + 1]
 
 export const shelfCaseShapes = (
   oddBookX: number,
-): ReadonlyArray<Canvas.Shape> => [
+): ReadonlyArray<Draw.Shape> => [
   rect(0, 0, SHELF_LENGTH, SHELF_CASE_HEIGHT, SHELF_WOOD_COLOR),
   rect(0, 0, SHELF_LENGTH, 1, SHELF_EDGE_COLOR),
   rect(1, 1, SHELF_LENGTH - 2, SHELF_CASE_HEIGHT - 2, SHELF_BACK_COLOR),
@@ -607,10 +603,10 @@ export const SHELF_BOOK_COLORS = {
 } as const
 
 const shifted = (
-  shapes: ReadonlyArray<Canvas.Shape>,
+  shapes: ReadonlyArray<Draw.Shape>,
   dx: number,
   dy: number,
-): ReadonlyArray<Canvas.Shape> =>
+): ReadonlyArray<Draw.Shape> =>
   Array.map(shapes, shape =>
     shape._tag === 'Rect'
       ? { ...shape, x: shape.x + dx, y: shape.y + dy }
@@ -623,7 +619,7 @@ const shifted = (
 // the east, as the shelf's own art is.
 export const SWUNG_SHELF_FOOT_PX = 7
 
-const swungShapes = (): ReadonlyArray<Canvas.Shape> =>
+const swungShapes = (): ReadonlyArray<Draw.Shape> =>
   shifted(
     shelfCaseShapes(9),
     TILE_SIZE,
@@ -634,7 +630,7 @@ const swungShapes = (): ReadonlyArray<Canvas.Shape> =>
 // left corner of the shelf's two wall tiles, for a room image that bakes
 // the shelf in with everything else (the studio's preview).
 export const SHELF_SHAPES: Readonly<
-  Record<ShelfWall, Readonly<Record<ShelfState, ReadonlyArray<Canvas.Shape>>>>
+  Record<ShelfWall, Readonly<Record<ShelfState, ReadonlyArray<Draw.Shape>>>>
 > = {
   West: { Shut: shutShapes(), Open: openShapes() },
   East: {
@@ -646,7 +642,7 @@ export const SHELF_SHAPES: Readonly<
 // NOTE: the swung case on each wall, built once: it stands carved in the
 // room (src/render/room/tallCover.ts).
 export const SWUNG_SHELF_SPRITES: Readonly<
-  Record<ShelfWall, ReadonlyArray<Canvas.Shape>>
+  Record<ShelfWall, ReadonlyArray<Draw.Shape>>
 > = {
   West: bakeShapes(swungShapes()),
   East: bakeShapes(flipped(swungShapes(), 'East')),
@@ -654,7 +650,7 @@ export const SWUNG_SHELF_SPRITES: Readonly<
 
 // NOTE: each state's sprite on each wall, built once.
 export const SHELF_SPRITES: Readonly<
-  Record<ShelfWall, Readonly<Record<ShelfState, ReadonlyArray<Canvas.Shape>>>>
+  Record<ShelfWall, Readonly<Record<ShelfState, ReadonlyArray<Draw.Shape>>>>
 > = {
   West: {
     Shut: bakeShapes(SHELF_SHAPES.West.Shut),

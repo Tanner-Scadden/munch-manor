@@ -1,7 +1,6 @@
 import { Array, Effect, Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
 import { type Model, Phase, RunMode } from '../../../app/model'
@@ -20,8 +19,10 @@ import {
   withZombies,
 } from '../../../test/model.fixture'
 import {
-  APPLICATION,
+  checkModel,
+  modelAfter,
   startWave,
+  steps,
   tick,
   ticks,
   zombieOf,
@@ -90,17 +91,16 @@ const EARLY_WAVE = 4
 
 describe('Uncle Chunk at the front door', () => {
   it.effect('never comes while the list is still being hunted', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        breakBefore(3, [found(0, 'SilverSpoon'), hidden(1, 'MusicBox')]),
+    modelAfter(
+      breakBefore(3, [found(0, 'SilverSpoon'), hidden(1, 'MusicBox')]),
+      steps(
+        tick(FRAME_MS),
+        startWave,
+        checkModel(current => {
+          expect(current.dare.finale).toEqual(Finale.Hunting())
+          expect(current.boss).toEqual(Boss.Absent())
+        }),
       ),
-      tick(FRAME_MS),
-      startWave,
-      Story.model(current => {
-        expect(current.dare.finale).toEqual(Finale.Hunting())
-        expect(current.boss).toEqual(Boss.Absent())
-      }),
     ),
   )
 
@@ -108,40 +108,38 @@ describe('Uncle Chunk at the front door', () => {
     'a list done mid-wave on Triple Dare brings him at the next wave, never during it',
     () =>
       Effect.gen(function* () {
-        const doneInWave = yield* Story.story(
-          APPLICATION,
-          Story.given(
-            onHard(withDareThings(asVeteran(quietWave(3)), LIST_DONE)),
+        const doneInWave = yield* modelAfter(
+          onHard(withDareThings(asVeteran(quietWave(3)), LIST_DONE)),
+          steps(
+            tick(FRAME_MS),
+            checkModel(current => {
+              expect(current.dare.finale).toEqual(Finale.Summoned())
+              expect(current.boss).toEqual(Boss.Absent())
+              expect(isHouseHungry(current)).toBe(true)
+            }),
+            ticks(30, FRAME_MS),
+            checkModel(current => {
+              expect(current.boss).toEqual(Boss.Absent())
+            }),
           ),
-          tick(FRAME_MS),
-          Story.model(current => {
-            expect(current.dare.finale).toEqual(Finale.Summoned())
-            expect(current.boss).toEqual(Boss.Absent())
-            expect(isHouseHungry(current)).toBe(true)
-          }),
-          ...ticks(30, FRAME_MS),
-          Story.model(current => {
-            expect(current.boss).toEqual(Boss.Absent())
-          }),
         )
-        yield* Story.story(
-          APPLICATION,
-          Story.given(
-            withWorld(doneInWave, world =>
-              beginPreparation(world, 4, PREPARATION_MS),
-            ),
+        yield* modelAfter(
+          withWorld(doneInWave, world =>
+            beginPreparation(world, 4, PREPARATION_MS),
           ),
-          tick(FRAME_MS),
-          Story.model(current => {
-            expect(current.boss).toEqual(Boss.Absent())
-          }),
-          startWave,
-          Story.model(current => {
-            expect(Phase.isAnyOf(['Wave'])(current.phase)).toBe(true)
-            expect(
-              Option.map(maybeWaiting(current), ({ door }) => door),
-            ).toEqual(Option.some('Front'))
-          }),
+          steps(
+            tick(FRAME_MS),
+            checkModel(current => {
+              expect(current.boss).toEqual(Boss.Absent())
+            }),
+            startWave,
+            checkModel(current => {
+              expect(Phase.isAnyOf(['Wave'])(current.phase)).toBe(true)
+              expect(
+                Option.map(maybeWaiting(current), ({ door }) => door),
+              ).toEqual(Option.some('Front'))
+            }),
+          ),
         )
       }),
   )
@@ -149,36 +147,37 @@ describe('Uncle Chunk at the front door', () => {
   it.effect(
     'with the list done in a break he comes as its wave starts, through the front door only',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(breakBefore(EARLY_WAVE, LIST_DONE)),
-        tick(FRAME_MS),
-        Story.model(current => {
-          expect(current.dare.finale).toEqual(Finale.Summoned())
-          expect(current.boss).toEqual(Boss.Absent())
-        }),
-        startWave,
-        Story.model(current => {
-          const waiting = Option.getOrThrow(maybeWaiting(current))
-          expect(waiting.door).toBe('Front')
-          expect(waiting.waitBelow).toBe(spawnsOf(current).length)
-          expect(levelOf(current).doorIds).not.toContain('Front')
-        }),
-        tick(FRAME_MS),
-        Story.model(current => {
-          expect(Boss.guards.Arriving(current.boss)).toBe(true)
-        }),
-        ...ticks(Math.ceil(BOSS_RULES.entranceMs / FRAME_MS) + 1, FRAME_MS),
-        Story.model(current => {
-          expect(Boss.guards.Fighting(current.boss)).toBe(true)
-          const chunk = Option.getOrThrow(
-            Array.findFirst(current.zombies, ({ kind }) => kind === 'Boss'),
-          )
-          const front = levelOf(current).doors.Front.center
-          expect(Math.abs(chunk.x - front.x)).toBeLessThan(10)
-          expect(chunk.y).toBeLessThan(front.y)
-          expect(front.y - chunk.y).toBeLessThan(30)
-        }),
+      modelAfter(
+        breakBefore(EARLY_WAVE, LIST_DONE),
+        steps(
+          tick(FRAME_MS),
+          checkModel(current => {
+            expect(current.dare.finale).toEqual(Finale.Summoned())
+            expect(current.boss).toEqual(Boss.Absent())
+          }),
+          startWave,
+          checkModel(current => {
+            const waiting = Option.getOrThrow(maybeWaiting(current))
+            expect(waiting.door).toBe('Front')
+            expect(waiting.waitBelow).toBe(spawnsOf(current).length)
+            expect(levelOf(current).doorIds).not.toContain('Front')
+          }),
+          tick(FRAME_MS),
+          checkModel(current => {
+            expect(Boss.guards.Arriving(current.boss)).toBe(true)
+          }),
+          ticks(Math.ceil(BOSS_RULES.entranceMs / FRAME_MS) + 1, FRAME_MS),
+          checkModel(current => {
+            expect(Boss.guards.Fighting(current.boss)).toBe(true)
+            const chunk = Option.getOrThrow(
+              Array.findFirst(current.zombies, ({ kind }) => kind === 'Boss'),
+            )
+            const front = levelOf(current).doors.Front.center
+            expect(Math.abs(chunk.x - front.x)).toBeLessThan(10)
+            expect(chunk.y).toBeLessThan(front.y)
+            expect(front.y - chunk.y).toBeLessThan(30)
+          }),
+        ),
       ),
   )
 
@@ -187,11 +186,9 @@ describe('Uncle Chunk at the front door', () => {
     () =>
       Effect.gen(function* () {
         const hpOn = (wave: number) =>
-          Story.story(
-            APPLICATION,
-            Story.given(breakBefore(wave, LIST_DONE)),
-            tick(FRAME_MS),
-            startWave,
+          modelAfter(
+            breakBefore(wave, LIST_DONE),
+            steps(tick(FRAME_MS), startWave),
           ).pipe(
             Effect.map(current => Option.getOrThrow(maybeWaiting(current)).hp),
           )
@@ -227,17 +224,17 @@ describe('Uncle Chunk at the front door', () => {
           found(0, 'SilverSpoon'),
           hidden(1, 'MusicBox'),
         ])
-        const onNightmare = modifyFields(oneFound, {
+        const onNightmare = UiStruct.evolve(oneFound, {
           difficulty: setting =>
-            modifyFields(setting, { chosen: () => 'Nightmare' as const }),
+            UiStruct.evolve(setting, { chosen: () => 'Nightmare' as const }),
         })
         expect(isHouseHungry(oneFound)).toBe(false)
         expect(isHouseHungry(onNightmare)).toBe(true)
-        const noneFound = modifyFields(
+        const noneFound = UiStruct.evolve(
           breakBefore(4, [hidden(0, 'SilverSpoon')]),
           {
             difficulty: setting =>
-              modifyFields(setting, { chosen: () => 'Nightmare' as const }),
+              UiStruct.evolve(setting, { chosen: () => 'Nightmare' as const }),
           },
         )
         expect(isHouseHungry(noneFound)).toBe(false)
@@ -260,9 +257,9 @@ describe('Uncle Chunk at the front door', () => {
 
 describe('his big key', () => {
   const chunkFalling = (model: Model): Model =>
-    modifyFields(model, {
+    UiStruct.evolve(model, {
       zombies: () => [
-        modifyFields(zombieOf('Boss', 900, 150, 120, { hp: 0 }), {
+        UiStruct.evolve(zombieOf('Boss', 900, 150, 120, { hp: 0 }), {
           state: () =>
             ZombieState.Dying({ remainingMs: 2000, direction: { x: 1, y: 0 } }),
         }),
@@ -278,71 +275,72 @@ describe('his big key', () => {
     Array.map(model.frameEvents, ({ _tag }) => _tag)
 
   it.effect('bursts out of him as he falls and flies for the lock', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(chunkFalling(summoned)),
-      tick(FRAME_MS),
-      Story.model(current => {
-        const chunk = Option.getOrThrow(
-          Array.findFirst(current.zombies, ({ id }) => id === 900),
-        )
-        expect(current.dare.finale).toEqual(
-          Finale.KeyFlying({
-            from: { x: chunk.x, y: chunk.y },
-            remainingMs: FINALE_RULES.keyFlightMs,
-            durationMs: FINALE_RULES.keyFlightMs,
-          }),
-        )
-        expect(tagsOf(current)).toContain('BigKeyBurst')
-        expect(current.dareThings).toEqual(LIST_DONE)
-        expect(dareCardOf(current)).toHaveLength(LIST_DONE.length)
-      }),
+    modelAfter(
+      chunkFalling(summoned),
+      steps(
+        tick(FRAME_MS),
+        checkModel(current => {
+          const chunk = Option.getOrThrow(
+            Array.findFirst(current.zombies, ({ id }) => id === 900),
+          )
+          expect(current.dare.finale).toEqual(
+            Finale.KeyFlying({
+              from: { x: chunk.x, y: chunk.y },
+              remainingMs: FINALE_RULES.keyFlightMs,
+              durationMs: FINALE_RULES.keyFlightMs,
+            }),
+          )
+          expect(tagsOf(current)).toContain('BigKeyBurst')
+          expect(current.dareThings).toEqual(LIST_DONE)
+          expect(dareCardOf(current)).toHaveLength(LIST_DONE.length)
+        }),
+      ),
     ),
   )
 
   it.effect(
     'the door swings open as it lands, under a second after he falls, with nothing to pick up',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(chunkFalling(summoned)),
-        tick(FRAME_MS),
-        ...ticks(Math.ceil(FINALE_RULES.keyFlightMs / FRAME_MS) + 1, FRAME_MS),
-        Story.model(current => {
-          expect(FINALE_RULES.keyFlightMs).toBeLessThan(1000)
-          expect(current.dare.finale).toEqual(Finale.Open())
-          expect(Phase.guards.Wave(current.phase)).toBe(true)
-        }),
+      modelAfter(
+        chunkFalling(summoned),
+        steps(
+          tick(FRAME_MS),
+          ticks(Math.ceil(FINALE_RULES.keyFlightMs / FRAME_MS) + 1, FRAME_MS),
+          checkModel(current => {
+            expect(FINALE_RULES.keyFlightMs).toBeLessThan(1000)
+            expect(current.dare.finale).toEqual(Finale.Open())
+            expect(Phase.guards.Wave(current.phase)).toBe(true)
+          }),
+        ),
       ),
   )
 
   it.effect('it flies in a break too', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        withFinale(
-          modifyFields(withDareThings(quietWave(6), LIST_DONE), {
-            phase: () =>
-              Phase.Preparation({
-                wave: 7,
-                remainingMs: PREPARATION_MS,
-                durationMs: PREPARATION_MS,
-                spawns: [DISTANT_SPAWN],
-                clock: BreakClock.Waiting({ elapsedMs: 0 }),
-              }),
-          }),
-          Finale.KeyFlying({
-            from: { x: 150, y: 120 },
-            remainingMs: FRAME_MS / 2,
-            durationMs: FINALE_RULES.keyFlightMs,
-          }),
-        ),
+    modelAfter(
+      withFinale(
+        UiStruct.evolve(withDareThings(quietWave(6), LIST_DONE), {
+          phase: () =>
+            Phase.Preparation({
+              wave: 7,
+              remainingMs: PREPARATION_MS,
+              durationMs: PREPARATION_MS,
+              spawns: [DISTANT_SPAWN],
+              clock: BreakClock.Waiting({ elapsedMs: 0 }),
+            }),
+        }),
+        Finale.KeyFlying({
+          from: { x: 150, y: 120 },
+          remainingMs: FRAME_MS / 2,
+          durationMs: FINALE_RULES.keyFlightMs,
+        }),
       ),
-      tick(FRAME_MS),
-      Story.model(current => {
-        expect(current.dare.finale).toEqual(Finale.Open())
-        expect(tagsOf(current)).toContain('FrontDoorOpened')
-      }),
+      steps(
+        tick(FRAME_MS),
+        checkModel(current => {
+          expect(current.dare.finale).toEqual(Finale.Open())
+          expect(tagsOf(current)).toContain('FrontDoorOpened')
+        }),
+      ),
     ),
   )
 
@@ -358,7 +356,7 @@ describe('his big key', () => {
 describe('walking out', () => {
   const openWave = (model: Model): Model =>
     withFinale(
-      modifyFields(model, {
+      UiStruct.evolve(model, {
         phase: () =>
           Phase.Wave({ wave: 8, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
       }),
@@ -372,30 +370,30 @@ describe('walking out', () => {
   )
 
   it.effect('one player stepping through the open door is an escape', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(escaping(withDareThings(quietWave(8), LIST_DONE))),
-      tick(FRAME_MS),
-      Story.model(current => {
-        expect(current.phase).toEqual(Phase.Escaped({ wave: 8 }))
-        expect(current.mode).toEqual(RunMode.Campaign())
-      }),
+    modelAfter(
+      escaping(withDareThings(quietWave(8), LIST_DONE)),
+      steps(
+        tick(FRAME_MS),
+        checkModel(current => {
+          expect(current.phase).toEqual(Phase.Escaped({ wave: 8 }))
+          expect(current.mode).toEqual(RunMode.Campaign())
+        }),
+      ),
     ),
   )
 
   it.effect('a shut door lets nobody out', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        withFinale(
-          escaping(withDareThings(quietWave(8), LIST_DONE)),
-          Finale.Summoned(),
-        ),
+    modelAfter(
+      withFinale(
+        escaping(withDareThings(quietWave(8), LIST_DONE)),
+        Finale.Summoned(),
       ),
-      tick(FRAME_MS),
-      Story.model(current => {
-        expect(Phase.guards.Wave(current.phase)).toBe(true)
-      }),
+      steps(
+        tick(FRAME_MS),
+        checkModel(current => {
+          expect(Phase.guards.Wave(current.phase)).toBe(true)
+        }),
+      ),
     ),
   )
 
@@ -411,25 +409,25 @@ describe('walking out', () => {
           60,
           60,
         )
-        const waiting = yield* Story.story(
-          APPLICATION,
-          Story.given(withSeatLife(firstOut, 2, downed)),
-          tick(FRAME_MS),
-          Story.model(current => {
-            expect(Phase.guards.Wave(current.phase)).toBe(true)
-            expect(lifeTags(current)).toEqual(['Out', 'Standing', 'Downed'])
-          }),
-        )
-        yield* Story.story(
-          APPLICATION,
-          Story.given(
-            placeSeat(waiting, 1, FRONT_DOOR_SILL.x + 6, FRONT_DOOR_SILL.y),
+        const waiting = yield* modelAfter(
+          withSeatLife(firstOut, 2, downed),
+          steps(
+            tick(FRAME_MS),
+            checkModel(current => {
+              expect(Phase.guards.Wave(current.phase)).toBe(true)
+              expect(lifeTags(current)).toEqual(['Out', 'Standing', 'Downed'])
+            }),
           ),
-          tick(FRAME_MS),
-          Story.model(current => {
-            expect(current.phase).toEqual(Phase.Escaped({ wave: 8 }))
-            expect(lifeTags(current)).toEqual(['Out', 'Out', 'Downed'])
-          }),
+        )
+        yield* modelAfter(
+          placeSeat(waiting, 1, FRONT_DOOR_SILL.x + 6, FRONT_DOOR_SILL.y),
+          steps(
+            tick(FRAME_MS),
+            checkModel(current => {
+              expect(current.phase).toEqual(Phase.Escaped({ wave: 8 }))
+              expect(lifeTags(current)).toEqual(['Out', 'Out', 'Downed'])
+            }),
+          ),
         )
       }),
   )
@@ -462,72 +460,43 @@ describe('walking out', () => {
     )
 
   it.effect('a player who stepped out is never hunted or bitten', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(leadOut()),
-      ...ticks(30, FRAME_MS),
-      Story.model(current => {
-        const [out] = current.seats
-        expect(out.player.hp).toBe(PLAYER_MAX_HP)
-        expect(out.seat.life).toEqual(Life.Out())
-        expect(
-          Array.map(targetsOf(current), ({ x, y }) => ({ x, y })),
-        ).not.toContainEqual({ x: FRONT_DOOR_SILL.x, y: FRONT_DOOR_SILL.y })
-      }),
+    modelAfter(
+      leadOut(),
+      steps(
+        ticks(30, FRAME_MS),
+        checkModel(current => {
+          const [out] = current.seats
+          expect(out.player.hp).toBe(PLAYER_MAX_HP)
+          expect(out.seat.life).toEqual(Life.Out())
+          expect(
+            Array.map(targetsOf(current), ({ x, y }) => ({ x, y })),
+          ).not.toContainEqual({ x: FRONT_DOOR_SILL.x, y: FRONT_DOOR_SILL.y })
+        }),
+      ),
     ),
   )
 
   it.effect('one who stepped out stays out through a break', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        withWorld(withZombies(leadOut(), []), world =>
-          beginPreparation(world, 9, PREPARATION_MS),
-        ),
+    modelAfter(
+      withWorld(withZombies(leadOut(), []), world =>
+        beginPreparation(world, 9, PREPARATION_MS),
       ),
-      tick(FRAME_MS),
-      Story.model(current => {
-        expect(lifeTags(current)).toEqual(['Out', 'Standing', 'Standing'])
-      }),
+      steps(
+        tick(FRAME_MS),
+        checkModel(current => {
+          expect(lifeTags(current)).toEqual(['Out', 'Standing', 'Standing'])
+        }),
+      ),
     ),
   )
 
   it.effect(
     'the last ones in going down after one stepped out is still an escape',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(
-          placeSeat(
-            withSeatLife(
-              leadOut(),
-              2,
-              Life.Downed({ bleedMs: 20_000, reviveMs: 0, callMs: 0 }),
-            ),
-            1,
-            60,
-            60,
-            0,
-          ),
-        ),
-        tick(FRAME_MS),
-        Story.model(current => {
-          expect(current.phase).toEqual(Phase.Escaped({ wave: 8 }))
-        }),
-      ),
-  )
-
-  it.effect('a crew all down with nobody out is still a game over', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
+      modelAfter(
         placeSeat(
           withSeatLife(
-            withSeatLife(
-              leadOut(),
-              0,
-              Life.Downed({ bleedMs: 20_000, reviveMs: 0, callMs: 0 }),
-            ),
+            leadOut(),
             2,
             Life.Downed({ bleedMs: 20_000, reviveMs: 0, callMs: 0 }),
           ),
@@ -536,11 +505,38 @@ describe('walking out', () => {
           60,
           0,
         ),
+        steps(
+          tick(FRAME_MS),
+          checkModel(current => {
+            expect(current.phase).toEqual(Phase.Escaped({ wave: 8 }))
+          }),
+        ),
       ),
-      tick(FRAME_MS),
-      Story.model(current => {
-        expect(current.phase).toEqual(Phase.GameOver({ wave: 8 }))
-      }),
+  )
+
+  it.effect('a crew all down with nobody out is still a game over', () =>
+    modelAfter(
+      placeSeat(
+        withSeatLife(
+          withSeatLife(
+            leadOut(),
+            0,
+            Life.Downed({ bleedMs: 20_000, reviveMs: 0, callMs: 0 }),
+          ),
+          2,
+          Life.Downed({ bleedMs: 20_000, reviveMs: 0, callMs: 0 }),
+        ),
+        1,
+        60,
+        60,
+        0,
+      ),
+      steps(
+        tick(FRAME_MS),
+        checkModel(current => {
+          expect(current.phase).toEqual(Phase.GameOver({ wave: 8 }))
+        }),
+      ),
     ),
   )
 })
@@ -550,19 +546,18 @@ const lifeTags = (model: Model): ReadonlyArray<string> =>
 
 describe('Endless', () => {
   it.effect('has no list, so its finale never starts', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        modifyFields(quietWave(12), {
-          mode: () => RunMode.Endless(),
-          dare: dare => modifyFields(dare, { list: () => [] }),
+    modelAfter(
+      UiStruct.evolve(quietWave(12), {
+        mode: () => RunMode.Endless(),
+        dare: dare => UiStruct.evolve(dare, { list: () => [] }),
+      }),
+      steps(
+        ticks(3, FRAME_MS),
+        checkModel(current => {
+          expect(current.dare.finale).toEqual(Finale.Hunting())
+          expect(dareCardOf(current)).toEqual([])
         }),
       ),
-      ...ticks(3, FRAME_MS),
-      Story.model(current => {
-        expect(current.dare.finale).toEqual(Finale.Hunting())
-        expect(dareCardOf(current)).toEqual([])
-      }),
     ),
   )
 })

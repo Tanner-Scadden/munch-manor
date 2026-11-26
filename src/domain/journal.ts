@@ -1,5 +1,6 @@
 import { Array, Function, Result, String } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import type { Model } from '../app/model'
 import { addToJournal } from '../shared/journalData'
@@ -53,10 +54,10 @@ export const tallyJournalFrom: {
     id => !Array.contains(after.runGains.journalRun.foundIn, id),
   )
   return Array.isReadonlyArrayNonEmpty(rooms)
-    ? modifyFields(after, {
-        runGains: modifyFields({
+    ? UiStruct.evolve(after, {
+        runGains: UiStruct.evolve({
           journalRun: run =>
-            modifyFields(run, {
+            UiStruct.evolve(run, {
               foundIn: found => Array.union(found, rooms),
             }),
         }),
@@ -96,7 +97,7 @@ export const keepJournal: {
     proof: after.proof,
     bonuses: after.bonuses,
   })
-  return modifyFields(after, {
+  return UiStruct.evolve(after, {
     journal: () =>
       addToJournal(journal, {
         milestones: reached,
@@ -105,8 +106,8 @@ export const keepJournal: {
         heroesPlayed: [],
         thingsFound: 0,
       }),
-    runGains: modifyFields({
-      journalRun: run => modifyFields(run, { reached: () => reached }),
+    runGains: UiStruct.evolve({
+      journalRun: run => UiStruct.evolve(run, { reached: () => reached }),
     }),
   })
 })
@@ -138,7 +139,7 @@ export const hasNewJournalPage = (model: Model): boolean =>
 // wears NEW while it stays open.
 export const markJournalSeen = (model: Model): Model => {
   const unseen = unseenJournalOf(model)
-  return modifyFields(model, {
+  return UiStruct.evolve(model, {
     freshUnlocks: fresh => [
       ...Array.filter(fresh, id => !isJournalId(id)),
       ...unseen,

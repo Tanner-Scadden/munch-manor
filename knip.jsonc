@@ -50,8 +50,6 @@
         // NOTE: the Effect language service in tsconfig.base.json's plugins,
         // served by @effect/tsgo.
         "@effect/language-service",
-        // NOTE: Foldkit's Vite plugin injects the devtools into the page.
-        "@foldkit/devtools",
         // NOTE: tools/video borrows tools/audit's install (its tsconfig paths).
         "playwright-core",
       ],

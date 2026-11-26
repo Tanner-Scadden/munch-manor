@@ -1,94 +1,69 @@
-import { Schema } from 'effect'
-import { Block } from 'foldkit'
+import { Array, Option, Schema } from 'effect'
 
-import type { InputDevice } from '../../input/inputSchema'
-import type {
-  FullscreenSetting,
-  OrientationLock,
-  ScreenFit,
-} from '../../platform/deviceSchema'
-import type {
-  LastRunSync,
-  PlayerScopeStatus,
-  SyncState,
-} from '../../platform/playerSync'
-import { PlayerStore } from '../../platform/store'
-import type {
-  CursorSetting,
-  MusicSetting,
-  RecordRunsSetting,
-  RecordUnlock,
-  RotationSetting,
-  RumbleSetting,
-  ShakeSetting,
-  ShareStatsSetting,
-  SoundSetting,
-} from '../../shared/playerData'
-import type { ViewInputs as LookInputs } from './blocks/look/block'
-import { InMessage } from './inMessage'
-import type { MasteryInputs } from './masteryView'
-import { Message, OutMessage } from './message'
-import { Model } from './model'
+import { Html } from '@effect/ui/html'
 
-// NOTE: what the root hands the Profile's view: only the root's fields its
-// tabs show. The Look tab's look, owned, and new things; whether the Look
-// tab holds something new; the MASTERY tab's tracks, hero picked, and
-// look; the layout and the device; sync's state for the
-// Account tab; and the settings' values and what this device can do.
-export type ViewInputs = Readonly<{
-  look: Omit<LookInputs, 'fx' | 'fxCount' | 'maybePreview' | 'cue'>
-  isLookNew: boolean
-  mastery: MasteryInputs
-  isPortrait: boolean
-  device: InputDevice
-  sync: Readonly<{
-    state: SyncState
-    scope: PlayerScopeStatus
-    lastRun: LastRunSync
-  }>
-  settings: Readonly<{
-    sound: SoundSetting
-    music: MusicSetting
-    shake: ShakeSetting
-    cursor: CursorSetting
-    fullscreen: FullscreenSetting
-    rotation: RotationSetting
-    rumble: RumbleSetting
-    hasPad: boolean
-    recordRuns: RecordRunsSetting
-    recordUnlock: RecordUnlock
-    shareStats: ShareStatsSetting
-    screenFit: ScreenFit
-    orientationLock: OrientationLock
-  }>
-}>
+import { Events, Message } from './message'
+import { ProfileProps } from './model'
+import { PROFILE_TABS } from './profile'
+import { profileView } from './view'
 
-// NOTE: the Profile's public contract. The root opens it, keeps its name,
-// and answers its dice and Look picks through the InMessages; it tells the
-// root what happened through its OutMessages. Its device link Commands use
-// the store.
-const ProfileKey = Symbol('Profile')
-export const ProfileBlock = Block.make('Profile', {
-  key: ProfileKey,
-  InitArgs: Schema.Tuple([]),
-  view: { kind: 'Element', Inputs: Block.makeInputContract<ViewInputs>() },
-  effects: { services: [PlayerStore] },
-  Model,
-  Message,
-  InMessage,
-  OutMessage,
-  inMessageOutputs: {
-    RequestedKeepName: { outMessage: OutMessage },
+// The Profile panel's body: the tab strip and the open tab's page. The
+// root owns its state and every field its tabs show (they come in as
+// props), so it keeps no Model of its own, and every click, key, and
+// field change goes up as an event for the root to act on. The root's
+// Dialog around it is src/app/profileView.ts, and the root's handlers are
+// src/app/update/profile.ts.
+
+// NOTE: a tab as ui-kit's Tabs names it, read back to its literal.
+const tabNamed = (value: string) =>
+  Array.findFirst(PROFILE_TABS, tab => tab === value)
+
+// NOTE: a component is called as `Profile(h, { props, onEmit })`, a
+// function Effect UI makes, with no data-last form to give it.
+// @effect-diagnostics-next-line missingPipeableSignature:off
+export const Profile = Html.component({
+  name: 'Profile',
+  props: ProfileProps,
+  model: Schema.Struct({}),
+  message: Message,
+  events: Events,
+}).make({
+  init: () => ({}),
+  update: {
+    SelectedTab: ($, { value }) =>
+      Option.match(tabNamed(value), {
+        onNone: () => $.model,
+        onSome: tab => $.emit(Events.SwitchedTab({ tab })),
+      }),
+    UpdatedNameDraft: ($, { value }) =>
+      $.emit(Events.UpdatedNameDraft({ value })),
+    SubmittedName: $ => $.emit(Events.SubmittedName()),
+    BlurredNameInput: $ => $.emit(Events.BlurredNameInput()),
+    ClickedNameDiceButton: $ => $.emit(Events.RolledNameDice()),
+    ClickedLinkDeviceButton: $ => $.emit(Events.ClickedLinkDevice()),
+    ClickedUseCodeButton: $ => $.emit(Events.ClickedUseCode()),
+    UpdatedLinkCode: ($, { value }) =>
+      $.emit(Events.UpdatedLinkCode({ value })),
+    SubmittedLinkCode: $ => $.emit(Events.SubmittedLinkCode()),
+    ClickedCancelLinkButton: $ => $.emit(Events.ClickedCancelLink()),
+    SucceededCopyLinkCode: $ => $.emit(Events.CopiedLinkCode()),
+    SucceededReadClipboard: ($, { text, typed }) =>
+      $.emit(Events.ReadClipboard({ text, typed })),
+    ClickedSettingTile: ($, { setting }) =>
+      $.emit(Events.ClickedSetting({ setting })),
+    ClickedResetTutorialButton: $ => $.emit(Events.ClickedResetTutorial()),
+    ClickedConfirmResetTutorialButton: $ =>
+      $.emit(Events.ConfirmedTutorialReset()),
+    ClickedCancelResetTutorialButton: $ =>
+      $.emit(Events.CancelledTutorialReset()),
+    ClickedPropStyle: ($, { style }) =>
+      $.emit(Events.ChosePropStyle({ style })),
+    ChoseLook: ($, { part, value }) =>
+      $.emit(Events.ChoseLook({ part, value })),
+    FlippedLook: ($, { toggle }) => $.emit(Events.FlippedLook({ toggle })),
+    RolledLookDice: $ => $.emit(Events.RolledLookDice()),
+    ClickedBuyLook: ($, { part, value }) =>
+      $.emit(Events.ClickedBuyLook({ part, value })),
   },
+  view: h => profileView(h.props, h),
 })
-
-// NOTE: Commands and OutMessage folds are made through the Block itself
-// (`ProfileBlock.makeCommand(...)`): exported alone, each is a two-argument
-// function with no pipeable form.
-export const {
-  makeComposition,
-  makeNoopStep,
-  makeOutMessageStep,
-  makeRequiredFieldBinding,
-  makeStep,
-} = ProfileBlock

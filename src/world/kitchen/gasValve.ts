@@ -1,5 +1,6 @@
 import { Array, Function, Option, Record, pipe } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import { type FeatLock, hasDone } from '../feats/feats'
 import { countKills } from '../gear/melee'
@@ -140,7 +141,7 @@ export const buyValve: {
     Option.isSome(valveBoxOf(levelOf(world))) &&
     heldKeys(world) >= price
       ? Option.some(
-          modifyFields(spendKeys(world, price), {
+          UiStruct.evolve(spendKeys(world, price), {
             gasValve: () =>
               GasValve.Lit({
                 owner: slot,
@@ -224,7 +225,7 @@ const burn = (world: World, owner: PlayerSlot, zone: Box): World => {
   if (Array.isReadonlyArrayEmpty(events)) {
     return world
   }
-  const burned = modifyFields(world, {
+  const burned = UiStruct.evolve(world, {
     zombies: () => Array.map(outcomes, ({ target }) => target),
     frameEvents: frameEvents => [...frameEvents, ...events],
   })
@@ -242,7 +243,7 @@ export const burnHearth: {
     Lit: ({ owner, nextBurnMs }) => {
       const left = nextBurnMs - deltaMs
       const isDue = left <= 0
-      const timed = modifyFields(world, {
+      const timed = UiStruct.evolve(world, {
         gasValve: () =>
           GasValve.Lit({
             owner,

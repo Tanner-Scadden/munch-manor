@@ -1,5 +1,6 @@
 import { Array, Function, Option, Result, Schema, pipe } from 'effect'
-import { defineTaggedUnion } from 'foldkit/schema'
+
+import { UiSchema } from '@effect/ui'
 
 import type { ActStance } from '../art/appearance'
 import type { Facing } from '../art/sprite'
@@ -229,7 +230,7 @@ export const PAYOFF_MS: Readonly<Record<Payoff, number>> = {
 
 // THE POSE
 
-export const ActionPose = defineTaggedUnion({
+export const ActionPose = UiSchema.TaggedEnum({
   Ready: {},
   Working: {
     motion: Motion,
@@ -245,8 +246,8 @@ export const ActionPose = defineTaggedUnion({
   },
 })
 export type ActionPose = typeof ActionPose.Type
-export type WorkingPose = typeof ActionPose.Working.Type
-export type BeatPose = typeof ActionPose.Beat.Type
+export type WorkingPose = typeof ActionPose.cases.Working.Type
+export type BeatPose = typeof ActionPose.cases.Beat.Type
 
 const READY: ActionPose = ActionPose.Ready()
 

@@ -1,5 +1,6 @@
 import { Array, Function, Option } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import { nextRandom } from '../../shared/prng'
 import { killerOf } from '../feats/feats'
@@ -44,7 +45,7 @@ export const KEY_RULES: KeyRules = { perWaveCleared: 1, perPackWiped: 1 }
 export const keyOddsOf = (kind: ZombieKind): number => ZOMBIE_KINDS[kind].keys
 
 const withRing = (world: World, change: (ring: KeyRing) => KeyRing): World =>
-  modifyFields(world, { keys: change })
+  UiStruct.evolve(world, { keys: change })
 
 // NOTE: the keys a seat's kill found go on its own record, for the crew
 // board's Key Keeper and the Penny Pincher's glint.
@@ -58,7 +59,7 @@ const creditFinder = (
     onSome: slot =>
       count > 0
         ? modifySeatRecord(world, slot, seat =>
-            modifyFields(seat, { keysFound: found => found + count }),
+            UiStruct.evolve(seat, { keysFound: found => found + count }),
           )
         : world,
   })
@@ -69,9 +70,9 @@ export const grantKeys: {
   (world: World, count: number, at: Vector): World
 } = Function.dual(3, (world: World, count: number, at: Vector): World =>
   count > 0
-    ? modifyFields(world, {
+    ? UiStruct.evolve(world, {
         keys: ring =>
-          modifyFields(ring, {
+          UiStruct.evolve(ring, {
             held: held => held + count,
             found: found => found + count,
           }),
@@ -89,7 +90,7 @@ export const spendKeys: {
   (world: World, count: number): World
 } = Function.dual(2, (world: World, count: number): World =>
   withRing(world, ring =>
-    modifyFields(ring, {
+    UiStruct.evolve(ring, {
       held: held => held - count,
       spent: spent => spent + count,
     }),
@@ -103,7 +104,7 @@ export const heldKeys = (world: World): number => world.keys.held
 // Broke.
 const expectedKeys = (
   world: World,
-  kill: typeof GameEvent.ZombieKilled.Type,
+  kill: typeof GameEvent.cases.ZombieKilled.Type,
 ): number => {
   const killerScale = Option.match(
     Option.flatMap(killerOf(world, kill), slot => maybePlayerAt(world, slot)),
@@ -148,7 +149,7 @@ export const dropKeys = (world: World): World =>
       expectedKeys(current, event),
     )
     const rolled = withRing(current, ring =>
-      modifyFields(ring, { rngState: () => rngState }),
+      UiStruct.evolve(ring, { rngState: () => rngState }),
     )
     return creditFinder(
       grantKeys(rolled, count, event),

@@ -1,6 +1,6 @@
 import { Array, Function, Option } from 'effect'
-import { Update } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import { positionVariation } from '../../audio/audio'
 import { isRunOn } from '../../domain/onlineRun'
@@ -64,7 +64,6 @@ import { isArriving } from '../../world/run/arrival'
 import { tallyFrame } from '../../world/run/stats'
 import { SeatAction, gunSlotAction } from '../../world/step/stepWorld'
 import { isRoundActive, pause } from '../../world/waves/waves'
-import { makeStep } from '../definition'
 import { advanceGame, clampFrameDelta, refreshIntent } from '../frame'
 import { isLobbyOpen, isPanelOpen } from '../menuState'
 import { type GunSlot, type Model, Phase } from '../model'
@@ -88,7 +87,6 @@ import {
 import { advanceIntro, skipIntro } from './intro'
 import { lobbyFromKey, playFromKey } from './lobby'
 import { profileFromKey } from './profile'
-import { proofFromKey } from './proof'
 import { rumbleFor } from './rumble'
 import { isPaused, isScreenAnimated, startWhenAllowed, startsRun } from './run'
 import {
@@ -113,7 +111,6 @@ import {
   modelStep,
   releaseInput,
   toModel,
-  unchanged,
   withInput,
 } from './step'
 import { nextTrap, placeSelectedTrap, trapFromKey } from './traps'
@@ -129,7 +126,7 @@ export const useDevice: {
 } = Function.dual(2, (model: Model, device: InputDevice): Model =>
   model.lastDevice === device
     ? model
-    : modifyFields(model, { lastDevice: () => device }),
+    : UiStruct.evolve(model, { lastDevice: () => device }),
 )
 
 export const asAllowedPress: {
@@ -253,10 +250,9 @@ const toggleDareList = modelStep(model =>
     : withInput(toggleDareCard(model), releaseAll),
 )
 
-export const clickDareList = makeStep(model =>
-  isDareListTaking(model)
-    ? Update.combineSteps([unlockAudio, toggleDareList])
-    : unchanged,
+export const clickDareList: UpdateStep = stepWhen(
+  isDareListTaking,
+  combine([unlockAudio, toggleDareList]),
 )
 
 export const isDareListKey: {
@@ -268,11 +264,10 @@ export const isDareListKey: {
     isDareCardKey(code) && isDareListTaking(model),
 )
 
-export const dareListFromKey = (code: string) =>
-  makeStep(model =>
-    isDareListKey(model, code)
-      ? Update.combineSteps([unlockAudio, toggleDareList])
-      : unchanged,
+export const dareListFromKey = (code: string): UpdateStep =>
+  stepWhen(
+    (model: Model) => isDareListKey(model, code),
+    combine([unlockAudio, toggleDareList]),
   )
 
 export const skipCaseCardWhenUp = (model: Model): Model =>
@@ -320,25 +315,30 @@ const hasResumed = (before: Model, after: Model): boolean =>
 const hasBegunReload = (before: Model, after: Model): boolean =>
   !isReloading(focusOf(before).player) && isReloading(focusOf(after).player)
 
-const dropMagazine: UpdateStep = model =>
-  playSounds([
-    {
-      sound: 'MagOut',
-      variation: positionVariation(
-        focusOf(model).player.x,
-        focusOf(model).player.y,
-      ),
-    },
-  ])(dropClip(model))
+const dropMagazine: UpdateStep = $ =>
+  $.combine(
+    modelStep(dropClip),
+    playSounds([
+      {
+        sound: 'MagOut',
+        variation: positionVariation(
+          focusOf($.model).player.x,
+          focusOf($.model).player.y,
+        ),
+      },
+    ]),
+  )
 
 // NOTE: with the knife out, R puts the last gun back in hand to reload it.
-const reloadHeldGun: UpdateStep = model => {
-  const reloaded = actInHand(SeatAction.Reload())(model)
-  return stepWhen(() => hasBegunReload(model, reloaded), dropMagazine)(reloaded)
+const reloadHeldGun: UpdateStep = $ => {
+  const reloaded = actInHand(SeatAction.Reload())($.model)
+  return hasBegunReload($.model, reloaded)
+    ? $.combine(toModel(reloaded), dropMagazine)
+    : reloaded
 }
 
 const reloadFromKey = (code: string): UpdateStep =>
-  stepWhen(model => isKeyFor(model, code, ['Reload']), reloadHeldGun)
+  stepWhen((model: Model) => isKeyFor(model, code, ['Reload']), reloadHeldGun)
 
 // MEDIC
 
@@ -347,10 +347,9 @@ const reloadFromKey = (code: string): UpdateStep =>
 const callMedic = modelStep(actInHand(SeatAction.CallMedic()))
 
 const callMedicFromKey = (code: string): UpdateStep =>
-  stepWhen(model => isKeyFor(model, code, ['CallMedic']), callMedic)
+  stepWhen((model: Model) => isKeyFor(model, code, ['CallMedic']), callMedic)
 
-export const clickMedic: UpdateStep = model =>
-  combine(model, [unlockAudio, callMedic])
+export const clickMedic: UpdateStep = combine([unlockAudio, callMedic])
 
 // PAUSE
 
@@ -359,44 +358,46 @@ const pauseRound = modelStep(model =>
 )
 
 // NOTE: the pause button pauses a round under way and does nothing else.
-export const clickPause = makeStep(model =>
-  isRoundActive(model.phase)
-    ? Update.combineSteps([unlockAudio, pauseRound])
-    : unchanged,
+export const clickPause: UpdateStep = stepWhen(
+  (model: Model) => isRoundActive(model.phase),
+  combine([unlockAudio, pauseRound]),
 )
 
-export const pauseWhenAway = makeStep(model =>
-  isRoundActive(model.phase) ? pauseRound : releaseInput,
-)
+export const pauseWhenAway: UpdateStep = $ =>
+  isRoundActive($.model.phase) ? pauseRound($) : releaseInput($)
 
 // NOTE: a hidden page pauses the round; a page shown again checks for a
 // newer build.
-export const notePageVisibility = (visibility: PageVisibility) =>
-  makeStep(model => {
-    const noted = modifyFields(model, { pageVisibility: () => visibility })
-    return visibility === 'Hidden'
-      ? Update.combineSteps([toModel(noted), pauseWhenAway])
-      : Update.combineSteps([toModel(noted), checkForUpdate])
-  })
+export const notePageVisibility =
+  (visibility: PageVisibility): UpdateStep =>
+  $ =>
+    $.combine(
+      modelStep(model =>
+        UiStruct.evolve(model, { pageVisibility: () => visibility }),
+      ),
+      visibility === 'Hidden' ? pauseWhenAway : checkForUpdate,
+    )
 
 // FRAME
 
 // NOTE: one frame of single player. An online run's room runs the World,
 // so there its frames are TickedRoomFrame (orInRun in src/app/update/coopRun.ts).
-export const tickFrame = (deltaTime: number) =>
-  makeStep(model => {
+export const tickFrame =
+  (deltaTime: number): UpdateStep =>
+  $ => {
+    const model = $.model
     if (isDebutCardBlocking(model)) {
-      return toModel(ageDebutCard(model, clampFrameDelta(deltaTime)))
+      return ageDebutCard(model, clampFrameDelta(deltaTime))
     } else if (isPocketCardBlocking(model)) {
       const aged = agePocketCard(model, clampFrameDelta(deltaTime))
-      return Update.combineSteps([
+      return $.combine(
         toModel(aged),
         playSounds(pocketScratchCues(model, aged)),
-      ])
+      )
     } else if (isCaseCardBlocking(model)) {
-      return toModel(ageCaseCard(model, clampFrameDelta(deltaTime)))
+      return ageCaseCard(model, clampFrameDelta(deltaTime))
     } else if (isArriving(model.phase)) {
-      return advanceIntro(deltaTime)
+      return advanceIntro(deltaTime)($)
     } else if (isRoundActive(model.phase)) {
       const framed = moveHintBand(
         advanceCaseCard(
@@ -425,7 +426,7 @@ export const tickFrame = (deltaTime: number) =>
           : framed,
         clampFrameDelta(deltaTime),
       )
-      return Update.combineSteps([
+      return $.combine(
         toModel(advanced),
         playSounds([
           ...frameSoundCues(advanced.frameEvents),
@@ -439,19 +440,17 @@ export const tickFrame = (deltaTime: number) =>
         ]),
         playPlaced(model, advanced),
         rumbleFor(advanced.frameEvents),
-      ])
-    } else if (isEndScreen(model.phase)) {
-      return advanceEndScreen(clampFrameDelta(deltaTime))
-    } else if (isScreenAnimated(model.phase)) {
-      return toModel(
-        modifyFields(model, {
-          screenMs: screenMs => screenMs + clampFrameDelta(deltaTime),
-        }),
       )
+    } else if (isEndScreen(model.phase)) {
+      return advanceEndScreen(clampFrameDelta(deltaTime))($)
+    } else if (isScreenAnimated(model.phase)) {
+      return $.evolve({
+        screenMs: screenMs => screenMs + clampFrameDelta(deltaTime),
+      })
     } else {
-      return unchanged
+      return model
     }
-  })
+  }
 
 // KEYS
 
@@ -459,38 +458,32 @@ export const tickFrame = (deltaTime: number) =>
 // pressed on the device it came from.
 type ButtonPress = Readonly<{ code: string; device: InputDevice }>
 
-const pressedButton = ({ code, device }: ButtonPress) =>
-  makeStep(model => {
+const pressedButton =
+  ({ code, device }: ButtonPress): UpdateStep =>
+  $ => {
+    const model = $.model
     const keyed = useDevice(model, device)
     if (isCouchKey(keyed, code)) {
-      return toModel(
-        withInput(pressCouchKey(keyed, code), input => pressKey(input, code)),
+      return withInput(pressCouchKey(keyed, code), input =>
+        pressKey(input, code),
       )
     }
     if (isRunCardKey(keyed)) {
-      return Update.combineSteps([
+      return $.combine(
         toModel(toggleAudioFromKey(keyed, code)),
         runCardFromKey(code),
         unlockAudio,
-      ])
+      )
     }
     if (isLobbyOpen(keyed)) {
-      return Update.combineSteps([
-        toModel(keyed),
-        unlockAudio,
-        lobbyFromKey(code),
-      ])
+      return $.combine(toModel(keyed), unlockAudio, lobbyFromKey(code))
     }
     if (isCoopOpen(keyed)) {
-      return Update.combineSteps([
-        toModel(keyed),
-        unlockAudio,
-        pressCoopKey(code),
-      ])
+      return $.combine(toModel(keyed), unlockAudio, pressCoopKey(code))
     }
 
     if (isDebutCardBlocking(keyed)) {
-      return Update.combineSteps([
+      return $.combine(
         toModel(
           withInput(
             toggleAudioFromKey(debutCardFromKey(keyed, code), code),
@@ -498,11 +491,11 @@ const pressedButton = ({ code, device }: ButtonPress) =>
           ),
         ),
         unlockAudio,
-      ])
+      )
     }
 
     if (isCaseCardBlocking(keyed)) {
-      return Update.combineSteps([
+      return $.combine(
         toModel(
           withInput(
             toggleAudioFromKey(caseCardFromKey(keyed, code), code),
@@ -510,36 +503,36 @@ const pressedButton = ({ code, device }: ButtonPress) =>
           ),
         ),
         unlockAudio,
-      ])
+      )
     }
 
     if (isDareListKey(keyed, code)) {
-      return Update.combineSteps([toModel(keyed), dareListFromKey(code)])
+      return $.combine(toModel(keyed), dareListFromKey(code))
     }
 
     if (isPocketCardBlocking(keyed)) {
-      return Update.combineSteps([
+      return $.combine(
         toModel(
           withInput(toggleAudioFromKey(foldPocketCard(keyed), code), input =>
             pressKey(input, code),
           ),
         ),
         unlockAudio,
-      ])
+      )
     }
 
     if (isArriving(keyed.phase)) {
-      return Update.combineSteps([
+      return $.combine(
         toModel(toggleAudioFromKey(skipIntro(keyed), code)),
         unlockAudio,
-      ])
+      )
     }
 
     if (isBeatSkipKey(keyed, code)) {
-      return Update.combineSteps([
+      return $.combine(
         toModel(toggleAudioFromKey(skipBeat(keyed), code)),
         unlockAudio,
-      ])
+      )
     }
 
     const phased = phaseFromKey(keyed, code)
@@ -552,14 +545,13 @@ const pressedButton = ({ code, device }: ButtonPress) =>
         ),
       ),
     )
-    return Update.combineSteps([
+    return $.combine(
       toModel(pressed),
       unlockAudio,
       profileFromKey(code),
       coopFromKey(code),
       playFromKey(code),
       menuFromKey(code),
-      proofFromKey(code),
       homeFocusFromKey(code),
       homeFromKey(code),
       beatCardFromKey(code),
@@ -569,15 +561,15 @@ const pressedButton = ({ code, device }: ButtonPress) =>
       callMedicFromKey(code),
       playStartSoundWhen(startsRun(model, pressed)),
       playSwapSoundWhen(changedWeapon(model, pressed)),
-    ])
-  })
+    )
+  }
 
-export const pressedKey = (code: string) =>
+export const pressedKey = (code: string): UpdateStep =>
   pressedButton({ code, device: 'KeyboardMouse' })
 
 // NOTE: a key a controller stands in for in a menu (src/app/update/padMenu.ts),
 // pressed as the pad's, so the pad stays the device.
-export const pressedPadKey = (code: string) =>
+export const pressedPadKey = (code: string): UpdateStep =>
   pressedButton({ code, device: 'Gamepad' })
 
 // CONTROLLERS
@@ -590,11 +582,11 @@ export const notePad: {
   (model: Model, pad: Gamepad): Model
 } = Function.dual(2, (model: Model, pad: Gamepad): Model => {
   const noted = withInput(model, input =>
-    modifyFields(input, { maybeGamepad: () => Option.some(pad) }),
+    UiStruct.evolve(input, { maybeGamepad: () => Option.some(pad) }),
   )
   return isPadStirred(pad)
     ? withInput(useDevice(noted, 'Gamepad'), input =>
-        modifyFields(input, { maybeMouseInView: () => Option.none() }),
+        UiStruct.evolve(input, { maybeMouseInView: () => Option.none() }),
       )
     : noted
 })
@@ -610,51 +602,52 @@ export const padPresses: {
 // NOTE: each new press goes the keys' way, as the pad's: the key table
 // (src/input/keyActions.ts) turns it into the seat's action. A release
 // needs nothing: what is held is read off the kept pad.
-export const polledPad = (pad: Gamepad) =>
-  makeStep(model =>
-    Update.combineSteps([
-      toModel(notePad(model, pad)),
-      ...Array.map(padPresses(model, pad), code =>
+export const polledPad =
+  (pad: Gamepad): UpdateStep =>
+  $ =>
+    $.combine(
+      toModel(notePad($.model, pad)),
+      ...Array.map(padPresses($.model, pad), code =>
         pressedButton({ code, device: 'Gamepad' }),
       ),
-    ]),
-  )
+    )
 
 const isPadAt = (model: Model, index: number): boolean =>
   Option.exists(model.input.maybeGamepad, pad => pad.index === index)
 
 export const forgetPad = (model: Model): Model =>
   withInput(model, input =>
-    modifyFields(input, { maybeGamepad: () => Option.none() }),
+    UiStruct.evolve(input, { maybeGamepad: () => Option.none() }),
   )
 
 // NOTE: a controller unplugged, or out of battery, mid-round pauses it, as
 // a blur does; plugged back in, its first poll is a fresh pad.
-export const padGone = (index: number) =>
-  makeStep(model =>
-    isPadAt(model, index)
-      ? Update.combineSteps([modelStep(forgetPad), pauseWhenAway])
-      : unchanged,
+export const padGone = (index: number): UpdateStep =>
+  stepWhen(
+    (model: Model) => isPadAt(model, index),
+    combine([modelStep(forgetPad), pauseWhenAway]),
   )
 
-export const releasedKey = (code: string) =>
-  makeStep(model => {
-    const released = withInput(model, input => releaseKey(input, code))
+export const releasedKey =
+  (code: string): UpdateStep =>
+  $ => {
+    const released = withInput($.model, input => releaseKey(input, code))
     return isCoopOpen(released)
-      ? Update.combineSteps([toModel(released), releaseCoopKey(code)])
-      : toModel(released)
-  })
+      ? $.combine(toModel(released), releaseCoopKey(code))
+      : released
+  }
 
 // GUNS AND TRAPS
 
 const drawFromButton =
   (draw: (model: Model) => Model): UpdateStep =>
-  model => {
-    const drawn = learnSwapWhen(model, refreshIntent(draw(model)))
-    return combine(drawn, [
+  $ => {
+    const drawn = learnSwapWhen($.model, refreshIntent(draw($.model)))
+    return $.combine(
+      toModel(drawn),
       unlockAudio,
-      playSwapSoundWhen(changedWeapon(model, drawn)),
-    ])
+      playSwapSoundWhen(changedWeapon($.model, drawn)),
+    )
   }
 
 export const swapFromButton: UpdateStep = drawFromButton(swapGun)
@@ -663,20 +656,20 @@ export const swapFromButton: UpdateStep = drawFromButton(swapGun)
 // with the knife out, it puts that gun in hand.
 export const pressGunSlot = (slot: GunSlot): UpdateStep =>
   stepWhen(
-    model => !isCardHolding(model),
-    model => {
-      const action = gunSlotAction(focusOf(model).player, slot)
+    (model: Model) => !isCardHolding(model),
+    $ => {
+      const action = gunSlotAction(focusOf($.model).player, slot)
       return SeatAction.isAnyOf(['Reload'])(action)
-        ? combine(model, [unlockAudio, reloadHeldGun])
-        : drawFromButton(actInHand(action))(model)
+        ? $.combine(unlockAudio, reloadHeldGun)
+        : drawFromButton(actInHand(action))($)
     },
   )
 
 // NOTE: the touch HUD's reload button: R's reload, so with the knife out
 // it puts the last gun back in hand and reloads that.
 export const reloadFromButton: UpdateStep = stepWhen(
-  model => !isCardHolding(model),
-  model => combine(model, [unlockAudio, reloadHeldGun]),
+  (model: Model) => !isCardHolding(model),
+  combine([unlockAudio, reloadHeldGun]),
 )
 
 // NOTE: a press on a HUD gun or knife slot. With a mouse mid-wave it is a
@@ -697,7 +690,7 @@ export const withSlotClick: {
   (model: Model, slotClick: SlotClick): Model
 } = Function.dual(2, (model: Model, slotClick: SlotClick): Model =>
   withInput(model, input =>
-    modifyFields(input, { slotClick: () => slotClick }),
+    UiStruct.evolve(input, { slotClick: () => slotClick }),
   ),
 )
 
@@ -707,33 +700,33 @@ export const isSlotClickPassingThrough = (model: Model): boolean =>
 // NOTE: a tap on the knife slot draws the knife; on the knife in hand it
 // does nothing.
 export const pressMeleeSlot: UpdateStep = stepWhen(
-  model => !isCardHolding(model) && !isWieldingMelee(focusOf(model).player),
+  (model: Model) =>
+    !isCardHolding(model) && !isWieldingMelee(focusOf(model).player),
   drawFromButton(equipMelee),
 )
 
 // NOTE: the new zombie card and the display case's hold the round's buttons.
 const isTrapButtonHeld = (model: Model): boolean => isCardHolding(model)
 
-const startWaveFromButton: UpdateStep = model => ({
-  model: learnStartWaveWhen(model, startWave(model)),
-})
+const startWaveFromButton = modelStep(model =>
+  learnStartWaveWhen(model, startWave(model)),
+)
+
+const isTrapButtonFree = (model: Model): boolean => !isTrapButtonHeld(model)
 
 // NOTE: START WAVE and the trap buttons wait while a card holds the
 // round's buttons.
-export const clickStartWave = makeStep(model =>
-  isTrapButtonHeld(model)
-    ? unchanged
-    : Update.combineSteps([startWaveFromButton, unlockAudio]),
+export const clickStartWave: UpdateStep = stepWhen(
+  isTrapButtonFree,
+  combine([startWaveFromButton, unlockAudio]),
 )
 
-export const clickPlaceTrap = makeStep(model =>
-  isTrapButtonHeld(model)
-    ? unchanged
-    : Update.combineSteps([unlockAudio, placeSelectedTrap]),
+export const clickPlaceTrap: UpdateStep = stepWhen(
+  isTrapButtonFree,
+  combine([unlockAudio, placeSelectedTrap]),
 )
 
-export const clickNextTrap = makeStep(model =>
-  isTrapButtonHeld(model)
-    ? unchanged
-    : Update.combineSteps([unlockAudio, nextTrap]),
+export const clickNextTrap: UpdateStep = stepWhen(
+  isTrapButtonFree,
+  combine([unlockAudio, nextTrap]),
 )

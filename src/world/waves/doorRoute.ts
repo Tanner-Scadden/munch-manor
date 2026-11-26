@@ -1,5 +1,6 @@
 import { Array, Function, Option, Result, pipe } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import { countWork } from '../../shared/workCount'
 import { barricadedDoors } from '../gear/traps'
@@ -280,6 +281,6 @@ const routeEach = (
     const door = routedDoor(spawn, spawns, doors, boarded, packDoors)
     return door === spawn.door
       ? spawn
-      : modifyFields(spawn, { door: () => door })
+      : UiStruct.evolve(spawn, { door: () => door })
   })
 }

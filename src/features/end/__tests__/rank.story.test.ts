@@ -1,15 +1,20 @@
 import { Effect, Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
 import { Message } from '../../../app/message'
-import { type Model, Phase } from '../../../app/model'
+import { BreakClock, type Model, Phase } from '../../../app/model'
 import { initialModel } from '../../../app/pureApp'
 import { FIXED_STEP_MS, PREPARATION_MS } from '../../../shared/constants'
 import { lastHeart, withDareThings } from '../../../test/model.fixture'
-import { APPLICATION, ticks, writeSave } from '../../../test/testing'
+import {
+  checkModel,
+  send,
+  storyOf,
+  ticks,
+  writeSave,
+} from '../../../test/testing'
 import { noRank } from '../../../world/heroes/rank'
 import { seatCrew } from '../../../world/party/party'
 import { type Modifiers } from '../../../world/run/modifiers'
@@ -34,67 +39,69 @@ import {
 
 // NOTE: the end card's beat is over, so its buttons work.
 const afterBeat = (model: Model): Model =>
-  modifyFields(model, { screenMs: () => 60_000 })
+  UiStruct.evolve(model, { screenMs: () => 60_000 })
 
 describe('a death', () => {
   it.effect('pays 10 points a wave cleared, and a Bone for each 10', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(diesOnWave7),
-      frame,
-      Story.model(after => {
-        expect(after.phase._tag).toBe('GameOver')
-        expect(after.rank).toMatchObject({ earnedPoints: 60, earnedBones: 6 })
-        expect(after.runGains.maybeRankGain).toEqual(
-          Option.some({
-            pointsBefore: 0,
-            gained: 60,
-            bonesGained: 6,
-            bonusPercent: 0,
-            bonuses: [],
-          }),
-        )
-      }),
-      writeSave(),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(diesOnWave7)
+      s.pipe(
+        frame,
+        checkModel(after => {
+          expect(after.phase._tag).toBe('GameOver')
+          expect(after.rank).toMatchObject({ earnedPoints: 60, earnedBones: 6 })
+          expect(after.runGains.maybeRankGain).toEqual(
+            Option.some({
+              pointsBefore: 0,
+              gained: 60,
+              bonesGained: 6,
+              bonusPercent: 0,
+              bonuses: [],
+            }),
+          )
+        }),
+        writeSave,
+      )
+    }),
   )
 
   it.effect('grows the save, as an increment', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        modifyFields(diesOnWave7, {
+    Effect.gen(function* () {
+      const s = yield* storyOf(
+        UiStruct.evolve(diesOnWave7, {
           rank: rank => ({ ...rank, earnedPoints: 90, earnedBones: 9 }),
         }),
-      ),
-      frame,
-      Story.model(after => {
-        expect(after.rank.earnedPoints).toBe(150)
-        expect(after.runGains.maybeRankGain).toEqual(
-          Option.some({
-            pointsBefore: 90,
-            gained: 60,
-            bonesGained: 6,
-            bonusPercent: 0,
-            bonuses: [],
-          }),
-        )
-      }),
-      checkSavedChanges(changes => {
-        expect(changes).toContainEqual({
-          _tag: 'EarnedRank',
-          points: 60,
-          bones: 6,
-        })
-      }),
-      writeSave(),
-    ),
+      )
+      s.pipe(
+        frame,
+        checkModel(after => {
+          expect(after.rank.earnedPoints).toBe(150)
+          expect(after.runGains.maybeRankGain).toEqual(
+            Option.some({
+              pointsBefore: 90,
+              gained: 60,
+              bonesGained: 6,
+              bonusPercent: 0,
+              bonuses: [],
+            }),
+          )
+        }),
+        checkSavedChanges(changes => {
+          expect(changes).toContainEqual({
+            _tag: 'EarnedRank',
+            points: 60,
+            bones: 6,
+          })
+        }),
+        writeSave,
+      )
+    }),
   )
 
   it.effect('counts the points the veteran grant gave before the run', () =>
     Effect.gen(function* () {
       const after = yield* ended(
-        modifyFields(diesOnWave7, {
+        UiStruct.evolve(diesOnWave7, {
           rank: rank => ({ ...rank, veteranPoints: 400, veteranBones: 40 }),
         }),
       )
@@ -113,9 +120,9 @@ describe('a death', () => {
   it.effect('is multiplied by the difficulty and rounded down', () =>
     Effect.gen(function* () {
       const on = (chosen: 'Easy' | 'Hard'): Model =>
-        modifyFields(diesOnWave7, {
+        UiStruct.evolve(diesOnWave7, {
           difficulty: setting =>
-            modifyFields(setting, { chosen: () => chosen }),
+            UiStruct.evolve(setting, { chosen: () => chosen }),
         })
       const hard = yield* ended(on('Hard'))
       const easy = yield* ended(on('Easy'))
@@ -135,7 +142,7 @@ describe('a death', () => {
           glass: true,
         }
         const after = yield* ended(
-          modifyFields(diesOnWave7, { modifiers: () => modifiers }),
+          UiStruct.evolve(diesOnWave7, { modifiers: () => modifiers }),
         )
         expect(after.rank).toMatchObject({ earnedPoints: 315, earnedBones: 31 })
         expect(after.runGains.maybeRankGain).toEqual(
@@ -159,7 +166,7 @@ describe('a death', () => {
         glass: false,
       }
       const alone = yield* ended(
-        modifyFields(diesOnWave7, { modifiers: () => friendly }),
+        UiStruct.evolve(diesOnWave7, { modifiers: () => friendly }),
       )
       expect(alone.rank.earnedPoints).toBe(60)
       expect(
@@ -168,34 +175,36 @@ describe('a death', () => {
           ({ bonusPercent }) => bonusPercent,
         ),
       ).toEqual(Option.some(0))
-      return yield* Story.story(
-        APPLICATION,
-        Story.given(
-          withWorld(
-            modifyFields(runAt(wave(7), 6, 0), { modifiers: () => friendly }),
-            world => seatCrew(world, 2),
-          ),
+      const s = yield* storyOf(
+        withWorld(
+          UiStruct.evolve(runAt(wave(7), 6, 0), {
+            modifiers: () => friendly,
+          }),
+          world => seatCrew(world, 2),
         ),
+      )
+      s.pipe(
         leave,
-        Story.model(crewed => {
+        checkModel(crewed => {
           expect(crewed.rank.earnedPoints).toBe(69)
         }),
-        writeSave(),
+        writeSave,
       )
     }),
   )
 
   it.effect('pays once: the end card ticking on pays nothing more', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(diesOnWave7),
-      frame,
-      writeSave(),
-      ...ticks(30, FIXED_STEP_MS),
-      Story.model(later => {
-        expect(later.rank.earnedPoints).toBe(60)
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(diesOnWave7)
+      s.pipe(
+        frame,
+        writeSave,
+        ticks(30, FIXED_STEP_MS),
+        checkModel(later => {
+          expect(later.rank.earnedPoints).toBe(60)
+        }),
+      )
+    }),
   )
 })
 
@@ -233,31 +242,31 @@ describe('an escape', () => {
 
 describe('leaving a run', () => {
   it.effect('pays the waves cleared so far like a death, once', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(runAt(wave(4), 3, 0)),
-      leave,
-      Story.model(left => {
-        expect(left.phase._tag).toBe('Ready')
-        expect(left.rank).toMatchObject({ earnedPoints: 30, earnedBones: 3 })
-        expect(Option.isNone(left.runGains.maybeRankGain)).toBe(true)
-      }),
-      writeSave(),
-      Story.message(Message.ClickedMenuButton()),
-      Story.model(after => {
-        expect(after.rank.earnedPoints).toBe(30)
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(runAt(wave(4), 3, 0))
+      s.pipe(
+        leave,
+        checkModel(left => {
+          expect(left.phase._tag).toBe('Ready')
+          expect(left.rank).toMatchObject({ earnedPoints: 30, earnedBones: 3 })
+          expect(Option.isNone(left.runGains.maybeRankGain)).toBe(true)
+        }),
+        writeSave,
+        send(Message.ClickedMenuButton()),
+        checkModel(after => {
+          expect(after.rank.earnedPoints).toBe(30)
+        }),
+      )
+    }),
   )
 
   it.effect('a run left from the end card pays nothing more', () =>
     Effect.gen(function* () {
       const over = yield* ended(diesOnWave7)
-      return yield* Story.story(
-        APPLICATION,
-        Story.given(afterBeat(over)),
-        Story.message(Message.ClickedMenuButton()),
-        Story.model(home => {
+      const s = yield* storyOf(afterBeat(over))
+      s.pipe(
+        send(Message.ClickedMenuButton()),
+        checkModel(home => {
           expect(home.phase._tag).toBe('Ready')
           expect(home.rank.earnedPoints).toBe(60)
         }),
@@ -268,24 +277,26 @@ describe('leaving a run', () => {
   it.effect('the practice gate pays nothing', () =>
     // NOTE: a guided run cannot have cleared waves, so the stats are forced
     // to show that the gate itself pays nothing.
-    Story.story(
-      APPLICATION,
-      Story.given(
-        modifyFields(initialModel, {
-          stats: stats => modifyFields(stats, { wavesCleared: () => 3 }),
+    Effect.gen(function* () {
+      const s = yield* storyOf(
+        UiStruct.evolve(initialModel, {
+          stats: stats => UiStruct.evolve(stats, { wavesCleared: () => 3 }),
           phase: () =>
             Phase.Preparation({
+              clock: BreakClock.Counting(),
               wave: 1,
               remainingMs: 9000,
               durationMs: PREPARATION_MS,
               spawns: [],
             }),
         }),
-      ),
-      leave,
-      Story.model(left => {
-        expect(left.rank).toEqual(noRank)
-      }),
-    ),
+      )
+      s.pipe(
+        leave,
+        checkModel(left => {
+          expect(left.rank).toEqual(noRank)
+        }),
+      )
+    }),
   )
 })

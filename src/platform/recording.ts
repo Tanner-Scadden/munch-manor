@@ -1,6 +1,6 @@
 import { Array, Function, Option, Schema, String, Struct } from 'effect'
-import { defineTaggedUnion } from 'foldkit/schema'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiSchema, UiStruct } from '@effect/ui'
 
 import { InputDevice } from '../input/inputSchema'
 import { Calling } from '../shared/playerData'
@@ -35,7 +35,7 @@ type WorldPatch = typeof WorldPatch.Type
 
 // NOTE: what happened before a tick's step, in order: a seat's press as its
 // action, then the other changes as one patch.
-export const TickEdit = defineTaggedUnion({
+export const TickEdit = UiSchema.TaggedEnum({
   Pressed: { slot: PlayerSlot, action: SeatAction },
   Patched: { fields: WorldPatch },
 })
@@ -79,7 +79,7 @@ export type RunEnd = typeof RunEnd.Type
 const PendingPress = Schema.Struct({ slot: PlayerSlot, action: SeatAction })
 type PendingPress = typeof PendingPress.Type
 
-export const RunRecorder = defineTaggedUnion({
+export const RunRecorder = UiSchema.TaggedEnum({
   Idle: {},
   Recording: {
     runId: RunId,
@@ -98,7 +98,7 @@ export const RunRecorder = defineTaggedUnion({
   },
 })
 export type RunRecorder = typeof RunRecorder.Type
-type Recording = typeof RunRecorder.Recording.Type
+type Recording = typeof RunRecorder.cases.Recording.Type
 
 // NOTE: the upload, one finished run. Version 1.
 export const RunRecording = Schema.Struct({
@@ -191,7 +191,7 @@ export const notePress: {
   3,
   (recorder: RunRecorder, slot: PlayerSlot, action: SeatAction): RunRecorder =>
     RunRecorder.isAnyOf(['Recording'])(recorder)
-      ? modifyFields(recorder, {
+      ? UiStruct.evolve(recorder, {
           pending: pending => Array.append(pending, { slot, action }),
         })
       : recorder,
@@ -214,7 +214,7 @@ const PATCHED_FIELDS: ReadonlyArray<keyof World> = Array.filter(
 const withoutTallies = (world: World): World => ({
   ...world,
   practice: noPractice,
-  stats: modifyFields(world.stats, {
+  stats: UiStruct.evolve(world.stats, {
     activeFrames: () => 0,
     activeFrameMs: () => 0,
     runMs: () => 0,

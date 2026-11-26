@@ -1,15 +1,13 @@
 import { Array, Effect, Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { LobbyBinding } from '../../../app/bindings'
 import { Message } from '../../../app/message'
 import { type Model, Phase, RunMode } from '../../../app/model'
 import { startOrResume } from '../../../app/runFlow'
 import { effectiveModifiersOf } from '../../../domain/onlineRun'
-import { Message as LobbyMessage } from '../../../features/lobby/message'
+import { LobbyMessage } from '../../../features/lobby/message'
 import { FIXED_STEP_MS } from '../../../shared/constants'
 import { type SavedDareMarks, noDareMarks } from '../../../shared/dareMarkData'
 import {
@@ -20,11 +18,14 @@ import {
   withFinale,
 } from '../../../test/model.fixture'
 import {
-  APPLICATION,
+  checkModel,
+  modelAfter,
   openLobbyByKey,
   playedThrough,
   resolveFocusLobby,
+  send,
   settleRunCommands,
+  steps,
   throughIntro,
 } from '../../../test/testing'
 import { Finale } from '../../dare/dareSchema'
@@ -57,10 +58,10 @@ import { bonusPercentOf, noModifiers } from '../modifiers'
 // plays the mark its host picked.
 
 const atMark = (model: Model, mark: number): Model =>
-  modifyFields(model, { dareMark: () => mark })
+  UiStruct.evolve(model, { dareMark: () => mark })
 
 const withMarksOpened = (model: Model, dareMarks: SavedDareMarks): Model =>
-  modifyFields(model, { dareMarks: () => dareMarks })
+  UiStruct.evolve(model, { dareMarks: () => dareMarks })
 
 describe('the marks and their rules', () => {
   test('marks 1 to 4 turn on Big Crowd, Broke, Glass, then Friendly Fire', () => {
@@ -158,8 +159,8 @@ describe('the marks and their rules', () => {
     expect(breakClockMsOf(atMark(wave, 7))).toEqual(
       Option.some(Math.max(10_000, Math.round(clock * 0.75))),
     )
-    const dare = modifyFields(wave, {
-      difficulty: setting => modifyFields(setting, { chosen: () => 'Easy' }),
+    const dare = UiStruct.evolve(wave, {
+      difficulty: setting => UiStruct.evolve(setting, { chosen: () => 'Easy' }),
       easyBreakSeconds: () => 0,
     })
     expect(breakClockMsOf(atMark(dare, 6))).toEqual(Option.none())
@@ -187,29 +188,28 @@ describe('a run at a mark', () => {
   it.effect(
     'START plays the mark picked: its modifiers bite in the World',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(
-          atMark(
-            withMarksOpened(readyAfterRead, { ...noDareMarks, Normal: 3 }),
-            3,
-          ),
+      modelAfter(
+        atMark(
+          withMarksOpened(readyAfterRead, { ...noDareMarks, Normal: 3 }),
+          3,
         ),
-        openLobbyByKey,
-        Story.messageIn(LobbyBinding, LobbyMessage.ClickedStartButton()),
-        throughIntro,
-        Story.model(current => {
-          expect(Phase.guards.Preparation(current.phase)).toBe(true)
-          expect(current.dareMark).toBe(3)
-          expect(current.modifiers).toEqual(noModifiers)
-          expect(activeModifiersOf(current)).toEqual({
-            ...noModifiers,
-            bigCrowd: true,
-            broke: true,
-            glass: true,
-          })
-          expect(focusOf(current).player.hp).toBe(1)
-        }),
+        steps(
+          openLobbyByKey,
+          send(LobbyMessage.RequestedStartFromLobby()),
+          throughIntro,
+          checkModel(current => {
+            expect(Phase.guards.Preparation(current.phase)).toBe(true)
+            expect(current.dareMark).toBe(3)
+            expect(current.modifiers).toEqual(noModifiers)
+            expect(activeModifiersOf(current)).toEqual({
+              ...noModifiers,
+              bigCrowd: true,
+              broke: true,
+              glass: true,
+            })
+            expect(focusOf(current).player.hp).toBe(1)
+          }),
+        ),
       ),
   )
 
@@ -223,32 +223,28 @@ describe('a run at a mark', () => {
   it.effect(
     'the pick steps through the marks opened, and a new difficulty holds it there',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(
-          withMarksOpened(readyAfterRead, {
-            ...noDareMarks,
-            Normal: 2,
-            Hard: 1,
+      modelAfter(
+        withMarksOpened(readyAfterRead, {
+          ...noDareMarks,
+          Normal: 2,
+          Hard: 1,
+        }),
+        steps(
+          openLobbyByKey,
+          send(LobbyMessage.SteppedLobbyDareMark()),
+          send(LobbyMessage.SteppedLobbyDareMark()),
+          settleRunCommands,
+          checkModel(current => {
+            expect(current.dareMark).toBe(2)
+          }),
+          send(LobbyMessage.PickedLobbyDifficulty({ difficulty: 'Hard' })),
+          resolveFocusLobby('Start'),
+          settleRunCommands,
+          checkModel(current => {
+            expect(current.difficulty.chosen).toBe('Hard')
+            expect(current.dareMark).toBe(1)
           }),
         ),
-        openLobbyByKey,
-        Story.messageIn(LobbyBinding, LobbyMessage.ClickedMarkButton()),
-        Story.messageIn(LobbyBinding, LobbyMessage.ClickedMarkButton()),
-        settleRunCommands,
-        Story.model(current => {
-          expect(current.dareMark).toBe(2)
-        }),
-        Story.messageIn(
-          LobbyBinding,
-          LobbyMessage.ClickedDifficultyButton({ difficulty: 'Hard' }),
-        ),
-        resolveFocusLobby('Start'),
-        settleRunCommands,
-        Story.model(current => {
-          expect(current.difficulty.chosen).toBe('Hard')
-          expect(current.dareMark).toBe(1)
-        }),
       ),
   )
 })
@@ -258,7 +254,7 @@ describe('climbing the ladder', () => {
     escaping(
       atMark(
         withMarksOpened(
-          modifyFields(readyAfterRead, {
+          UiStruct.evolve(readyAfterRead, {
             phase: () =>
               Phase.Wave({
                 wave: FINAL_WAVE,

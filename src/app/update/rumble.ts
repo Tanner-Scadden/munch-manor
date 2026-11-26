@@ -1,11 +1,11 @@
 import { Effect, Option, Schema, pipe } from 'effect'
 
+import { Command, Component } from '@effect/ui'
+
 import { rumbleOf } from '../../input/rumble'
 import { toBrowserError } from '../../shared/describeError'
 import { focusOf } from '../../world/party/party'
 import type { GameEvent } from '../../world/schema/worldSchema'
-import { ApplicationBlock } from '../definition'
-import { Message } from '../message'
 import type { Model } from '../model'
 import type { UpdateStep } from './step'
 
@@ -42,23 +42,18 @@ const playRumble = ({
     catch: toBrowserError,
   })
 
-export const Rumble = ApplicationBlock.makeCommand('Rumble', {
-  args: {
-    index: Schema.Finite,
-    strong: Schema.Finite,
-    weak: Schema.Finite,
-    durationMs: Schema.Finite,
+export const Rumble = Command.make(
+  'Rumble',
+  {
+    args: {
+      index: Schema.Finite,
+      strong: Schema.Finite,
+      weak: Schema.Finite,
+      durationMs: Schema.Finite,
+    },
   },
-  messages: [Message.CompletedRumble],
-  handler: function* () {
-    return args =>
-      pipe(
-        playRumble(args),
-        Effect.as(Message.CompletedRumble()),
-        Effect.orElseSucceed(() => Message.CompletedRumble()),
-      )
-  },
-})
+  args => pipe(playRumble(args), Effect.ignore, Effect.as(Component.noop)),
+)
 
 // CUES
 
@@ -72,16 +67,16 @@ const rumblingPad = (model: Model): Option.Option<number> =>
 // NOTE: a frame's rumble, felt by the player in focus.
 export const rumbleFor =
   (events: ReadonlyArray<GameEvent>): UpdateStep =>
-  model =>
+  $ =>
     pipe(
-      rumblingPad(model),
+      rumblingPad($.model),
       Option.flatMap(index =>
-        Option.map(rumbleOf(focusOf(model).player, events), cue =>
-          Rumble({ index, ...cue }),
+        Option.map(rumbleOf(focusOf($.model).player, events), cue =>
+          Rumble.make({ index, ...cue }),
         ),
       ),
       Option.match({
-        onNone: () => ({ model }),
-        onSome: command => ({ model, commands: [command] }),
+        onNone: () => $.model,
+        onSome: command => $.run(command),
       }),
     )

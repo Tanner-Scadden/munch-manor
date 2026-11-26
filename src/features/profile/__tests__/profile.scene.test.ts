@@ -1,424 +1,571 @@
-import { Effect } from 'effect'
-import { Scene } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
+import { Array, Effect, Option } from 'effect'
 
-import { describe, it } from '@effect/vitest'
-import { Tabs } from '@foldkit/ui'
+import { UiStruct } from '@effect/ui'
+import { Tabs, TabsEvents } from '@effect/ui-kit'
+import { HtmlLocator, HtmlPlay } from '@effect/ui/html/testing'
+import { Locator, TestHost } from '@effect/ui/testing'
+import { describe, expect, it, layer } from '@effect/vitest'
 
 import { Message } from '../../../app/message'
 import { type Model } from '../../../app/model'
-import { WriteSave } from '../../../app/update/save'
+import { profilePropsOf } from '../../../app/profileView'
+import { RequestLinkCode } from '../../../app/update/profile'
+import { PROFILE_DIALOG_ID } from '../../../domain/clientSchema'
 import { LinkFlow, SyncState } from '../../../platform/playerSync'
-import { homeAfterRead } from '../../../test/model.fixture'
+import { homeAfterRead, inPortrait } from '../../../test/model.fixture'
 import {
-  APPLICATION,
-  closeButton,
-  closeDialogInScene,
+  button,
+  byClass,
   emitPressedKey,
   measureSurface,
-  measureSurfaceAs,
   profileDialog,
+  requestDialogClose,
   settingsButton,
-  showDialogInScene,
+  showDialog,
+  withAttrs,
+} from '../../../test/sceneTesting'
+import {
+  type SceneStep,
+  type StoryStep,
+  sceneOf,
+  send,
+  settleRunCommands,
+  steps,
 } from '../../../test/testing'
+import { Profile } from '../block'
 import { CopyLinkCodeOnClick, PasteLinkCodeOnTap } from '../linkClipboard'
-import { Message as ProfileMessage } from '../message'
-import { ProfileTabsBlock } from '../model'
-import { RequestLinkCode } from '../update'
+import { Events } from '../message'
+import { PROFILE_TABS_ID } from '../profile'
 import { LINK_TAKES_PROGRESS_NOTE, SHARE_STATS_NOTE } from '../view'
+import {
+  type ProfileDesk,
+  type ProfileScene,
+  atRoot,
+  characterButton,
+  inPanel,
+  profileDeskOf,
+  profileOpenOn,
+} from './profile.fixture'
 
-const onTouch: Model = modifyFields(homeAfterRead, {
+// The Profile as a player meets it. The root's Scene opens and closes its
+// Dialog; the Profile is a child there, so its tabs and pages are drawn in
+// a Scene of their own, with each event taken up to a Story of the root and
+// the props it then hands down (profile.fixture.ts).
+
+const onTouch: Model = UiStruct.evolve(homeAfterRead, {
   lastDevice: () => 'Touch',
 })
 
-const synced: Model = modifyFields(homeAfterRead, {
-  saving: modifyFields({ syncState: () => SyncState.Synced({ devices: 2 }) }),
+const synced: Model = UiStruct.evolve(homeAfterRead, {
+  saving: saving =>
+    UiStruct.evolve(saving, {
+      syncState: () => SyncState.Synced({ devices: 2 }),
+    }),
 })
 
-const tab = (name: string) => Scene.role('tab', { name })
-const focusTab = (index: number) =>
-  Scene.Command.resolve(
-    Tabs.test.FocusTab({ id: 'profile-tabs', index }),
-    ProfileTabsBlock.Message.CompletedFocusTab(),
+const tab = (name: string) => HtmlLocator.role('tab', { name })
+const tablist = HtmlLocator.role('tablist', { name: 'Profile' })
+
+// NOTE: a check on the Profile's Scene, as a step over the desk.
+const see = (check: (scene: ProfileScene) => ProfileScene) => inPanel(check)
+
+// NOTE: the one element `locator` finds wears `attrs`.
+const has = (
+  locator: Locator.Locator,
+  attrs: Readonly<Record<string, string>>,
+) => see(s => s.expect(withAttrs(attrs)(locator)).toExist())
+
+// NOTE: the one element `locator` finds has no `name` attribute: the kit's
+// Tabs writes `aria-orientation` only for a vertical list.
+const lacks = (locator: Locator.Locator, name: string) =>
+  see(s =>
+    s.check(() => {
+      if (s.get(locator).attrs?.[name] !== undefined) {
+        throw new Error(`${locator.description} has ${name}`)
+      }
+    }),
   )
 
-const measureUpright = measureSurfaceAs({
-  left: 0,
-  top: 0,
-  width: 390,
-  height: 844,
+const selected = (name: string) => has(tab(name), { 'aria-selected': 'true' })
+
+// NOTE: a tab picked, as the kit's Tabs says it: a scene runs no child's
+// update, so its click and keys are the Play's below.
+const atTab = (name: string) =>
+  inPanel(s =>
+    s.childEmit(
+      Tabs,
+      PROFILE_TABS_ID,
+      TabsEvents.Selected({ value: name, activationDirection: 'none' }),
+    ),
+  )
+
+// NOTE: the Profile opened by `open` on the root, drawn from what it left.
+const deskOpenedBy = (model: Model, open: StoryStep) =>
+  Effect.map(profileDeskOf(model), atRoot(open))
+
+const settle = atRoot(settleRunCommands)
+
+describe("the Profile's Dialog", () => {
+  it.effect('the gear opens it, and its close shuts it', () =>
+    Effect.gen(function* () {
+      const s = yield* sceneOf(synced)
+      s.pipe(
+        measureSurface,
+        scene => scene.click(settingsButton),
+        showDialog(PROFILE_DIALOG_ID),
+      )
+        .expect(profileDialog)
+        .toExist()
+      s.pipe(requestDialogClose(PROFILE_DIALOG_ID, 'close-press'))
+        .expect(profileDialog)
+        .toBeAbsent()
+    }),
+  )
+
+  it.effect('every entry point opens it, on its tab', () =>
+    Effect.forEach(
+      [
+        {
+          open: s => s.click(settingsButton),
+          message: Message.ClickedSettingsButton(),
+          tab: 'Settings',
+        },
+        {
+          open: emitPressedKey('KeyO'),
+          message: Message.PressedKey({ code: 'KeyO' }),
+          tab: 'Settings',
+        },
+        {
+          open: emitPressedKey('KeyC'),
+          message: Message.PressedKey({ code: 'KeyC' }),
+          tab: 'Look',
+        },
+        {
+          open: s => s.click(characterButton),
+          message: Message.ClickedCharacterButton(),
+          tab: 'Look',
+        },
+      ] satisfies ReadonlyArray<
+        Readonly<{ open: SceneStep; message: Message; tab: string }>
+      >,
+      ({ open, message, tab: name }) =>
+        Effect.gen(function* () {
+          const s = yield* sceneOf(homeAfterRead)
+          s.pipe(measureSurface, open, showDialog(PROFILE_DIALOG_ID))
+            .expect(profileDialog)
+            .toExist()
+          const desk = yield* deskOpenedBy(homeAfterRead, send(message))
+          steps<ProfileDesk>(selected(name), settle)(desk)
+        }),
+      { discard: true },
+    ),
+  )
 })
 
 describe('the Profile', () => {
   it.effect(
     'the gear opens it on Settings: five tabs, sound and friends, and no devices or stats sharing',
     () =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(synced),
-        measureSurface,
-        Scene.click(settingsButton),
-        ...showDialogInScene(),
-        Scene.expect(profileDialog).toExist(),
-        Scene.inside(
-          Scene.role('tablist', { name: 'Profile' }),
-          Scene.expectAll(Scene.all.role('tab')).toHaveCount(5),
-        ),
-        Scene.expect(tab('Look')).toExist(),
-        Scene.expect(tab('Name')).toExist(),
-        Scene.expect(tab('Account')).toExist(),
-        Scene.expect(tab('Mastery')).toExist(),
-        Scene.expect(tab('Settings')).toHaveAttr('aria-selected', 'true'),
-        Scene.expect(Scene.role('tablist', { name: 'Profile' })).toHaveAttr(
-          'aria-orientation',
-          'vertical',
-        ),
-        Scene.expect(Scene.role('button', { name: 'Sound' })).toExist(),
-        Scene.expect(
-          Scene.role('button', { name: 'Reset tutorial' }),
-        ).toExist(),
-        Scene.expect(Scene.role('button', { name: 'Use a code' })).toBeAbsent(),
-        Scene.expect(
-          Scene.role('button', { name: 'Link another device' }),
-        ).toBeAbsent(),
-        Scene.expect(
-          Scene.role('button', { name: 'Share anonymous play stats' }),
-        ).toBeAbsent(),
-        Scene.expect(Scene.role('button', { name: /^Devices/ })).toBeAbsent(),
-        Scene.click(closeButton),
-        ...closeDialogInScene(),
-        Scene.expect(profileDialog).toBeAbsent(),
-      ),
+      Effect.gen(function* () {
+        const desk = yield* deskOpenedBy(
+          synced,
+          send(Message.ClickedSettingsButton()),
+        )
+        steps<ProfileDesk>(
+          see(s =>
+            s
+              .expect(Locator.inside(tablist, HtmlLocator.role('tab')))
+              .toHaveCount(5)
+              .expect(tab('Look'))
+              .toExist()
+              .expect(tab('Name'))
+              .toExist()
+              .expect(tab('Account'))
+              .toExist()
+              .expect(tab('Mastery'))
+              .toExist(),
+          ),
+          selected('Settings'),
+          has(tablist, { 'aria-orientation': 'vertical' }),
+          see(s =>
+            s
+              .expect(button('Sound'))
+              .toExist()
+              .expect(button('Reset tutorial'))
+              .toExist()
+              .expect(button('Use a code'))
+              .toBeAbsent()
+              .expect(button('Link another device'))
+              .toBeAbsent()
+              .expect(button('Share anonymous play stats'))
+              .toBeAbsent()
+              .expect(button(/^Devices/))
+              .toBeAbsent(),
+          ),
+          settle,
+        )(desk)
+      }),
   )
 
   it.effect(
-    'the arrow keys move between the tabs, down the side in landscape',
+    'down the side in landscape, across the top upright on a phone',
     () =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(homeAfterRead),
-        measureSurface,
-        emitPressedKey('KeyC'),
-        ...showDialogInScene(),
-        Scene.expect(tab('Look')).toHaveAttr('aria-selected', 'true'),
-        Scene.expect(Scene.role('group', { name: 'Body' })).toBeAbsent(),
-        Scene.expect(
-          Scene.role('radiogroup', { name: 'Body shape' }),
-        ).toExist(),
-        Scene.keydown(tab('Look'), 'ArrowDown'),
-        focusTab(1),
-        Scene.expect(tab('Name')).toHaveAttr('aria-selected', 'true'),
-        Scene.expect(Scene.role('textbox', { name: 'Your name' })).toExist(),
-        Scene.keydown(tab('Name'), 'ArrowDown'),
-        focusTab(2),
-        Scene.expect(tab('Account')).toHaveAttr('aria-selected', 'true'),
-        Scene.keydown(tab('Account'), 'ArrowUp'),
-        focusTab(1),
-        Scene.expect(tab('Name')).toHaveAttr('aria-selected', 'true'),
-        Scene.keydown(tab('Name'), 'End'),
-        focusTab(4),
-        Scene.expect(tab('Mastery')).toHaveAttr('aria-selected', 'true'),
-        Scene.expect(Scene.role('list', { name: 'Heroes' })).toExist(),
-        Scene.expect(Scene.role('list', { name: 'Guns' })).toExist(),
-      ),
+      Effect.gen(function* () {
+        const side = yield* deskOpenedBy(
+          homeAfterRead,
+          send(Message.PressedKey({ code: 'KeyC' })),
+        )
+        steps<ProfileDesk>(
+          selected('Look'),
+          has(tablist, { 'aria-orientation': 'vertical' }),
+          settle,
+        )(side)
+        const upright = yield* deskOpenedBy(
+          inPortrait(onTouch),
+          send(Message.ClickedCharacterButton()),
+        )
+        steps<ProfileDesk>(
+          selected('Look'),
+          lacks(tablist, 'aria-orientation'),
+          settle,
+        )(upright)
+      }),
   )
 
-  it.effect(
-    'upright on a phone the tabs run across the top, and the arrows go left and right',
-    () =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(onTouch),
-        measureUpright,
-        Scene.click(
-          Scene.role('button', { name: 'Your character: change how you look' }),
+  it.effect('a switched tab shows its own page', () =>
+    Effect.gen(function* () {
+      const desk = yield* deskOpenedBy(
+        homeAfterRead,
+        send(Message.PressedKey({ code: 'KeyC' })),
+      )
+      steps<ProfileDesk>(
+        atTab('Name'),
+        selected('Name'),
+        see(s =>
+          s
+            .expect(HtmlLocator.role('textbox', { name: 'Your name' }))
+            .toExist(),
         ),
-        ...showDialogInScene(),
-        Scene.expect(Scene.role('tablist', { name: 'Profile' })).toHaveAttr(
-          'aria-orientation',
-          'horizontal',
+        atTab('Mastery'),
+        selected('Mastery'),
+        see(s =>
+          s
+            .expect(HtmlLocator.role('list', { name: 'Heroes' }))
+            .toExist()
+            .expect(HtmlLocator.role('list', { name: 'Guns' }))
+            .toExist(),
         ),
-        Scene.keydown(tab('Look'), 'ArrowRight'),
-        focusTab(1),
-        Scene.expect(tab('Name')).toHaveAttr('aria-selected', 'true'),
-      ),
+        settle,
+      )(desk)
+    }),
   )
 
   it.effect('a tap on a tab switches to it', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(
-        modifyFields(onTouch, {
-          saving: modifyFields({
-            syncState: () => SyncState.Synced({ devices: 2 }),
-          }),
-        }),
-      ),
-      measureSurface,
-      Scene.click(settingsButton),
-      ...showDialogInScene(),
-      Scene.click(tab('Account')),
-      focusTab(2),
-      Scene.expect(tab('Account')).toHaveAttr('aria-selected', 'true'),
-      Scene.expect(Scene.role('list', { name: 'Your 2 devices' })).toExist(),
-      Scene.expect(Scene.role('status')).toExist(),
-      Scene.click(tab('Look')),
-      focusTab(0),
-      Scene.expect(
-        Scene.role('button', { name: 'Roll a random look' }),
-      ).toExist(),
-    ),
+    Effect.gen(function* () {
+      const desk = yield* deskOpenedBy(
+        UiStruct.evolve(synced, { lastDevice: () => 'Touch' }),
+        send(Message.ClickedSettingsButton()),
+      )
+      steps<ProfileDesk>(
+        atTab('Account'),
+        selected('Account'),
+        see(s =>
+          s
+            .expect(HtmlLocator.role('list', { name: 'Your 2 devices' }))
+            .toExist()
+            .expect(HtmlLocator.role('status'))
+            .toExist(),
+        ),
+        atTab('Look'),
+        selected('Look'),
+        has(byClass('profile-page'), { 'data-tab': 'Look' }),
+        settle,
+      )(desk)
+    }),
   )
 })
 
 describe('the Name tab', () => {
-  const nameField = Scene.role('textbox', { name: 'Your name' })
-  const stone = Scene.selector('.name-stone-name')
+  const nameField = HtmlLocator.role('textbox', { name: 'Your name' })
+  const stone = byClass('name-stone-name')
 
   it.effect(
     'the stone shows the placeholder, then the name as it is typed, and Enter keeps it',
     () =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(homeAfterRead),
-        measureSurface,
-        Scene.click(settingsButton),
-        ...showDialogInScene(),
-        Scene.click(tab('Name')),
-        focusTab(1),
-        Scene.expect(stone).toHaveText('Survivor'),
-        Scene.expect(nameField).toHaveAttr('placeholder', 'Survivor'),
-        Scene.expect(Scene.role('img', { name: '12 letters left' })).toExist(),
-        Scene.type(nameField, 'Gravy Dave'),
-        Scene.expect(stone).toHaveText('Gravy Dave'),
-        Scene.expect(Scene.role('img', { name: '2 letters left' })).toExist(),
-        Scene.submit(Scene.selector('.name-tab')),
-        Scene.Command.resolve(WriteSave, Message.CompletedWriteSave()),
-        Scene.expect(nameField).toHaveValue('Gravy Dave'),
-      ),
+      Effect.gen(function* () {
+        const desk = yield* deskOpenedBy(
+          homeAfterRead,
+          send(Message.ClickedSettingsButton()),
+        )
+        steps<ProfileDesk>(
+          atTab('Name'),
+          see(s => s.expect(stone).toHaveText('Survivor')),
+          has(nameField, { placeholder: 'Survivor' }),
+          see(s =>
+            s
+              .expect(HtmlLocator.role('img', { name: '12 letters left' }))
+              .toExist(),
+          ),
+          inPanel(s => s.type(nameField, 'Gravy Dave')),
+          see(s =>
+            s
+              .expect(stone)
+              .toHaveText('Gravy Dave')
+              .expect(HtmlLocator.role('img', { name: '2 letters left' }))
+              .toExist(),
+          ),
+          inPanel(s => s.submit(byClass('name-tab'))),
+          see(s => s.expect(nameField).toHaveValue('Gravy Dave')),
+          settle,
+        )(desk)
+      }),
   )
 
   it.effect('the dice rolls a goofy name onto the stone', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(
-        modifyFields(homeAfterRead, {
-          cosmetics: modifyFields({ cosmeticRngState: () => 99 }),
+    Effect.gen(function* () {
+      const desk = yield* deskOpenedBy(
+        UiStruct.evolve(homeAfterRead, {
+          cosmetics: cosmetics =>
+            UiStruct.evolve(cosmetics, { cosmeticRngState: () => 99 }),
         }),
-      ),
-      measureSurface,
-      Scene.click(settingsButton),
-      ...showDialogInScene(),
-      Scene.click(tab('Name')),
-      focusTab(1),
-      Scene.click(Scene.role('button', { name: 'Roll a goofy name' })),
-      Scene.Command.resolve(WriteSave, Message.CompletedWriteSave()),
-      Scene.expect(stone).not.toHaveText('Survivor'),
-      Scene.expect(Scene.selector('.name-stone')).toHaveAttr('data-fx', 'Spin'),
-    ),
+        send(Message.ClickedSettingsButton()),
+      )
+      steps<ProfileDesk>(
+        atTab('Name'),
+        inPanel(s => s.click(button('Roll a goofy name'))),
+        see(s =>
+          s.check(() => {
+            if (Locator.textOf(s.get(stone)) === 'Survivor') {
+              throw new Error('the stone still reads Survivor')
+            }
+          }),
+        ),
+        has(byClass('name-stone'), { 'data-fx': 'Spin' }),
+        settle,
+      )(desk)
+    }),
   )
 })
 
 describe('the Account tab', () => {
+  const codeField = HtmlLocator.role('textbox', {
+    name: LINK_TAKES_PROGRESS_NOTE,
+  })
+
+  const onAccount = (model: Model) =>
+    Effect.map(
+      deskOpenedBy(model, send(Message.ClickedSettingsButton())),
+      atTab('Account'),
+    )
+
   it.effect(
     "Use a code says this device will take the other device's progress before Link",
     () =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(synced),
-        measureSurface,
-        Scene.click(settingsButton),
-        ...showDialogInScene(),
-        Scene.click(tab('Account')),
-        focusTab(2),
-        Scene.expect(Scene.text(LINK_TAKES_PROGRESS_NOTE)).toBeAbsent(),
-        Scene.click(Scene.role('button', { name: 'Use a code' })),
-        Scene.expect(Scene.text(LINK_TAKES_PROGRESS_NOTE)).toExist(),
-        Scene.expect(
-          Scene.role('textbox', { name: LINK_TAKES_PROGRESS_NOTE }),
-        ).toExist(),
-        Scene.expect(Scene.role('button', { name: 'Link' })).toExist(),
-        Scene.Mount.resolve(
-          PasteLinkCodeOnTap,
-          ProfileMessage.SucceededReadClipboard({ text: 'hi', typed: '' }),
-        ),
-        Scene.expect(
-          Scene.role('textbox', { name: LINK_TAKES_PROGRESS_NOTE }),
-        ).toHaveValue(''),
-      ),
+      Effect.gen(function* () {
+        const desk = yield* onAccount(synced)
+        steps<ProfileDesk>(
+          see(s =>
+            s.expect(Locator.text(LINK_TAKES_PROGRESS_NOTE)).toBeAbsent(),
+          ),
+          inPanel(s => s.click(button('Use a code'))),
+          see(s =>
+            s
+              .expect(Locator.text(LINK_TAKES_PROGRESS_NOTE))
+              .toExist()
+              .expect(codeField)
+              .toExist()
+              .expect(button('Link'))
+              .toExist(),
+          ),
+          inPanel(s =>
+            s.mounted(PasteLinkCodeOnTap, { text: 'hi', typed: '' }),
+          ),
+          see(s => s.expect(codeField).toHaveValue('')),
+          settle,
+        )(desk)
+      }),
   )
 
   it.effect(
     'summoning shows the code in big letters, and a tap copies it with COPIED! in place',
     () =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(synced),
-        measureSurface,
-        Scene.click(settingsButton),
-        ...showDialogInScene(),
-        Scene.click(tab('Account')),
-        focusTab(2),
-        Scene.click(Scene.role('button', { name: 'Link another device' })),
-        Scene.Command.resolve(
-          RequestLinkCode,
-          ProfileMessage.SucceededRequestLinkCode({ code: 'KZ7QWM' }),
-        ),
-        Scene.expect(
-          Scene.role('button', { name: 'Link code K Z 7 Q W M, tap to copy' }),
-        ).toExist(),
-        Scene.expect(
-          Scene.selector('.account-code[data-link-code="KZ7QWM"]'),
-        ).toExist(),
-        Scene.expectAll(Scene.all.selector('.account-code-letter')).toHaveCount(
-          6,
-        ),
-        Scene.expect(Scene.text('COPIED!')).toBeAbsent(),
-        Scene.Mount.resolve(
-          CopyLinkCodeOnClick,
-          ProfileMessage.SucceededCopyLinkCode(),
-        ),
-        Scene.expect(
-          Scene.role('button', { name: 'Link code K Z 7 Q W M, copied' }),
-        ).toExist(),
-        Scene.expect(Scene.text('COPIED!')).toExist(),
-        Scene.Mount.emit(
-          CopyLinkCodeOnClick,
-          ProfileMessage.SucceededCopyLinkCode(),
-        ),
-        Scene.expectAll(Scene.all.text('COPIED!')).toHaveCount(1),
-      ),
+      Effect.gen(function* () {
+        const desk = yield* onAccount(synced)
+        steps<ProfileDesk>(
+          inPanel(s => s.click(button('Link another device'))),
+          atRoot(s =>
+            s.resolve(
+              RequestLinkCode,
+              Message.SucceededRequestLinkCode({ code: 'KZ7QWM' }),
+            ),
+          ),
+          see(s =>
+            s
+              .expect(button('Link code K Z 7 Q W M, tap to copy'))
+              .toExist()
+              .expect(byClass('account-code-letter'))
+              .toHaveCount(6)
+              .expect(Locator.text('COPIED!'))
+              .toBeAbsent(),
+          ),
+          has(byClass('account-code'), { 'data-link-code': 'KZ7QWM' }),
+          inPanel(s => s.mounted(CopyLinkCodeOnClick, undefined)),
+          see(s =>
+            s
+              .expect(button('Link code K Z 7 Q W M, copied'))
+              .toExist()
+              .expect(Locator.text('COPIED!'))
+              .toExist(),
+          ),
+          inPanel(s => s.mounted(CopyLinkCodeOnClick, undefined)),
+          see(s => s.expect(Locator.text('COPIED!')).toHaveCount(1)),
+          settle,
+        )(desk)
+      }),
   )
 
   it.effect('a pasted code fills the field', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(synced),
-      measureSurface,
-      Scene.click(settingsButton),
-      ...showDialogInScene(),
-      Scene.click(tab('Account')),
-      focusTab(2),
-      Scene.click(Scene.role('button', { name: 'Use a code' })),
-      Scene.Mount.resolve(
-        PasteLinkCodeOnTap,
-        ProfileMessage.SucceededReadClipboard({ text: 'kz7 qwm', typed: '' }),
-      ),
-      Scene.expect(
-        Scene.role('textbox', { name: LINK_TAKES_PROGRESS_NOTE }),
-      ).toHaveValue('KZ7QWM'),
-    ),
+    Effect.gen(function* () {
+      const desk = yield* onAccount(synced)
+      steps<ProfileDesk>(
+        inPanel(s => s.click(button('Use a code'))),
+        inPanel(s =>
+          s.mounted(PasteLinkCodeOnTap, { text: 'kz7 qwm', typed: '' }),
+        ),
+        see(s => s.expect(codeField).toHaveValue('KZ7QWM')),
+        settle,
+      )(desk)
+    }),
   )
 
   it.effect('the devices zap together once linked', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(
-        modifyFields(synced, {
+    Effect.gen(function* () {
+      const desk = yield* onAccount(
+        UiStruct.evolve(synced, {
           profile: profile =>
-            modifyFields(profile, { linkFlow: () => LinkFlow.Linked() }),
+            UiStruct.evolve(profile, { linkFlow: () => LinkFlow.Linked() }),
         }),
-      ),
-      measureSurface,
-      Scene.click(settingsButton),
-      ...showDialogInScene(),
-      Scene.click(tab('Account')),
-      focusTab(2),
-      Scene.expect(Scene.selector('.account-zap')).toExist(),
-      Scene.expect(
-        Scene.text(
-          "Linked! This device now uses your other device's progress.",
+      )
+      steps<ProfileDesk>(
+        see(s =>
+          s
+            .expect(byClass('account-zap'))
+            .toExist()
+            .expect(
+              Locator.text(
+                "Linked! This device now uses your other device's progress.",
+              ),
+            )
+            .toExist(),
         ),
-      ).toExist(),
-    ),
+        settle,
+      )(desk)
+    }),
   )
 
-  it.effect('stats sharing is one icon toggle, its note read aloud', () => {
-    const shareToggle = Scene.role('button', {
-      name: 'Share anonymous play stats',
-    })
-    return Scene.scene(
-      APPLICATION,
-      Scene.given(homeAfterRead),
-      measureSurface,
-      Scene.click(settingsButton),
-      ...showDialogInScene(),
-      Scene.click(tab('Account')),
-      focusTab(2),
-      Scene.expect(shareToggle).toHaveAttr('aria-pressed', 'true'),
-      Scene.expect(shareToggle).toHaveAttr(
-        'aria-describedby',
-        'share-stats-note',
-      ),
-      Scene.expect(Scene.text(SHARE_STATS_NOTE)).toExist(),
-      Scene.click(shareToggle),
-      Scene.Command.resolve(WriteSave, Message.CompletedWriteSave()),
-      Scene.expect(shareToggle).toHaveAttr('aria-pressed', 'false'),
-      Scene.expect(
-        Scene.role('button', { name: 'Link another device' }),
-      ).toBeAbsent(),
-    )
-  })
-})
-
-describe('every entry point', () => {
-  it.effect('lands on its tab', () =>
-    Effect.forEach(
-      [
-        { open: Scene.click(settingsButton), tab: 'Settings' },
-        { open: emitPressedKey('KeyO'), tab: 'Settings' },
-        { open: emitPressedKey('KeyC'), tab: 'Look' },
-        {
-          open: Scene.click(
-            Scene.role('button', {
-              name: 'Your character: change how you look',
-            }),
-          ),
-          tab: 'Look',
-        },
-      ],
-      ({ open, tab: name }) =>
-        Scene.scene(
-          APPLICATION,
-          Scene.given(homeAfterRead),
-          measureSurface,
-          open,
-          ...showDialogInScene(),
-          Scene.expect(tab(name)).toHaveAttr('aria-selected', 'true'),
-        ),
-      { discard: true },
-    ),
+  it.effect('stats sharing is one icon toggle, its note read aloud', () =>
+    Effect.gen(function* () {
+      const shareToggle = button('Share anonymous play stats')
+      const desk = yield* onAccount(homeAfterRead)
+      steps<ProfileDesk>(
+        has(shareToggle, { 'aria-pressed': 'true' }),
+        has(shareToggle, { 'aria-describedby': 'share-stats-note' }),
+        see(s => s.expect(Locator.text(SHARE_STATS_NOTE)).toExist()),
+        inPanel(s => s.click(shareToggle)),
+        has(shareToggle, { 'aria-pressed': 'false' }),
+        see(s => s.expect(button('Link another device')).toBeAbsent()),
+        settle,
+      )(desk)
+    }),
   )
 })
 
 describe('RECORD MY RUNS', () => {
-  const recordTile = Scene.role('button', { name: 'Record my runs' })
+  const recordTile = button('Record my runs')
 
   it.effect('is hidden on a device never opened with ?record=1', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(homeAfterRead),
-      measureSurface,
-      Scene.click(settingsButton),
-      ...showDialogInScene(),
-      Scene.expect(Scene.role('button', { name: 'Sound' })).toExist(),
-      Scene.expect(recordTile).toBeAbsent(),
-    ),
+    Effect.gen(function* () {
+      const desk = yield* deskOpenedBy(
+        homeAfterRead,
+        send(Message.ClickedSettingsButton()),
+      )
+      steps<ProfileDesk>(
+        see(s =>
+          s.expect(button('Sound')).toExist().expect(recordTile).toBeAbsent(),
+        ),
+        settle,
+      )(desk)
+    }),
   )
 
   it.effect('shows on an unlocked device, off until tapped', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(
-        modifyFields(homeAfterRead, { recordUnlock: () => 'Unlocked' }),
-      ),
-      measureSurface,
-      Scene.click(settingsButton),
-      ...showDialogInScene(),
-      Scene.expect(recordTile).toHaveAttr('aria-pressed', 'false'),
-      Scene.click(recordTile),
-      Scene.Command.resolve(WriteSave, Message.CompletedWriteSave()),
-      Scene.expect(recordTile).toHaveAttr('aria-pressed', 'true'),
+    Effect.gen(function* () {
+      const desk = yield* deskOpenedBy(
+        UiStruct.evolve(homeAfterRead, { recordUnlock: () => 'Unlocked' }),
+        send(Message.ClickedSettingsButton()),
+      )
+      steps<ProfileDesk>(
+        has(recordTile, { 'aria-pressed': 'false' }),
+        inPanel(s => s.click(recordTile)),
+        has(recordTile, { 'aria-pressed': 'true' }),
+        settle,
+      )(desk)
+    }),
+  )
+})
+
+// The tab strip's own keys and taps are the kit's Tabs, a child the Profile's
+// Scene runs no update of: a Play of the Profile runs it, and each says what
+// it switched to. An arrow key moves focus between the tabs (the kit's own
+// rule, by the orientation the Profile hands it, checked above) through a
+// Focus Command TestHost can't carry out, so the Play gives the tab focus
+// as the arrow would: the tab that takes it switches to it
+// (`activateOnFocus`), as the old Profile switched on an arrow.
+// NOTE: @effect/vitest's layer hands its tests their own `it`, which the
+// vitest rules know as the test block; it stands in for the module's.
+// oxlint-disable-next-line no-shadow -- the layer's own `it`
+layer(TestHost.layer())('the tab strip', it => {
+  const playOn = (model: Model) => HtmlPlay.make(Profile, profilePropsOf(model))
+
+  const lastSwitch = (emitted: ReadonlyArray<Events>) => Array.last(emitted)
+
+  it.effect('a tab the arrow keys move to switches to it', () =>
+    Effect.forEach(
+      [
+        profileOpenOn('Settings'),
+        inPortrait(
+          UiStruct.evolve(profileOpenOn('Settings'), {
+            lastDevice: () => 'Touch',
+          }),
+        ),
+      ],
+      model =>
+        Effect.gen(function* () {
+          const play = yield* playOn(model)
+          yield* play.focus(tab('Name'))
+          expect(lastSwitch(play.root.emitted)).toStrictEqual(
+            Option.some(Events.SwitchedTab({ tab: 'Name' })),
+          )
+          yield* play.focus(tab('Mastery'))
+          expect(lastSwitch(play.root.emitted)).toStrictEqual(
+            Option.some(Events.SwitchedTab({ tab: 'Mastery' })),
+          )
+        }),
+      { discard: true },
     ),
+  )
+
+  it.effect('a tap on a tab switches to it', () =>
+    Effect.gen(function* () {
+      const play = yield* playOn(profileOpenOn('Settings'))
+      yield* play.click(tab('Account'))
+      expect(lastSwitch(play.root.emitted)).toStrictEqual(
+        Option.some(Events.SwitchedTab({ tab: 'Account' })),
+      )
+      yield* play.click(tab('Look'))
+      expect(lastSwitch(play.root.emitted)).toStrictEqual(
+        Option.some(Events.SwitchedTab({ tab: 'Look' })),
+      )
+    }),
   )
 })

@@ -1,6 +1,7 @@
 import { Array, Option } from 'effect'
-import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
+
+import { UiStruct } from '@effect/ui'
 
 import { Life, Melee, type Model } from '../../../app/model'
 import { botInputs } from '../../../features/bots/teammateBot'
@@ -52,7 +53,7 @@ const PAN = Melee.Pan({ pan: freshGun('Pan') })
 const holdingPan = (current: Model): Model =>
   atSeat(current, 0, world =>
     modifyFocus(world, {
-      player: player => modifyFields(player, { melee: () => PAN }),
+      player: player => UiStruct.evolve(player, { melee: () => PAN }),
     }),
   )
 
@@ -105,7 +106,7 @@ describe('a player who is down', () => {
     const before = downedBeside()
     const after = run(before, 1)
     const asModel = (world: World): Model =>
-      modifyFields(before, { seats: () => world.seats })
+      UiStruct.evolve(before, { seats: () => world.seats })
     expect(lyingShapes(asModel(after), 'Downed').length).toBeGreaterThan(
       lyingShapes(before, 'Downed').length,
     )

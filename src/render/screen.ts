@@ -1,5 +1,4 @@
 import { Array, Function, Option } from 'effect'
-import type { Canvas } from 'foldkit'
 
 import type { Model } from '../app/model'
 import { group } from '../art/sprite'
@@ -7,6 +6,7 @@ import type { SurfaceRectangle } from '../input/inputSchema'
 import { VIEW_HEIGHT, VIEW_WIDTH } from '../shared/constants'
 import type { Vector } from '../world/schema/entitySchema'
 import { clamp } from '../world/step/geometry'
+import type * as Draw from './draw'
 
 // LAYOUT
 
@@ -240,18 +240,15 @@ const isLandscapeFrame = (screen: Screen): boolean => {
 
 export const inLandscapeFrame: {
   (
-    shapes: ReadonlyArray<Canvas.Shape>,
-  ): (screen: Screen) => ReadonlyArray<Canvas.Shape>
-  (
-    screen: Screen,
-    shapes: ReadonlyArray<Canvas.Shape>,
-  ): ReadonlyArray<Canvas.Shape>
+    shapes: ReadonlyArray<Draw.Shape>,
+  ): (screen: Screen) => ReadonlyArray<Draw.Shape>
+  (screen: Screen, shapes: ReadonlyArray<Draw.Shape>): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   2,
   (
     screen: Screen,
-    shapes: ReadonlyArray<Canvas.Shape>,
-  ): ReadonlyArray<Canvas.Shape> =>
+    shapes: ReadonlyArray<Draw.Shape>,
+  ): ReadonlyArray<Draw.Shape> =>
     isLandscapeFrame(screen) || Array.isReadonlyArrayEmpty(shapes)
       ? shapes
       : [group({ translate: landscapeFrameOffset(screen), shapes })],

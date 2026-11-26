@@ -1,8 +1,8 @@
 // @vitest-environment happy-dom
 import { Array, Effect, Option, Ref, Stream } from 'effect'
 import { FetchHttpClient } from 'effect/http'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { afterEach, describe, expect, it, vi } from '@effect/vitest'
 
 import { initialModel } from '../../app/pureApp'
@@ -67,8 +67,8 @@ const fakeStore = (
     const store = PlayerStore.of({
       load: Effect.succeedSome(
         saveOf(
-          modifyFields(asVeteran(initialModel), {
-            settings: modifyFields({ recordRuns: () => recordRuns }),
+          UiStruct.evolve(asVeteran(initialModel), {
+            settings: UiStruct.evolve({ recordRuns: () => recordRuns }),
           }),
         ),
       ),

@@ -2,7 +2,7 @@ import { Array, Function, Option, Schema } from 'effect'
 
 // NOTE: how a connection did over a run, measured as plain data so the
 // room (Room.ts) and the client (Session.ts) keep it beside their state and
-// a Foldkit Model can hold it. Round trips go in a fixed histogram, so the
+// an Effect UI Model can hold it. Round trips go in a fixed histogram, so the
 // median and the 95th percentile cost one small array however long the
 // run, and nothing is kept per sample.
 

@@ -1,10 +1,10 @@
 import { Effect, pipe } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { Command, Component, UiStruct } from '@effect/ui'
 
 import { FullscreenSetting } from '../../platform/deviceSchema'
+import { DeviceMessage } from '../../platform/message'
 import { toBrowserError } from '../../shared/describeError'
-import { ApplicationBlock } from '../definition'
-import { Message } from '../message'
 import { type UpdateStep, defineHandlers } from './step'
 
 // COMMAND
@@ -24,62 +24,49 @@ const exitFullscreen = Effect.tryPromise({
   catch: toBrowserError,
 })
 
-export const SetFullscreen = ApplicationBlock.makeCommand('SetFullscreen', {
-  args: { fullscreen: FullscreenSetting },
-  messages: [Message.CompletedSetFullscreen, Message.FailedSetFullscreen],
-  handler: function* () {
-    return ({ fullscreen }) =>
-      pipe(
-        fullscreen === 'On' ? enterFullscreen : exitFullscreen,
-        Effect.as(Message.CompletedSetFullscreen({ fullscreen })),
-        Effect.catch(error =>
-          Effect.succeed(
-            Message.FailedSetFullscreen({ reason: String(error) }),
-          ),
+// NOTE: a refusal leaves the setting as it was, so it is logged and nothing
+// is reported.
+export const SetFullscreen = Command.make(
+  'SetFullscreen',
+  { args: { fullscreen: FullscreenSetting } },
+  ({ fullscreen }) =>
+    pipe(
+      fullscreen === 'On' ? enterFullscreen : exitFullscreen,
+      Effect.as<DeviceMessage | Component.Noop>(
+        DeviceMessage.CompletedSetFullscreen({ fullscreen }),
+      ),
+      Effect.catch(error =>
+        Effect.as(
+          Effect.logWarning('set full screen', error.reason),
+          Component.noop,
         ),
-      )
-  },
-})
+      ),
+    ),
+)
 
 // FULL SCREEN
 
-export const toggleFullscreen: UpdateStep = model => ({
-  model,
-  commands: [
-    SetFullscreen({
-      fullscreen: model.settings.fullscreen === 'On' ? 'Off' : 'On',
+export const toggleFullscreen: UpdateStep = $ =>
+  $.run(
+    SetFullscreen.make({
+      fullscreen: $.model.settings.fullscreen === 'On' ? 'Off' : 'On',
     }),
-  ],
-})
+  )
 
 // NOTE: full screen, the screen's fit, and the rotation lock
 // (src/platform/message.ts).
 export const deviceHandlers = defineHandlers({
-  ClickedFullscreenButton: model => toggleFullscreen(model),
+  ClickedFullscreenButton: toggleFullscreen,
 
-  CompletedSetFullscreen: (model, { fullscreen }) => ({
-    model: modifyFields(model, {
-      settings: modifyFields({ fullscreen: () => fullscreen }),
-    }),
-  }),
+  CompletedSetFullscreen: ($, { fullscreen }) =>
+    $.evolve({ settings: UiStruct.evolve({ fullscreen }) }),
 
-  FailedSetFullscreen: model => ({ model }),
+  ChangedFullscreen: ($, { fullscreen }) =>
+    $.evolve({ settings: UiStruct.evolve({ fullscreen }) }),
 
-  ChangedFullscreen: (model, { fullscreen }) => ({
-    model: modifyFields(model, {
-      settings: modifyFields({ fullscreen: () => fullscreen }),
-    }),
-  }),
+  CompletedDetectScreenFit: ($, { screenFit }) =>
+    $.evolve({ settings: UiStruct.evolve({ screenFit }) }),
 
-  CompletedDetectScreenFit: (model, { screenFit }) => ({
-    model: modifyFields(model, {
-      settings: modifyFields({ screenFit: () => screenFit }),
-    }),
-  }),
-
-  CompletedDetectOrientationLock: (model, { orientationLock }) => ({
-    model: modifyFields(model, { orientationLock: () => orientationLock }),
-  }),
-
-  CompletedApplyRotation: model => ({ model }),
+  CompletedDetectOrientationLock: ($, { orientationLock }) =>
+    $.evolve({ orientationLock }),
 })

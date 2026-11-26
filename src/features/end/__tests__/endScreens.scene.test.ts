@@ -1,7 +1,8 @@
 import { Array, Effect, Option } from 'effect'
-import { Scene, Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { Component, UiStruct } from '@effect/ui'
+import { HtmlLocator } from '@effect/ui/html/testing'
+import { Locator } from '@effect/ui/testing'
 import { describe, it } from '@effect/vitest'
 
 import { Message } from '../../../app/message'
@@ -14,33 +15,41 @@ import { shareTextOf } from '../../../screens/game/menus'
 import { RESTART_GRACE_MS } from '../../../shared/constants'
 import { withNewerBuild } from '../../../test/model.fixture'
 import {
-  APPLICATION,
-  SCENE_SUBSCRIPTIONS,
+  byClass,
+  emitFrame,
   emitPressedKey,
   endButtons,
+  expectAttr,
+  firstOf,
   keepGoingButton,
   manorButton,
   measureSurface,
   retryButton,
   shareMountSettles,
   updateChip,
+  withAttrs,
+} from '../../../test/sceneTesting'
+import {
+  type SceneStep,
+  modelAfter,
+  sceneOf,
+  steps,
 } from '../../../test/testing'
 import { asVeteran } from '../../../test/veteran'
 import { SHARE_COPIED_MS } from '../endBeat'
 
-const tickPastGrace = () =>
-  Array.makeBy(Math.ceil(RESTART_GRACE_MS / 50), () =>
-    Scene.Subscription.emit(
-      SCENE_SUBSCRIPTIONS.frame,
-      Message.TickedFrame({ deltaTime: 50 }),
-    ),
-  )
+// NOTE: `count` frames of 50 ms through the frame Subscription.
+const frames = (count: number): SceneStep =>
+  steps(...Array.makeBy(count, () => emitFrame(50)))
 
-const menuButton = Scene.role('button', { name: /^Menu: back/ })
-const shareButton = Scene.role('button', { name: 'Share your run' })
-const copiedButton = Scene.role('button', { name: 'Share: copied' })
-const updateNote = Scene.selector('.mode-button-gift')
-const menuOnlyButtons = Scene.all.selector('.mode-choice .mode-button')
+const menuButton = HtmlLocator.role('button', { name: /^Menu: back/ })
+const shareButton = HtmlLocator.role('button', { name: 'Share your run' })
+const copiedButton = HtmlLocator.role('button', { name: 'Share: copied' })
+const updateNote = byClass('mode-button-gift')
+const menuOnlyButtons = Locator.inside(
+  byClass('mode-choice'),
+  byClass('mode-button'),
+)
 
 const END_PHASES: ReadonlyArray<readonly [string, Phase]> = [
   ['Game Over', Phase.GameOver({ wave: 4 })],
@@ -48,153 +57,168 @@ const END_PHASES: ReadonlyArray<readonly [string, Phase]> = [
 ]
 
 const onEndScreen = (phase: Phase, screenMs: number): Model =>
-  modifyFields(asVeteran(initialModel), {
+  UiStruct.evolve(asVeteran(initialModel), {
     phase: () => phase,
     screenMs: () => screenMs,
   })
 
+const gameOver = onEndScreen(Phase.GameOver({ wave: 4 }), RESTART_GRACE_MS)
+
 describe('the end screens', () => {
   it.effect('Game Over puts HOME first, then RETRY and SHARE', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(onEndScreen(Phase.GameOver({ wave: 4 }), RESTART_GRACE_MS)),
-      measureSurface,
-      Scene.expectAll(endButtons).toHaveCount(3),
-      Scene.expect(Scene.first(endButtons)).toHaveText('HOMEH'),
-      Scene.expect(menuButton).toHaveAttr('aria-keyshortcuts', 'H'),
-      Scene.expect(retryButton).toHaveAttr('aria-keyshortcuts', 'Enter'),
-      Scene.expect(retryButton).toHaveText('RETRYENTER'),
-      Scene.expect(shareButton).not.toHaveAttr('aria-keyshortcuts'),
-      Scene.expect(shareButton).toHaveText('SHARE'),
-      shareMountSettles('Shared'),
-      Scene.expect(updateNote).toBeAbsent(),
-    ),
+    Effect.gen(function* () {
+      const s = yield* sceneOf(gameOver)
+      s.pipe(
+        measureSurface,
+        expectAttr(menuButton, 'aria-keyshortcuts', 'H'),
+        expectAttr(retryButton, 'aria-keyshortcuts', 'Enter'),
+        expectAttr(shareButton, 'aria-keyshortcuts', undefined),
+      )
+        .expect(endButtons)
+        .toHaveCount(3)
+        .expect(firstOf(endButtons))
+        .toHaveText('HOMEH')
+        .expect(retryButton)
+        .toHaveText('RETRYENTER')
+        .expect(shareButton)
+        .toHaveText('SHARE')
+        .pipe(shareMountSettles('Shared'))
+        .expect(updateNote)
+        .toBeAbsent()
+    }),
   )
 
   it.effect(
     'an escape puts HOME first, then AGAIN and SHARE, and no Keep going',
     () =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(onEndScreen(Phase.Escaped({ wave: 10 }), RESTART_GRACE_MS)),
-        measureSurface,
-        Scene.expectAll(endButtons).toHaveCount(3),
-        Scene.expect(Scene.first(endButtons)).toHaveText('HOMEH'),
-        Scene.expect(retryButton).toHaveText('AGAINENTER'),
-        Scene.expect(keepGoingButton).toBeAbsent(),
-        Scene.expect(shareButton).toExist(),
-        Scene.expect(updateNote).toBeAbsent(),
-        shareMountSettles('Cancelled'),
-      ),
+      Effect.gen(function* () {
+        const s = yield* sceneOf(
+          onEndScreen(Phase.Escaped({ wave: 10 }), RESTART_GRACE_MS),
+        )
+        s.pipe(measureSurface)
+          .expect(endButtons)
+          .toHaveCount(3)
+          .expect(firstOf(endButtons))
+          .toHaveText('HOMEH')
+          .expect(retryButton)
+          .toHaveText('AGAINENTER')
+          .expect(keepGoingButton)
+          .toBeAbsent()
+          .expect(shareButton)
+          .toExist()
+          .expect(updateNote)
+          .toBeAbsent()
+          .pipe(shareMountSettles('Cancelled'))
+      }),
   )
 
   it.effect(
     'SHARE carries the run post and the Mount that shares it in the click',
-    () => {
-      const gameOver = onEndScreen(
-        Phase.GameOver({ wave: 4 }),
-        RESTART_GRACE_MS,
-      )
-      return Scene.scene(
-        APPLICATION,
-        Scene.given(gameOver),
-        measureSurface,
-        Scene.expect(shareButton).toHaveAttr(
-          'data-share-text',
-          shareTextOf(gameOver),
-        ),
-        Scene.expect(Scene.selector('a#end-share-button')).toBeAbsent(),
-        Scene.Mount.expectHas(ShareFromClick),
-        shareMountSettles('Cancelled'),
-      )
-    },
+    () =>
+      Effect.gen(function* () {
+        const s = yield* sceneOf(gameOver)
+        s.pipe(
+          measureSurface,
+          expectAttr(shareButton, 'data-share-text', shareTextOf(gameOver)),
+        )
+          .expect(withAttrs({ id: 'end-share-button' })(Locator.tag('a')))
+          .toBeAbsent()
+          .expectMount(ShareFromClick({}))
+          .pipe(shareMountSettles('Cancelled'))
+      }),
   )
 
   it.effect('a tap on SHARE skips the beat and counts the share', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(
-        modifyFields(
-          onEndScreen(Phase.GameOver({ wave: 4 }), RESTART_GRACE_MS),
-          {
-            maybeVisitId: () => Option.some('0123456789abcdef'),
-            settings: modifyFields({ shareStats: () => 'On' as const }),
-          },
-        ),
-      ),
-      measureSurface,
-      shareMountSettles('Shared'),
-      Scene.click(shareButton),
-      Scene.Command.expectHas(SendShareEvent),
-      Scene.Command.resolve(SendShareEvent, Message.CompletedSendShareEvent()),
-      Scene.expect(shareButton).toHaveText('SHARE'),
-    ),
+    Effect.gen(function* () {
+      const s = yield* sceneOf(
+        UiStruct.evolve(gameOver, {
+          maybeVisitId: () => Option.some('0123456789abcdef'),
+          settings: UiStruct.evolve({ shareStats: () => 'On' as const }),
+        }),
+      )
+      s.pipe(measureSurface, shareMountSettles('Shared'))
+        .click(shareButton)
+        .expectExact(SendShareEvent)
+        .resolve(SendShareEvent, Component.noop)
+        .expect(shareButton)
+        .toHaveText('SHARE')
+    }),
   )
 
   it.effect.each(END_PHASES)(
     'a post copied on %s flashes COPIED! on SHARE, then SHARE comes back',
     ([_name, phase]) =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(onEndScreen(phase, RESTART_GRACE_MS)),
-        measureSurface,
-        shareMountSettles('Copied'),
-        Scene.expect(copiedButton).toHaveText('COPIED!'),
-        ...Array.makeBy(Math.ceil(SHARE_COPIED_MS / 50), () =>
-          Scene.Subscription.emit(
-            SCENE_SUBSCRIPTIONS.frame,
-            Message.TickedFrame({ deltaTime: 50 }),
-          ),
-        ),
-        Scene.expect(shareButton).toHaveText('SHARE'),
-      ),
+      Effect.gen(function* () {
+        const s = yield* sceneOf(onEndScreen(phase, RESTART_GRACE_MS))
+        s.pipe(measureSurface, shareMountSettles('Copied'))
+          .expect(copiedButton)
+          .toHaveText('COPIED!')
+          .pipe(frames(Math.ceil(SHARE_COPIED_MS / 50)))
+          .expect(shareButton)
+          .toHaveText('SHARE')
+      }),
   )
 
   it.effect.each(END_PHASES)(
     '%s with a new version waiting offers only MENU, wearing a gift, and it lands on the gift',
     ([_name, phase]) =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(withNewerBuild(onEndScreen(phase, RESTART_GRACE_MS))),
-        measureSurface,
-        Scene.expectAll(menuOnlyButtons).toHaveCount(1),
-        Scene.expect(menuButton).toHaveAttr('aria-keyshortcuts', 'Enter H'),
-        Scene.expect(menuButton).toHaveAccessibleName(
-          'Menu: back home, where a new version is waiting',
-        ),
-        Scene.expect(updateNote).toExist(),
-        Scene.expect(retryButton).toBeAbsent(),
-        Scene.expect(shareButton).toBeAbsent(),
-        Scene.expect(keepGoingButton).toBeAbsent(),
-        Scene.expect(updateChip).toBeAbsent(),
-        Scene.click(menuButton),
-        Scene.expect(manorButton).toExist(),
-        Scene.expect(updateChip).toExist(),
-      ),
+      Effect.gen(function* () {
+        const s = yield* sceneOf(
+          withNewerBuild(onEndScreen(phase, RESTART_GRACE_MS)),
+        )
+        s.pipe(
+          measureSurface,
+          expectAttr(menuButton, 'aria-keyshortcuts', 'Enter H'),
+        )
+          .expect(menuOnlyButtons)
+          .toHaveCount(1)
+          .expect(
+            HtmlLocator.role('button', {
+              name: 'Menu: back home, where a new version is waiting',
+            }),
+          )
+          .toExist()
+          .expect(updateNote)
+          .toExist()
+          .expect(retryButton)
+          .toBeAbsent()
+          .expect(shareButton)
+          .toBeAbsent()
+          .expect(keepGoingButton)
+          .toBeAbsent()
+          .expect(updateChip)
+          .toBeAbsent()
+          .click(menuButton)
+          .expect(manorButton)
+          .toExist()
+          .expect(updateChip)
+          .toExist()
+      }),
   )
 
   it.effect.each(END_PHASES)(
     '%s skips the beat on an early Enter, then focuses MENU, and Enter goes home',
     ([_name, phase]) =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(withNewerBuild(onEndScreen(phase, 0))),
-        measureSurface,
-        Scene.expect(menuButton).toBeAbsent(),
-        ...tickPastGrace().slice(0, 2),
-        emitPressedKey('Enter'),
-        Scene.expect(manorButton).toBeAbsent(),
-        Scene.Command.expectExact(FocusEndMenuButton),
-        Scene.Command.resolve(
-          FocusEndMenuButton,
-          Message.CompletedFocusEndMenuButton(),
-        ),
-        Scene.expect(menuButton).toExist(),
-        Scene.expect(updateNote).toExist(),
-        emitPressedKey('Enter'),
-        Scene.expect(manorButton).toExist(),
-        Scene.expect(updateChip).toExist(),
-      ),
+      Effect.gen(function* () {
+        const s = yield* sceneOf(withNewerBuild(onEndScreen(phase, 0)))
+        s.pipe(measureSurface)
+          .expect(menuButton)
+          .toBeAbsent()
+          .pipe(frames(2), emitPressedKey('Enter'))
+          .expect(manorButton)
+          .toBeAbsent()
+          .expectExact(FocusEndMenuButton.make())
+          .resolve(FocusEndMenuButton, Component.noop)
+          .expect(menuButton)
+          .toExist()
+          .expect(updateNote)
+          .toExist()
+          .pipe(emitPressedKey('Enter'))
+          .expect(manorButton)
+          .toExist()
+          .expect(updateChip)
+          .toExist()
+      }),
   )
 
   // NOTE: the newer build arrives as FetchBuild's result, which a Scene
@@ -202,35 +226,26 @@ describe('the end screens', () => {
   // Scene draws the Model it left.
   it.effect('a new version found on Game Over swaps the choices for MENU', () =>
     Effect.gen(function* () {
-      const gameOver = onEndScreen(
-        Phase.GameOver({ wave: 4 }),
-        RESTART_GRACE_MS,
-      )
       const found = Message.CompletedFetchBuild({ build: 'newer-build' })
-      yield* Scene.scene(
-        APPLICATION,
-        Scene.given(gameOver),
-        measureSurface,
-        Scene.expect(retryButton).toExist(),
-        shareMountSettles('Cancelled'),
+      const before = yield* sceneOf(gameOver)
+      before
+        .pipe(measureSurface)
+        .expect(retryButton)
+        .toExist()
+        .pipe(shareMountSettles('Cancelled'))
+      const versionFound = yield* modelAfter(gameOver, s =>
+        s
+          .send(found)
+          .expectExact(FocusEndMenuButton.make())
+          .resolve(FocusEndMenuButton, Component.noop),
       )
-      const versionFound = yield* Story.story(
-        APPLICATION,
-        Story.given(gameOver),
-        Story.message(found),
-        Story.Command.expectExact(FocusEndMenuButton),
-        Story.Command.resolve(
-          FocusEndMenuButton,
-          Message.CompletedFocusEndMenuButton(),
-        ),
-      )
-      yield* Scene.scene(
-        APPLICATION,
-        Scene.given(versionFound),
-        measureSurface,
-        Scene.expect(retryButton).toBeAbsent(),
-        Scene.expect(updateNote).toExist(),
-      )
+      const after = yield* sceneOf(versionFound)
+      after
+        .pipe(measureSurface)
+        .expect(retryButton)
+        .toBeAbsent()
+        .expect(updateNote)
+        .toExist()
     }),
   )
 })

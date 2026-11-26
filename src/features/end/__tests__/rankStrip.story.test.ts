@@ -1,9 +1,10 @@
 import { Array, Option } from 'effect'
-import type { Canvas } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
+import { UiStruct } from '@effect/ui'
+
 import { type Model, Phase, RunMode } from '../../../app/model'
+import type * as Draw from '../../../render/draw'
 import {
   DEFAULT_PORTRAIT_SCREEN,
   LANDSCAPE_SCREEN,
@@ -42,11 +43,11 @@ import { unlockCardBox } from '../rankStripView'
 type Gain = Model['runGains']['maybeRankGain']
 
 const ended = (gain: Gain, screenMs = 0): Model =>
-  modifyFields(readyModel, {
+  UiStruct.evolve(readyModel, {
     phase: () => Phase.GameOver({ wave: 4 }),
     mode: () => RunMode.Campaign(),
     screenMs: () => screenMs,
-    runGains: modifyFields({ maybeRankGain: () => gain }),
+    runGains: UiStruct.evolve({ maybeRankGain: () => gain }),
   })
 
 const noGain: Gain = Option.none()
@@ -94,7 +95,7 @@ describe('the end card beat with a rank strip', () => {
 
 describe('the strip draws', () => {
   // NOTE: every shape, groups opened, since the strip is drawn in one.
-  const count = (shapes: ReadonlyArray<Canvas.Shape>): number =>
+  const count = (shapes: ReadonlyArray<Draw.Shape>): number =>
     Array.reduce(
       shapes,
       0,
@@ -127,7 +128,7 @@ describe('the strip draws', () => {
 
   test('the modifiers that were on sit by the skulls on a solo card', () => {
     const done = stripAt(sameRank) + RANK_FILL_MS
-    const withIcons = modifyFields(ended(sameRank, done), {
+    const withIcons = UiStruct.evolve(ended(sameRank, done), {
       modifiers: () => ({
         friendlyFire: false,
         bigCrowd: true,
@@ -235,7 +236,7 @@ describe('the cards a rank up flips', () => {
       const model = ended(several)
       return jsonOf(
         endOverlayShapes(LANDSCAPE_SCREEN)(
-          modifyFields(model, {
+          UiStruct.evolve(model, {
             screenMs: () =>
               unlockFlipAtMs(model, 'Munched') + unlockStartMs(card) + extraMs,
           }),
@@ -268,7 +269,7 @@ describe('the cards a rank up flips', () => {
   test('the last card says what opened, lingers, then goes; a tap puts it away sooner', () => {
     const doneAt = rankDoneMs(ended(rankUp), 'Munched')
     const goneAt = unlockGoneMs(ended(rankUp), 'Munched')
-    const shapesOf = (shapes: ReadonlyArray<Canvas.Shape>): number =>
+    const shapesOf = (shapes: ReadonlyArray<Draw.Shape>): number =>
       Array.reduce(
         shapes,
         0,

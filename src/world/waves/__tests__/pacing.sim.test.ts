@@ -3,14 +3,14 @@
 // run in `bun run test:full` and CI, not in `bun run test`. The pacing rules
 // themselves are in pacing.story.test.ts.
 import { Array, Effect, Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
 import { Message } from '../../../app/message'
 import {
   Alarm,
+  BreakClock,
   type DoorId,
   type Model,
   Phase,
@@ -19,11 +19,13 @@ import {
 } from '../../../app/model'
 import { initialModel } from '../../../app/pureApp'
 import {
-  APPLICATION,
   changeModel,
+  checkModel,
   messageIfAny,
+  modelAfter,
   playedThrough,
   settleRunCommands,
+  steps,
 } from '../../../test/testing'
 import { asVeteran } from '../../../test/veteran'
 import { PARLOUR } from '../../level/arena'
@@ -64,13 +66,13 @@ const killingFrame = (
   arrivals: Array<Arrival>,
   quietFrames: Array<boolean>,
 ) =>
-  Story.steps(
+  steps(
     messageIfAny(current =>
       Phase.guards.Wave(current.phase)
         ? Option.some(Message.TickedFrame({ deltaTime: FRAME_MS }))
         : Option.none(),
     ),
-    Story.model((current: Model) => {
+    checkModel((current: Model) => {
       arrivals.push(
         ...Array.map(current.zombies, zombie => ({
           kind: zombie.kind,
@@ -84,7 +86,7 @@ const killingFrame = (
         )
       }
     }),
-    changeModel(current => modifyFields(current, { zombies: () => [] })),
+    changeModel(current => UiStruct.evolve(current, { zombies: () => [] })),
     ...(frame % SETTLE_EVERY === 0 ? [settleRunCommands] : []),
   )
 
@@ -95,13 +97,14 @@ const killEverything = (started: Model) =>
   Effect.suspend(() => {
     const arrivals: Array<Arrival> = []
     const quietFrames: Array<boolean> = []
-    return Story.story(
-      APPLICATION,
-      Story.given(started),
-      ...Array.makeBy(WAVE_FRAMES, index =>
-        killingFrame(index + 1, arrivals, quietFrames),
+    return modelAfter(
+      started,
+      steps(
+        ...Array.makeBy(WAVE_FRAMES, index =>
+          killingFrame(index + 1, arrivals, quietFrames),
+        ),
+        settleRunCommands,
       ),
-      settleRunCommands,
     ).pipe(Effect.as({ arrivals, quietFrames }))
   })
 
@@ -111,17 +114,18 @@ const killEverything = (started: Model) =>
 // so a new zombie intro does not hold the wave clock.
 const playKillingEverything = (wave: number, seed: number) => {
   const [rngState, rolled] = rollWave(seed, wave)
-  const preparing = modifyFields(asVeteran(initialModel), {
+  const preparing = UiStruct.evolve(asVeteran(initialModel), {
     maybeSurface: () =>
       Option.some({ left: 0, top: 0, width: 800, height: 400 }),
     phase: () =>
       Phase.Preparation({
+        clock: BreakClock.Counting(),
         wave,
         remainingMs: 5000,
         durationMs: 5000,
         spawns: rolled.spawns,
       }),
-    pacing: () => modifyFields(calmPacing, { holds: () => rolled.holds }),
+    pacing: () => UiStruct.evolve(calmPacing, { holds: () => rolled.holds }),
     rngState: () => rngState,
   })
   return playedThrough(preparing, [Message.PressedKey({ code: 'Enter' })]).pipe(

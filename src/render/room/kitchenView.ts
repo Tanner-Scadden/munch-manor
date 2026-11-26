@@ -1,5 +1,4 @@
 import { Array, Option, Result, String, pipe } from 'effect'
-import { Canvas } from 'foldkit'
 
 import {
   type Palette,
@@ -24,6 +23,7 @@ import { tilesWithSymbol } from '../../world/level/tileGrid'
 import type { World } from '../../world/schema/world'
 import { Oven } from '../../world/schema/worldSchema'
 import { type Drawable, ON_FRONT_PX } from '../depth'
+import * as Draw from '../draw'
 import { pixelArt, rect } from '../drawing'
 import { mixColor } from '../iso/mood'
 
@@ -104,7 +104,7 @@ const CHECKER_PX = 5
 
 // NOTE: the floor under the kitchen's walls is drawn too and the walls cover
 // it, so the floor is only the light checks laid on a dark fill.
-const checkerShapes = (box: Box): ReadonlyArray<Canvas.Shape> => {
+const checkerShapes = (box: Box): ReadonlyArray<Draw.Shape> => {
   const columns = Math.floor(box.width / CHECKER_PX)
   const rows = Math.floor(box.height / CHECKER_PX)
   return [
@@ -195,7 +195,7 @@ const STEP_COLOR = '#2a2a30'
 // moonlit grass, an iron fence along the top, gravestones, dead bushes, and
 // stepping stones to the parlour's north door. Zombies cross it on the way
 // to that door, and no actor out here is drawn.
-const yardShapes = (box: Box): ReadonlyArray<Canvas.Shape> => {
+const yardShapes = (box: Box): ReadonlyArray<Draw.Shape> => {
   const right = box.x + box.width
   const fenceY = box.y + 6
   const doorX = box.x + 12
@@ -273,7 +273,7 @@ export const wetFloorSignDrawables = (model: World): ReadonlyArray<Drawable> =>
       ]
     : []
 
-export const kitchenFloorShapes = (level: Level): ReadonlyArray<Canvas.Shape> =>
+export const kitchenFloorShapes = (level: Level): ReadonlyArray<Draw.Shape> =>
   Option.match(kitchenBox(level), {
     onNone: () => [],
     onSome: box => {
@@ -299,7 +299,7 @@ type Span = Readonly<{ left: number; right: number }>
 const backsplash = (
   top: number,
   { left, right }: Span,
-): ReadonlyArray<Canvas.Shape> => [
+): ReadonlyArray<Draw.Shape> => [
   rect(left, top, right - left, FACE_HEIGHT, BACKSPLASH_COLOR),
   ...Array.makeBy(Math.floor(FACE_HEIGHT / 4), index =>
     rect(left, top + 2 + index * 4, right - left, 1, BACKSPLASH_GROUT_COLOR),
@@ -355,7 +355,7 @@ const HANGING_PALETTE: Palette = {
 
 // NOTE: a rail of hanging pots, a pan, and a ladle in the gaps between the
 // pantry, the ovens, the back door, and the sink.
-const hangingPots = (rail: Span, top: number): ReadonlyArray<Canvas.Shape> => {
+const hangingPots = (rail: Span, top: number): ReadonlyArray<Draw.Shape> => {
   const middle = Math.floor((rail.left + rail.right) / 2)
   return [
     rect(rail.left, top + 2, rail.right - rail.left, 1, RAIL_COLOR),
@@ -381,7 +381,7 @@ const cobweb = (
   x: number,
   y: number,
   isLeft: boolean,
-): ReadonlyArray<Canvas.Shape> =>
+): ReadonlyArray<Draw.Shape> =>
   Array.makeBy(6, index =>
     rect(
       isLeft ? x + index : x - index - 1,
@@ -392,7 +392,7 @@ const cobweb = (
     ),
   )
 
-export const kitchenWallShapes = (level: Level): ReadonlyArray<Canvas.Shape> =>
+export const kitchenWallShapes = (level: Level): ReadonlyArray<Draw.Shape> =>
   Option.match(kitchenBox(level), {
     onNone: () => [],
     onSome: box => {
@@ -418,7 +418,7 @@ export const ovenShapes = ({
   y,
   width,
   height,
-}: Box): ReadonlyArray<Canvas.Shape> => {
+}: Box): ReadonlyArray<Draw.Shape> => {
   const bottom = y + height
   const topY = y - 2
   return [
@@ -452,7 +452,7 @@ export const prepTableShapes = ({
   y,
   width,
   height,
-}: Box): ReadonlyArray<Canvas.Shape> => {
+}: Box): ReadonlyArray<Draw.Shape> => {
   const bottom = y + height
   return [
     rect(x, y + 1, width, height - 4, WOOD_COLOR),
@@ -495,7 +495,7 @@ export const sinkShapes = ({
   y,
   width,
   height,
-}: Box): ReadonlyArray<Canvas.Shape> => {
+}: Box): ReadonlyArray<Draw.Shape> => {
   const bottom = y + height
   return [
     rect(x + 12, y - 8, 2, 7, '#8a8a96'),
@@ -532,7 +532,7 @@ export const pantryShapes = ({
   y,
   width,
   height,
-}: Box): ReadonlyArray<Canvas.Shape> => {
+}: Box): ReadonlyArray<Draw.Shape> => {
   const bottom = y + height
   const top = y - 16
   const shelves = [top + 8, top + 16, top + 24]
@@ -579,7 +579,7 @@ export const fridgeShapes = ({
   y,
   width,
   height,
-}: Box): ReadonlyArray<Canvas.Shape> => {
+}: Box): ReadonlyArray<Draw.Shape> => {
   const bottom = y + height
   const top = y - FRIDGE_RISE_PX
   const freezerBottom = top + 11
@@ -614,7 +614,7 @@ export const sacksShapes = ({
   x,
   y,
   height,
-}: Box): ReadonlyArray<Canvas.Shape> => {
+}: Box): ReadonlyArray<Draw.Shape> => {
   const bottom = y + height
   return [
     rect(x + 1, y - 4, 8, bottom - y + 3, BURLAP_COLOR),
@@ -634,7 +634,7 @@ const splinters = (
   x: number,
   y: number,
   seed: number,
-): ReadonlyArray<Canvas.Shape> =>
+): ReadonlyArray<Draw.Shape> =>
   Array.makeBy(7, index =>
     rect(
       x + Math.floor(roll(seed, index) * 22),
@@ -652,7 +652,7 @@ export const backDoorShapes = ({
   y,
   width,
   height,
-}: Box): ReadonlyArray<Canvas.Shape> => {
+}: Box): ReadonlyArray<Draw.Shape> => {
   const right = x + width
   const bottom = y + height
   return [
@@ -681,7 +681,7 @@ export const windowShapes = ({
   y,
   width,
   height,
-}: Box): ReadonlyArray<Canvas.Shape> => {
+}: Box): ReadonlyArray<Draw.Shape> => {
   const inner = x + width
   return [
     rect(x, y, width, height, NIGHT_COLOR),
@@ -715,7 +715,7 @@ export const openedExitShapes = ({
   y,
   width,
   height,
-}: Box): ReadonlyArray<Canvas.Shape> => {
+}: Box): ReadonlyArray<Draw.Shape> => {
   const right = x + width
   const bottom = y + height
   return [
@@ -760,7 +760,7 @@ export const PADLOCK_SPRITE: Sprite = spriteShapes(
 
 const LOCK_BOARD_Y = 22
 
-export const padlockShapes = (model: World): ReadonlyArray<Canvas.Shape> =>
+export const padlockShapes = (model: World): ReadonlyArray<Draw.Shape> =>
   Option.match(maybePadlockedExit(model), {
     onNone: () => [],
     onSome: box => [
@@ -871,7 +871,7 @@ const hexOf = (color: number): string =>
 
 // NOTE: each window stands upright on the carved stove's face
 // (`ON_FRONT_PX`), a block deep.
-const windowSprite = (shapes: ReadonlyArray<Canvas.Shape>): Sprite =>
+const windowSprite = (shapes: ReadonlyArray<Draw.Shape>): Sprite =>
   deepSprite(bakeShapes(shapes), { most: 1, isUpright: true })
 
 const plainWindow = (color: string): Sprite =>
@@ -910,7 +910,7 @@ const windowGlowShapes = (
   oven: Oven,
   box: OvenBox,
   pulse: number,
-): ReadonlyArray<Canvas.Shape> => [
+): ReadonlyArray<Draw.Shape> => [
   placeAt(
     box.left + WINDOW_INSET_PX,
     box.top + WINDOW_TOP_PX,
@@ -939,10 +939,10 @@ const floorGlowShapes = (
   oven: Oven,
   box: OvenBox,
   pulse: number,
-): ReadonlyArray<Canvas.Shape> =>
+): ReadonlyArray<Draw.Shape> =>
   Oven.isAnyOf(['Ready'])(oven)
     ? [
-        Canvas.Rect({
+        Draw.Rect({
           x: box.left + 2,
           y: box.bottom,
           width: box.right - box.left - 4,
@@ -956,7 +956,7 @@ const flameShapes = (
   oven: Oven,
   box: OvenBox,
   elapsedMs: number,
-): ReadonlyArray<Canvas.Shape> =>
+): ReadonlyArray<Draw.Shape> =>
   Oven.isAnyOf(['Belching'])(oven)
     ? [
         placeAt(
@@ -975,7 +975,7 @@ const flameShapes = (
 
 // NOTE: on the ground under the actors: the light a ready oven throws on
 // the floor.
-export const ovenGlowShapes = (model: World): ReadonlyArray<Canvas.Shape> => {
+export const ovenGlowShapes = (model: World): ReadonlyArray<Draw.Shape> => {
   if (!isKitchenShown(model)) {
     return []
   }
@@ -1014,7 +1014,7 @@ export const ovenWindowDrawables = (model: World): ReadonlyArray<Drawable> => {
 
 // NOTE: drawn over the actors, so a zombie caught in a belch stands in the
 // fire.
-export const ovenFlameShapes = (model: World): ReadonlyArray<Canvas.Shape> => {
+export const ovenFlameShapes = (model: World): ReadonlyArray<Draw.Shape> => {
   if (!isKitchenShown(model)) {
     return []
   }

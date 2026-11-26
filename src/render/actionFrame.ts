@@ -1,5 +1,6 @@
 import { Array, pipe } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import type { Model } from '../app/model'
 import {
@@ -61,16 +62,16 @@ export const advanceActions = (model: Model): Model => {
     ),
   ]
   if (Array.isReadonlyArrayEmpty(batches)) {
-    return modifyFields(model, {
-      cosmetics: modifyFields({ actionWatch: () => actionWatch }),
+    return UiStruct.evolve(model, {
+      cosmetics: UiStruct.evolve({ actionWatch: () => actionWatch }),
     })
   }
   const [cosmeticRngState, particles] = chain(
     model.cosmetics.cosmeticRngState,
     batches,
   )
-  return modifyFields(model, {
-    cosmetics: modifyFields({
+  return UiStruct.evolve(model, {
+    cosmetics: UiStruct.evolve({
       actionWatch: () => actionWatch,
       cosmeticRngState: () => cosmeticRngState,
       particles: current =>

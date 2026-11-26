@@ -1,5 +1,4 @@
 import { Array, Function } from 'effect'
-import type { Canvas } from 'foldkit'
 
 import type { Model } from '../../app/model'
 import {
@@ -14,6 +13,7 @@ import {
 } from '../../art/dareArt'
 import { bakeText, placeBaked, textShapes, textWidth } from '../../art/font'
 import { TOP_LEFT, group, spriteShapes } from '../../art/sprite'
+import type * as Draw from '../../render/draw'
 import { placeSprite, rect } from '../../render/drawing'
 import { type HudLayout, POCKET_CHIP_HEIGHT } from '../../render/hudLayout'
 import { dareCardOf } from '../../world/dare/dare'
@@ -146,7 +146,7 @@ export const pocketSlotSpotsOf: {
 const frameShapes = (
   box: PocketBox,
   rim: string,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const width = box.right - box.left
   const height = box.bottom - box.top
   return [
@@ -158,10 +158,7 @@ const frameShapes = (
   ]
 }
 
-const chipShapes = (
-  card: Card,
-  box: PocketBox,
-): ReadonlyArray<Canvas.Shape> => [
+const chipShapes = (card: Card, box: PocketBox): ReadonlyArray<Draw.Shape> => [
   ...frameShapes(box, SHUT_RIM),
   placeSprite(box.left + POCKET_PAD, box.top + POCKET_PAD, DARE_CARD_ICON),
   group({
@@ -184,10 +181,7 @@ const CHECK_INSET = DARE_CHECK_SIZE - 2
 
 // NOTE: the checks are drawn after every slot, so a check hanging past its
 // slot's corner is never under the next slot.
-const openShapes = (
-  card: Card,
-  box: PocketBox,
-): ReadonlyArray<Canvas.Shape> => {
+const openShapes = (card: Card, box: PocketBox): ReadonlyArray<Draw.Shape> => {
   const top = box.top + POCKET_PAD + DARE_CARD_HEIGHT + HEADER_GAP
   const left = box.left + POCKET_PAD
   const xOf = (index: number): number => left + index * SLOT_STRIDE
@@ -221,19 +215,19 @@ export const dareCardShapes: {
   (
     layout: HudLayout,
     pocket: DarePocket,
-  ): (model: Model) => ReadonlyArray<Canvas.Shape>
+  ): (model: Model) => ReadonlyArray<Draw.Shape>
   (
     model: Model,
     layout: HudLayout,
     pocket: DarePocket,
-  ): ReadonlyArray<Canvas.Shape>
+  ): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   3,
   (
     model: Model,
     layout: HudLayout,
     pocket: DarePocket,
-  ): ReadonlyArray<Canvas.Shape> => {
+  ): ReadonlyArray<Draw.Shape> => {
     const card = dareCardOf(model)
     if (Array.isReadonlyArrayEmpty(card)) {
       return []
@@ -264,10 +258,7 @@ const UP_ARROW_HEIGHT = 5
 
 const DARE_WORD = bakeText('DARE', 'Prompt')
 
-const rimShapes = (
-  box: PocketBox,
-  fill: string,
-): ReadonlyArray<Canvas.Shape> => {
+const rimShapes = (box: PocketBox, fill: string): ReadonlyArray<Draw.Shape> => {
   const width = box.right - box.left
   const height = box.bottom - box.top
   return [
@@ -282,19 +273,19 @@ export const dareCardPointShapes: {
   (
     layout: HudLayout,
     pocket: DarePocket,
-  ): (model: Model) => ReadonlyArray<Canvas.Shape>
+  ): (model: Model) => ReadonlyArray<Draw.Shape>
   (
     model: Model,
     layout: HudLayout,
     pocket: DarePocket,
-  ): ReadonlyArray<Canvas.Shape>
+  ): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   3,
   (
     model: Model,
     layout: HudLayout,
     pocket: DarePocket,
-  ): ReadonlyArray<Canvas.Shape> => {
+  ): ReadonlyArray<Draw.Shape> => {
     const card = dareCardOf(model)
     if (Array.isReadonlyArrayEmpty(card)) {
       return []

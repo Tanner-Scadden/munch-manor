@@ -1,6 +1,6 @@
 import { Array, Function, Option, Record, Result, Schema, pipe } from 'effect'
-import { defineTaggedUnion } from 'foldkit/schema'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiSchema, UiStruct } from '@effect/ui'
 
 import { PLAYER_RADIUS, PLAYER_SPEED } from '../../shared/constants'
 import * as DetMath from '../../shared/detMath'
@@ -121,7 +121,7 @@ export const BOOST_WARNING_MS = 2000
 
 // PICKUPS
 
-const PickupEffect = defineTaggedUnion({
+const PickupEffect = UiSchema.TaggedEnum({
   Boost: { boost: BoostKind },
   Burp: {},
   Heal: { hearts: Schema.Finite },
@@ -261,7 +261,7 @@ const productOf = (
   )
 
 const boostWeapon = (stats: WeaponStats, boosts: Boosts): WeaponStats =>
-  modifyFields(stats, {
+  UiStruct.evolve(stats, {
     fireIntervalMs: interval =>
       Math.max(
         1,
@@ -292,7 +292,7 @@ export const firingStats: {
 export const LASER_SPREAD_SCALE = 0.55
 
 export const withLaserSight = (stats: WeaponStats): WeaponStats =>
-  modifyFields(stats, { spread: spread => spread * LASER_SPREAD_SCALE })
+  UiStruct.evolve(stats, { spread: spread => spread * LASER_SPREAD_SCALE })
 
 export const playerSpeed: {
   (player: Player): (boosts: Boosts) => number
@@ -376,7 +376,7 @@ const tickBoosts = (model: World, slot: PlayerSlot, deltaMs: number): World => {
     BOOST_KIND_ORDER,
     kind => isOn(before[kind]) && !isOn(boosts[kind]),
   )
-  return modifyFields(model, {
+  return UiStruct.evolve(model, {
     seats: atSeat(slot, { boosts: () => boosts }),
     frameEvents: frameEvents => [
       ...frameEvents,
@@ -399,11 +399,11 @@ const agePickups = (model: World, deltaMs: number): World => {
     (pickup): Result.Result<Pickup, Pickup> =>
       pickup.ageMs + deltaMs < PICKUP_LIFETIME_MS
         ? Result.succeed(
-            modifyFields(pickup, { ageMs: ageMs => ageMs + deltaMs }),
+            UiStruct.evolve(pickup, { ageMs: ageMs => ageMs + deltaMs }),
           )
         : Result.fail(pickup),
   )
-  return modifyFields(model, {
+  return UiStruct.evolve(model, {
     pickups: () => kept,
     frameEvents: frameEvents => [
       ...frameEvents,
@@ -430,7 +430,7 @@ const burpAt = (model: World, at: Vector): World => {
     knockback: BURP_KNOCKBACK,
   }
   const outcome = blastAll(blast, model.zombies, ZOMBIE_BLAST_TARGET)
-  return modifyFields(model, {
+  return UiStruct.evolve(model, {
     zombies: () => outcome.targets,
     frameEvents: frameEvents => [
       ...frameEvents,
@@ -452,7 +452,7 @@ const applyEffect = (
         (timer, kind) =>
           kind === boost ? extendTimer(timer, BOOSTS[boost].durationMs) : timer,
       )
-      return modifyFields(model, {
+      return UiStruct.evolve(model, {
         seats: atSeat(slot, {
           boosts: () => boosts,
           player: player => keepTopped(player, boosts),
@@ -461,10 +461,10 @@ const applyEffect = (
     },
     Burp: () => burpAt(model, seatStateAt(model, slot).player),
     Heal: ({ hearts }) =>
-      modifyFields(model, {
+      UiStruct.evolve(model, {
         seats: atSeat(slot, {
           player: player =>
-            modifyFields(player, {
+            UiStruct.evolve(player, {
               hp: hp => Math.min(maxHpOf(player), hp + hearts),
             }),
         }),
@@ -472,7 +472,7 @@ const applyEffect = (
   })
 
 const grab = (model: World, slot: PlayerSlot, pickup: Pickup): World =>
-  modifyFields(applyEffect(model, slot, PICKUPS[pickup.kind].effect), {
+  UiStruct.evolve(applyEffect(model, slot, PICKUPS[pickup.kind].effect), {
     frameEvents: Array.append(
       GameEvent.PickupGrabbed({ x: pickup.x, y: pickup.y, kind: pickup.kind }),
     ),
@@ -495,7 +495,7 @@ const grabPickups = (model: World, slot: PlayerSlot): World => {
     return model
   }
 
-  const landed: World = modifyFields(model, { pickups: () => left })
+  const landed: World = UiStruct.evolve(model, { pickups: () => left })
   return Array.reduce(grabbed, landed, (current, pickup) =>
     grab(current, slot, pickup),
   )
@@ -611,7 +611,7 @@ const placePickup = (model: World, kind: PickupKind, at: Vector): World => {
     y: spot.y,
     ageMs: 0,
   }
-  return modifyFields(model, {
+  return UiStruct.evolve(model, {
     pickups: Array.append(pickup),
     nextEntityId: id => id + 1,
     frameEvents: Array.append(
@@ -672,7 +672,7 @@ const dropFromKills = (
   worldMs: number,
   beatBefore: Beat,
 ): World => {
-  const loot = modifyFields(model.loot, {
+  const loot = UiStruct.evolve(model.loot, {
     dryMs: dryMs => dryMs + worldMs,
     prize: prize => oweForPeak(prize, beatBefore, model.pacing.beat),
   })
@@ -680,7 +680,7 @@ const dropFromKills = (
     Array.isReadonlyArrayEmpty(kills) ||
     model.pickups.length >= DROP_RULES.floorMax
   ) {
-    return modifyFields(model, { loot: () => loot })
+    return UiStruct.evolve(model, { loot: () => loot })
   }
 
   const rolled = Array.reduce(
@@ -690,9 +690,9 @@ const dropFromKills = (
   )
   return Option.match(rolled.maybeKill, {
     onNone: () =>
-      modifyFields(model, {
+      UiStruct.evolve(model, {
         loot: () =>
-          modifyFields(loot, {
+          UiStruct.evolve(loot, {
             rngState: () => rolled.rngState,
             prize: () => Prize.Settled(),
           }),
@@ -703,9 +703,9 @@ const dropFromKills = (
         kindDraw.value,
         eligibleKinds(focusOf(model).player, activeModifiersOf(model)),
       )
-      return modifyFields(placePickup(model, kind, kill), {
+      return UiStruct.evolve(placePickup(model, kind, kill), {
         loot: () =>
-          modifyFields(loot, {
+          UiStruct.evolve(loot, {
             rngState: () => kindDraw.nextState,
             dryMs: () => 0,
             prize: () => Prize.Settled(),
@@ -717,8 +717,8 @@ const dropFromKills = (
 
 const settleLoot = (model: World): World =>
   Prize.isAnyOf(['Owed'])(model.loot.prize)
-    ? modifyFields(model, {
-        loot: loot => modifyFields(loot, { prize: () => Prize.Settled() }),
+    ? UiStruct.evolve(model, {
+        loot: loot => UiStruct.evolve(loot, { prize: () => Prize.Settled() }),
       })
     : model
 

@@ -1,5 +1,6 @@
 import { Array, Function, Option, Record } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import type { Model } from '../../app/model'
 import { isBotCrew, isHumanCrew } from '../../domain/bots'
@@ -149,7 +150,7 @@ export const freezeMissionsFrom: {
         return model
       }
       const rolled = Array.getSomes(rolledOn(before, day))
-      return modifyFields(model, {
+      return UiStruct.evolve(model, {
         missions: () => freezeOn(current, day, rolled),
       })
     },
@@ -288,10 +289,10 @@ export const tallyMissionsFrom: {
     tally.topTier === after.runGains.missionRun.topTier &&
     tally.fridgePulls === after.runGains.missionRun.fridgePulls
     ? after
-    : modifyFields(after, {
-        runGains: modifyFields({
+    : UiStruct.evolve(after, {
+        runGains: UiStruct.evolve({
           missionRun: run =>
-            modifyFields(run, {
+            UiStruct.evolve(run, {
               crushBest: () => tally.crushBest,
               topTier: () => tally.topTier,
               fridgePulls: () => tally.fridgePulls,
@@ -461,18 +462,18 @@ const payOn = (
     bones: paid.bones,
     isAllThree: paid.saved.stampedDays.length > start.stampedDays.length,
   }
-  const paidModel = modifyFields(after, {
+  const paidModel = UiStruct.evolve(after, {
     missions: () => paid.saved,
     rank: rank =>
       paid.bones === 0
         ? rank
-        : modifyFields(rank, { earnedBones: earned => earned + paid.bones }),
+        : UiStruct.evolve(rank, { earnedBones: earned => earned + paid.bones }),
   })
   return isEnded
-    ? modifyFields(paidModel, {
-        runGains: modifyFields({
+    ? UiStruct.evolve(paidModel, {
+        runGains: UiStruct.evolve({
           missionRun: missionRun =>
-            modifyFields(missionRun, {
+            UiStruct.evolve(missionRun, {
               credited: credited =>
                 Record.union(credited, measured, (_, latest) => latest),
             }),
@@ -494,7 +495,7 @@ export const rerollMission: {
   Option.match(Option.all([model.maybeToday, maybeRerollFor(model, slot)]), {
     onNone: () => model,
     onSome: ([day, reroll]) =>
-      modifyFields(model, {
+      UiStruct.evolve(model, {
         missions: missions => rerollOn(missions, day, reroll),
       }),
   }),

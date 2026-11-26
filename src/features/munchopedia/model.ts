@@ -1,16 +1,20 @@
 import { Schema } from 'effect'
-import { defineTaggedUnion } from 'foldkit/schema'
 
+import { UiSchema } from '@effect/ui'
+
+import { SavedJournal } from '../../shared/journalData'
+import { SavedMastery } from '../../shared/masteryData'
+import { SavedProof } from '../../shared/proofData'
 import { MilestoneId } from '../../world/dare/milestones'
-import { ZombieKind } from '../../world/schema/worldSchema'
-import { GuideBlock } from '../guide/block'
+import { ZombieKind } from '../../world/schema/entitySchema'
+import { KillCounts } from '../../world/schema/worldSchema'
+import { GuideStatus } from '../guide/model'
 import type { JournalTab } from './journalPages'
 
 // NOTE: the Dare Journal's page shown: every zombie as tiles, or one
 // zombie's entry (the Zombies tab), the things, the rooms, one story page,
-// or the heroes. The Shop page is the shop guide, its child, open over the
-// zombies.
-export const MunchopediaPage = defineTaggedUnion({
+// or the heroes. The Shop page is the shop guide, open over the zombies.
+export const MunchopediaPage = UiSchema.TaggedEnum({
   List: {},
   Entry: { kind: ZombieKind },
   Things: {},
@@ -31,17 +35,35 @@ export const tabOfPage = (page: MunchopediaPage): JournalTab =>
     Heroes: (): JournalTab => 'Heroes',
   })
 
-// NOTE: the Munchopedia's own state, for the page session: the page, and
-// the shop guide on `guide`. What it shows (the kills, the entries opened,
-// the unlocks seen) is the root's, read as view inputs; an entry opened
-// goes up as `OpenedEntry` for the root to save.
-export const Model = Schema.Struct({
+// NOTE: what the root hands the Dare Journal: the page (the root's, since
+// the panel's blurb and NEW ENTRY read it), the saved journal (rooms opened,
+// heroes played, milestones reached), hero mastery (a hero's story), the
+// Proof Shelf (the things brought out), the unlocks new since it last
+// opened (their NEW tags), the kills by kind (what is found, its count and
+// badges), the entries opened (a NEW tag on the rest), the unlocks seen
+// (the shop guide's fridge prizes), and the screen clock (an entry's walk).
+export const MunchopediaProps = Schema.Struct({
   page: MunchopediaPage,
-  guide: GuideBlock.Model,
+  journal: SavedJournal,
+  mastery: SavedMastery,
+  proof: SavedProof,
+  fresh: Schema.Array(Schema.String),
+  killsByKind: KillCounts,
+  openedEntries: Schema.Array(ZombieKind),
+  seenUnlocks: Schema.Array(Schema.String),
+  screenMs: Schema.Finite,
+})
+export type MunchopediaProps = typeof MunchopediaProps.Type
+
+// NOTE: the Munchopedia's own state: the shop guide, shut or open on a
+// section. Nothing outside reads it, and the Munchopedia draws the guide in
+// place of its pages while it is open. It starts shut each time the panel
+// mounts the Munchopedia.
+export const Model = Schema.Struct({
+  guide: GuideStatus,
 })
 export type Model = typeof Model.Type
 
-// NOTE: the Munchopedia's own fields as it starts, on the list.
-export const initialModel: Omit<Model, 'guide'> = {
-  page: MunchopediaPage.List(),
+export const initialModel: Model = {
+  guide: GuideStatus.Closed(),
 }

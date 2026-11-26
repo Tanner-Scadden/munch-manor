@@ -2,12 +2,15 @@
 // runs the game's own update; what a scene changes about the world outside
 // it (frozen or fixed frames, a seed it keeps, a screen fit or rotation it
 // claims, a gift that never reloads, the director's requests and sound log)
-// it changes here, as handler Layers over the game's own. Each is chosen
-// once per scene, when its runtime builds the Layer, from the scene's
-// settings; a scene that does not ask keeps the game's handler.
+// it changes here: the Commands the game issues that only read the browser
+// are swapped for the scene's own as they are issued, the Commands that are
+// services get the scene's Layer, and the Subscriptions the game asks for
+// are swapped by name. Each is chosen once per scene, from the scene's
+// settings; a scene that does not ask keeps the game's own.
 
-import { Effect, Layer, Option, Queue, Result, Stream } from 'effect'
+import { Array, Effect, Layer, Option, Queue, Result, Stream } from 'effect'
 
+import { Command, Component, Subscription } from '@effect/ui'
 import {
   DetectOrientationLock,
   DetectScreenFit,
@@ -19,11 +22,12 @@ import {
   type RestoredPageFromCache,
   type TickedFrame,
 } from '@game/app/message'
-import { subscriptions } from '@game/app/subscriptions'
+import type { subscriptions, update } from '@game/app/pureApp'
 import { WaitForUnwrap } from '@game/app/update/home'
 import { CueMusic } from '@game/app/update/music'
 import { PlaySound } from '@game/app/update/sound'
 import { FetchBuild } from '@game/app/update/version'
+import { ScreenFit } from '@game/platform/deviceSchema'
 import { PlayerStore } from '@game/platform/store'
 import { RUNNING_BUILD } from '@game/platform/version'
 
@@ -57,8 +61,8 @@ const animationFrames = (onFrame: () => Option.Option<TickedFrame>) =>
 // so this is the picture `freeze=N` waits N real frames for. The Commands
 // those frames give, such as opening the shop's dialog, run as they would
 // frame by frame. The frames go out whether the game's frame is active or
-// not, as the scene asked for them, and only once: the Subscription restarts
-// when the game's activity changes.
+// not, as the scene asked for them, and only once: the Subscription keeps
+// its key for the whole scene, and its Stream ends once they are out.
 const tickFrames = (page: HarnessPage, ticks: number) =>
   Stream.suspend(() => {
     const count = Math.max(0, ticks - page.framesSent)
@@ -71,59 +75,32 @@ const tickFrames = (page: HarnessPage, ticks: number) =>
 // NOTE: `freeze=N` runs exactly N frames of a fixed 1/60 second and then
 // holds the picture. It counts frames only once the surface is measured, so
 // how long the first render takes cannot change which frame the measurement
-// lands on, and two builds freeze on the same picture.
-const frozenFrames = (page: HarnessPage, isActive: boolean) =>
-  isActive
-    ? animationFrames(() => {
-        if (
-          page.framesSent >= page.settings.freezeAfter ||
-          Option.isNone(window.__model.maybeSurface)
-        ) {
-          return Option.none()
-        }
-        page.framesSent++
-        return Option.some(fixedFrame())
-      })
-    : Stream.empty
-
-// NOTE: the frame clock: the game's own unless the scene is frozen, plays
-// `tick` frames, or is the director's (which steps the game itself).
-const frameLayer = (page: HarnessPage) => {
-  const { config, freezeAfter } = page.settings
-  const ticks = config.tick
-  if (config.director) {
-    return subscriptions.frame.toLayer(Effect.succeed(() => Stream.empty))
-  } else if (ticks !== undefined) {
-    return subscriptions.frame.toLayer(
-      Effect.succeed(() => tickFrames(page, ticks)),
-    )
-  } else if (Number.isFinite(freezeAfter)) {
-    return subscriptions.frame.toLayer(
-      Effect.succeed(({ isActive }) => frozenFrames(page, isActive)),
-    )
-  } else {
-    return subscriptions.frame.layer
-  }
-}
+// lands on, and two builds freeze on the same picture. It runs while the
+// game asks for its frame.
+const frozenFrames = (page: HarnessPage) =>
+  animationFrames(() => {
+    if (
+      page.framesSent >= page.settings.freezeAfter ||
+      Option.isNone(window.__model.maybeSurface)
+    ) {
+      return Option.none()
+    }
+    page.framesSent++
+    return Option.some(fixedFrame())
+  })
 
 // NOTE: `sync` keeps the sync state the scene set: only a synced save gets
 // through.
-const syncLayer = (page: HarnessPage) =>
-  page.settings.config.sync === undefined
-    ? subscriptions.playerSync.layer
-    : subscriptions.playerSync.toLayer(
-        Effect.gen(function* () {
-          const store = yield* PlayerStore
-          return () =>
-            Stream.filterMap(store.events, event =>
-              event._tag === 'SyncedSave'
-                ? Result.succeed(
-                    Message.UpdatedSyncedSave({ save: event.save }),
-                  )
-                : Result.fail(event),
-            )
-        }),
-      )
+const syncedSaves = Stream.unwrap(
+  Effect.gen(function* () {
+    const store = yield* PlayerStore
+    return Stream.filterMap(store.events, event =>
+      event._tag === 'SyncedSave'
+        ? Result.succeed(Message.UpdatedSyncedSave({ save: event.save }))
+        : Result.fail(event),
+    )
+  }),
+)
 
 // NOTE: the director's requests come in as RestoredPageFromCache, from
 // `wake`, in place of the page's own `pageshow` (see entry.ts).
@@ -143,110 +120,176 @@ const directorWakes = (wake: DirectorWake) =>
 
 export type DirectorWake = { raise: () => boolean }
 
-// NOTE: the Commands a scene answers itself. A seed the scene froze is kept,
-// the gift never reloads the harness (it stays mid-unwrap, as `unwrap` shows
-// it), `fit` and `rotate` claim the screen fit and rotation lock, `greet`
-// reads as the page just reloaded onto this build, and a director shot logs
-// its sounds and music by tick instead of playing them, with no build check
-// to bring a gift in mid-shot.
-const commandLayers = (page: HarnessPage) => {
+// THE COMMANDS
+
+// NOTE: one Command the game's update gives back.
+export type GameCommand = ReturnType<typeof update>['commands'][number]
+
+// NOTE: the scene's own answers to the Commands that read the browser,
+// issued in their place: a seed that never comes (a frozen scene keeps its
+// own), a gift that never reloads, and the screen fit, rotation lock, and
+// update marker the scene claims.
+const HoldSeed = Command.make('HoldSeed', { args: {} }, () => Effect.never)
+
+const HoldUnwrap = Command.make('HoldUnwrap', { args: {} }, () => Effect.never)
+
+const ClaimScreenFit = Command.make(
+  'ClaimScreenFit',
+  { args: { screenFit: ScreenFit } },
+  ({ screenFit }) =>
+    Effect.succeed(Message.CompletedDetectScreenFit({ screenFit })),
+)
+
+const ClaimOrientationLock = Command.make(
+  'ClaimOrientationLock',
+  { args: {} },
+  () =>
+    Effect.succeed(
+      Message.CompletedDetectOrientationLock({ orientationLock: 'Supported' }),
+    ),
+)
+
+const ClaimUpdateMarker = Command.make('ClaimUpdateMarker', { args: {} }, () =>
+  Effect.succeed(
+    Message.CompletedReadUpdateMarker({
+      maybeBuild: Option.some(RUNNING_BUILD),
+    }),
+  ),
+)
+
+// NOTE: what each swapped Command becomes in this scene, by its name: a seed
+// the scene froze is kept, the gift never reloads the harness (it stays
+// mid-unwrap, as `unwrap` shows it), `fit` and `rotate` claim the screen fit
+// and rotation lock, and `greet` reads as the page just reloaded onto this
+// build.
+const swapsOf = (page: HarnessPage): ReadonlyMap<string, () => GameCommand> => {
   const { config, freezeAfter } = page.settings
   const fit = config.fit
-  return Layer.mergeAll(
-    Number.isFinite(freezeAfter)
-      ? GenerateSeed.toLayer(Effect.succeed(() => Effect.never))
-      : GenerateSeed.layer,
-    WaitForUnwrap.toLayer(Effect.succeed(() => Effect.never)),
-    fit === undefined
-      ? DetectScreenFit.layer
-      : DetectScreenFit.toLayer(
-          Effect.succeed(() =>
-            Effect.succeed(
-              Message.CompletedDetectScreenFit({
+  return new Map<string, () => GameCommand>([
+    ...(Number.isFinite(freezeAfter)
+      ? [[Command.nameOf(GenerateSeed), () => HoldSeed.make()] as const]
+      : []),
+    [Command.nameOf(WaitForUnwrap), () => HoldUnwrap.make()],
+    ...(fit === undefined
+      ? []
+      : [
+          [
+            Command.nameOf(DetectScreenFit),
+            () =>
+              ClaimScreenFit.make({
                 screenFit: fit === 'home' ? 'HomeScreen' : 'Fullscreen',
               }),
-            ),
-          ),
+          ] as const,
+        ]),
+    ...(config.rotate
+      ? [
+          [
+            Command.nameOf(DetectOrientationLock),
+            () => ClaimOrientationLock.make(),
+          ] as const,
+        ]
+      : []),
+    ...(config.greet
+      ? [
+          [
+            Command.nameOf(ReadUpdateMarker),
+            () => ClaimUpdateMarker.make(),
+          ] as const,
+        ]
+      : []),
+  ])
+}
+
+// NOTE: the scene's Commands in place of the game's, as they are issued.
+export const sceneCommands = (
+  page: HarnessPage,
+): ((commands: ReadonlyArray<GameCommand>) => ReadonlyArray<GameCommand>) => {
+  const swaps = swapsOf(page)
+  return commands =>
+    Array.map(commands, command =>
+      Option.match(Option.fromUndefinedOr(swaps.get(command.name)), {
+        onNone: () => command,
+        onSome: swap => swap(),
+      }),
+    )
+}
+
+// NOTE: a director shot logs its sounds and music by tick instead of playing
+// them, with no build check to bring a gift in mid-shot. Merged after the
+// game's own Command Layers, so these win.
+export const sceneCommandLayer = (page: HarnessPage) =>
+  page.settings.config.director
+    ? Layer.mergeAll(
+        FetchBuild.toLayer(() => Effect.never),
+        PlaySound.toLayer(({ sound, variation }) =>
+          Effect.sync(() => {
+            Director.logSound(sound, variation)
+            return Component.noop
+          }),
         ),
-    config.rotate
-      ? DetectOrientationLock.toLayer(
-          Effect.succeed(() =>
-            Effect.succeed(
-              Message.CompletedDetectOrientationLock({
-                orientationLock: 'Supported',
-              }),
-            ),
-          ),
-        )
-      : DetectOrientationLock.layer,
-    config.greet
-      ? ReadUpdateMarker.toLayer(
-          Effect.succeed(() =>
-            Effect.succeed(
-              Message.CompletedReadUpdateMarker({
-                maybeBuild: Option.some(RUNNING_BUILD),
-              }),
-            ),
-          ),
-        )
-      : ReadUpdateMarker.layer,
-    config.director
-      ? FetchBuild.toLayer(Effect.succeed(() => Effect.never))
-      : FetchBuild.layer,
-    config.director
-      ? PlaySound.toLayer(
-          Effect.succeed(({ sound, variation }) =>
-            Effect.sync(() => {
-              Director.logSound(sound, variation)
-              return Message.CompletedPlaySound({ sound, outcome: 'Played' })
-            }),
-          ),
-        )
-      : PlaySound.layer,
-    config.director
-      ? CueMusic.toLayer(
-          Effect.succeed(cue =>
-            Effect.sync(() => {
-              Director.logMusic(cue)
-              return Message.CompletedCueMusic({ mood: cue.mood })
-            }),
-          ),
-        )
-      : CueMusic.layer,
-  )
-}
+        CueMusic.toLayer(cue =>
+          Effect.sync(() => {
+            Director.logMusic(cue)
+            return Component.noop
+          }),
+        ),
+      )
+    : Layer.empty
 
-// NOTE: the Subscriptions a scene answers itself: the frame clock, the sync
-// state with `sync`, Chrome's install offer kept on with `install`, and with
-// `director` the room's own frame (a shot steps the room itself) and the
-// director's requests.
-const subscriptionLayers = (page: HarnessPage, wake: DirectorWake) => {
-  const { config } = page.settings
-  return Layer.mergeAll(
-    frameLayer(page),
-    syncLayer(page),
-    config.install
-      ? subscriptions.installOffers.toLayer(Effect.succeed(() => Stream.empty))
-      : subscriptions.installOffers.layer,
-    config.director
-      ? subscriptions.roomFrame.toLayer(Effect.succeed(() => Stream.empty))
-      : subscriptions.roomFrame.layer,
-    config.director
-      ? subscriptions.pageRestores.toLayer(
-          Effect.succeed(() => directorWakes(wake)),
-        )
-      : subscriptions.pageRestores.layer,
-  )
-}
+// THE SUBSCRIPTIONS
 
-// NOTE: built with each scene's runtime, after its settings are in place,
-// and merged after the game's own handlers, so these win.
-export const sceneHandlers = ({
+type GameSubscription = ReturnType<typeof subscriptions>[number]
+
+// NOTE: the Subscriptions a scene answers itself, by the game's name for
+// each: the frame clock (frozen, `tick`'s fixed frames, or none for the
+// director, which steps the game itself), the sync state with `sync`,
+// Chrome's install offer kept off with `install`, and with `director` the
+// room's own frame (a shot steps the room itself) and the director's
+// requests in place of the page's restores. Each swapped list is kept by
+// the game's, which keeps its own lists by their gates, so a frame builds
+// no list.
+export const sceneSubscriptions = ({
   page,
   wake,
-}: Readonly<{ page: HarnessPage; wake: DirectorWake }>) =>
-  Layer.unwrap(
-    Effect.sync(() =>
-      Layer.mergeAll(commandLayers(page), subscriptionLayers(page, wake)),
-    ),
+}: Readonly<{ page: HarnessPage; wake: DirectorWake }>): ((
+  list: ReadonlyArray<GameSubscription>,
+) => ReadonlyArray<GameSubscription>) => {
+  const { config, freezeAfter } = page.settings
+  const ticks = config.tick
+  const dropped = new Set<string>([
+    ...(config.director || ticks !== undefined ? ['Frame'] : []),
+    ...(config.director ? ['RoomFrame'] : []),
+    ...(config.install ? ['InstallOffers'] : []),
+  ])
+  const frozen = Subscription.make('Frame', 'Frozen', () => frozenFrames(page))
+  const synced = Subscription.make('PlayerSync', syncedSaves)
+  const wakes = Subscription.make('PageRestores', 'Director', () =>
+    directorWakes(wake),
   )
+  const added: ReadonlyArray<GameSubscription> =
+    ticks === undefined || config.director
+      ? []
+      : [Subscription.make('HarnessTicks', tickFrames(page, ticks))]
+  const swapped = (
+    entry: GameSubscription,
+  ): Result.Result<GameSubscription, GameSubscription> =>
+    dropped.has(entry.name)
+      ? Result.fail(entry)
+      : entry.name === 'Frame' && Number.isFinite(freezeAfter)
+        ? Result.succeed(frozen)
+        : entry.name === 'PlayerSync' && config.sync !== undefined
+          ? Result.succeed(synced)
+          : entry.name === 'PageRestores' && config.director
+            ? Result.succeed(wakes)
+            : Result.succeed(entry)
+  const kept = new WeakMap<
+    ReadonlyArray<GameSubscription>,
+    ReadonlyArray<GameSubscription>
+  >()
+  return list =>
+    Option.getOrElse(Option.fromUndefinedOr(kept.get(list)), () => {
+      const built = [...Array.filterMap(list, swapped), ...added]
+      kept.set(list, built)
+      return built
+    })
+}

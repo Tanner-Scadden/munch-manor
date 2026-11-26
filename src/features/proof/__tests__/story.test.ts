@@ -1,110 +1,123 @@
-import { Option } from 'effect'
-import { Story } from 'foldkit'
+import { Effect, Option } from 'effect'
 
+import { Component } from '@effect/ui'
+import { Story } from '@effect/ui/testing'
 import { describe, expect, it } from '@effect/vitest'
 
-import { ProofShelfBlock } from '../block'
-import { InMessage } from '../inMessage'
-import { ProofShelfLayer } from '../layer'
+import { home } from '../../../test/model.fixture'
+import { FocusShelfSlot, ProofShelf } from '../block'
 import { Message } from '../message'
-import { FIRST_SPOT, type ShelfSpot, shelfThingsFor } from '../proof'
-import { FocusShelfSlot } from '../steps'
+import type { ProofShelfProps } from '../model'
+import {
+  FIRST_SPOT,
+  type ShelfSpot,
+  type ShelfThing,
+  shelfThingsFor,
+} from '../proof'
 
-// The Proof Shelf Block on its own: a tapped slot is picked, the arrows
-// walk the shelf with wrapping, and opening it again starts with nothing
-// picked. What goes on the shelf is the root's (proof.story.test.ts).
+// The Proof Shelf component on its own: a tapped slot is picked, the arrows
+// (its own Subscription) walk the shelf with wrapping, and a fresh mount
+// starts with nothing picked. What goes on the shelf is the root's
+// (proof.story.test.ts).
 
-const SHELF = { block: ProofShelfBlock, layer: ProofShelfLayer }
+type ShelfStory = Story.Steps<typeof ProofShelf>
 
 const HOUSE_SHELF = shelfThingsFor([])
 
-const press = (code: string, spot: ShelfSpot, things = HOUSE_SHELF) =>
-  Story.steps(
-    Story.inMessage(InMessage.RequestedPressKey({ code, things })),
-    Story.Command.expectExact(FocusShelfSlot({ spot })),
-    Story.Command.resolve(FocusShelfSlot, Message.CompletedFocusSlot()),
-  )
+const propsWith = (
+  things: readonly [ShelfThing, ...Array<ShelfThing>],
+): ProofShelfProps => ({
+  proof: home.proof,
+  things,
+  stampedDays: [],
+  maybeToday: Option.none(),
+  fresh: [],
+  dareMarks: home.dareMarks,
+})
+
+const shelfOf = (things = HOUSE_SHELF) =>
+  Story.make(ProofShelf, propsWith(things))
+
+// NOTE: the key of the shelf's arrow keys, its one Subscription
+// (`HtmlSubscription.shortcuts`, on the document's keydown).
+const KEYS = '@effect/ui/html/document:"keydown"'
+
+// NOTE: an arrow from the shelf's own key Subscription picks the slot it
+// reaches, and focus moves onto it.
+const press =
+  (code: string, spot: ShelfSpot) =>
+  (s: ShelfStory): ShelfStory =>
+    s
+      .subscription(KEYS, Message.PressedArrowKey({ code }))
+      .expectExact(FocusShelfSlot.make({ spot }))
+      .resolve(FocusShelfSlot, Component.noop)
 
 const MUSIC_BOX_HARD: ShelfSpot = { thing: 'MusicBox', difficulty: 'Hard' }
 
-describe('the Proof Shelf Block', () => {
+describe('the Proof Shelf component', () => {
   it.effect('starts with nothing picked; a tap picks a slot', () =>
-    Story.story(
-      SHELF,
-      Story.init(),
-      Story.model(model => {
-        expect(model.maybePicked).toEqual(Option.none())
-      }),
-      Story.message(Message.ClickedSlot({ spot: MUSIC_BOX_HARD })),
-      Story.Command.expectNone(),
-      Story.model(model => {
-        expect(model.maybePicked).toEqual(Option.some(MUSIC_BOX_HARD))
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* shelfOf()
+      expect(s.model.maybePicked).toEqual(Option.none())
+      s.send(Message.ClickedSlot({ spot: MUSIC_BOX_HARD })).expectNone()
+      expect(s.model.maybePicked).toEqual(Option.some(MUSIC_BOX_HARD))
+    }),
   )
 
   it.effect('the arrows walk from the first slot and wrap at the ends', () =>
-    Story.story(
-      SHELF,
-      Story.init(),
-      press('ArrowLeft', {
-        thing: 'BigKey',
-        difficulty: FIRST_SPOT.difficulty,
-      }),
-      press('ArrowRight', FIRST_SPOT),
-      press('ArrowUp', { thing: FIRST_SPOT.thing, difficulty: 'Nightmare' }),
-      press('ArrowDown', FIRST_SPOT),
-      Story.model(model => {
-        expect(model.maybePicked).toEqual(Option.some(FIRST_SPOT))
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* shelfOf()
+      s.pipe(
+        press('ArrowLeft', {
+          thing: 'BigKey',
+          difficulty: FIRST_SPOT.difficulty,
+        }),
+        press('ArrowRight', FIRST_SPOT),
+        press('ArrowUp', { thing: FIRST_SPOT.thing, difficulty: 'Nightmare' }),
+        press('ArrowDown', FIRST_SPOT),
+      )
+      expect(s.model.maybePicked).toEqual(Option.some(FIRST_SPOT))
+    }),
   )
 
   it.effect('an opened thing grows a slot the arrows walk onto', () =>
-    Story.story(
-      SHELF,
-      Story.init(),
-      Story.message(
+    Effect.gen(function* () {
+      const s = yield* shelfOf(shelfThingsFor(['NapkinRing']))
+      s.send(
         Message.ClickedSlot({
           spot: { thing: 'ButlersBell', difficulty: 'Easy' },
         }),
-      ),
-      press(
-        'ArrowRight',
-        { thing: 'NapkinRing', difficulty: 'Easy' },
-        shelfThingsFor(['NapkinRing']),
-      ),
-      press(
-        'ArrowRight',
-        { thing: 'BigKey', difficulty: 'Easy' },
-        shelfThingsFor(['NapkinRing']),
-      ),
-    ),
+      ).pipe(
+        press('ArrowRight', { thing: 'NapkinRing', difficulty: 'Easy' }),
+        press('ArrowRight', { thing: 'BigKey', difficulty: 'Easy' }),
+      )
+    }),
   )
 
   it.effect('any other key is left to the root', () =>
-    Story.story(
-      SHELF,
-      Story.init(),
-      Story.inMessage(
-        InMessage.RequestedPressKey({ code: 'KeyQ', things: HOUSE_SHELF }),
-      ),
-      Story.Command.expectNone(),
-      Story.model(model => {
-        expect(model.maybePicked).toEqual(Option.none())
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* shelfOf()
+      s.send(Message.PressedArrowKey({ code: 'KeyQ' })).expectNone()
+      expect(s.model.maybePicked).toEqual(Option.none())
+    }),
   )
 
+  // NOTE: the panel mounts the shelf afresh each time it opens on it
+  // (src/app/dialogs.ts), so opening again is a new mount, its init.
   it.effect('opening again puts the pick away', () =>
-    Story.story(
-      SHELF,
-      Story.init(),
-      Story.message(Message.ClickedSlot({ spot: MUSIC_BOX_HARD })),
-      Story.inMessage(InMessage.RequestedOpen()),
-      Story.model(model => {
-        expect(model.maybePicked).toEqual(Option.none())
-      }),
-    ),
+    Effect.gen(function* () {
+      const opened = yield* shelfOf()
+      opened.send(Message.ClickedSlot({ spot: MUSIC_BOX_HARD }))
+      expect(opened.model.maybePicked).toEqual(Option.some(MUSIC_BOX_HARD))
+      const again = yield* shelfOf()
+      expect(again.model.maybePicked).toEqual(Option.none())
+    }),
+  )
+
+  it.effect('its arrow keys are its own Subscription while it is up', () =>
+    Effect.gen(function* () {
+      const s = yield* shelfOf()
+      expect(s.subscriptions).toEqual([KEYS])
+    }),
   )
 })

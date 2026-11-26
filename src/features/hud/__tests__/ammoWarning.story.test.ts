@@ -1,7 +1,6 @@
-import { Option, Schema } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
+import { Effect, Option, Schema } from 'effect'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
 import {
@@ -18,10 +17,11 @@ import { FIXED_STEP_MS } from '../../../shared/constants'
 import { SavedOnboarding } from '../../../shared/playerData'
 import { DISTANT_SPAWN } from '../../../test/model.fixture'
 import {
-  APPLICATION,
   SURFACE,
   checkPendingSounds,
+  exactStoryOf,
   holdFire,
+  steps,
   tick,
 } from '../../../test/testing'
 import { STARTING_PISTOL, freshGun } from '../../../world/gear/weapons'
@@ -37,17 +37,17 @@ const smg = (loaded: number): CarriedGun => ({ ...freshGun('Smg'), loaded })
 
 const fightingWith = (second: CarriedGun, first = STARTING_PISTOL): Model =>
   modifyFocus(
-    modifyFields(initialModel, {
+    UiStruct.evolve(initialModel, {
       difficultyCard: () => DifficultyCard.Seen(),
       maybeSurface: () => Option.some(SURFACE),
       audio: () => AudioState.Ready(),
       phase: () =>
         Phase.Wave({ wave: 4, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
-      settings: modifyFields({ musicSetting: () => 'Off' }),
+      settings: UiStruct.evolve({ musicSetting: () => 'Off' }),
     }),
     {
       player: player =>
-        modifyFields(player, {
+        UiStruct.evolve(player, {
           arsenal: () => Arsenal.HoldingSecond({ first, second }),
         }),
     },
@@ -71,30 +71,32 @@ describe('the last shots of a magazine', () => {
 })
 
 // NOTE: one frame with the trigger held, whose sound Commands are read.
-const firedFrame = Story.steps(holdFire, tick(FRAME_MS))
+const firedFrame = steps(holdFire, tick(FRAME_MS))
 
 describe('the last shots tick', () => {
   it.effect('each of the last few shots plays a low tick', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(fightingWith(smg(3))),
-      firedFrame,
-      checkPendingSounds(sounds => {
-        expect(sounds).toContain('AmmoTick')
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* exactStoryOf(fightingWith(smg(3)))
+      s.pipe(
+        firedFrame,
+        checkPendingSounds(sounds => {
+          expect(sounds).toContain('AmmoTick')
+        }),
+      )
+    }),
   )
 
   it.effect('a full magazine fires without the tick', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(fightingWith(smg(30))),
-      firedFrame,
-      checkPendingSounds(sounds => {
-        expect(sounds).toContain('SmgShot')
-        expect(sounds).not.toContain('AmmoTick')
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* exactStoryOf(fightingWith(smg(30)))
+      s.pipe(
+        firedFrame,
+        checkPendingSounds(sounds => {
+          expect(sounds).toContain('SmgShot')
+          expect(sounds).not.toContain('AmmoTick')
+        }),
+      )
+    }),
   )
 })
 

@@ -1,8 +1,9 @@
 // NOTE: the project's oxlint rules about tests: Effects run by it.effect,
-// a live test says why, and every Block-aware Story and Scene runs.
+// a live test says why, and every Story, Scene, and Play runs to its end
+// check (Effect UI's testing guide, repos/effect-ui/ai-docs/src/10_ui/50_testing.ts).
 // Loaded through tools/lint/munchPlugin.ts, which names them.
 
-import { Array, Option, Record, String } from 'effect'
+import { Array, String } from 'effect'
 
 import { defineRule } from '@oxlint/plugins'
 import type { ESTree } from '@oxlint/plugins'
@@ -114,32 +115,24 @@ export const liveTestNote = defineRule({
   },
 })
 
-// NOTE: a Block-aware Story or Scene (`Story.story(APPLICATION, ...)`) is
-// an Effect: built and dropped, it never runs, and its asserts pass by not
-// running. The plain form over an update function (`story(update, ...)`,
-// `scene(ROOT, ...)`) runs on the spot, so a statement of it is fine.
-const STORY_MODULES = /^foldkit(\/(story|scene))?$/
+// NOTE: Effect UI's `Story.make`, `Scene.make`, `HtmlScene.make`, and
+// `HtmlPlay.make` are scoped Effects: built and dropped, a Story never runs,
+// its steps never throw, and its end check (every Command resolved, every
+// event acknowledged) never fails. `start` gives the same cursor at once,
+// with no end check.
+const STORY_NAMESPACES: ReadonlySet<string> = new Set([
+  'Story',
+  'Scene',
+  'HtmlScene',
+  'HtmlPlay',
+])
 
-const STORY_NAMESPACES: Readonly<Record<string, string>> = {
-  Story: 'story',
-  Scene: 'scene',
-}
-
-const PLAIN_UPDATE = /^(update|ROOT)$|Update$/
-
-// NOTE: the plain form's subject: an update function by name, or a record
-// with an update in it (`{ update, view }`). A Block's config never has one
-// (`{ block, layer }`, `{ ...COOP, viewInputs }`).
-const isPlainSubject = (node: Node | undefined): boolean =>
-  (node?.type === 'Identifier' && PLAIN_UPDATE.test(node.name)) ||
-  (node?.type === 'ObjectExpression' &&
-    Array.some(
-      node.properties,
-      property =>
-        property.type === 'Property' &&
-        property.key.type === 'Identifier' &&
-        property.key.name === 'update',
-    ))
+// NOTE: `Story.make(...)` and the like: a namespace above and `name`.
+const isStoryCall = (node: ESTree.CallExpression, name: string): boolean =>
+  node.callee.type === 'MemberExpression' &&
+  node.callee.object.type === 'Identifier' &&
+  STORY_NAMESPACES.has(node.callee.object.name) &&
+  propertyName(node.callee) === name
 
 // NOTE: a test runner that runs the Effect its callback returns. A plain
 // `test` or `it` takes the Effect as a value and never runs it.
@@ -162,7 +155,7 @@ const EFFECT_CARRIERS: ReadonlySet<string> = new Set([
 ])
 
 const FLOATING_STORY_MESSAGE =
-  'A Block-aware Story or Scene is an Effect that runs only when yielded, returned from it.effect, or passed to an Effect combinator (Effect.forEach, Effect.all): in Array.forEach, a plain test, or a statement it never runs (AGENTS.md "Every Story is yielded or returned").'
+  'Story.make, Scene.make, HtmlScene.make, and HtmlPlay.make are scoped Effects that run only when yielded (`const s = yield* Story.make(...)` in it.effect), returned from it.effect, or passed to an Effect combinator (Effect.forEach, Effect.all): in Array.forEach, a plain test, or a statement they never run (AGENTS.md "Every Story is yielded or returned").'
 
 // NOTE: the names along a callee: `it.effect.each(rows)` is it, effect,
 // each; `Effect.forEach` is Effect, forEach.
@@ -278,37 +271,13 @@ export const noFloatingStory = defineRule({
     type: 'problem',
     docs: {
       description:
-        'A Block-aware Story or Scene is yielded, returned to it.effect, or passed to an Effect combinator, so it runs.',
+        'Story.make, Scene.make, HtmlScene.make, and HtmlPlay.make are yielded, returned to it.effect, or passed to an Effect combinator, so they run.',
     },
   },
   create(context) {
-    const bareNames = new Set<string>()
-    const isStoryCallee = (callee: Node): boolean =>
-      callee.type === 'Identifier'
-        ? bareNames.has(callee.name)
-        : callee.type === 'MemberExpression' &&
-          callee.object.type === 'Identifier' &&
-          Option.isSome(
-            Option.filter(
-              Record.get(STORY_NAMESPACES, callee.object.name),
-              name => name === propertyName(callee),
-            ),
-          )
     return {
-      ImportSpecifier(node) {
-        const name = importedName(node)
-        if (
-          STORY_MODULES.test(importSource(node) ?? '') &&
-          (name === 'story' || name === 'scene')
-        ) {
-          bareNames.add(node.local.name)
-        }
-      },
       CallExpression(node) {
-        if (!isStoryCallee(node.callee) || isPlainSubject(node.arguments[0])) {
-          return
-        }
-        if (!isKept(node)) {
+        if (isStoryCall(node, 'make') && !isKept(node)) {
           context.report({ node, message: FLOATING_STORY_MESSAGE })
         }
       },
@@ -316,71 +285,66 @@ export const noFloatingStory = defineRule({
   },
 })
 
-// NOTE: a test drives the game as a Block-aware Story or Scene over the
-// root (`APPLICATION` in src/test/testing.ts) or a child Block, never the
-// plain form over an update function, which skips the Block's graph
-// (`story(update, ...)`, `Scene.scene({ update, view }, ...)`), nor
-// pureApp's acquired update, view, or init called by hand. A view of its
-// own over the acquired root is a custom renderer, written inside
-// `Story.withBlock(...)` (FOLDKIT.md "Testing"). The one plain Scene left,
-// over a bare canvas with no Block, is named in the config's override.
-const PURE_APP = /(^|\/)app\/pureApp$/
+// NOTE: a test drives the game as a Story, Scene, or Play over the root
+// component (`Application`, or `ApplicationNoDeps` with its Layers given) or
+// a child component, never the root's update, view, or init called by hand
+// (pureApp's, src/app/main.ts's), which skips the end check that every
+// Command a step runs is resolved. `start` makes a cursor with no end check,
+// for a step that must throw: it goes inside the assert that says so
+// (`assert.throws(() => HtmlScene.start(...).drop(...))`).
+const ROOT_RUNNERS = /(^|\/)app\/(pureApp|main)$/
 
 const PURE_RUNNERS: ReadonlySet<string> = new Set(['update', 'view', 'init'])
 
+const THROW_ASSERTS: ReadonlySet<string> = new Set([
+  'throws',
+  'throw',
+  'toThrow',
+  'toThrowError',
+])
+
 const PLAIN_STORY_MESSAGE =
-  'Drive the game through a Block-aware Story or Scene over APPLICATION (src/test/testing.ts) or a child Block, not a plain story or scene over an update function or pureApp\'s update, view, or init; a view of its own goes inside Story.withBlock (AGENTS.md "Tests drive the root through Block-aware Stories and Scenes").'
+  'Drive the game through Story.make, Scene.make, or HtmlScene.make over the root component or a child component, not the root\'s update, view, or init by hand (src/app/pureApp.ts, src/app/main.ts) (AGENTS.md "Tests drive the root through Stories and Scenes").'
 
-const isWithBlockCall = (node: Node): boolean =>
-  node.type === 'CallExpression' &&
-  calleePath(node.callee).at(-1) === 'withBlock'
+const START_MESSAGE =
+  'A Story or Scene made with start has no end check, so a Command left pending passes: use make (`yield* Story.make(...)`), or keep start inside the assert that the step throws (AGENTS.md "Tests drive the root through Stories and Scenes").'
 
-const insideWithBlock = (node: Node): boolean =>
+// NOTE: inside an assert that something throws: `assert.throws(...)`,
+// `expect(() => ...).toThrow()`.
+const insideThrowAssert = (node: Node): boolean =>
   node.parent !== null &&
-  (isWithBlockCall(node.parent) || insideWithBlock(node.parent))
+  ((node.parent.type === 'CallExpression' &&
+    Array.some(calleePath(node.parent.callee), name =>
+      THROW_ASSERTS.has(name),
+    )) ||
+    insideThrowAssert(node.parent))
 
 export const noPlainStory = defineRule({
   meta: {
     type: 'problem',
     docs: {
       description:
-        "Drive the game through a Block-aware Story or Scene, not a plain one over an update function or pureApp's update, view, or init.",
+        "Drive the game through a Story or Scene over a component, not the root's update, view, or init by hand, and make it with an end check.",
     },
   },
   create(context) {
     return {
       ImportSpecifier(node) {
-        const source = importSource(node) ?? ''
-        const name = importedName(node)
         const isTypeOnly =
           node.importKind === 'type' ||
           (node.parent.type === 'ImportDeclaration' &&
             node.parent.importKind === 'type')
         if (
-          (STORY_MODULES.test(source) &&
-            source !== 'foldkit' &&
-            (name === 'story' || name === 'scene')) ||
-          (PURE_APP.test(source) && PURE_RUNNERS.has(name) && !isTypeOnly)
+          ROOT_RUNNERS.test(importSource(node) ?? '') &&
+          PURE_RUNNERS.has(importedName(node)) &&
+          !isTypeOnly
         ) {
           context.report({ node, message: PLAIN_STORY_MESSAGE })
         }
       },
       CallExpression(node) {
-        const path = calleePath(node.callee)
-        const isStoryCall =
-          path.length === 2 &&
-          Option.isSome(
-            Option.filter(
-              Record.get(STORY_NAMESPACES, path[0] ?? ''),
-              name => name === path[1],
-            ),
-          )
-        if (
-          isStoryCall &&
-          isPlainSubject(node.arguments[0]) &&
-          !insideWithBlock(node)
-        ) {
-          context.report({ node, message: PLAIN_STORY_MESSAGE })
+        if (isStoryCall(node, 'start') && !insideThrowAssert(node)) {
+          context.report({ node, message: START_MESSAGE })
         }
       },
     }

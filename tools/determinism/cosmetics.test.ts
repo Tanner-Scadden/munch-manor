@@ -3,17 +3,18 @@
 // frame, as a room that makes no particles or a phone that makes fewer would.
 // The gameplay hash must agree on every frame.
 
-import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
+
+import { UiStruct } from '@effect/ui'
 
 import { type Model, stillShake } from '../../src/app/model'
 import { firstDivergentCheckpoint } from './diff'
 import { runScript } from './run'
 
 const stripCosmetics = (model: Model): Model =>
-  modifyFields(model, {
+  UiStruct.evolve(model, {
     shake: () => stillShake,
-    cosmetics: modifyFields({
+    cosmetics: UiStruct.evolve({
       particles: () => [],
       decals: () => [],
       dustCooldownMs: () => 0,

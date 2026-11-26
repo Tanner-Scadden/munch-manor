@@ -1,7 +1,6 @@
 import { Array, Effect, Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
 import { Message } from '../../../app/message'
@@ -25,11 +24,16 @@ import {
   withKeys,
 } from '../../../test/model.fixture'
 import {
-  APPLICATION,
   BELOW_KITCHEN_DOOR,
   FRIDGE_OPEN_TICKS,
-  type RootSteps,
+  type StoryStep,
+  checkModel,
   holdToBuy,
+  modelAfter,
+  send,
+  settleRunCommands,
+  steps,
+  storyOf,
   ticks,
 } from '../../../test/testing'
 import { asTutorialDone } from '../../../test/veteran'
@@ -78,9 +82,10 @@ const remainingOf = (current: Model): number =>
 // NOTE: one key on the ring, short of the boards and a pull.
 const timedBreak = (current: Model): Model =>
   withKeys(
-    modifyFields(current, {
+    UiStruct.evolve(current, {
       phase: () =>
         Phase.Preparation({
+          clock: BreakClock.Counting(),
           wave: 3,
           remainingMs: BREAK_MS,
           durationMs: BREAK_MS,
@@ -95,7 +100,7 @@ const atBoards = (): Model =>
   timedBreak(
     modifyFocus(freshRunModel(), {
       player: player =>
-        modifyFields(player, {
+        UiStruct.evolve(player, {
           x: () => BELOW_KITCHEN_DOOR.x,
           y: () => BELOW_KITCHEN_DOOR.y,
         }),
@@ -116,8 +121,8 @@ const atOpenFridge = (prize: FridgePrize): Model => {
         ) === prize,
     ),
   )
-  return modifyFields(opened, {
-    loot: loot => modifyFields(loot, { fridgeRngState: () => seed }),
+  return UiStruct.evolve(opened, {
+    loot: loot => UiStruct.evolve(loot, { fridgeRngState: () => seed }),
   })
 }
 
@@ -133,7 +138,7 @@ const isTourDone = (current: Model): boolean =>
 const walkAway = (current: Model): Model =>
   modifyFocus(current, {
     player: player =>
-      modifyFields(player, {
+      UiStruct.evolve(player, {
         x: () => AT_FRIDGE.x,
         y: () => AT_FRIDGE.y + FRIDGE_RULES.leavePx + 30,
       }),
@@ -141,21 +146,27 @@ const walkAway = (current: Model): Model =>
 
 // NOTE: the Model `steps` leave from `start`, for a test that changes it
 // in a way no Message does before it goes on.
-const after = (start: Model, ...steps: ReadonlyArray<RootSteps>) =>
-  Story.story(APPLICATION, Story.given(start), ...steps)
+const after = (start: Model, ...each: ReadonlyArray<StoryStep>) =>
+  modelAfter(start, steps(...each))
 
-const frames = (count: number): RootSteps =>
-  Story.steps(...ticks(count, FRAME_MS))
+const frames = (count: number): StoryStep => ticks(count, FRAME_MS)
+
+// NOTE: a Story from `start` through `each`, for a test that reads the
+// Model between them.
+const storyFrom = (start: Model, ...each: ReadonlyArray<StoryStep>) =>
+  Effect.gen(function* () {
+    const s = yield* storyOf(start)
+    steps(...each)(s)
+  })
 
 describe('the kitchen tour', () => {
   it.effect(
     'holds the clock, gives the kitchen away, and points at the fridge',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(atBoards()),
+      storyFrom(
+        atBoards(),
         frames(10),
-        Story.model(started => {
+        checkModel(started => {
           expect(isTourRunning(started)).toBe(true)
           expect(stepOf(started)).toEqual(Option.some('Boards'))
           expect(remainingOf(started)).toBe(BREAK_MS)
@@ -163,13 +174,13 @@ describe('the kitchen tour', () => {
           expect(exitPriceFor(started, WEST_EXIT)).toBe(EXIT_RULES.roomKeys[0])
         }),
         holdToBuy,
-        Story.model(opened => {
+        checkModel(opened => {
           expect(isKitchenOpen(levelOf(opened))).toBe(true)
           expect(heldKeys(opened)).toBe(1)
           expect(stepOf(opened)).toEqual(Option.some('Fridge'))
         }),
         frames(10),
-        Story.model(later => {
+        checkModel(later => {
           expect(remainingOf(later)).toBe(BREAK_MS)
         }),
       ),
@@ -181,11 +192,10 @@ describe('the kitchen tour', () => {
       Effect.gen(function* () {
         const start = yield* after(atOpenFridge(prize), frames(1))
         expect(fridgePriceFor(start)).toBe(0)
-        return yield* Story.story(
-          APPLICATION,
-          Story.given(start),
+        yield* storyFrom(
+          start,
           holdToBuy,
-          Story.model(pulled => {
+          checkModel(pulled => {
             expect(heldKeys(pulled)).toBe(1)
             expect(pulled.fridge.pulls).toBe(1)
             const door = pulled.fridge.door
@@ -199,7 +209,7 @@ describe('the kitchen tour', () => {
             expect(stepOf(pulled)).toEqual(Option.some('Choose'))
           }),
           frames(5),
-          Story.model(later => {
+          checkModel(later => {
             expect(remainingOf(later)).toBe(BREAK_MS)
           }),
         )
@@ -207,23 +217,22 @@ describe('the kitchen tour', () => {
   )
 
   // NOTE: the free pull made and its door open on the prize.
-  const offering = Story.steps(frames(1), holdToBuy, frames(FRIDGE_OPEN_TICKS))
+  const offering = steps(frames(1), holdToBuy, frames(FRIDGE_OPEN_TICKS))
 
   it.effect('taking the prize ends it, and the clock runs', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(atOpenFridge('Cooker')),
+    storyFrom(
+      atOpenFridge('Cooker'),
       offering,
-      Story.model(offered => {
+      checkModel(offered => {
         expect(FridgeDoor.isAnyOf(['Offering'])(offered.fridge.door)).toBe(true)
       }),
       holdToBuy,
       frames(1),
-      Story.model(taken => {
+      checkModel(taken => {
         expect(isTourDone(taken)).toBe(true)
       }),
       frames(10),
-      Story.model(later => {
+      checkModel(later => {
         expect(remainingOf(later)).toBeLessThan(BREAK_MS)
       }),
     ),
@@ -232,15 +241,14 @@ describe('the kitchen tour', () => {
   it.effect('walking away from the prize ends it, and the clock runs', () =>
     Effect.gen(function* () {
       const offered = yield* after(atOpenFridge('Pan'), offering)
-      return yield* Story.story(
-        APPLICATION,
-        Story.given(walkAway(offered)),
+      yield* storyFrom(
+        walkAway(offered),
         frames(3),
-        Story.model(left => {
+        checkModel(left => {
           expect(isTourDone(left)).toBe(true)
         }),
         frames(10),
-        Story.model(later => {
+        checkModel(later => {
           expect(remainingOf(later)).toBeLessThan(BREAK_MS)
         }),
       )
@@ -248,16 +256,15 @@ describe('the kitchen tour', () => {
   )
 
   it.effect('letting the prize time out ends it, and the clock runs', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(atOpenFridge('Pan')),
+    storyFrom(
+      atOpenFridge('Pan'),
       offering,
       frames(OFFER_FRAMES),
-      Story.model(sunk => {
+      checkModel(sunk => {
         expect(isTourDone(sunk)).toBe(true)
       }),
       frames(10),
-      Story.model(later => {
+      checkModel(later => {
         expect(remainingOf(later)).toBeLessThan(BREAK_MS)
       }),
     ),
@@ -268,9 +275,9 @@ describe('the kitchen tour', () => {
     prize =>
       Effect.gen(function* () {
         const running = yield* after(atOpenFridge('Cooker'), frames(1))
-        const gagged = modifyFields(running, {
+        const gagged = UiStruct.evolve(running, {
           fridge: fridge =>
-            modifyFields(fridge, {
+            UiStruct.evolve(fridge, {
               pulls: () => 1,
               door: () =>
                 FridgeDoor.Open({
@@ -282,15 +289,14 @@ describe('the kitchen tour', () => {
             }),
         })
         expect(isKitchenTourOn(gagged)).toBe(true)
-        return yield* Story.story(
-          APPLICATION,
-          Story.given(gagged),
+        yield* storyFrom(
+          gagged,
           frames(FRIDGE_OPEN_TICKS),
-          Story.model(shut => {
+          checkModel(shut => {
             expect(isTourDone(shut)).toBe(true)
           }),
           frames(10),
-          Story.model(later => {
+          checkModel(later => {
             expect(remainingOf(later)).toBeLessThan(BREAK_MS)
           }),
         )
@@ -298,17 +304,16 @@ describe('the kitchen tour', () => {
   )
 
   it.effect('the skip button ends it: the clock runs and prices are back', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(atBoards()),
+    storyFrom(
+      atBoards(),
       frames(2),
-      Story.message(Message.ClickedSkipKitchenTourButton()),
-      Story.model(skipped => {
+      send(Message.ClickedSkipKitchenTourButton()),
+      checkModel(skipped => {
         expect(skipped.kitchenTour).toEqual(Tour.Over())
         expect(exitPriceFor(skipped, KITCHEN_EXIT)).toBe(EXIT_RULES.kitchenKeys)
       }),
       frames(10),
-      Story.model(later => {
+      checkModel(later => {
         expect(remainingOf(later)).toBeLessThan(BREAK_MS)
       }),
     ),
@@ -320,7 +325,7 @@ describe('the kitchen tour', () => {
   it.effect(
     'in a break that waits, starting the wave learns it for the next run',
     () => {
-      const waiting = modifyFields(atBoards(), {
+      const waiting = UiStruct.evolve(atBoards(), {
         phase: () =>
           Phase.Preparation({
             wave: KITCHEN_FIRST_WAVE,
@@ -330,22 +335,21 @@ describe('the kitchen tour', () => {
             clock: BreakClock.Waiting({ elapsedMs: 0 }),
           }),
       })
-      return Story.story(
-        APPLICATION,
-        Story.given(waiting),
+      return storyFrom(
+        waiting,
         frames(2),
-        Story.model(started => {
+        checkModel(started => {
           expect(isTourRunning(started)).toBe(true)
           expect(isPending(started.lessons.timedBreaks)).toBe(true)
         }),
-        Story.message(Message.ClickedStartWaveButton()),
+        send(Message.ClickedStartWaveButton()),
         frames(1),
-        Story.model(waved => {
+        checkModel(waved => {
           expect(Phase.isAnyOf(['Wave'])(waved.phase)).toBe(true)
           expect(isPending(waved.lessons.timedBreaks)).toBe(false)
           expect(waved.kitchenTour).toEqual(Tour.Over())
         }),
-        Story.Command.resolveAll(),
+        settleRunCommands,
       )
     },
   )
@@ -355,23 +359,21 @@ describe('the kitchen tour', () => {
       const done = asTutorialDone(atBoards())
       expect(isKitchenTourOn(done)).toBe(false)
       expect(exitPriceFor(done, KITCHEN_EXIT)).toBe(EXIT_RULES.kitchenKeys)
-      yield* Story.story(
-        APPLICATION,
-        Story.given(done),
+      yield* storyFrom(
+        done,
         frames(2),
-        Story.model(later => {
+        checkModel(later => {
           expect(stepOf(later)).toEqual(Option.none())
         }),
         frames(8),
-        Story.model(later => {
+        checkModel(later => {
           expect(remainingOf(later)).toBeLessThan(BREAK_MS)
         }),
       )
-      return yield* Story.story(
-        APPLICATION,
-        Story.given(forgetTutorial(done)),
+      yield* storyFrom(
+        forgetTutorial(done),
         frames(2),
-        Story.model(reset => {
+        checkModel(reset => {
           expect(isTourRunning(reset)).toBe(true)
         }),
       )
@@ -381,17 +383,16 @@ describe('the kitchen tour', () => {
   it.effect(
     'in co-op it never runs: full prices and the shared clock keeps going',
     () => {
-      const crew = modifyFields(atBoards(), {
+      const crew = UiStruct.evolve(atBoards(), {
         party: () => Party.Crew(),
       })
       expect(isKitchenTourOn(crew)).toBe(false)
       expect(exitPriceFor(crew, KITCHEN_EXIT)).toBe(EXIT_RULES.kitchenKeys)
       expect(fridgePriceFor(crew)).toBe(FRIDGE_RULES.keys)
-      return Story.story(
-        APPLICATION,
-        Story.given(crew),
+      return storyFrom(
+        crew,
         frames(2),
-        Story.model(later => {
+        checkModel(later => {
           expect(stepOf(later)).toEqual(Option.none())
         }),
       )

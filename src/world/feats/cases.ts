@@ -1,5 +1,6 @@
 import { Array, Function, Option, pipe } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import { shuffle } from '../../shared/prng'
 import { giveWeapon } from '../fridge/leftovers'
@@ -190,11 +191,11 @@ const openCaseFor: {
   3,
   (world: World, displayCase: DisplayCase, slot: PlayerSlot): World => {
     const foot = caseFootOf(levelOf(world), displayCase)
-    return modifyFields(world, {
+    return UiStruct.evolve(world, {
       cases: cases =>
         Array.map(cases, current =>
           current.id === displayCase.id
-            ? modifyFields(current, {
+            ? UiStruct.evolve(current, {
                 state: () => CaseState.Opened({ by: slot }),
               })
             : current,
@@ -264,10 +265,10 @@ export const caseOffers: {
 
 const givePrize = (world: World, slot: PlayerSlot, prize: CasePrize): World =>
   prize === 'LaserSight'
-    ? modifyFields(world, {
+    ? UiStruct.evolve(world, {
         seats: atSeat(slot, { laserSight: () => 'Fitted' }),
       })
-    : modifyFields(world, {
+    : UiStruct.evolve(world, {
         seats: atSeat(slot, { player: player => giveWeapon(player, prize) }),
       })
 
@@ -283,11 +284,11 @@ export const takeCase: {
       Option.filter(displayCase => isOpenedFor(displayCase, slot)),
       Option.map(displayCase => {
         const foot = caseFootOf(levelOf(world), displayCase)
-        return modifyFields(givePrize(world, slot, displayCase.prize), {
+        return UiStruct.evolve(givePrize(world, slot, displayCase.prize), {
           cases: cases =>
             Array.map(cases, current =>
               current.id === id
-                ? modifyFields(current, {
+                ? UiStruct.evolve(current, {
                     state: () => CaseState.Emptied({ by: slot }),
                   })
                 : current,

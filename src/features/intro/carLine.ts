@@ -1,5 +1,6 @@
 import { Function, Option } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import type { Model } from '../../app/model'
 import type { RunEnding } from '../../shared/playerData'
@@ -46,7 +47,7 @@ export const noteRunEnding: {
         onSome: ending =>
           ending === after.lastRunEnding
             ? after
-            : modifyFields(after, { lastRunEnding: () => ending }),
+            : UiStruct.evolve(after, { lastRunEnding: () => ending }),
       })
     : after,
 )
@@ -67,8 +68,8 @@ export const pickCarLine: {
     FRIEND_LINES[after.lastRunEnding],
     lastLineOf(after),
   )
-  return modifyFields(after, {
+  return UiStruct.evolve(after, {
     maybeCarLine: () => Option.some(line),
-    cosmetics: modifyFields({ cosmeticRngState: () => state }),
+    cosmetics: UiStruct.evolve({ cosmeticRngState: () => state }),
   })
 })

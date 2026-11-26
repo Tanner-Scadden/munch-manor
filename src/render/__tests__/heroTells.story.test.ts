@@ -1,8 +1,15 @@
 import { Array, Option } from 'effect'
-import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
-import { type Model, Phase, Trap, defaultAppearance } from '../../app/model'
+import { UiStruct } from '@effect/ui'
+
+import {
+  BreakClock,
+  type Model,
+  Phase,
+  Trap,
+  defaultAppearance,
+} from '../../app/model'
 import { mendCues } from '../../app/update/sound'
 import { BODIES, OUTFITS, playerPixels } from '../../art/appearance'
 import { HAT_ART } from '../../art/sprites/hatArt'
@@ -52,7 +59,7 @@ const withCalling =
 
 const runningRight = (current: Model): Model =>
   modifyFocus(current, {
-    intent: intent => modifyFields(intent, { move: () => ({ x: 1, y: 0 }) }),
+    intent: intent => UiStruct.evolve(intent, { move: () => ({ x: 1, y: 0 }) }),
   })
 
 const SECOND_MS = 1000
@@ -135,8 +142,8 @@ describe('the signature effects', () => {
   // (src/world/keys/keys.ts), or none did.
   const keyed = (calling: Calling, hasFound: boolean): Model =>
     modifyFocus(
-      modifyFields(withCalling(calling)(playingModel), {
-        cosmetics: modifyFields({
+      UiStruct.evolve(withCalling(calling)(playingModel), {
+        cosmetics: UiStruct.evolve({
           tellWatch: () => ({
             traps: [],
             keysFound: [{ slot: 0, keysFound: 2 }],
@@ -145,7 +152,7 @@ describe('the signature effects', () => {
       }),
       {
         seat: seat =>
-          modifyFields(seat, { keysFound: () => (hasFound ? 3 : 2) }),
+          UiStruct.evolve(seat, { keysFound: () => (hasFound ? 3 : 2) }),
       },
     )
 
@@ -166,9 +173,10 @@ describe('the signature effects', () => {
   // third of its health since the last frame.
   const atTheTrap = (calling: Calling): Model =>
     modifyFocus(
-      modifyFields(withCalling(calling)(playingModel), {
+      UiStruct.evolve(withCalling(calling)(playingModel), {
         phase: () =>
           Phase.Preparation({
+            clock: BreakClock.Counting(),
             wave: 3,
             remainingMs: 15_000,
             durationMs: 15_000,
@@ -183,13 +191,13 @@ describe('the signature effects', () => {
             hitRemainingMs: 0,
           }),
         ],
-        cosmetics: modifyFields({
+        cosmetics: UiStruct.evolve({
           tellWatch: () => ({ traps: [{ id: 5, hp: 10 }], keysFound: [] }),
         }),
       }),
       {
         player: player =>
-          modifyFields(player, {
+          UiStruct.evolve(player, {
             x: () => 14,
             y: () => START_LEVEL.doors.West.center.y,
           }),
@@ -224,7 +232,7 @@ describe('the signature effects', () => {
       modifyFocus(world, {
         player: () => playerOfCalling('TrackStar'),
         intent: intent =>
-          modifyFields(intent, { move: () => ({ x: 0, y: 1 }) }),
+          UiStruct.evolve(intent, { move: () => ({ x: 0, y: 1 }) }),
       }),
     )
     expect(kindsOf(tellsFor(crew))).toContain('Dust')
@@ -241,9 +249,9 @@ describe('the hero icon on a teammate name tag', () => {
       modifyFocus(world, { player: () => playerOfCalling(calling) }),
     )
     const world = startRoomWorld([0, 1], 7, DEFAULT_ROOM_SETTINGS)
-    return modifyFields(crew, {
+    return UiStruct.evolve(crew, {
       coop: coop =>
-        modifyFields(coop, {
+        UiStruct.evolve(coop, {
           screen: () =>
             Screen.InRoom({
               room: {

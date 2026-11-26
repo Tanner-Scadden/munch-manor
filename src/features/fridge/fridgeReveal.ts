@@ -1,5 +1,6 @@
 import { Array, Function, Option, pipe } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import type { Model } from '../../app/model'
 import { PrizeFlight } from '../../domain/clientSchema'
@@ -206,11 +207,12 @@ export const launchPrize: {
         ? Option.match(prizeSpotOf(before), {
             onNone: () => after,
             onSome: from =>
-              modifyFields(after, {
-                cosmetics: modifyFields({
-                  prizeFlight: () =>
-                    PrizeFlight.Flying({ prize, from, ageMs: 0 }),
-                }),
+              UiStruct.evolve(after, {
+                cosmetics: cosmetics =>
+                  UiStruct.evolve(cosmetics, {
+                    prizeFlight: () =>
+                      PrizeFlight.Flying({ prize, from, ageMs: 0 }),
+                  }),
               }),
           })
         : after,
@@ -229,17 +231,18 @@ export const ageFlight: {
   PrizeFlight.match(model.cosmetics.prizeFlight, {
     Grounded: () => model,
     Flying: flight =>
-      modifyFields(model, {
-        cosmetics: modifyFields({
-          prizeFlight: () =>
-            flight.ageMs + frameMs >=
-            REVEAL_RULES.flightMs + REVEAL_RULES.pulseMs
-              ? PrizeFlight.Grounded()
-              : PrizeFlight.Flying({
-                  ...flight,
-                  ageMs: flight.ageMs + frameMs,
-                }),
-        }),
+      UiStruct.evolve(model, {
+        cosmetics: cosmetics =>
+          UiStruct.evolve(cosmetics, {
+            prizeFlight: () =>
+              flight.ageMs + frameMs >=
+              REVEAL_RULES.flightMs + REVEAL_RULES.pulseMs
+                ? PrizeFlight.Grounded()
+                : PrizeFlight.Flying({
+                    ...flight,
+                    ageMs: flight.ageMs + frameMs,
+                  }),
+          }),
       }),
   }),
 )

@@ -1,5 +1,4 @@
 import { Array, Function, Option, Record, pipe } from 'effect'
-import { Canvas } from 'foldkit'
 
 import type { Model } from '../../app/model'
 import { textShapes } from '../../art/font'
@@ -8,6 +7,7 @@ import { isBotCrew, maybeCrewBotAt } from '../../domain/bots'
 import { maybeRoomOf } from '../../domain/coopRoom'
 import { seatNamesOf } from '../../domain/onlineRun'
 import { type Camera, worldToView } from '../../render/camera'
+import * as Draw from '../../render/draw'
 import {
   EDGE_BADGE_INK,
   EDGE_BADGE_PX,
@@ -94,7 +94,7 @@ const TAG_PAD = 1
 const TAG_INK = '#f4f1de'
 const TAG_PLATE = 'rgba(16, 10, 18, 0.72)'
 
-type TagGlyph = Readonly<{ width: number; sprite: ReadonlyArray<Canvas.Shape> }>
+type TagGlyph = Readonly<{ width: number; sprite: ReadonlyArray<Draw.Shape> }>
 
 const TAG_GLYPHS: ReadonlyMap<string, TagGlyph> = new Map(
   Array.map(Record.toEntries(TAG_PIXELS), ([symbol, pixels]) => [
@@ -128,7 +128,7 @@ const tagCellsOf = (name: string): ReadonlyArray<TagCell> =>
 // tell who plays what at a glance (decided 2026-11-01): the Handyman's
 // hammer, the Track Star's sneaker, the Penny Pincher's coin, the Line
 // Cook's ladle. YOU gets none. Four rows tall, like the letters.
-type TagIcon = Readonly<{ width: number; sprite: ReadonlyArray<Canvas.Shape> }>
+type TagIcon = Readonly<{ width: number; sprite: ReadonlyArray<Draw.Shape> }>
 
 const tagIconOf = (pixels: ReadonlyArray<string>): TagIcon => ({
   width: Array.reduce(pixels, 0, (widest, row) => Math.max(widest, row.length)),
@@ -181,7 +181,7 @@ const nameTagShapes = (
   bottom: number,
   calling: Calling,
   isBot: boolean,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const cells = tagCellsOf(name)
   if (Array.isReadonlyArrayEmpty(cells)) {
     return []
@@ -201,7 +201,7 @@ const nameTagShapes = (
   const width = tagWidthOf(cells) + iconSpan
   const left = Math.round(x - width / 2)
   const top = Math.round(bottom) - TAG_ROWS - TAG_PAD - 1
-  const icon: Array<Canvas.Shape> = []
+  const icon: Array<Draw.Shape> = []
   let iconAt = left
   for (const found of icons) {
     icon.push(placeAt(iconAt, top, found.sprite))
@@ -209,7 +209,7 @@ const nameTagShapes = (
   }
   const glyphs = Array.reduce(
     cells,
-    { at: left + iconSpan, shapes: Array.empty<Canvas.Shape>() },
+    { at: left + iconSpan, shapes: Array.empty<Draw.Shape>() },
     (placed, cell) => ({
       at: placed.at + cell.width + TAG_GAP,
       shapes: Option.match(cell.maybeGlyph, {
@@ -220,14 +220,14 @@ const nameTagShapes = (
     }),
   )
   return [
-    Canvas.Rect({
+    Draw.Rect({
       x: left - TAG_PAD,
       y: top - TAG_PAD,
       width: width + TAG_PAD * 2,
       height: TAG_ROWS + TAG_PAD * 2,
       fill: TAG_PLATE,
     }),
-    Canvas.Rect({
+    Draw.Rect({
       x: left - TAG_PAD,
       y: top + TAG_ROWS + TAG_PAD,
       width: width + TAG_PAD * 2,
@@ -259,7 +259,7 @@ const nameLiftOf = (model: Model, slot: number, seat: Seat): number => {
 }
 
 // NOTE: in the world's own pixels, drawn with the players' overheads.
-export const coopNameShapes = (model: Model): ReadonlyArray<Canvas.Shape> => {
+export const coopNameShapes = (model: Model): ReadonlyArray<Draw.Shape> => {
   if (!isOnline(model)) {
     return []
   }
@@ -296,7 +296,7 @@ export const coopNameShapes = (model: Model): ReadonlyArray<Canvas.Shape> => {
 
 const EDGE_INSET_PX = 3
 
-const BADGES: ReadonlyArray<ReadonlyArray<Canvas.Shape>> = Array.map(
+const BADGES: ReadonlyArray<ReadonlyArray<Draw.Shape>> = Array.map(
   [0, 1, 2, 3],
   slot => edgeBadgeOf(seatColorOf(slot)),
 )
@@ -307,7 +307,7 @@ const BADGES: ReadonlyArray<ReadonlyArray<Canvas.Shape>> = Array.map(
 const CALL_FLASH_MS = 120
 const CALL_GLOW_PX = 2
 
-const CALLING_BADGE: ReadonlyArray<Canvas.Shape> = spriteShapes(
+const CALLING_BADGE: ReadonlyArray<Draw.Shape> = spriteShapes(
   [
     '..ggggggggg..',
     '.ggggggggggg.',
@@ -338,7 +338,7 @@ const badgeShapeOf = (
   slot: number,
   isCalling: boolean,
   elapsedMs: number,
-): Canvas.Shape =>
+): Draw.Shape =>
   isCalling && Math.floor(elapsedMs / CALL_FLASH_MS) % 2 === 0
     ? placeAt(x - CALL_GLOW_PX, y - CALL_GLOW_PX, CALLING_BADGE)
     : placeAt(x, y, BADGES[slot % BADGES.length] ?? [])
@@ -348,11 +348,11 @@ const clamp = (value: number, low: number, high: number): number =>
 
 // NOTE: in the overlay canvas's pixels, from the screen camera.
 export const coopEdgeShapes: {
-  (camera: Camera): (model: Model) => ReadonlyArray<Canvas.Shape>
-  (model: Model, camera: Camera): ReadonlyArray<Canvas.Shape>
+  (camera: Camera): (model: Model) => ReadonlyArray<Draw.Shape>
+  (model: Model, camera: Camera): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   2,
-  (model: Model, camera: Camera): ReadonlyArray<Canvas.Shape> => {
+  (model: Model, camera: Camera): ReadonlyArray<Draw.Shape> => {
     if (!isOnline(model)) {
       return []
     }

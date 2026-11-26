@@ -1,9 +1,5 @@
-import { setup } from 'foldkit/test/vitest'
-
 import { useSpriteMode } from '../art/spriteAtlas'
 
-setup()
-
-// NOTE: tests draw stand-ins instead of encoding a PNG for every sprite the
-// game builds as it loads. src/test/testPng.ts reads their pixels back.
+// NOTE: every test draws stand-in sprites, data URLs with no canvas, in
+// place of the atlas's PNGs (src/art/spriteAtlas.ts).
 useSpriteMode('StandIn')

@@ -3,17 +3,19 @@
 // takes a tap as a pin for a note. In Blocks it stands carved on the 3D
 // stage instead (./stage3d.ts), lit by a preset, the light and color lab
 // under it.
-import { Array, Function } from 'effect'
-import { Canvas } from 'foldkit'
-import type { Html } from 'foldkit/html'
+import { Array, Function, Option } from 'effect'
+
+import { Component } from '@effect/ui'
 
 import { group } from '../../src/art/sprite'
+import type * as Draw from '../../src/render/draw'
 import {
   Message,
   type Model,
   SPEEDS,
   StageMode,
-  type StudioViewBuilder,
+  type StudioH,
+  type StudioHtml,
   freshDoneOf,
   notesFor,
 } from './block'
@@ -30,7 +32,9 @@ import {
   zoomed,
 } from './drawing'
 import { labToggleView, labView } from './labView'
-import { pinAt, pinShapes, stagePinsOf } from './pins'
+import { marksView, picturePointer } from './marksView'
+import { studioPicture } from './picture'
+import { pinAt, pinMarksOf, stagePinsOf } from './pins'
 import { studioStage } from './stage3d'
 import { PRESET_LABELS, StagePreset } from './stagePresets'
 
@@ -49,7 +53,7 @@ const joinBounds = (a: Bounds, b: Bounds): Bounds => ({
   bottom: Math.max(a.bottom, b.bottom),
 })
 
-type Placed = Readonly<{ shapes: ReadonlyArray<Canvas.Shape>; bounds: Bounds }>
+type Placed = Readonly<{ shapes: ReadonlyArray<Draw.Shape>; bounds: Bounds }>
 
 // NOTE: the crew stand to the left of the sprite, feet on the same line,
 // each a little apart.
@@ -82,41 +86,35 @@ const crewPlaced = (
   ).placed
 
 const toolButton = (
+  h: StudioH,
   content: string,
   title: string,
   message: Message,
-  h: StudioViewBuilder,
   className: string = 'tool',
-): Html =>
-  h.button(
-    [
-      h.Class(className),
-      h.Title(title),
-      h.AriaLabel(title),
-      h.OnClick(message),
-    ],
-    [content],
-  )
+): StudioHtml =>
+  h.button
+    .class(className)
+    .attr('title', title)
+    .attr('aria-label', title)
+    .on('click', message)
+    .children(content)
 
 const toggle = (
+  h: StudioH,
   label: string,
   title: string,
   isOn: boolean,
   message: Message,
-  h: StudioViewBuilder,
-): Html =>
-  h.button(
-    [
-      h.Class(isOn ? 'tool-toggle on' : 'tool-toggle'),
-      h.AriaPressed(isOn ? 'true' : 'false'),
-      h.Title(title),
-      h.OnClick(message),
-    ],
-    [label],
-  )
+): StudioHtml =>
+  h.button
+    .class(isOn ? 'tool-toggle on' : 'tool-toggle')
+    .attr('aria-pressed', isOn ? 'true' : 'false')
+    .attr('title', title)
+    .on('click', message)
+    .children(label)
 
-const divider = (h: StudioViewBuilder): Html =>
-  h.span([h.Class('tool-divider'), h.AriaHidden(true)])
+const divider = (h: StudioH): StudioHtml =>
+  h.span.class('tool-divider').attr('aria-hidden', 'true')
 
 // NOTE: how many blocks deep the stage carves a tab's sprites, as the game
 // carves bodies (16) and its smaller things (src/render/iso/scene.ts).
@@ -130,6 +128,7 @@ const MOST_BY_TAB: Readonly<Record<Tab, number>> = {
 }
 
 const segmentedOf = <A extends string>(
+  h: StudioH,
   input: Readonly<{
     title: string
     choices: ReadonlyArray<A>
@@ -137,21 +136,20 @@ const segmentedOf = <A extends string>(
     labelOf: (choice: A) => string
     messageOf: (choice: A) => Message
   }>,
-  h: StudioViewBuilder,
-): Html =>
-  h.div(
-    [h.Class('segmented small'), h.Role('group'), h.Title(input.title)],
-    Array.map(input.choices, choice =>
-      h.button(
-        [
-          h.Class(input.picked === choice ? 'segment on' : 'segment'),
-          h.AriaPressed(input.picked === choice ? 'true' : 'false'),
-          h.OnClick(input.messageOf(choice)),
-        ],
-        [input.labelOf(choice)],
+): StudioHtml =>
+  h.div
+    .class('segmented small')
+    .attr('role', 'group')
+    .attr('title', input.title)
+    .children(
+      Array.map(input.choices, choice =>
+        h.button
+          .class(input.picked === choice ? 'segment on' : 'segment')
+          .attr('aria-pressed', input.picked === choice ? 'true' : 'false')
+          .on('click', input.messageOf(choice))
+          .children(input.labelOf(choice)),
       ),
-    ),
-  )
+    )
 
 const MODE_LABELS: Readonly<Record<StageMode, string>> = {
   Flat: '🖼️ Flat',
@@ -160,247 +158,220 @@ const MODE_LABELS: Readonly<Record<StageMode, string>> = {
 
 // NOTE: the stage's own controls: flat or blocks, and in blocks the light,
 // the spin, and the game's camera.
-const stageBarView = (model: Model, h: StudioViewBuilder): Html =>
-  h.div(
-    [h.Class('toolbar'), h.Role('toolbar')],
-    [
-      segmentedOf(
-        {
-          title: 'See it flat or carved into blocks in 3D',
-          choices: StageMode.literals,
-          picked: model.stageMode,
-          labelOf: mode => MODE_LABELS[mode],
-          messageOf: mode => Message.ClickedStageMode({ mode }),
-        },
-        h,
-      ),
+const stageBarView = (h: StudioH, model: Model): StudioHtml =>
+  h.div
+    .class('toolbar')
+    .attr('role', 'toolbar')
+    .children(
+      segmentedOf(h, {
+        title: 'See it flat or carved into blocks in 3D',
+        choices: StageMode.literals,
+        picked: model.stageMode,
+        labelOf: mode => MODE_LABELS[mode],
+        messageOf: mode => Message.ClickedStageMode({ mode }),
+      }),
       ...(model.stageMode === 'Blocks'
         ? [
             divider(h),
-            segmentedOf(
-              {
-                title: 'The light it stands in',
-                choices: StagePreset.literals,
-                picked: model.stagePreset,
-                labelOf: preset => PRESET_LABELS[preset],
-                messageOf: preset => Message.ClickedStagePreset({ preset }),
-              },
-              h,
-            ),
+            segmentedOf(h, {
+              title: 'The light it stands in',
+              choices: StagePreset.literals,
+              picked: model.stagePreset,
+              labelOf: preset => PRESET_LABELS[preset],
+              messageOf: preset => Message.ClickedStagePreset({ preset }),
+            }),
             divider(h),
             toggle(
+              h,
               '🔄 Spin',
               'Turn it round and round (or drag it)',
               model.isAutoSpin,
               Message.ClickedAutoSpin(),
-              h,
             ),
             toolButton(
+              h,
               '🎮 Game camera',
               "Look from the game's own camera, 49° down",
               Message.ClickedPlayCamera(),
-              h,
               'tool-toggle',
             ),
-            labToggleView(model, h),
+            labToggleView(h, model),
           ]
         : []),
-    ],
-  )
+    )
 
 // NOTE: the picked sprite carved on the 3D stage.
-const blocksView = (model: Model, entry: Entry, h: StudioViewBuilder): Html => {
-  const stage = studioStage.withMessage(h)
-  return stage(
-    [
-      h.Key('studio-stage'),
-      h.Class('stage3d'),
-      stage.Subject({
-        id: entry.id,
-        facing: model.facing,
-        tone: model.tone,
-        clockMs: model.clockMs,
-        most: MOST_BY_TAB[model.tab],
-      }),
-      stage.Preset(model.stagePreset),
-      stage.House(model.house),
-      stage.IsAutoSpin(model.isAutoSpin),
-      stage.CameraResets(model.cameraResets),
-      stage.Tuning(model.labEdits),
-      stage.Pins(stagePinsOf({ model, notes: notesFor(model, entry.id) })),
-      stage.OnPressBlock(pin => Message.PressedPicture({ pin })),
-    ],
-    [],
-  )
-}
+const blocksView = (h: StudioH, model: Model, entry: Entry): StudioHtml =>
+  studioStage(h)
+    .key('studio-stage')
+    .class('stage3d')
+    .subject({
+      id: entry.id,
+      facing: model.facing,
+      tone: model.tone,
+      clockMs: model.clockMs,
+      most: MOST_BY_TAB[model.tab],
+    })
+    .preset(model.stagePreset)
+    .house(model.house)
+    .isAutoSpin(model.isAutoSpin)
+    .cameraResets(model.cameraResets)
+    .tuning(model.labEdits)
+    .pins(stagePinsOf({ model, notes: notesFor(model, entry.id) }))
+    .on('press-block', pin => Message.PressedPicture({ pin }))
 
 const toolbarView = (
+  h: StudioH,
   model: Model,
   index: number,
   count: number,
-  h: StudioViewBuilder,
-): Html =>
-  h.div(
-    [h.Class('toolbar'), h.Role('toolbar')],
-    [
-      toolButton('‹', 'Frame before', Message.ClickedStep({ step: -1 }), h),
+): StudioHtml =>
+  h.div
+    .class('toolbar')
+    .attr('role', 'toolbar')
+    .children(
+      toolButton(h, '‹', 'Frame before', Message.ClickedStep({ step: -1 })),
       toolButton(
+        h,
         model.isPlaying ? '❚❚' : '▶',
         model.isPlaying ? 'Pause' : 'Play',
         Message.ClickedPlay(),
-        h,
         'tool play',
       ),
-      toolButton('›', 'Frame after', Message.ClickedStep({ step: 1 }), h),
-      h.span([h.Class('frame-count')], [`${index + 1} / ${count}`]),
+      toolButton(h, '›', 'Frame after', Message.ClickedStep({ step: 1 })),
+      h.span.class('frame-count').children(`${index + 1} / ${count}`),
       divider(h),
-      h.div(
-        [h.Class('segmented small'), h.Role('group'), h.Title('Speed')],
-        Array.map(SPEEDS, speed =>
-          h.button(
-            [
-              h.Class(model.speed === speed ? 'segment on' : 'segment'),
-              h.AriaPressed(model.speed === speed ? 'true' : 'false'),
-              h.Title(`Play at ${speed} speed`),
-              h.OnClick(Message.ClickedSpeed({ speed })),
-            ],
-            [speed === 0.5 ? '½×' : `${speed}×`],
+      h.div
+        .class('segmented small')
+        .attr('role', 'group')
+        .attr('title', 'Speed')
+        .children(
+          Array.map(SPEEDS, speed =>
+            h.button
+              .class(model.speed === speed ? 'segment on' : 'segment')
+              .attr('aria-pressed', model.speed === speed ? 'true' : 'false')
+              .attr('title', `Play at ${speed} speed`)
+              .on('click', Message.ClickedSpeed({ speed }))
+              .children(speed === 0.5 ? '½×' : `${speed}×`),
           ),
         ),
-      ),
       divider(h),
       toggle(
+        h,
         'Ghost frame',
         'Show the frame before, faded, under this one',
         model.isOnion,
         Message.ClickedOnion(),
-        h,
       ),
       toggle(
+        h,
         'With the crew',
         'Stand it beside the player and a Groaner to check its size',
         model.isCrew,
         Message.ClickedCrew(),
-        h,
       ),
-    ],
-  )
+    )
 
-// NOTE: Foldkit's views pass the builder last, as the game's do.
+// NOTE: what the flat picture shows, as one key: a render that changes
+// none of it paints nothing.
+const stageKeyOf = (model: Model, entry: Entry, index: number, zoom: number) =>
+  `${entry.id}|${index}|${entry.isClockDriven === true ? model.clockMs : 0}|${model.facing}|${model.tone}|${model.isOnion}|${model.isCrew}|${zoom}|${model.backdrop}`
+
+// NOTE: the picked sprite big, and its controls.
 export const stageView: {
-  (entry: Entry, h: StudioViewBuilder): (model: Model) => Html
-  (model: Model, entry: Entry, h: StudioViewBuilder): Html
-} = Function.dual(
-  3,
-  (model: Model, entry: Entry, h: StudioViewBuilder): Html => {
-    const frames = entry.frames(lookOf(model))
-    const count = frames.length
-    const index = frameIndexOf(entry, model.clockMs, count)
-    const subject = padded(spritesBounds(frames))
-    const crew = model.isCrew ? crewPlaced(model, index, subject) : []
-    const bounds = paddedBy(STAGE_PAD)(
-      Array.reduce(crew, subject, (all, placed) =>
-        joinBounds(all, placed.bounds),
+  (model: Model, entry: Entry): (h: StudioH) => StudioHtml
+  (h: StudioH, model: Model, entry: Entry): StudioHtml
+} = Function.dual(3, (h: StudioH, model: Model, entry: Entry): StudioHtml => {
+  const frames = entry.frames(lookOf(model))
+  const count = frames.length
+  const index = frameIndexOf(entry, model.clockMs, count)
+  const subject = padded(spritesBounds(frames))
+  const crew = model.isCrew ? crewPlaced(model, index, subject) : []
+  const bounds = paddedBy(STAGE_PAD)(
+    Array.reduce(crew, subject, (all, placed) =>
+      joinBounds(all, placed.bounds),
+    ),
+  )
+  const zoom = Math.max(
+    MIN_STAGE_ZOOM,
+    Math.min(
+      MAX_STAGE_ZOOM,
+      Math.floor(STAGE_HEIGHT / Math.max(1, bounds.bottom - bounds.top)),
+    ),
+  )
+  const { width, height } = sizeOf(bounds, zoom)
+  const ghost =
+    model.isOnion && count > 1
+      ? [
+          group({
+            opacity: ONION_OPACITY,
+            shapes: frameOf(frames, (index + count - 1) % count),
+          }),
+        ]
+      : []
+  const frame = { bounds, zoom }
+  const isFresh = Array.isReadonlyArrayNonEmpty(freshDoneOf(model, entry.id))
+  return h.section.class('stage').children(
+    h.div
+      .class('stage-head')
+      .children(
+        h.h2.children(entry.title),
+        isFresh && h.span.class('updated-chip').children('Updated'),
+        h.span
+          .class('stage-hint')
+          .children(
+            model.stageMode === 'Blocks'
+              ? 'Drag to turn it, tap a block to pin a note'
+              : 'Tap the picture to pin a note',
+          ),
       ),
-    )
-    const zoom = Math.max(
-      MIN_STAGE_ZOOM,
-      Math.min(
-        MAX_STAGE_ZOOM,
-        Math.floor(STAGE_HEIGHT / Math.max(1, bounds.bottom - bounds.top)),
-      ),
-    )
-    const { width, height } = sizeOf(bounds, zoom)
-    const ghost =
-      model.isOnion && count > 1
-        ? [
-            group({
-              opacity: ONION_OPACITY,
-              shapes: frameOf(frames, (index + count - 1) % count),
-            }),
-          ]
-        : []
-    const isFresh = Array.isReadonlyArrayNonEmpty(freshDoneOf(model, entry.id))
-    return h.section(
-      [h.Class('stage')],
-      [
-        h.div(
-          [h.Class('stage-head')],
-          [
-            h.h2([], [entry.title]),
-            ...(isFresh
-              ? [h.span([h.Class('updated-chip')], ['Updated'])]
-              : []),
-            h.span(
-              [h.Class('stage-hint')],
-              [
-                model.stageMode === 'Blocks'
-                  ? 'Drag to turn it, tap a block to pin a note'
-                  : 'Tap the picture to pin a note',
-              ],
-            ),
-          ],
-        ),
-        stageBarView(model, h),
-        h.div(
-          [h.Class('stage-surface')],
-          model.stageMode === 'Blocks'
-            ? [blocksView(model, entry, h)]
-            : [
-                h.div(
-                  [
-                    h.Class('stage-canvases'),
-                    h.Style({ width: `${width}px`, height: `${height}px` }),
-                  ],
-                  [
-                    Canvas.view(
-                      {
-                        key: 'stage-art',
-                        width,
-                        height,
-                        shapes: [
-                          backdropRect({ width, height }, model.backdrop),
-                          zoomed(
-                            [
-                              ...ghost,
-                              ...Array.flatMap(crew, placed => placed.shapes),
-                              ...frameOf(frames, index),
-                            ],
-                            bounds,
-                            zoom,
-                          ),
-                        ],
-                        className: 'sprite stage-art',
-                      },
-                      h,
-                    ),
-                    Canvas.view(
-                      {
-                        key: 'stage-pins',
-                        width,
-                        height,
-                        shapes: pinShapes({
-                          model,
-                          notes: notesFor(model, entry.id),
-                          frame: { bounds, zoom },
-                        }),
-                        className: 'pins',
-                        onPointerDown: ({ x, y }) =>
-                          Message.PressedPicture({
-                            pin: pinAt({ bounds, zoom })({ x, y }),
-                          }),
-                      },
-                      h,
+    stageBarView(h, model),
+    h.div.class('stage-surface').children(
+      model.stageMode === 'Blocks'
+        ? blocksView(h, model, entry)
+        : h.div
+            .class('stage-canvases')
+            .style({ width: `${width}px`, height: `${height}px` })
+            .children(
+              studioPicture(h)
+                .class('sprite', 'stage-art')
+                .picture({
+                  key: stageKeyOf(model, entry, index, zoom),
+                  width,
+                  height,
+                  shapes: [
+                    backdropRect({ width, height }, model.backdrop),
+                    zoomed(
+                      [
+                        ...ghost,
+                        ...Array.flatMap(crew, placed => placed.shapes),
+                        ...frameOf(frames, index),
+                      ],
+                      bounds,
+                      zoom,
                     ),
                   ],
+                }),
+              marksView(h, {
+                width,
+                height,
+                pins: pinMarksOf({
+                  model,
+                  notes: notesFor(model, entry.id),
+                  frame,
+                }),
+                areas: [],
+                maybeGrid: Option.none(),
+                maybeHover: Option.none(),
+                pointer: picturePointer(pointer =>
+                  pointer.kind === 'Down'
+                    ? Message.PressedPicture({ pin: pinAt(frame)(pointer) })
+                    : Component.noop,
                 ),
-              ],
-        ),
-        toolbarView(model, index, count, h),
-        ...(model.stageMode === 'Blocks' && model.isLabOpen
-          ? [labView(model, h)]
-          : []),
-      ],
-    )
-  },
-)
+              }),
+            ),
+    ),
+    toolbarView(h, model, index, count),
+    model.stageMode === 'Blocks' && model.isLabOpen && labView(h, model),
+  )
+})

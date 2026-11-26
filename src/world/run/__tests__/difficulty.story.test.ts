@@ -1,11 +1,8 @@
 import { Array, Effect, Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
-import { DialogBlock } from '@foldkit/ui'
 
-import { LobbyBinding, PanelDialogBinding } from '../../../app/bindings'
 import { Message } from '../../../app/message'
 import {
   type Difficulty,
@@ -21,7 +18,7 @@ import {
   ZombieAction,
   ZombieState,
 } from '../../../app/model'
-import { Message as LobbyMessage } from '../../../features/lobby/message'
+import { LobbyMessage } from '../../../features/lobby/message'
 import { bestsFor } from '../../../screens/home/home'
 import { FIXED_STEP_MS } from '../../../shared/constants'
 import {
@@ -31,15 +28,16 @@ import {
   readyModel,
 } from '../../../test/model.fixture'
 import {
-  APPLICATION,
-  closeDialog,
+  checkModel,
+  modelAfter,
   openLobbyByKey,
   playPendingSounds,
   press,
   resolveFocusLobby,
-  showDialog,
+  send,
   startRunFromHome,
   startedRun,
+  steps,
   throughIntro,
   tick,
 } from '../../../test/testing'
@@ -49,7 +47,7 @@ import { ZOMBIE_KINDS } from '../../zombies/zombies'
 import { DIFFICULTIES, biteDamage, toughenSpawns } from '../difficulty'
 
 const pick = (difficulty: Difficulty) =>
-  Story.message(Message.ClickedDifficultyCardButton({ difficulty }))
+  send(Message.ClickedDifficultyCardButton({ difficulty }))
 
 const preparationSpawns = (current: Model) =>
   Phase.match(current.phase, {
@@ -70,183 +68,178 @@ const withDifficulty = (
   base: Model,
   chosen: Difficulty,
   nightmare: NightmareLock = 'Locked',
-): Model => modifyFields(base, { difficulty: () => ({ chosen, nightmare }) })
+): Model => UiStruct.evolve(base, { difficulty: () => ({ chosen, nightmare }) })
 
 describe('the first-time difficulty card', () => {
   it.effect(
     'the first PLAY asks, the pick starts the campaign, and it never asks again',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(newPlayerReady),
-        Story.message(Message.ClickedCampaignButton()),
-        showDialog(),
-        Story.model(current => {
-          expect(Phase.guards.Ready(current.phase)).toBe(true)
-          expect(current.panel).toBe('Difficulty')
-          expect(current.panelDialog.isOpen).toBe(true)
-          expect(current.difficultyCard).toEqual(
-            DifficultyCard.Asking({
-              mode: RunMode.Campaign(),
-              tutorial: 'Tutorial',
-            }),
-          )
-        }),
-        pick('Easy'),
-        closeDialog(),
-        throughIntro,
-        Story.model(current => {
-          expect(Phase.guards.Preparation(current.phase)).toBe(true)
-          expect(current.mode).toEqual(RunMode.Campaign())
-          expect(current.difficulty.chosen).toBe('Easy')
-          expect(current.difficultyCard).toEqual(DifficultyCard.Seen())
-          expect(current.panelDialog.isOpen).toBe(false)
-        }),
+      modelAfter(
+        newPlayerReady,
+        steps(
+          send(Message.ClickedCampaignButton()),
+          checkModel(current => {
+            expect(Phase.guards.Ready(current.phase)).toBe(true)
+            expect(current.panel).toBe('Difficulty')
+            expect(current.panelDialog.isOpen).toBe(true)
+            expect(current.difficultyCard).toEqual(
+              DifficultyCard.Asking({
+                mode: RunMode.Campaign(),
+                tutorial: 'Tutorial',
+              }),
+            )
+          }),
+          pick('Easy'),
+          throughIntro,
+          checkModel(current => {
+            expect(Phase.guards.Preparation(current.phase)).toBe(true)
+            expect(current.mode).toEqual(RunMode.Campaign())
+            expect(current.difficulty.chosen).toBe('Easy')
+            expect(current.difficultyCard).toEqual(DifficultyCard.Seen())
+            expect(current.panelDialog.isOpen).toBe(false)
+          }),
+        ),
       ),
   )
 
   it.effect(
     'closing the card starts nothing, and the next PLAY asks again',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(newPlayerReady),
-        press('Enter'),
-        showDialog(),
-        Story.messageIn(
-          PanelDialogBinding,
-          DialogBlock.Message.CanceledDialog(),
+      modelAfter(
+        newPlayerReady,
+        steps(
+          press('Enter'),
+          send(Message.ClosedDialog({ dialog: 'Panel' })),
+          checkModel(current => {
+            expect(Phase.guards.Ready(current.phase)).toBe(true)
+            expect(current.difficultyCard).toEqual(DifficultyCard.Unseen())
+          }),
+          press('Enter'),
+          checkModel(current => {
+            expect(current.panel).toBe('Difficulty')
+            expect(current.panelDialog.isOpen).toBe(true)
+          }),
         ),
-        closeDialog(),
-        Story.model(current => {
-          expect(Phase.guards.Ready(current.phase)).toBe(true)
-          expect(current.difficultyCard).toEqual(DifficultyCard.Unseen())
-        }),
-        press('Enter'),
-        showDialog(),
-        Story.model(current => {
-          expect(current.panel).toBe('Difficulty')
-          expect(current.panelDialog.isOpen).toBe(true)
-        }),
       ),
   )
 
   it.effect('a veteran who has picked opens the lobby, and START goes in', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(readyModel),
-      openLobbyByKey,
-      Story.model(current => {
-        expect(Phase.guards.Ready(current.phase)).toBe(true)
-        expect(current.panelDialog.isOpen).toBe(false)
-      }),
-      press('Enter'),
-      throughIntro,
-      Story.model(current => {
-        expect(Phase.guards.Preparation(current.phase)).toBe(true)
-        expect(current.panelDialog.isOpen).toBe(false)
-      }),
+    modelAfter(
+      readyModel,
+      steps(
+        openLobbyByKey,
+        checkModel(current => {
+          expect(Phase.guards.Ready(current.phase)).toBe(true)
+          expect(current.panelDialog.isOpen).toBe(false)
+        }),
+        press('Enter'),
+        throughIntro,
+        checkModel(current => {
+          expect(Phase.guards.Preparation(current.phase)).toBe(true)
+          expect(current.panelDialog.isOpen).toBe(false)
+        }),
+      ),
     ),
   )
 
   it.effect('Nightmare is locked until a Hard win', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(newPlayerReady),
-      press('Enter'),
-      showDialog(),
-      pick('Nightmare'),
-      Story.model(current => {
-        expect(Phase.guards.Ready(current.phase)).toBe(true)
-        expect(current.difficulty.chosen).toBe('Normal')
-        expect(current.panelDialog.isOpen).toBe(true)
-      }),
+    modelAfter(
+      newPlayerReady,
+      steps(
+        press('Enter'),
+        pick('Nightmare'),
+        checkModel(current => {
+          expect(Phase.guards.Ready(current.phase)).toBe(true)
+          expect(current.difficulty.chosen).toBe('Normal')
+          expect(current.panelDialog.isOpen).toBe(true)
+        }),
+      ),
     ),
   )
 })
 
 const lobbyDifficulty = (difficulty: Difficulty) =>
-  Story.messageIn(
-    LobbyBinding,
-    LobbyMessage.ClickedDifficultyButton({ difficulty }),
-  )
+  send(LobbyMessage.PickedLobbyDifficulty({ difficulty }))
 
 describe('difficulty in the lobby', () => {
   it.effect(
     'a tile changes the difficulty without starting a run, but not Nightmare while locked',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(readyModel),
-        openLobbyByKey,
-        lobbyDifficulty('Nightmare'),
-        Story.model(current => {
-          expect(current.difficulty.chosen).toBe('Normal')
-        }),
-        lobbyDifficulty('Hard'),
-        resolveFocusLobby(),
-        Story.model(current => {
-          expect(current.difficulty.chosen).toBe('Hard')
-          expect(Phase.guards.Ready(current.phase)).toBe(true)
-          expect(current.lobby.status).toBe('Open')
-        }),
+      modelAfter(
+        readyModel,
+        steps(
+          openLobbyByKey,
+          lobbyDifficulty('Nightmare'),
+          checkModel(current => {
+            expect(current.difficulty.chosen).toBe('Normal')
+          }),
+          lobbyDifficulty('Hard'),
+          resolveFocusLobby(),
+          checkModel(current => {
+            expect(current.difficulty.chosen).toBe('Hard')
+            expect(Phase.guards.Ready(current.phase)).toBe(true)
+            expect(current.lobby.status).toBe('Open')
+          }),
+        ),
       ),
   )
 
   it.effect('X steps to the next difficulty, skipping a locked Nightmare', () =>
     Effect.gen(function* () {
-      yield* Story.story(
-        APPLICATION,
-        Story.given(withDifficulty(readyModel, 'Hard')),
-        openLobbyByKey,
-        press('KeyX'),
-        resolveFocusLobby(),
-        Story.model(current => {
-          expect(current.difficulty.chosen).toBe('Easy')
-        }),
-        press('KeyX'),
-        resolveFocusLobby(),
-        Story.model(current => {
-          expect(current.difficulty.chosen).toBe('Normal')
-        }),
+      yield* modelAfter(
+        withDifficulty(readyModel, 'Hard'),
+        steps(
+          openLobbyByKey,
+          press('KeyX'),
+          resolveFocusLobby(),
+          checkModel(current => {
+            expect(current.difficulty.chosen).toBe('Easy')
+          }),
+          press('KeyX'),
+          resolveFocusLobby(),
+          checkModel(current => {
+            expect(current.difficulty.chosen).toBe('Normal')
+          }),
+        ),
       )
-      yield* Story.story(
-        APPLICATION,
-        Story.given(withDifficulty(readyModel, 'Hard', 'Unlocked')),
-        openLobbyByKey,
-        press('KeyX'),
-        resolveFocusLobby(),
-        Story.model(current => {
-          expect(current.difficulty.chosen).toBe('Nightmare')
-        }),
+      yield* modelAfter(
+        withDifficulty(readyModel, 'Hard', 'Unlocked'),
+        steps(
+          openLobbyByKey,
+          press('KeyX'),
+          resolveFocusLobby(),
+          checkModel(current => {
+            expect(current.difficulty.chosen).toBe('Nightmare')
+          }),
+        ),
       )
     }),
   )
 
   it.effect('the home menu has no difficulty key', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(readyModel),
-      press('KeyX'),
-      Story.model(current => {
-        expect(current.panelDialog.isOpen).toBe(false)
-        expect(current.lobby.status).toBe('Closed')
-      }),
+    modelAfter(
+      readyModel,
+      steps(
+        press('KeyX'),
+        checkModel(current => {
+          expect(current.panelDialog.isOpen).toBe(false)
+          expect(current.lobby.status).toBe('Closed')
+        }),
+      ),
     ),
   )
 
   it.effect('a difficulty tile outside the lobby does nothing', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        modifyFields(readyModel, {
-          phase: () => Phase.Wave({ wave: 3, elapsedMs: 0, spawns: [] }),
+    modelAfter(
+      UiStruct.evolve(readyModel, {
+        phase: () => Phase.Wave({ wave: 3, elapsedMs: 0, spawns: [] }),
+      }),
+      steps(
+        lobbyDifficulty('Easy'),
+        checkModel(current => {
+          expect(current.difficulty.chosen).toBe('Normal')
         }),
       ),
-      lobbyDifficulty('Easy'),
-      Story.model(current => {
-        expect(current.difficulty.chosen).toBe('Normal')
-      }),
     ),
   )
 })
@@ -255,7 +248,7 @@ describe('difficulty in the lobby', () => {
 // next frame is an escape.
 const winning = (base: Model): Model =>
   escaping(
-    modifyFields(base, {
+    UiStruct.evolve(base, {
       phase: () =>
         Phase.Wave({
           wave: FINAL_WAVE,
@@ -270,54 +263,58 @@ describe('unlocking Nightmare', () => {
     'a Hard escape unlocks it, the next run settles it, and the picker can pick it',
     () =>
       Effect.gen(function* () {
-        yield* Story.story(
-          APPLICATION,
-          Story.given(winning(withDifficulty(readyModel, 'Hard'))),
-          tick(FIXED_STEP_MS),
-          Story.model(current => {
-            expect(Phase.guards.Escaped(current.phase)).toBe(true)
-            expect(current.difficulty.nightmare).toBe('JustUnlocked')
-            expect(bestsFor(current).maybeFastestWinMs).toEqual(
-              Option.some(FIXED_STEP_MS),
-            )
-            expect(current.bests.byDifficulty.Normal.maybeFastestWinMs).toEqual(
-              Option.none(),
-            )
-          }),
+        yield* modelAfter(
+          winning(withDifficulty(readyModel, 'Hard')),
+          steps(
+            tick(FIXED_STEP_MS),
+            checkModel(current => {
+              expect(Phase.guards.Escaped(current.phase)).toBe(true)
+              expect(current.difficulty.nightmare).toBe('JustUnlocked')
+              expect(bestsFor(current).maybeFastestWinMs).toEqual(
+                Option.some(FIXED_STEP_MS),
+              )
+              expect(
+                current.bests.byDifficulty.Normal.maybeFastestWinMs,
+              ).toEqual(Option.none())
+            }),
+          ),
         )
 
-        yield* Story.story(
-          APPLICATION,
-          Story.given(withDifficulty(readyModel, 'Hard', 'JustUnlocked')),
-          startRunFromHome,
-          Story.model(current => {
-            expect(Phase.guards.Preparation(current.phase)).toBe(true)
-            expect(current.difficulty.nightmare).toBe('Unlocked')
-          }),
+        yield* modelAfter(
+          withDifficulty(readyModel, 'Hard', 'JustUnlocked'),
+          steps(
+            startRunFromHome,
+            checkModel(current => {
+              expect(Phase.guards.Preparation(current.phase)).toBe(true)
+              expect(current.difficulty.nightmare).toBe('Unlocked')
+            }),
+          ),
         )
 
-        yield* Story.story(
-          APPLICATION,
-          Story.given(withDifficulty(readyModel, 'Hard', 'Unlocked')),
-          openLobbyByKey,
-          lobbyDifficulty('Nightmare'),
-          resolveFocusLobby(),
-          Story.model(current => {
-            expect(current.difficulty.chosen).toBe('Nightmare')
-          }),
+        yield* modelAfter(
+          withDifficulty(readyModel, 'Hard', 'Unlocked'),
+          steps(
+            openLobbyByKey,
+            lobbyDifficulty('Nightmare'),
+            resolveFocusLobby(),
+            checkModel(current => {
+              expect(current.difficulty.chosen).toBe('Nightmare')
+            }),
+          ),
         )
       }),
   )
 
   it.effect('a Normal escape leaves it locked', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(winning(readyModel)),
-      tick(FIXED_STEP_MS),
-      Story.model(current => {
-        expect(Phase.guards.Escaped(current.phase)).toBe(true)
-        expect(current.difficulty.nightmare).toBe('Locked')
-      }),
+    modelAfter(
+      winning(readyModel),
+      steps(
+        tick(FIXED_STEP_MS),
+        checkModel(current => {
+          expect(Phase.guards.Escaped(current.phase)).toBe(true)
+          expect(current.difficulty.nightmare).toBe('Locked')
+        }),
+      ),
     ),
   )
 })
@@ -404,29 +401,31 @@ describe('the multipliers', () => {
       }
       const full = focusOf(readyModel).player.hp
       const bites = (difficulty: Difficulty, hearts: number) =>
-        Story.story(
-          APPLICATION,
-          Story.given(
-            modifyFocus(
-              modifyFields(withDifficulty(readyModel, difficulty, 'Unlocked'), {
+        modelAfter(
+          modifyFocus(
+            UiStruct.evolve(
+              withDifficulty(readyModel, difficulty, 'Unlocked'),
+              {
                 phase: () => Phase.Wave({ wave: 5, elapsedMs: 0, spawns: [] }),
                 zombies: () => [lug],
-              }),
-              {
-                player: player =>
-                  modifyFields(player, {
-                    x: () => 160,
-                    y: () => 95,
-                    invulnerability: () => Invulnerability.Vulnerable(),
-                  }),
               },
             ),
+            {
+              player: player =>
+                UiStruct.evolve(player, {
+                  x: () => 160,
+                  y: () => 95,
+                  invulnerability: () => Invulnerability.Vulnerable(),
+                }),
+            },
           ),
-          tick(FIXED_STEP_MS),
-          Story.model(current => {
-            expect(full - focusOf(current).player.hp).toBe(hearts)
-          }),
-          playPendingSounds,
+          steps(
+            tick(FIXED_STEP_MS),
+            checkModel(current => {
+              expect(full - focusOf(current).player.hp).toBe(hearts)
+            }),
+            playPendingSounds,
+          ),
         )
       return Effect.gen(function* () {
         yield* bites('Easy', 1)

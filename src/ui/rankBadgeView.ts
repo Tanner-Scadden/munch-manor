@@ -1,7 +1,9 @@
 import { Function, Option } from 'effect'
-import type { Html, HtmlBuilder } from 'foldkit/html'
 
-import type { ApplicationViewBuilder } from '../app/composition'
+import type { View } from '@effect/ui'
+import type { Html } from '@effect/ui/html'
+
+import type { ApplicationHtml, ApplicationViewBuilder } from '../app/definition'
 import type { Model } from '../app/model'
 import { pixelArtStyle } from '../art/artSize'
 import { PROP_ICONS } from '../art/callingArt'
@@ -32,23 +34,27 @@ import { rankBadgeImgView } from './menuParts'
 
 const ART_SCALE = 2
 
-const badgeView = <Message>(rank: number, h: HtmlBuilder<Message>): Html =>
-  rankBadgeImgView(rank, ART_SCALE, h)
+const badgeView = <Message>(
+  rank: number,
+  h: Html.H<Message>,
+): View.Content<Message> => rankBadgeImgView(rank, ART_SCALE, h)
 
 // NOTE: the badge a rank wears and its number, for a card that says which
 // rank it needs (src/features/heroes/callingCards.ts).
 export const rankMarkView: {
-  <Message>(h: HtmlBuilder<Message>): (rank: number) => Html
-  <Message>(rank: number, h: HtmlBuilder<Message>): Html
-} = Function.dual(2, <Message>(rank: number, h: HtmlBuilder<Message>): Html =>
-  h.span(
-    [
-      h.Class('rank-chip'),
-      h.DataAttribute('tier', badgeTierOf(rank)),
-      h.AriaHidden(true),
-    ],
-    [badgeView(rank, h), h.span([h.Class('rank-number')], [`${rank}`])],
-  ),
+  <Message>(h: Html.H<Message>): (rank: number) => View.Content<Message>
+  <Message>(rank: number, h: Html.H<Message>): View.Content<Message>
+} = Function.dual(
+  2,
+  <Message>(rank: number, h: Html.H<Message>): View.Content<Message> =>
+    h.span
+      .class('rank-chip')
+      .attr('data-tier', badgeTierOf(rank))
+      .attr('aria-hidden', 'true')
+      .children(
+        badgeView(rank, h),
+        h.span.class('rank-number').children(`${rank}`),
+      ),
 )
 
 // WHAT'S NEXT
@@ -85,24 +91,24 @@ const nextGiftOf = (gift: RankGift): Option.Option<NextGift> => {
 // NOTE: what the next rank gives, a small icon by the rank (the home menu's
 // chip, the Profile's bar), with a purse's Bones beside it. Hidden from
 // screen readers: the caller's label says it in words.
-const nextGiftView = <Message>(rank: number, h: HtmlBuilder<Message>): Html => {
+const nextGiftView = <Message>(
+  rank: number,
+  h: Html.H<Message>,
+): View.Content<Message> | null => {
   const gift = giftAtRank(rank + 1)
   return Option.match(nextGiftOf(gift), {
-    onNone: () => h.empty,
+    onNone: () => null,
     onSome: ({ icon }) =>
-      h.span(
-        [
-          h.Class('rank-next'),
-          h.DataAttribute('gift', gift.kind),
-          h.AriaHidden(true),
-        ],
-        [
-          h.span([h.Class('rank-next-icon'), h.Style(pixelArtStyle(icon))]),
+      h.span
+        .class('rank-next')
+        .attr('data-gift', gift.kind)
+        .attr('aria-hidden', 'true')
+        .children(
+          h.span.class('rank-next-icon').style(pixelArtStyle(icon)),
           ...(gift.kind === 'Purse'
-            ? [h.span([h.Class('rank-next-count')], [`+${gift.bones}`])]
+            ? [h.span.class('rank-next-count').children(`+${gift.bones}`)]
             : []),
-        ],
-      ),
+        ),
   })
 }
 
@@ -116,96 +122,105 @@ const nextGiftLabelOf = (rank: number): string =>
 // NOTE: the badge and its number, a small chip under the player on the
 // home menu, with the next rank's gift.
 export const rankChipView: {
-  (h: ApplicationViewBuilder): (model: Model) => Html
-  (model: Model, h: ApplicationViewBuilder): Html
-} = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html => {
-  const { rank } = rankProgressOf(totalPointsOf(model.rank))
-  return h.span(
-    [
-      h.Class('rank-chip'),
-      h.DataAttribute('tier', badgeTierOf(rank)),
-      h.AriaHidden(true),
-    ],
-    [
-      badgeView(rank, h),
-      h.span([h.Class('rank-number')], [`${rank}`]),
-      nextGiftView(rank, h),
-    ],
-  )
-})
+  (h: ApplicationViewBuilder): (model: Model) => ApplicationHtml
+  (model: Model, h: ApplicationViewBuilder): ApplicationHtml
+} = Function.dual(
+  2,
+  (model: Model, h: ApplicationViewBuilder): ApplicationHtml => {
+    const { rank } = rankProgressOf(totalPointsOf(model.rank))
+    return h.span
+      .class('rank-chip')
+      .attr('data-tier', badgeTierOf(rank))
+      .attr('aria-hidden', 'true')
+      .children(
+        badgeView(rank, h),
+        h.span.class('rank-number').children(`${rank}`),
+        nextGiftView(rank, h),
+      )
+  },
+)
 
 // NOTE: a pixel bone and a count, `scale` times its pixels, for the Bones
 // the plate holds and the closet spends.
 export const boneCountView: {
-  <Message>(className: string, h: HtmlBuilder<Message>): (count: number) => Html
-  <Message>(count: number, className: string, h: HtmlBuilder<Message>): Html
+  <Message>(
+    className: string,
+    h: Html.H<Message>,
+  ): (count: number) => View.Content<Message>
+  <Message>(
+    count: number,
+    className: string,
+    h: Html.H<Message>,
+  ): View.Content<Message>
 } = Function.dual(
   3,
-  <Message>(count: number, className: string, h: HtmlBuilder<Message>): Html =>
-    h.span(
-      [h.Class(className), h.AriaHidden(true)],
-      [
+  <Message>(
+    count: number,
+    className: string,
+    h: Html.H<Message>,
+  ): View.Content<Message> =>
+    h.span
+      .class(className)
+      .attr('aria-hidden', 'true')
+      .children(
         ...Option.match(BONE_IMAGE, {
           onNone: () => [],
           onSome: image => [
-            h.img([
-              h.Class('rank-bone-img'),
-              h.Src(image.src),
-              h.Alt(''),
-              h.Style({
+            h.img
+              .class('rank-bone-img')
+              .attr('src', image.src)
+              .attr('alt', '')
+              .style({
                 width: `${image.width * ART_SCALE}px`,
                 height: `${image.height * ART_SCALE}px`,
                 '--art-w': `${image.width}`,
               }),
-            ]),
           ],
         }),
-        h.span([h.Class('rank-bones-count')], [`${count}`]),
-      ],
-    ),
+        h.span.class('rank-bones-count').children(`${count}`),
+      ),
 )
 
 // NOTE: the Profile's plate: the badge and rank, the bar filled by how far
 // into the rank the points are, and the Bones balance by a pixel bone.
 export const rankPlateView: {
-  (h: ApplicationViewBuilder): (model: Model) => Html
-  (model: Model, h: ApplicationViewBuilder): Html
-} = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html => {
-  const progress = rankProgressOf(totalPointsOf(model.rank))
-  const bones = bonesBalanceOf(model.rank)
-  return h.div(
-    [
-      h.Class('profile-rank'),
-      h.DataAttribute('tier', badgeTierOf(progress.rank)),
-      h.Role('group'),
-      h.AriaLabel(
+  (h: ApplicationViewBuilder): (model: Model) => ApplicationHtml
+  (model: Model, h: ApplicationViewBuilder): ApplicationHtml
+} = Function.dual(
+  2,
+  (model: Model, h: ApplicationViewBuilder): ApplicationHtml => {
+    const progress = rankProgressOf(totalPointsOf(model.rank))
+    const bones = bonesBalanceOf(model.rank)
+    return h.div
+      .class('profile-rank')
+      .attr('data-tier', badgeTierOf(progress.rank))
+      .attr('role', 'group')
+      .attr(
+        'aria-label',
         `Rank ${progress.rank}, ${progress.into} of ${progress.cost} points to the next.${nextGiftLabelOf(progress.rank)} ${bones} Bones.`,
-      ),
-    ],
-    [
-      h.span(
-        [h.Class('rank-head'), h.AriaHidden(true)],
-        [
-          badgeView(progress.rank, h),
-          h.span([h.Class('rank-number')], [`${progress.rank}`]),
-        ],
-      ),
-      h.span(
-        [h.Class('rank-track'), h.AriaHidden(true)],
-        [
-          h.span(
-            [h.Class('rank-bar')],
-            [
-              h.span([
-                h.Class('rank-bar-fill'),
-                h.Style({ width: `${Math.round(progress.fraction * 100)}%` }),
-              ]),
-            ],
+      )
+      .children(
+        h.span
+          .class('rank-head')
+          .attr('aria-hidden', 'true')
+          .children(
+            badgeView(progress.rank, h),
+            h.span.class('rank-number').children(`${progress.rank}`),
           ),
-          nextGiftView(progress.rank, h),
-        ],
-      ),
-      boneCountView(bones, 'rank-bones', h),
-    ],
-  )
-})
+        h.span
+          .class('rank-track')
+          .attr('aria-hidden', 'true')
+          .children(
+            h.span
+              .class('rank-bar')
+              .children(
+                h.span
+                  .class('rank-bar-fill')
+                  .style({ width: `${Math.round(progress.fraction * 100)}%` }),
+              ),
+            nextGiftView(progress.rank, h),
+          ),
+        boneCountView(bones, 'rank-bones', h),
+      )
+  },
+)

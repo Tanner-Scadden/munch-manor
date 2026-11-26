@@ -1,5 +1,7 @@
 import { Function } from 'effect'
-import type { Attribute, ChildAttribute, Html, HtmlBuilder } from 'foldkit/html'
+
+import type { View } from '@effect/ui'
+import type { Html } from '@effect/ui/html'
 
 import { pixelArtStyle } from '../art/artSize'
 import { BACK_ICON } from '../art/coopIcons'
@@ -10,81 +12,87 @@ import { CLOSE_ICON } from '../art/icons'
 
 // CORNER BUTTONS
 
-// NOTE: an object type, not Readonly<...>, so the pipeable check matches the
+// NOTE: the button's builder, concrete so the chain stays typed: Effect
+// UI's PartTarget types `attr` loosely.
+type ButtonBuilder<Message> = ReturnType<Html.H<Message>['button']['attr']>
+
+// NOTE: `button` is the button's builder with what it does already on it:
+// a Dialog's `close` part (`parts.close(h.button)`), or a click for a
+// screen that is not a Dialog, such as co-op's (`h.button.on('click', X)`).
+// An object type, not Readonly<...>, so the pipeable check matches the
 // views' two signatures.
-type CornerButton<Message> = {
-  readonly attributes: ReadonlyArray<Attribute<Message> | ChildAttribute>
+type CornerButton<B> = {
+  readonly button: B
   readonly className: string
   readonly label: string
+}
+
+type BackButton<B, Message> = CornerButton<B> & {
+  readonly extra?: ReadonlyArray<View.Content<Message>>
 }
 
 // NOTE: the one close button every menu dialog shares: a red pixel X on a
 // 32 px face, centered in a bigger see-through button, so it looks small
 // but a thumb still has a 48 px target. `className` only places it, with
 // the button flush in its panel's corner so the face sits 8 px inside.
-// `attributes` carry what it does: a Dialog's `closeButton`, or an OnClick
-// for a screen that is not a Dialog, such as co-op's.
 export const closeButtonView: {
-  <Message>(h: HtmlBuilder<Message>): (self: CornerButton<Message>) => Html
-  <Message>(self: CornerButton<Message>, h: HtmlBuilder<Message>): Html
+  <Message>(
+    h: Html.H<Message>,
+  ): (self: CornerButton<ButtonBuilder<Message>>) => View.Content<Message>
+  <Message>(
+    self: CornerButton<ButtonBuilder<Message>>,
+    h: Html.H<Message>,
+  ): View.Content<Message>
 } = Function.dual(
   2,
   <Message>(
-    { attributes, className, label }: CornerButton<Message>,
-    h: HtmlBuilder<Message>,
-  ): Html =>
-    h.button(
-      [
-        h.Type('button'),
-        ...attributes,
-        h.Class(`menu-close ${className}`),
-        h.AriaLabel(label),
-        h.AriaKeyshortcuts('Escape'),
-      ],
-      [faceView(CLOSE_ICON, 'menu-close-icon', h)],
-    ),
+    { button, className, label }: CornerButton<ButtonBuilder<Message>>,
+    h: Html.H<Message>,
+  ): View.Content<Message> =>
+    button
+      .attr('type', 'button')
+      .class(`menu-close ${className}`)
+      .attr('aria-label', label)
+      .attr('aria-keyshortcuts', 'Escape')
+      .children(faceView(CLOSE_ICON, 'menu-close-icon', h)),
 )
 
 // NOTE: the matching back button: the same 48 px target and 32 px face in a
 // neutral fill, an arrow in place of the X. `extra` is for a key cap.
 export const backButtonView: {
   <Message>(
-    h: HtmlBuilder<Message>,
+    h: Html.H<Message>,
   ): (
-    self: CornerButton<Message> & Readonly<{ extra?: ReadonlyArray<Html> }>,
-  ) => Html
+    self: BackButton<ButtonBuilder<Message>, Message>,
+  ) => View.Content<Message>
   <Message>(
-    self: CornerButton<Message> & Readonly<{ extra?: ReadonlyArray<Html> }>,
-    h: HtmlBuilder<Message>,
-  ): Html
+    self: BackButton<ButtonBuilder<Message>, Message>,
+    h: Html.H<Message>,
+  ): View.Content<Message>
 } = Function.dual(
   2,
   <Message>(
     {
-      attributes,
+      button,
       className,
       label,
       extra = [],
-    }: CornerButton<Message> & Readonly<{ extra?: ReadonlyArray<Html> }>,
-    h: HtmlBuilder<Message>,
-  ): Html =>
-    h.button(
-      [
-        h.Type('button'),
-        ...attributes,
-        h.Class(`menu-close menu-back ${className}`),
-        h.AriaLabel(label),
-      ],
-      [faceView(BACK_ICON, 'menu-back-icon', h), ...extra],
-    ),
+    }: BackButton<ButtonBuilder<Message>, Message>,
+    h: Html.H<Message>,
+  ): View.Content<Message> =>
+    button
+      .attr('type', 'button')
+      .class(`menu-close menu-back ${className}`)
+      .attr('aria-label', label)
+      .children(faceView(BACK_ICON, 'menu-back-icon', h), ...extra),
 )
 
 const faceView = <Message>(
   icon: string,
   iconClass: string,
-  h: HtmlBuilder<Message>,
-): Html =>
-  h.span(
-    [h.Class('menu-close-face'), h.AriaHidden(true)],
-    [h.span([h.Class(iconClass), h.Style(pixelArtStyle(icon))])],
-  )
+  h: Html.H<Message>,
+): View.Content<Message> =>
+  h.span
+    .class('menu-close-face')
+    .attr('aria-hidden', 'true')
+    .children(h.span.class(iconClass).style(pixelArtStyle(icon)))

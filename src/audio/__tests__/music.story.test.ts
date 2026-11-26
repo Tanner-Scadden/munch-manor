@@ -1,12 +1,12 @@
 import { Effect, Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { Component, UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
 import { Message } from '../../app/message'
 import {
   AudioState,
+  BreakClock,
   Frenzy,
   type Model,
   Phase,
@@ -17,17 +17,32 @@ import {
 } from '../../app/model'
 import { initialModel } from '../../app/pureApp'
 import { CueMusic } from '../../app/update/music'
-import { PlaySound, ResumeAudio } from '../../app/update/sound'
+import {
+  AcquireAudioEngine,
+  PlaySound,
+  ResumeAudio,
+} from '../../app/update/sound'
 import { FetchBuild } from '../../app/update/version'
-import { FIXED_STEP_MS, ZOMBIE_MAX_HP } from '../../shared/constants'
+import {
+  FIXED_STEP_MS,
+  MAX_FRAME_DELTA_MS,
+  ZOMBIE_MAX_HP,
+} from '../../shared/constants'
+import { type SoundEffect } from '../../shared/soundEffect'
 import { DISTANT_SPAWN, escaping, withFinale } from '../../test/model.fixture'
 import {
-  APPLICATION,
+  SLAM_FRAMES,
   SURFACE,
+  type StoryStep,
+  checkModel,
+  checkPendingSounds,
+  exactStoryOf,
   press,
+  resolveAll,
   resolveFocusLobby,
   resolvePlayed,
-  throughIntro,
+  send,
+  storyOf,
   tick,
 } from '../../test/testing'
 import { asVeteran } from '../../test/veteran'
@@ -50,7 +65,7 @@ const FAR_AWAY_SPAWN: PlannedSpawn = {
 }
 
 const titleScreen = (audio: AudioState): Model =>
-  modifyFields(asVeteran(initialModel), {
+  UiStruct.evolve(asVeteran(initialModel), {
     maybeSurface: () => Option.some(SURFACE),
     audio: () => audio,
   })
@@ -60,9 +75,10 @@ const preparing = (
   spawns: ReadonlyArray<PlannedSpawn>,
   audio: AudioState,
 ): Model =>
-  modifyFields(titleScreen(audio), {
+  UiStruct.evolve(titleScreen(audio), {
     phase: () =>
       Phase.Preparation({
+        clock: BreakClock.Counting(),
         wave,
         remainingMs: 15_000,
         durationMs: 15_000,
@@ -71,7 +87,7 @@ const preparing = (
   })
 
 const fighting = (wave: number, audio: AudioState): Model =>
-  modifyFields(titleScreen(audio), {
+  UiStruct.evolve(titleScreen(audio), {
     phase: () => Phase.Wave({ wave, elapsedMs: 0, spawns: [FAR_AWAY_SPAWN] }),
   })
 
@@ -79,140 +95,189 @@ const fighting = (wave: number, audio: AudioState): Model =>
 const holdingOut = (audio: AudioState): Model =>
   withFinale(fighting(4, audio), Finale.Open())
 
-const resolveCue = (mood: MusicMood) =>
-  Story.Command.resolve(CueMusic, Message.CompletedCueMusic({ mood }))
+// NOTE: a tune cued reports nothing; `_mood` names the one the test means.
+const resolveCue =
+  (_mood: MusicMood): StoryStep =>
+  s =>
+    s.resolve(CueMusic, Component.noop)
+
+// NOTE: the slam's frames, each frame's sounds played and kept in `heard`.
+const slamHeard =
+  (heard: Array<SoundEffect>): StoryStep =>
+  s => {
+    for (let frame = 0; frame < SLAM_FRAMES; frame += 1) {
+      s.pipe(
+        tick(MAX_FRAME_DELTA_MS),
+        checkPendingSounds(sounds => {
+          heard.push(...sounds)
+        }),
+      )
+    }
+    return s
+  }
 
 // NOTE: a cleared wave's payday, and the ching of the key it adds to the
 // ring (src/world/keys/keys.ts), sound in the same frame.
-const resolvePaydayAndKey = Story.Command.resolveAll(
-  [
-    PlaySound,
-    Message.CompletedPlaySound({ sound: 'Payday', outcome: 'Played' }),
-  ],
-  [
-    PlaySound,
-    Message.CompletedPlaySound({ sound: 'Purchase', outcome: 'Played' }),
-  ],
-)
+const resolvePaydayAndKey: StoryStep = resolveAll(PlaySound)(Component.noop)
 
 describe('music follows the phase', () => {
   it.effect(
     'the title creeps, START goes quiet for the intro, cued once audio is ready',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(titleScreen(AudioState.Locked())),
-        press('Enter'),
-        resolveFocusLobby(),
-        press('Enter'),
-        Story.Command.expectNone(),
-        Story.message(Message.AcquiredAudioEngine()),
-        Story.Command.expectExact(ResumeAudio),
-        Story.Command.resolve(
-          ResumeAudio,
-          Message.CompletedResumeAudio({ playback: 'Running' }),
-        ),
-        Story.Command.expectExact(PlaySound({ sound: 'Start', variation: 0 })),
-        resolvePlayed('Start'),
-      ),
+      Effect.gen(function* () {
+        const s = yield* exactStoryOf(titleScreen(AudioState.Locked()))
+        s.pipe(
+          press('Enter'),
+          c => c.expectHas(AcquireAudioEngine),
+          c => c.keepPending(AcquireAudioEngine),
+          resolveFocusLobby(),
+          press('Enter'),
+          c => c.expectExact(AcquireAudioEngine),
+          c =>
+            c.resolve(
+              AcquireAudioEngine,
+              Message.SucceededAcquireAudioEngine(),
+            ),
+          c => c.expectExact(ResumeAudio),
+          c =>
+            c.resolve(
+              ResumeAudio,
+              Message.CompletedResumeAudio({ playback: 'Running' }),
+            ),
+          c => c.expectExact(PlaySound.make({ sound: 'Start', variation: 0 })),
+          resolvePlayed,
+        )
+      }),
   )
 
   it.effect(
     'an audible title goes quiet for the intro, and the creep loop comes back on the slam',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(titleScreen(AudioState.Ready())),
-        press('Enter'),
-        resolveFocusLobby(),
-        resolvePlayed('Pop'),
-        press('Enter'),
-        Story.model(({ phase }) => {
-          expect(phase._tag).toBe('Arriving')
-        }),
-        Story.Command.expectExact(
-          PlaySound({ sound: 'Start', variation: 0 }),
-          CueMusic({ mood: 'Silence', level: 'Full', stinger: 'None' }),
-        ),
-        resolvePlayed('Start'),
-        resolveCue('Silence'),
-        throughIntro,
-        Story.model(({ phase }) => {
-          expect(phase._tag).toBe('Preparation')
-        }),
-        Story.Command.expectExact(
-          PlaySound({ sound: 'DoorSlam', variation: 0 }),
-          CueMusic({ mood: 'Creep', level: 'Full', stinger: 'None' }),
-        ),
-        resolvePlayed('DoorSlam'),
-        resolveCue('Creep'),
-      ),
+      Effect.gen(function* () {
+        const heard: Array<SoundEffect> = []
+        const s = yield* storyOf(titleScreen(AudioState.Ready()))
+        s.pipe(
+          press('Enter'),
+          resolveFocusLobby(),
+          resolvePlayed,
+          press('Enter'),
+          checkModel(({ phase }) => {
+            expect(phase._tag).toBe('Arriving')
+          }),
+          c =>
+            c.expectExact(
+              PlaySound.make({ sound: 'Start', variation: 0 }),
+              CueMusic.make({
+                mood: 'Silence',
+                level: 'Full',
+                stinger: 'None',
+              }),
+            ),
+          resolvePlayed,
+          resolveCue('Silence'),
+          // NOTE: a skip lands on the slam, whose frames slam the door and
+          // open the first break, and the creep comes back.
+          press('Escape'),
+          slamHeard(heard),
+          c => {
+            expect(heard).toEqual(['DoorSlam'])
+            return c
+          },
+          checkModel(({ phase }) => {
+            expect(phase._tag).toBe('Preparation')
+          }),
+          c =>
+            c.expectExact(
+              CueMusic.make({ mood: 'Creep', level: 'Full', stinger: 'None' }),
+            ),
+          resolveCue('Creep'),
+        )
+      }),
   )
 
   it.effect(
     'a wave romps, a pause ducks it, a resume restores it, and a cleared wave sneaks back with a stinger',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(preparing(1, [], AudioState.Ready())),
-        press('Enter'),
-        Story.Command.expectExact(
-          CueMusic({ mood: 'Romp', level: 'Full', stinger: 'None' }),
-        ),
-        resolveCue('Romp'),
-        press('Escape'),
-        Story.Command.expectExact(
-          CueMusic({ mood: 'Romp', level: 'Ducked', stinger: 'None' }),
-        ),
-        resolveCue('Romp'),
-        press('Escape'),
-        Story.Command.expectExact(
-          CueMusic({ mood: 'Romp', level: 'Full', stinger: 'None' }),
-        ),
-        resolveCue('Romp'),
-        tick(FRAME_MS),
-        Story.model(({ phase }) => {
-          expect(phase._tag).toBe('Preparation')
-        }),
-        Story.Command.expectHas(
-          CueMusic({ mood: 'Creep', level: 'Full', stinger: 'Cleared' }),
-        ),
-        resolveCue('Creep'),
-        resolvePaydayAndKey,
-      ),
+      Effect.gen(function* () {
+        const s = yield* storyOf(preparing(1, [], AudioState.Ready()))
+        s.pipe(
+          press('Enter'),
+          c =>
+            c.expectExact(
+              CueMusic.make({ mood: 'Romp', level: 'Full', stinger: 'None' }),
+            ),
+          resolveCue('Romp'),
+          press('Escape'),
+          c =>
+            c.expectExact(
+              CueMusic.make({ mood: 'Romp', level: 'Ducked', stinger: 'None' }),
+            ),
+          resolveCue('Romp'),
+          press('Escape'),
+          c =>
+            c.expectExact(
+              CueMusic.make({ mood: 'Romp', level: 'Full', stinger: 'None' }),
+            ),
+          resolveCue('Romp'),
+          tick(FRAME_MS),
+          checkModel(({ phase }) => {
+            expect(phase._tag).toBe('Preparation')
+          }),
+          c =>
+            c.expectHas(
+              CueMusic.make({
+                mood: 'Creep',
+                level: 'Full',
+                stinger: 'Cleared',
+              }),
+            ),
+          resolveCue('Creep'),
+          resolvePaydayAndKey,
+        )
+      }),
   )
 
   it.effect(
     'the hungrier house stampedes and an escape plays its stinger',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(
+      Effect.gen(function* () {
+        const s = yield* storyOf(
           escaping(preparing(FINAL_WAVE, [DISTANT_SPAWN], AudioState.Ready())),
-        ),
-        press('Enter'),
-        Story.Command.expectExact(
-          CueMusic({ mood: 'Stampede', level: 'Full', stinger: 'None' }),
-        ),
-        resolveCue('Stampede'),
-        tick(FRAME_MS),
-        Story.model(({ phase }) => {
-          expect(phase).toEqual(Phase.Escaped({ wave: 10 }))
-        }),
-        Story.Command.expectHas(
-          CueMusic({ mood: 'Silence', level: 'Full', stinger: 'Escaped' }),
-        ),
-        resolveCue('Silence'),
-        resolvePlayed('RankUp'),
-      ),
+        )
+        s.pipe(
+          press('Enter'),
+          c =>
+            c.expectExact(
+              CueMusic.make({
+                mood: 'Stampede',
+                level: 'Full',
+                stinger: 'None',
+              }),
+            ),
+          resolveCue('Stampede'),
+          tick(FRAME_MS),
+          checkModel(({ phase }) => {
+            expect(phase).toEqual(Phase.Escaped({ wave: 10 }))
+          }),
+          c =>
+            c.expectHas(
+              CueMusic.make({
+                mood: 'Silence',
+                level: 'Full',
+                stinger: 'Escaped',
+              }),
+            ),
+          resolveCue('Silence'),
+          resolvePlayed,
+        )
+      }),
   )
 
   it.effect('GameOver plays its stinger', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
+    Effect.gen(function* () {
+      const s = yield* storyOf(
         modifyFocus(
-          modifyFields(fighting(3, AudioState.Ready()), {
+          UiStruct.evolve(fighting(3, AudioState.Ready()), {
             zombies: () => [
               {
                 id: 100,
@@ -230,31 +295,35 @@ describe('music follows the phase', () => {
               },
             ],
           }),
-          { player: player => modifyFields(player, { hp: () => 1 }) },
+          { player: player => UiStruct.evolve(player, { hp: () => 1 }) },
         ),
-      ),
-      tick(FRAME_MS),
-      Story.model(({ phase }) => {
-        expect(phase._tag).toBe('GameOver')
-      }),
-      Story.Command.expectHas(
-        CueMusic({ mood: 'Silence', level: 'Full', stinger: 'GameOver' }),
-      ),
-      resolveCue('Silence'),
-      resolvePlayed('PlayerHurt'),
-    ),
+      )
+      s.pipe(
+        tick(FRAME_MS),
+        checkModel(({ phase }) => {
+          expect(phase._tag).toBe('GameOver')
+        }),
+        c =>
+          c.expectHas(
+            CueMusic.make({
+              mood: 'Silence',
+              level: 'Full',
+              stinger: 'GameOver',
+            }),
+          ),
+        resolveCue('Silence'),
+        resolvePlayed,
+      )
+    }),
   )
 
   it.effect(
     'a frame that changes nothing about the phase sends no music Command',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(fighting(2, AudioState.Ready())),
-        tick(FRAME_MS),
-        tick(FRAME_MS),
-        Story.Command.expectNone(),
-      ),
+      Effect.gen(function* () {
+        const s = yield* storyOf(fighting(2, AudioState.Ready()))
+        s.pipe(tick(FRAME_MS), tick(FRAME_MS), c => c.expectNone())
+      }),
   )
 })
 
@@ -270,257 +339,298 @@ describe('music only plays when it can be heard', () => {
           AudioState.Unavailable(),
         ]
         yield* Effect.forEach(silentStates, audio =>
-          Story.story(
-            APPLICATION,
-            Story.given(
-              modifyFields(preparing(1, [FAR_AWAY_SPAWN], audio), {
+          Effect.gen(function* () {
+            const s = yield* exactStoryOf(
+              UiStruct.evolve(preparing(1, [FAR_AWAY_SPAWN], audio), {
                 phase: () =>
                   Phase.Preparation({
+                    clock: BreakClock.Counting(),
                     wave: 1,
                     remainingMs: 1,
                     durationMs: 15_000,
                     spawns: [FAR_AWAY_SPAWN],
                   }),
               }),
-            ),
-            tick(FRAME_MS),
-            Story.model(({ phase }) => {
-              expect(phase._tag).toBe('Wave')
-            }),
-            Story.Command.expectNone(),
-          ),
+            )
+            s.pipe(
+              tick(FRAME_MS),
+              checkModel(({ phase }) => {
+                expect(phase._tag).toBe('Wave')
+              }),
+              c => c.expectNone(),
+            )
+          }),
         )
       }),
   )
 
   it.effect('with music off, a phase change sends no music Command', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        modifyFields(preparing(1, [FAR_AWAY_SPAWN], AudioState.Ready()), {
-          settings: modifyFields({ musicSetting: () => 'Off' }),
+    Effect.gen(function* () {
+      const s = yield* storyOf(
+        UiStruct.evolve(preparing(1, [FAR_AWAY_SPAWN], AudioState.Ready()), {
+          settings: UiStruct.evolve({ musicSetting: () => 'Off' }),
         }),
-      ),
-      press('Enter'),
-      Story.model(({ phase }) => {
-        expect(phase._tag).toBe('Wave')
-      }),
-      Story.Command.expectNone(),
-    ),
+      )
+      s.pipe(
+        press('Enter'),
+        checkModel(({ phase }) => {
+          expect(phase._tag).toBe('Wave')
+        }),
+        c => c.expectNone(),
+      )
+    }),
   )
 
   it.effect('N toggles music off and back on', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(fighting(2, AudioState.Ready())),
-      press('KeyN'),
-      Story.model(({ settings: { musicSetting } }) => {
-        expect(musicSetting).toBe('Off')
-      }),
-      Story.Command.expectExact(
-        CueMusic({ mood: 'Silence', level: 'Full', stinger: 'None' }),
-      ),
-      resolveCue('Silence'),
-      press('KeyN'),
-      Story.model(({ settings: { musicSetting } }) => {
-        expect(musicSetting).toBe('On')
-      }),
-      Story.Command.expectExact(
-        CueMusic({ mood: 'Romp', level: 'Full', stinger: 'None' }),
-      ),
-      resolveCue('Romp'),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(fighting(2, AudioState.Ready()))
+      s.pipe(
+        press('KeyN'),
+        checkModel(({ settings: { musicSetting } }) => {
+          expect(musicSetting).toBe('Off')
+        }),
+        c =>
+          c.expectExact(
+            CueMusic.make({ mood: 'Silence', level: 'Full', stinger: 'None' }),
+          ),
+        resolveCue('Silence'),
+        press('KeyN'),
+        checkModel(({ settings: { musicSetting } }) => {
+          expect(musicSetting).toBe('On')
+        }),
+        c =>
+          c.expectExact(
+            CueMusic.make({ mood: 'Romp', level: 'Full', stinger: 'None' }),
+          ),
+        resolveCue('Romp'),
+      )
+    }),
   )
 
   it.effect('the music button toggles music and unlocks audio', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(titleScreen(AudioState.Locked())),
-      Story.message(Message.ClickedMusicButton()),
-      Story.model(({ settings: { musicSetting }, audio }) => {
-        expect(musicSetting).toBe('Off')
-        expect(audio).toEqual(AudioState.Unlocking())
-      }),
-      Story.Command.expectNone(),
-      Story.message(Message.ClickedMusicButton()),
-      Story.model(({ settings: { musicSetting } }) => {
-        expect(musicSetting).toBe('On')
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* exactStoryOf(titleScreen(AudioState.Locked()))
+      s.pipe(
+        send(Message.ClickedMusicButton()),
+        checkModel(({ settings: { musicSetting }, audio }) => {
+          expect(musicSetting).toBe('Off')
+          expect(audio).toEqual(AudioState.Unlocking())
+        }),
+        c => c.expectExact(AcquireAudioEngine),
+        c => c.keepPending(AcquireAudioEngine),
+        send(Message.ClickedMusicButton()),
+        checkModel(({ settings: { musicSetting } }) => {
+          expect(musicSetting).toBe('On')
+        }),
+        c =>
+          c.resolve(
+            AcquireAudioEngine,
+            Message.FailedAcquireAudioEngine({ reason: 'none' }),
+          ),
+      )
+    }),
   )
 
   it.effect(
     'the music button on an audible title stops and restarts the creep loop',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(titleScreen(AudioState.Ready())),
-        Story.message(Message.ClickedMusicButton()),
-        Story.Command.expectExact(
-          CueMusic({ mood: 'Silence', level: 'Full', stinger: 'None' }),
-        ),
-        resolveCue('Silence'),
-        Story.message(Message.ClickedMusicButton()),
-        Story.Command.expectExact(
-          CueMusic({ mood: 'Creep', level: 'Full', stinger: 'None' }),
-        ),
-        resolveCue('Creep'),
-      ),
+      Effect.gen(function* () {
+        const s = yield* storyOf(titleScreen(AudioState.Ready()))
+        s.pipe(
+          send(Message.ClickedMusicButton()),
+          c =>
+            c.expectExact(
+              CueMusic.make({
+                mood: 'Silence',
+                level: 'Full',
+                stinger: 'None',
+              }),
+            ),
+          resolveCue('Silence'),
+          send(Message.ClickedMusicButton()),
+          c =>
+            c.expectExact(
+              CueMusic.make({ mood: 'Creep', level: 'Full', stinger: 'None' }),
+            ),
+          resolveCue('Creep'),
+        )
+      }),
   )
 
   it.effect('wave 10 of a hunt still romps, with the list not done', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(fighting(FINAL_WAVE, AudioState.Ready())),
-      press('KeyM'),
-      resolveCue('Silence'),
-      press('KeyM'),
-      Story.Command.expectExact(
-        CueMusic({ mood: 'Romp', level: 'Full', stinger: 'None' }),
-      ),
-      resolveCue('Romp'),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(fighting(FINAL_WAVE, AudioState.Ready()))
+      s.pipe(
+        press('KeyM'),
+        resolveCue('Silence'),
+        press('KeyM'),
+        c =>
+          c.expectExact(
+            CueMusic.make({ mood: 'Romp', level: 'Full', stinger: 'None' }),
+          ),
+        resolveCue('Romp'),
+      )
+    }),
   )
 
   it.effect('Endless stampedes from wave 10, with no list', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        modifyFields(fighting(FINAL_WAVE, AudioState.Ready()), {
+    Effect.gen(function* () {
+      const s = yield* storyOf(
+        UiStruct.evolve(fighting(FINAL_WAVE, AudioState.Ready()), {
           mode: () => RunMode.Endless(),
         }),
-      ),
-      press('KeyM'),
-      resolveCue('Silence'),
-      press('KeyM'),
-      Story.Command.expectExact(
-        CueMusic({ mood: 'Stampede', level: 'Full', stinger: 'None' }),
-      ),
-      resolveCue('Stampede'),
-    ),
+      )
+      s.pipe(
+        press('KeyM'),
+        resolveCue('Silence'),
+        press('KeyM'),
+        c =>
+          c.expectExact(
+            CueMusic.make({ mood: 'Stampede', level: 'Full', stinger: 'None' }),
+          ),
+        resolveCue('Stampede'),
+      )
+    }),
   )
 
   it.effect('mute silences the music, and unmuting brings it back', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(holdingOut(AudioState.Ready())),
-      press('KeyM'),
-      Story.model(({ settings: { soundSetting, musicSetting } }) => {
-        expect(soundSetting).toBe('Muted')
-        expect(musicSetting).toBe('On')
-      }),
-      Story.Command.expectExact(
-        CueMusic({ mood: 'Silence', level: 'Full', stinger: 'None' }),
-      ),
-      resolveCue('Silence'),
-      press('KeyN'),
-      press('KeyN'),
-      Story.Command.expectNone(),
-      press('KeyM'),
-      Story.Command.expectExact(
-        CueMusic({ mood: 'Stampede', level: 'Full', stinger: 'None' }),
-      ),
-      resolveCue('Stampede'),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(holdingOut(AudioState.Ready()))
+      s.pipe(
+        press('KeyM'),
+        checkModel(({ settings: { soundSetting, musicSetting } }) => {
+          expect(soundSetting).toBe('Muted')
+          expect(musicSetting).toBe('On')
+        }),
+        c =>
+          c.expectExact(
+            CueMusic.make({ mood: 'Silence', level: 'Full', stinger: 'None' }),
+          ),
+        resolveCue('Silence'),
+        press('KeyN'),
+        press('KeyN'),
+        c => c.expectNone(),
+        press('KeyM'),
+        c =>
+          c.expectExact(
+            CueMusic.make({ mood: 'Stampede', level: 'Full', stinger: 'None' }),
+          ),
+        resolveCue('Stampede'),
+      )
+    }),
   )
 
   it.effect(
     'a hidden tab silences the title music, and coming back resumes it',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(titleScreen(AudioState.Ready())),
-        Story.message(Message.ChangedPageVisibility({ visibility: 'Hidden' })),
-        Story.Command.expectExact(
-          CueMusic({ mood: 'Silence', level: 'Full', stinger: 'None' }),
-        ),
-        resolveCue('Silence'),
-        Story.message(Message.ChangedPageVisibility({ visibility: 'Visible' })),
-        Story.Command.expectExact(
-          CueMusic({ mood: 'Creep', level: 'Full', stinger: 'None' }),
-          FetchBuild,
-        ),
-        resolveCue('Creep'),
-        Story.Command.resolve(
-          FetchBuild,
-          Message.FailedFetchBuild({ reason: 'offline' }),
-        ),
-      ),
+      Effect.gen(function* () {
+        const s = yield* storyOf(titleScreen(AudioState.Ready()))
+        s.pipe(
+          send(Message.ChangedPageVisibility({ visibility: 'Hidden' })),
+          c =>
+            c.expectExact(
+              CueMusic.make({
+                mood: 'Silence',
+                level: 'Full',
+                stinger: 'None',
+              }),
+            ),
+          resolveCue('Silence'),
+          send(Message.ChangedPageVisibility({ visibility: 'Visible' })),
+          c =>
+            c.expectExact(
+              FetchBuild,
+              CueMusic.make({ mood: 'Creep', level: 'Full', stinger: 'None' }),
+            ),
+          resolveCue('Creep'),
+          c =>
+            c.resolve(
+              FetchBuild,
+              Message.FailedFetchBuild({ reason: 'offline' }),
+            ),
+        )
+      }),
   )
 
   it.effect('a muted run plays no stinger when it ends', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        modifyFields(
+    Effect.gen(function* () {
+      const s = yield* storyOf(
+        UiStruct.evolve(
           escaping(preparing(FINAL_WAVE, [DISTANT_SPAWN], AudioState.Ready())),
-          { settings: modifyFields({ soundSetting: () => 'Muted' }) },
+          { settings: UiStruct.evolve({ soundSetting: () => 'Muted' }) },
         ),
-      ),
-      press('Enter'),
-      tick(FRAME_MS),
-      Story.model(({ phase }) => {
-        expect(phase).toEqual(Phase.Escaped({ wave: 10 }))
-      }),
-      Story.Command.expectNone(),
-    ),
+      )
+      s.pipe(
+        press('Enter'),
+        tick(FRAME_MS),
+        checkModel(({ phase }) => {
+          expect(phase).toEqual(Phase.Escaped({ wave: 10 }))
+        }),
+        c => c.expectNone(),
+      )
+    }),
   )
 })
 
 describe('the end stingers stop when the music goes quiet', () => {
   const escapedScreen = (audio: AudioState): Model =>
-    modifyFields(titleScreen(audio), {
+    UiStruct.evolve(titleScreen(audio), {
       phase: () => Phase.Escaped({ wave: 10 }),
       screenMs: () => 0,
     })
 
   it.effect('mute during the escape stinger stops it', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(escapedScreen(AudioState.Ready())),
-      press('KeyM'),
-      Story.model(({ settings: { soundSetting } }) => {
-        expect(soundSetting).toBe('Muted')
-      }),
-      Story.Command.expectExact(
-        CueMusic({ mood: 'Silence', level: 'Full', stinger: 'None' }),
-      ),
-      resolveCue('Silence'),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(escapedScreen(AudioState.Ready()))
+      s.pipe(
+        press('KeyM'),
+        checkModel(({ settings: { soundSetting } }) => {
+          expect(soundSetting).toBe('Muted')
+        }),
+        c =>
+          c.expectExact(
+            CueMusic.make({ mood: 'Silence', level: 'Full', stinger: 'None' }),
+          ),
+        resolveCue('Silence'),
+      )
+    }),
   )
 
   it.effect('turning music off during the Game Over stinger stops it', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        modifyFields(escapedScreen(AudioState.Ready()), {
+    Effect.gen(function* () {
+      const s = yield* storyOf(
+        UiStruct.evolve(escapedScreen(AudioState.Ready()), {
           phase: () => Phase.GameOver({ wave: 4 }),
         }),
-      ),
-      Story.message(Message.ClickedMusicButton()),
-      Story.model(({ settings: { musicSetting } }) => {
-        expect(musicSetting).toBe('Off')
-      }),
-      Story.Command.expectExact(
-        CueMusic({ mood: 'Silence', level: 'Full', stinger: 'None' }),
-      ),
-      resolveCue('Silence'),
-    ),
+      )
+      s.pipe(
+        send(Message.ClickedMusicButton()),
+        checkModel(({ settings: { musicSetting } }) => {
+          expect(musicSetting).toBe('Off')
+        }),
+        c =>
+          c.expectExact(
+            CueMusic.make({ mood: 'Silence', level: 'Full', stinger: 'None' }),
+          ),
+        resolveCue('Silence'),
+      )
+    }),
   )
 
   it.effect('unmuting on the escape screen does not replay the stinger', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        modifyFields(escapedScreen(AudioState.Ready()), {
-          settings: modifyFields({ soundSetting: () => 'Muted' }),
+    Effect.gen(function* () {
+      const s = yield* storyOf(
+        UiStruct.evolve(escapedScreen(AudioState.Ready()), {
+          settings: UiStruct.evolve({ soundSetting: () => 'Muted' }),
         }),
-      ),
-      press('KeyM'),
-      Story.model(({ settings: { soundSetting } }) => {
-        expect(soundSetting).toBe('On')
-      }),
-      Story.Command.expectNone(),
-    ),
+      )
+      s.pipe(
+        press('KeyM'),
+        checkModel(({ settings: { soundSetting } }) => {
+          expect(soundSetting).toBe('On')
+        }),
+        c => c.expectNone(),
+      )
+    }),
   )
 })

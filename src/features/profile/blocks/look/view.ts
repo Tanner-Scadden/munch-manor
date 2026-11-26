@@ -1,8 +1,8 @@
-import { Array, Option, String } from 'effect'
-import { Canvas } from 'foldkit'
-import type { Html } from 'foldkit/html'
+import { Array, Function, Match, Option, String } from 'effect'
 
-import type { RadioGroup } from '@foldkit/ui'
+import type { View } from '@effect/ui'
+import { RadioGroup } from '@effect/ui-kit'
+import type { Html } from '@effect/ui/html'
 
 import {
   BODIES,
@@ -26,7 +26,12 @@ import {
 } from '../../../../art/appearance'
 import { pixelArtStyle } from '../../../../art/artSize'
 import { DICE_ICON, pixelIconUrl } from '../../../../art/icons'
-import { type Facing, frameAt, group } from '../../../../art/sprite'
+import {
+  type Facing,
+  frameAt,
+  group,
+  standaloneSource,
+} from '../../../../art/sprite'
 import { gunPictureOf, gunSprite } from '../../../../art/sprites/guns'
 import {
   type Standing,
@@ -36,6 +41,8 @@ import {
 } from '../../../../domain/closet'
 import { type LookPart, chooseLook } from '../../../../domain/looks'
 import { lookUnlockId } from '../../../../domain/unlocks'
+import * as Draw from '../../../../render/draw'
+import { type Leaf, flatten } from '../../../../render/iso/flatten'
 import { GUN_HOLD_PX } from '../../../../render/playerView'
 import {
   PLAYER_FOOT_OFFSET,
@@ -54,30 +61,23 @@ import { newBadgeView } from '../../../../ui/menuParts'
 import { startingGunKind } from '../../../../world/heroes/calling'
 import { rankOf, totalPointsOf } from '../../../../world/heroes/rank'
 import { HAT_NAMES, hatNameOf } from '../../../../world/names'
+import { buyPillView, cueAttrs, gearNote, gearTagView } from './lookGearView'
+import { LookSection, type LookToggle } from './lookSchema'
+import { Message } from './message'
 import {
-  CharacterComposition,
-  type CharacterViewBuilder,
-  Message,
-  PART_BINDINGS,
+  type CharacterProps,
+  type Model,
   SECTION_PARTS,
   SECTION_TOGGLES,
-  SectionsBinding,
-  type ViewInputs,
   flipLook,
   gearOf,
-  init,
   isToggleOn,
-  partGroupOf,
-  update,
-} from './block'
-import {
-  buyPillView,
-  cueAttributes,
-  gearNote,
-  gearTagView,
-} from './lookGearView'
-import { LookSection, type LookToggle } from './lookSchema'
-import type { CharacterPicker } from './model'
+} from './model'
+
+type H = Html.H<Message>
+type Content = View.Content<Message>
+// NOTE: a child that may draw nothing.
+type MaybeContent = Content | null
 
 // PARTS
 
@@ -308,6 +308,10 @@ const hatIconOf = (worn: Appearance): string => {
 
 // PREVIEW
 
+// NOTE: the figure is 20 game pixels square, drawn as plain elements: each
+// sprite image and rectangle the walk frame is made of, placed by the
+// matrix its groups give it, in a box CSS scales by a whole number
+// (src/features/profile/profile.css), so every pixel takes whole CSS px.
 const PREVIEW_SIZE = 20
 const PREVIEW_FOOT_Y = 18
 const PREVIEW_TURN_MS = 2400
@@ -319,12 +323,12 @@ const previewShapes = (
   appearance: Appearance,
   calling: Calling,
   screenMs: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const facing = previewFacing(screenMs)
   const direction = facing === 'Right' ? 1 : -1
   const centerX = PREVIEW_SIZE / 2
   return [
-    Canvas.Rect({
+    Draw.Rect({
       x: centerX - 3,
       y: PREVIEW_FOOT_Y - 1,
       width: 7,
@@ -353,115 +357,126 @@ const previewShapes = (
   ]
 }
 
+type Box = Readonly<{ x: number; y: number; width: number; height: number }>
+
+// NOTE: a leaf's box placed by its matrix, the box's own corner folded into
+// the matrix's move, so the element sits at the top left of the figure and
+// turns about its own corner as the painter would.
+const placed = ({ matrix, alpha }: Leaf, box: Box) => ({
+  width: `${box.width}px`,
+  height: `${box.height}px`,
+  opacity: `${alpha}`,
+  transform: `matrix(${matrix.a}, ${matrix.b}, ${matrix.c}, ${matrix.d}, ${
+    matrix.a * box.x + matrix.c * box.y + matrix.e
+  }, ${matrix.b * box.x + matrix.d * box.y + matrix.f})`,
+})
+
+const leafView = (leaf: Leaf, h: H): MaybeContent =>
+  Match.value(leaf.shape).pipe(
+    Match.tag('Image', image =>
+      h.span.class('look-preview-leaf').style({
+        ...placed(leaf, image),
+        backgroundImage: `url("${standaloneSource(image)}")`,
+      }),
+    ),
+    Match.tag('Rect', rect =>
+      h.span.class('look-preview-leaf').style({
+        ...placed(leaf, rect),
+        backgroundColor: rect.fill ?? 'transparent',
+      }),
+    ),
+    Match.orElse((): MaybeContent => null),
+  )
+
 const previewView = (
   appearance: Appearance,
   calling: Calling,
   screenMs: number,
-  h: CharacterViewBuilder,
-): Html =>
-  h.div(
-    [
-      h.Class('look-preview'),
-      h.Role('img'),
-      h.AriaLabel(`Preview: ${lookDescription(appearance)}`),
-    ],
-    [
-      Canvas.view(
-        {
-          width: PREVIEW_SIZE,
-          height: PREVIEW_SIZE,
-          shapes: previewShapes(appearance, calling, screenMs),
-          className: 'look-preview-canvas',
-        },
-        h,
-      ),
-    ],
-  )
+  h: H,
+): Content =>
+  h.div
+    .class('look-preview')
+    .attrs({
+      role: 'img',
+      'aria-label': `Preview: ${lookDescription(appearance)}`,
+    })
+    .children(
+      h.span
+        .class('look-preview-art')
+        .attr('aria-hidden', 'true')
+        .children(
+          Array.map(
+            flatten(previewShapes(appearance, calling, screenMs)),
+            leaf => leafView(leaf, h),
+          ),
+        ),
+    )
 
 // STAGE
 
+// NOTE: the look on the figure: the worn one, or with the look being tried
+// on over it. The worn look never changes.
+const shownLookOf = (props: CharacterProps): Appearance =>
+  Option.match(props.maybePreview, {
+    onNone: () => props.appearance,
+    onSome: ({ part, value }) => chooseLook(props.appearance, part, value),
+  })
+
+// NOTE: the BUY pill with the price, while a look for sale is tried on.
+// Short of Bones it stays, red, and shakes when pressed.
+const buyPillOf = (props: CharacterProps, h: H): MaybeContent =>
+  Option.match(props.maybePreview, {
+    onNone: (): MaybeContent => null,
+    onSome: ({ part, value }) =>
+      Option.match(
+        Option.flatMap(gearOf(part), ({ kind }) =>
+          Option.map(priceOf(kind, value), price => ({ kind, price })),
+        ),
+        {
+          onNone: (): MaybeContent => null,
+          onSome: ({ kind, price }) =>
+            buyPillView(
+              {
+                price,
+                isShort: !canAfford(props.rank, kind, value),
+                onClick: Message.ClickedBuyButton({ part, value }),
+              },
+              h,
+            ),
+        },
+      ),
+  })
+
 // NOTE: the character walks on the spot in a spotlight with a little idle
 // bounce, all CSS. A new part puffs a poof, and the dice spins the stage
-// like a slot machine.
-// NOTE: the look on the figure: the worn one, or with the look being tried
-// on (src/app/update/look.ts) over it. The worn look never changes.
-const shownLookOf = (inputs: ViewInputs): Appearance =>
-  Option.match(inputs.maybePreview, {
-    onNone: () => inputs.appearance,
-    onSome: ({ part, value }) => chooseLook(inputs.appearance, part, value),
-  })
-
-// NOTE: the BUY pill with the price, while a look for sale is tried on. Short
-// of Bones it stays, red, and shakes when pressed.
-const buyPillOf = (
-  inputs: ViewInputs,
-  h: CharacterViewBuilder,
-): ReadonlyArray<Html> =>
-  Option.match(inputs.maybePreview, {
-    onNone: () => [],
-    onSome: ({ part, value }) =>
-      Option.match(gearOf(part), {
-        onNone: () => [],
-        onSome: ({ kind }) =>
-          Option.match(priceOf(kind, value), {
-            onNone: () => [],
-            onSome: price => [
-              buyPillView(
-                {
-                  price,
-                  isShort: !canAfford(inputs.rank, kind, value),
-                  onClick: Message.ClickedBuyButton(),
-                },
-                h,
-              ),
-            ],
-          }),
-      }),
-  })
-
-const stageChildren = (
-  inputs: ViewInputs,
-  h: CharacterViewBuilder,
-): ReadonlyArray<Html> => [
-  h.span([h.Class('look-spotlight'), h.AriaHidden(true)]),
-  h.span([h.Class('look-floor'), h.AriaHidden(true)]),
-  h.div(
-    [h.Class('look-bounce')],
-    [previewView(shownLookOf(inputs), inputs.calling, inputs.screenMs, h)],
-  ),
-  ...buyPillOf(inputs, h),
-  h.span([h.Class('look-poof'), h.AriaHidden(true)]),
-  h.button(
-    [
-      h.Type('button'),
-      h.Class('profile-dice look-dice'),
-      h.AriaLabel('Roll a random look'),
-      h.OnClick(Message.ClickedDiceButton()),
-    ],
-    [
-      h.span([
-        h.Class('profile-dice-icon'),
-        h.AriaHidden(true),
-        h.Style(pixelArtStyle(DICE_ICON)),
-      ]),
-    ],
-  ),
-]
-
-const evenStageView = (inputs: ViewInputs, h: CharacterViewBuilder): Html =>
-  h.div(
-    [h.Class('look-stage'), h.DataAttribute('fx', inputs.fx)],
-    stageChildren(inputs, h),
-  )
-
-const oddStageView = (inputs: ViewInputs, h: CharacterViewBuilder): Html =>
-  h.div(
-    [h.Class('look-stage'), h.DataAttribute('fx', inputs.fx)],
-    stageChildren(inputs, h),
-  )
-
-const stageView = (inputs: ViewInputs, h: CharacterViewBuilder): Html =>
-  inputs.fxCount % 2 === 0 ? evenStageView(inputs, h) : oddStageView(inputs, h)
+// like a slot machine: the stage's key turns with the effect's count, so
+// each one swaps the element and its animation starts over.
+const stageView = (props: CharacterProps, h: H): Content =>
+  h.div
+    .key(`look-stage-${props.fxCount % 2}`)
+    .class('look-stage')
+    .attr('data-fx', props.fx)
+    .children(
+      h.span.class('look-spotlight').attr('aria-hidden', 'true'),
+      h.span.class('look-floor').attr('aria-hidden', 'true'),
+      h.div
+        .class('look-bounce')
+        .children(
+          previewView(shownLookOf(props), props.calling, props.screenMs, h),
+        ),
+      buyPillOf(props, h),
+      h.span.class('look-poof').attr('aria-hidden', 'true'),
+      h.button
+        .attrs({ type: 'button', 'aria-label': 'Roll a random look' })
+        .class('profile-dice look-dice')
+        .on('click', Message.ClickedDiceButton())
+        .children(
+          h.span
+            .class('profile-dice-icon')
+            .attr('aria-hidden', 'true')
+            .style(pixelArtStyle(DICE_ICON)),
+        ),
+    )
 
 // SECTIONS
 
@@ -546,51 +561,45 @@ const hasNewLook = (
     ),
   )
 
+const SECTION_ITEMS = Array.map(LookSection.literals, value => ({ value }))
+
 const sectionsView = (
-  picker: CharacterPicker,
+  section: LookSection,
   fresh: ReadonlyArray<string>,
-  h: CharacterViewBuilder,
-): Html =>
-  h.block(
-    SectionsBinding.embedView({
-      slotId: picker.sections.id,
-      model: picker.sections,
-      viewInputs: {
-        options: LookSection.literals,
-        selectedValue: Option.some(picker.section),
-        ariaLabel: 'Parts',
-        orientation: 'Horizontal',
-        toView: ({ group: groupAttributes, options }) =>
-          h.div(
-            [...groupAttributes, h.Class('look-sections')],
-            Array.map(options, option =>
-              h.button(
-                [
-                  ...option.option,
-                  h.Key(option.value),
-                  h.Class('look-section'),
-                  h.DataAttribute('section', option.value),
-                  ...(hasNewLook(option.value, fresh)
-                    ? [h.DataAttribute('new', 'true')]
-                    : []),
-                ],
-                [
-                  h.span([
-                    h.Class('look-section-icon'),
-                    h.AriaHidden(true),
-                    h.Style(pixelArtStyle(SECTION_LOOKS[option.value].icon)),
-                  ]),
-                  h.span(
-                    [...option.label, h.Class('look-section-word')],
-                    [SECTION_LOOKS[option.value].word],
-                  ),
-                ],
+  h: H,
+): Content =>
+  RadioGroup(h, {
+    key: 'look-sections',
+    props: { value: section, items: SECTION_ITEMS },
+    onEmit: { Picked: ({ value }) => Message.PickedSection({ value }) },
+    view: radioGroup =>
+      radioGroup
+        .root(h.div.class('look-sections').attr('aria-label', 'Parts'))
+        .children(
+          Array.map(LookSection.literals, value =>
+            radioGroup
+              .radio({
+                element: h.button
+                  .key(value)
+                  .class('look-section')
+                  .attrs({
+                    'data-section': value,
+                    'data-new': hasNewLook(value, fresh) ? 'true' : undefined,
+                  }),
+                value,
+              })
+              .children(
+                h.span
+                  .class('look-section-icon')
+                  .attr('aria-hidden', 'true')
+                  .style(pixelArtStyle(SECTION_LOOKS[value].icon)),
+                h.span
+                  .class('look-section-word')
+                  .children(SECTION_LOOKS[value].word),
               ),
-            ),
           ),
-      },
-    }),
-  )
+        ),
+  })
 
 // ROWS
 
@@ -610,45 +619,39 @@ const optionFace = (
   part: LookPart,
   value: string,
   appearance: Appearance,
-  h: CharacterViewBuilder,
-): Html => {
+  h: H,
+): Content => {
   const partView = PART_VIEWS[part]
   if (partView.look === 'Hat') {
-    return h.span([
-      h.Class('look-hat-icon'),
-      h.AriaHidden(true),
-      h.Style(pixelArtStyle(hatIconOf(chooseLook(appearance, part, value)))),
-    ])
+    return h.span
+      .class('look-hat-icon')
+      .attr('aria-hidden', 'true')
+      .style(pixelArtStyle(hatIconOf(chooseLook(appearance, part, value))))
   }
   if (partView.look === 'Gun') {
-    return h.span([
-      h.Class('look-gun-icon'),
-      h.AriaHidden(true),
-      h.Style(pixelArtStyle(partView.swatch(value, appearance))),
-    ])
+    return h.span
+      .class('look-gun-icon')
+      .attr('aria-hidden', 'true')
+      .style(pixelArtStyle(partView.swatch(value, appearance)))
   }
   if (partView.look === 'Figure' || partView.look === 'Head') {
-    return h.span([
-      h.Class(
-        partView.look === 'Figure' ? 'look-figure-icon' : 'look-head-icon',
-      ),
-      h.AriaHidden(true),
-      h.Style(
+    return h.span
+      .class(partView.look === 'Figure' ? 'look-figure-icon' : 'look-head-icon')
+      .attr('aria-hidden', 'true')
+      .style(
         pixelArtStyle(
           partIconOf(chooseLook(appearance, part, value), partView.look),
         ),
-      ),
-    ])
+      )
   }
-  return h.span([
-    h.Class(partView.look === 'Flag' ? 'look-swatch look-flag' : 'look-swatch'),
-    h.AriaHidden(true),
-    h.Style(
+  return h.span
+    .class(partView.look === 'Flag' ? 'look-swatch look-flag' : 'look-swatch')
+    .attr('aria-hidden', 'true')
+    .style(
       partView.look === 'Flag'
         ? { backgroundImage: partView.swatch(value, appearance) }
         : { background: partView.swatch(value, appearance) },
-    ),
-  ])
+    )
 }
 
 // NOTE: what an option of an earned part is, for the standing it shows.
@@ -658,137 +661,132 @@ type GearOption = Readonly<{
   isNew: boolean
 }>
 
+// NOTE: the id of an earned option's spoken note, which the screen reader
+// hears after its name.
+const noteIdOf = (part: LookPart, value: string): string =>
+  `look-note-${part}-${value}`
+
+type RadioParts = Parameters<
+  NonNullable<Parameters<typeof RadioGroup>[1]['view']>
+>[0]
+
 const optionView = (
+  radioGroup: RadioParts,
   part: LookPart,
-  appearance: Appearance,
-  option: RadioGroup.OptionInfo,
+  value: string,
+  props: CharacterProps,
   maybeGear: Option.Option<GearOption>,
-  cue: ViewInputs['cue'],
-  isPreviewed: boolean,
-  h: CharacterViewBuilder,
-): Html => {
+  h: H,
+): Content => {
   const partView = PART_VIEWS[part]
-  const face = optionFace(part, option.value, appearance, h)
+  const face = optionFace(part, value, props.appearance, h)
+  const element = h.button
+    .key(value)
+    .class(`look-option look-${String.toLowerCase(partView.look)}-option`)
   return Option.match(maybeGear, {
     onNone: () =>
-      h.button(
-        [
-          ...option.option,
-          h.Key(option.value),
-          h.Class(
-            `look-option look-${String.toLowerCase(partView.look)}-option`,
-          ),
-        ],
-        [face, h.span([...option.label, h.Class('sr-only')], [option.value])],
-      ),
+      radioGroup
+        .radio({ element, value })
+        .children(face, h.span.class('sr-only').children(value)),
     onSome: ({ kind, standing, isNew }) => {
-      const shown = part === 'Hat' ? hatNameOf(option.value) : option.value
-      const isCued = cue.part === part && cue.value === option.value
-      return h.button(
-        [
-          ...option.option,
-          h.Key(option.value),
-          h.Class(
-            `look-option look-${String.toLowerCase(partView.look)}-option`,
-          ),
-          h.DataAttribute('standing', standing),
-          h.DataAttribute('look-option', `${part}.${option.value}`),
-          ...(isPreviewed ? [h.DataAttribute('previewed', 'true')] : []),
-          ...(isNew ? [h.DataAttribute('new', 'true')] : []),
-          ...(isCued ? cueAttributes(cue, h) : []),
-          h.OnClick(Message.ClickedGearOption({ part, value: option.value })),
-        ],
-        [
-          face,
-          ...Option.match(gearTagView(kind, option.value, standing, h), {
-            onNone: () => [],
-            onSome: tag => [tag],
-          }),
-          ...(isNew ? [newBadgeView(h)] : []),
-          h.span([...option.label, h.Class('sr-only')], [shown]),
-          h.span(
-            [...option.description, h.Class('sr-only')],
-            [gearNote(kind, option.value, standing, isNew)],
-          ),
-        ],
+      const isCued = props.cue.part === part && props.cue.value === value
+      const isPreviewed = Option.exists(
+        props.maybePreview,
+        preview => preview.part === part && preview.value === value,
       )
+      return radioGroup
+        .radio({
+          element: element
+            .attrs({
+              'data-standing': standing,
+              'data-look-option': `${part}.${value}`,
+              'data-previewed': isPreviewed ? 'true' : undefined,
+              'data-new': isNew ? 'true' : undefined,
+              'aria-describedby': noteIdOf(part, value),
+              ...(isCued ? cueAttrs(props.cue) : {}),
+            })
+            .on('click', Message.ClickedGearOption({ part, value })),
+          value,
+        })
+        .children(
+          face,
+          Option.getOrNull(gearTagView(kind, value, standing, h)),
+          isNew && newBadgeView(h),
+          h.span
+            .class('sr-only')
+            .children(part === 'Hat' ? hatNameOf(value) : value),
+          h.span
+            .id(noteIdOf(part, value))
+            .class('sr-only')
+            .children(gearNote(kind, value, standing, isNew)),
+        )
     },
   })
 }
 
-const lookRowView = (
-  picker: CharacterPicker,
-  part: LookPart,
-  inputs: ViewInputs,
-  h: CharacterViewBuilder,
-): Html => {
-  const { appearance } = inputs
+// NOTE: a part's options as a radio group. A free part picks by the group;
+// an earned part's group is read only, and each option picks by its own
+// click, so walking a row with the arrows never tries on or buys.
+const lookRowView = (part: LookPart, props: CharacterProps, h: H): Content => {
+  const { appearance } = props
   const partView = PART_VIEWS[part]
-  const groupModel = partGroupOf(picker, part)
   const selected = partView.selected(appearance)
   const maybeKind = Option.map(gearOf(part), ({ kind }) => kind)
-  const rankNumber = rankOf(totalPointsOf(inputs.rank))
+  const rankNumber = rankOf(totalPointsOf(props.rank))
   const gearOption = (value: string): Option.Option<GearOption> =>
     Option.map(maybeKind, kind => ({
       kind,
-      standing: standingOf(kind, value, selected, inputs.bought, rankNumber),
-      isNew: Array.contains(inputs.fresh, lookUnlockId(kind, value)),
+      standing: standingOf(kind, value, selected, props.bought, rankNumber),
+      isNew: Array.contains(props.fresh, lookUnlockId(kind, value)),
     }))
-  return h.div(
-    [h.Class('look-row'), h.Key(part)],
-    [
-      h.div(
-        [h.Class('look-row-heading'), h.AriaHidden(true)],
-        [
-          h.span([h.Class('look-row-label')], [partView.label]),
-          h.span(
-            [h.Class('look-row-value')],
-            [part === 'Hat' ? hatNameOf(selected) : selected],
-          ),
-        ],
-      ),
-      h.block(
-        PART_BINDINGS[part].embedView({
-          slotId: groupModel.id,
-          model: groupModel,
-          viewInputs: {
-            options: partView.options,
-            selectedValue: Option.some(selected),
-            ariaLabel: partView.ariaLabel,
-            orientation: 'Horizontal',
-            isReadOnly: Option.isSome(maybeKind),
-            hasOptionDescription: () => Option.isSome(maybeKind),
-            toView: ({ group: groupAttributes, options }) =>
-              h.div(
-                [
-                  ...groupAttributes,
-                  h.Class('look-options'),
-                  h.Style({
-                    '--look-columns': `${balancedColumns(partView.options.length, MOST_COLUMNS)}`,
-                    '--look-narrow-columns': `${balancedColumns(partView.options.length, MOST_NARROW_COLUMNS)}`,
-                  }),
-                ],
-                Array.map(options, option =>
-                  optionView(
-                    part,
-                    appearance,
-                    option,
-                    gearOption(option.value),
-                    inputs.cue,
-                    Option.exists(
-                      inputs.maybePreview,
-                      preview =>
-                        preview.part === part && preview.value === option.value,
-                    ),
-                    h,
-                  ),
+  return h.div
+    .class('look-row')
+    .key(part)
+    .children(
+      h.div
+        .class('look-row-heading')
+        .attr('aria-hidden', 'true')
+        .children(
+          h.span.class('look-row-label').children(partView.label),
+          h.span
+            .class('look-row-value')
+            .children(part === 'Hat' ? hatNameOf(selected) : selected),
+        ),
+      RadioGroup(h, {
+        key: `look-${part}`,
+        props: {
+          value: selected,
+          items: Array.map(partView.options, value => ({ value })),
+          readOnly: Option.isSome(maybeKind),
+        },
+        onEmit: {
+          Picked: ({ value }) => Message.PickedPart({ part, value }),
+        },
+        view: radioGroup =>
+          radioGroup
+            .root(
+              h.div
+                .class('look-options')
+                .attr('aria-label', partView.ariaLabel)
+                .style({
+                  '--look-columns': `${balancedColumns(partView.options.length, MOST_COLUMNS)}`,
+                  '--look-narrow-columns': `${balancedColumns(partView.options.length, MOST_NARROW_COLUMNS)}`,
+                }),
+            )
+            .children(
+              Array.map(partView.options, value =>
+                optionView(
+                  radioGroup,
+                  part,
+                  value,
+                  props,
+                  gearOption(value),
+                  h,
                 ),
               ),
-          },
-        }),
-      ),
-    ],
-  )
+            ),
+      }),
+    )
 }
 
 // TOGGLES
@@ -803,90 +801,73 @@ const TOGGLE_LABELS: Readonly<Record<LookToggle, string>> = {
 const toggleView = (
   toggle: LookToggle,
   appearance: Appearance,
-  h: CharacterViewBuilder,
-): Html => {
+  h: H,
+): Content => {
   const isOn = isToggleOn(appearance, toggle)
   const shown = isOn ? appearance : flipLook(appearance, toggle)
-  return h.button(
-    [
-      h.Type('button'),
-      h.Key(toggle),
-      h.Class('look-option look-head-option look-toggle'),
-      h.AriaPressed(isOn ? 'true' : 'false'),
-      h.AriaLabel(TOGGLE_LABELS[toggle]),
-      h.OnClick(Message.ClickedToggle({ toggle })),
-    ],
-    [
-      h.span([
-        h.Class('look-head-icon'),
-        h.AriaHidden(true),
-        h.Style(pixelArtStyle(partIconOf(shown, 'Head'))),
-      ]),
-    ],
-  )
+  return h.button
+    .key(toggle)
+    .attrs({
+      type: 'button',
+      'aria-pressed': isOn ? 'true' : 'false',
+      'aria-label': TOGGLE_LABELS[toggle],
+    })
+    .class('look-option look-head-option look-toggle')
+    .on('click', Message.ClickedToggle({ toggle }))
+    .children(
+      h.span
+        .class('look-head-icon')
+        .attr('aria-hidden', 'true')
+        .style(pixelArtStyle(partIconOf(shown, 'Head'))),
+    )
 }
 
 const togglesView = (
   toggles: ReadonlyArray<LookToggle>,
   appearance: Appearance,
-  h: CharacterViewBuilder,
-): ReadonlyArray<Html> =>
+  h: H,
+): MaybeContent =>
   Array.match(toggles, {
-    onEmpty: () => [],
-    onNonEmpty: shown => [
-      h.div(
-        [h.Class('look-row'), h.Key('toggles')],
-        [
-          h.div(
-            [h.Class('look-row-heading'), h.AriaHidden(true)],
-            [h.span([h.Class('look-row-label')], ['Face'])],
-          ),
-          h.div(
-            [h.Class('look-options look-toggles')],
-            Array.map(shown, toggle => toggleView(toggle, appearance, h)),
-          ),
-        ],
-      ),
-    ],
+    onEmpty: (): MaybeContent => null,
+    onNonEmpty: shown =>
+      h.div
+        .class('look-row')
+        .key('toggles')
+        .children(
+          h.div
+            .class('look-row-heading')
+            .attr('aria-hidden', 'true')
+            .children(h.span.class('look-row-label').children('Face')),
+          h.div
+            .class('look-options look-toggles')
+            .children(
+              Array.map(shown, toggle => toggleView(toggle, appearance, h)),
+            ),
+        ),
   })
 
 // LOOK TAB
 
-const view = CharacterComposition.makeView.withInputs<ViewInputs>(
-  (picker, inputs, h) =>
-    h.div(
-      [h.Class('look-tab')],
-      [
-        stageView(inputs, h),
-        h.div(
-          [h.Class('look-controls')],
-          [
-            sectionsView(picker, inputs.fresh, h),
-            h.div(
-              [
-                h.Class('look-rows'),
-                h.Key(picker.section),
-                h.DataAttribute('section', picker.section),
-              ],
-              [
-                ...Array.map(SECTION_PARTS[picker.section], part =>
-                  lookRowView(picker, part, inputs, h),
-                ),
-                ...togglesView(
-                  SECTION_TOGGLES[picker.section],
-                  inputs.appearance,
-                  h,
-                ),
-              ],
-            ),
-          ],
+// NOTE: the Look tab: the stage, its little tabs, and the open one's rows.
+// The rows' box is keyed by the little tab, so a switch swaps it.
+export const lookTabView: {
+  (props: CharacterProps, h: H): (model: Model) => Content
+  (model: Model, props: CharacterProps, h: H): Content
+} = Function.dual(3, (model: Model, props: CharacterProps, h: H): Content =>
+  h.div.class('look-tab').children(
+    stageView(props, h),
+    h.div.class('look-controls').children(
+      sectionsView(model.section, props.fresh, h),
+      h.div
+        .class('look-rows')
+        .key(model.section)
+        .attr('data-section', model.section)
+        .children(
+          Array.map(SECTION_PARTS[model.section], part =>
+            lookRowView(part, props, h),
+          ),
+          togglesView(SECTION_TOGGLES[model.section], props.appearance, h),
         ),
-      ],
     ),
+  ),
 )
-
-// NOTE: the Look tab's implementation, gathered here so the view is not
-// exported: a view is a function of three arguments with no pipeable form,
-// and Foldkit knows a view by its identity, so it cannot be wrapped in one.
-// src/features/profile/blocks/look/layer.ts completes it as the Block's Layer.
-export const characterImplementation = { init, update, view }

@@ -1,5 +1,6 @@
 import { Function, Option, Schema } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import {
   type Appearance,
@@ -44,51 +45,52 @@ const CHOICES: Readonly<
   Body: (appearance, value) =>
     Option.match(readAs(Body)(value), {
       onNone: () => appearance,
-      onSome: body => modifyFields(appearance, { body: () => body }),
+      onSome: body => UiStruct.evolve(appearance, { body: () => body }),
     }),
   HairStyle: (appearance, value) =>
     Option.match(readAs(HairStyle)(value), {
       onNone: () => appearance,
       onSome: hairStyle =>
-        modifyFields(appearance, { hairStyle: () => hairStyle }),
+        UiStruct.evolve(appearance, { hairStyle: () => hairStyle }),
     }),
   HairColor: (appearance, value) =>
     Option.match(readAs(HairColor)(value), {
       onNone: () => appearance,
       onSome: hairColor =>
-        modifyFields(appearance, { hairColor: () => hairColor }),
+        UiStruct.evolve(appearance, { hairColor: () => hairColor }),
     }),
   SkinTone: (appearance, value) =>
     Option.match(readAs(SkinTone)(value), {
       onNone: () => appearance,
       onSome: skinTone =>
-        modifyFields(appearance, { skinTone: () => skinTone }),
+        UiStruct.evolve(appearance, { skinTone: () => skinTone }),
     }),
   ShirtColor: (appearance, value) =>
     Option.match(readAs(ShirtColor)(value), {
       onNone: () => appearance,
       onSome: shirtColor =>
-        modifyFields(appearance, { shirtColor: () => shirtColor }),
+        UiStruct.evolve(appearance, { shirtColor: () => shirtColor }),
     }),
   Outfit: (appearance, value) =>
     Option.match(readAs(Outfit)(value), {
       onNone: () => appearance,
-      onSome: outfit => modifyFields(appearance, { outfit: () => outfit }),
+      onSome: outfit => UiStruct.evolve(appearance, { outfit: () => outfit }),
     }),
   Print: (appearance, value) =>
     Option.match(readAs(Print)(value), {
       onNone: () => appearance,
-      onSome: print => modifyFields(appearance, { print: () => print }),
+      onSome: print => UiStruct.evolve(appearance, { print: () => print }),
     }),
   Hat: (appearance, value) =>
     Option.match(readAs(Hat)(value), {
       onNone: () => appearance,
-      onSome: hat => modifyFields(appearance, { hat: () => hat }),
+      onSome: hat => UiStruct.evolve(appearance, { hat: () => hat }),
     }),
   GunSkin: (appearance, value) =>
     Option.match(readAs(GunSkin)(value), {
       onNone: () => appearance,
-      onSome: gunSkin => modifyFields(appearance, { gunSkin: () => gunSkin }),
+      onSome: gunSkin =>
+        UiStruct.evolve(appearance, { gunSkin: () => gunSkin }),
     }),
 }
 

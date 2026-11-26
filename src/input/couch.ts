@@ -1,5 +1,6 @@
 import { Array, Function, Option, Record, Result, pipe } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import type { Model } from '../app/model'
 import { notePress } from '../platform/recording'
@@ -189,7 +190,7 @@ const fieldPress = (
   Option.match(keyActionOf(focusSeat(model, slot), couch, code), {
     onNone: () => model,
     onSome: action =>
-      modifyFields(
+      UiStruct.evolve(
         withWorld(model, world => applySeatAction(world, slot, action)),
         { recorder: notePress(slot, action) },
       ),

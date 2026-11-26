@@ -1,8 +1,6 @@
-import { Array, Option, Record } from 'effect'
-import type { Canvas } from 'foldkit'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
+import { Array, Effect, Option, Record } from 'effect'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
 import { Message } from '../../../app/message'
@@ -11,6 +9,7 @@ import { DARE_FOUND_SLOTS, SATCHEL_BACK } from '../../../art/dareArt'
 import { textWidth } from '../../../art/font'
 import { PocketCard } from '../../../domain/clientSchema'
 import { PAD_SELECT } from '../../../input/gamepad'
+import type * as Draw from '../../../render/draw'
 import {
   DEFAULT_PORTRAIT_SCREEN,
   LANDSCAPE_SCREEN,
@@ -24,10 +23,12 @@ import {
   withDareThings,
 } from '../../../test/model.fixture'
 import {
-  APPLICATION,
   changeModel,
+  checkModel,
   isPausedPhase,
   press,
+  send,
+  storyOf,
   tick,
   ticks,
 } from '../../../test/testing'
@@ -72,7 +73,7 @@ const hunting = (found: ReadonlyArray<DareKind>): Model =>
   withDareThings(quietWave(3), thingsWith(found))
 
 const libraryOpen = (model: Model): Model =>
-  modifyFields(model, {
+  UiStruct.evolve(model, {
     level: () => roomOpenIn(DEFAULT_ARRANGEMENT, 'Library'),
   })
 
@@ -92,140 +93,147 @@ const openedFresh = (model: Model): ReadonlyArray<DareKind> =>
 
 describe('the dare card opened again', () => {
   it.effect('Tab opens it, the run waits alone, and any key puts it away', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(hunting(['FamilyPortrait'])),
-      tick(FRAME_MS),
-      press('Tab'),
-      Story.model(current => {
-        expect(current.pocketCard._tag).toBe('Opened')
-        expect(isPocketCardBlocking(current)).toBe(true)
-      }),
-      Story.message(Message.TickedFrame({ deltaTime: FRAME_MS })),
-      Story.model(current => {
-        expect(elapsedOf(current)).toBeCloseTo(FRAME_MS)
-      }),
-      ...ticks(4, FRAME_MS),
-      Story.model(current => {
-        expect(elapsedOf(current)).toBeCloseTo(FRAME_MS)
-      }),
-      press('Escape'),
-      Story.model(current => {
-        expect(current.pocketCard._tag).toBe('Pocketed')
-        expect(isPausedPhase(current)).toBe(false)
-      }),
-      tick(FRAME_MS),
-      Story.model(current => {
-        expect(elapsedOf(current)).toBeCloseTo(2 * FRAME_MS)
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(hunting(['FamilyPortrait']))
+      s.pipe(
+        tick(FRAME_MS),
+        press('Tab'),
+        checkModel(current => {
+          expect(current.pocketCard._tag).toBe('Opened')
+          expect(isPocketCardBlocking(current)).toBe(true)
+        }),
+        send(Message.TickedFrame({ deltaTime: FRAME_MS })),
+        checkModel(current => {
+          expect(elapsedOf(current)).toBeCloseTo(FRAME_MS)
+        }),
+        ticks(4, FRAME_MS),
+        checkModel(current => {
+          expect(elapsedOf(current)).toBeCloseTo(FRAME_MS)
+        }),
+        press('Escape'),
+        checkModel(current => {
+          expect(current.pocketCard._tag).toBe('Pocketed')
+          expect(isPausedPhase(current)).toBe(false)
+        }),
+        tick(FRAME_MS),
+        checkModel(current => {
+          expect(elapsedOf(current)).toBeCloseTo(2 * FRAME_MS)
+        }),
+      )
+    }),
   )
 
   it.effect('the same key puts it away at once, and Select opens it too', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(hunting([])),
-      press('Tab'),
-      press('Tab'),
-      Story.model(current => {
-        expect(current.pocketCard._tag).toBe('Pocketed')
-      }),
-      press(PAD_SELECT),
-      Story.model(current => {
-        expect(current.pocketCard._tag).toBe('Opened')
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(hunting([]))
+      s.pipe(
+        press('Tab'),
+        press('Tab'),
+        checkModel(current => {
+          expect(current.pocketCard._tag).toBe('Pocketed')
+        }),
+        press(PAD_SELECT),
+        checkModel(current => {
+          expect(current.pocketCard._tag).toBe('Opened')
+        }),
+      )
+    }),
   )
 
   it.effect("the HUD list's button opens it and puts it away", () =>
-    Story.story(
-      APPLICATION,
-      Story.given(hunting([])),
-      Story.message(Message.ClickedDareList()),
-      Story.model(current => {
-        expect(current.pocketCard._tag).toBe('Opened')
-      }),
-      Story.message(Message.ClickedDareList()),
-      Story.model(current => {
-        expect(current.pocketCard._tag).toBe('Pocketed')
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(hunting([]))
+      s.pipe(
+        send(Message.ClickedDareList()),
+        checkModel(current => {
+          expect(current.pocketCard._tag).toBe('Opened')
+        }),
+        send(Message.ClickedDareList()),
+        checkModel(current => {
+          expect(current.pocketCard._tag).toBe('Pocketed')
+        }),
+      )
+    }),
   )
 
   it.effect('a key in its first moment is not taken as a close', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(hunting([])),
-      press('Tab'),
-      press('KeyW'),
-      Story.model(current => {
-        expect(current.pocketCard._tag).toBe('Opened')
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(hunting([]))
+      s.pipe(
+        press('Tab'),
+        press('KeyW'),
+        checkModel(current => {
+          expect(current.pocketCard._tag).toBe('Opened')
+        }),
+      )
+    }),
   )
 
   it.effect('pausing puts it away', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(hunting([])),
-      press('Tab'),
-      Story.message(Message.ClickedPauseButton()),
-      Story.model(current => {
-        expect(current.pocketCard._tag).toBe('Pocketed')
-        expect(isPausedPhase(current)).toBe(true)
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(hunting([]))
+      s.pipe(
+        press('Tab'),
+        send(Message.ClickedPauseButton()),
+        checkModel(current => {
+          expect(current.pocketCard._tag).toBe('Pocketed')
+          expect(isPausedPhase(current)).toBe(true)
+        }),
+      )
+    }),
   )
 
   it.effect('Endless has no list, so there is nothing to open', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(withDareThings(quietWave(3), [])),
-      press('Tab'),
-      Story.message(Message.ClickedDareList()),
-      Story.model(current => {
-        expect(current.pocketCard._tag).toBe('Pocketed')
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(withDareThings(quietWave(3), []))
+      s.pipe(
+        press('Tab'),
+        send(Message.ClickedDareList()),
+        checkModel(current => {
+          expect(current.pocketCard._tag).toBe('Pocketed')
+        }),
+      )
+    }),
   )
 })
 
 describe('the satchel', () => {
   it.effect('holds what is found, and only the new finds drop in', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(hunting(['FamilyPortrait'])),
-      press('Tab'),
-      Story.model(current => {
-        expect(openedFresh(current)).toEqual(['FamilyPortrait'])
-        expect(current.dareSatchel).toEqual(['FamilyPortrait'])
-      }),
-      press('Tab'),
-      changeModel(current =>
-        modifyFields(current, {
-          dareThings: () => thingsWith(['FamilyPortrait', 'MusicBox']),
+    Effect.gen(function* () {
+      const s = yield* storyOf(hunting(['FamilyPortrait']))
+      s.pipe(
+        press('Tab'),
+        checkModel(current => {
+          expect(openedFresh(current)).toEqual(['FamilyPortrait'])
+          expect(current.dareSatchel).toEqual(['FamilyPortrait'])
         }),
-      ),
-      press('Tab'),
-      Story.model(current => {
-        expect(openedFresh(current)).toEqual(['MusicBox'])
-        expect(current.dareSatchel).toEqual(['FamilyPortrait', 'MusicBox'])
-      }),
-    ),
+        press('Tab'),
+        changeModel(current =>
+          UiStruct.evolve(current, {
+            dareThings: () => thingsWith(['FamilyPortrait', 'MusicBox']),
+          }),
+        ),
+        press('Tab'),
+        checkModel(current => {
+          expect(openedFresh(current)).toEqual(['MusicBox'])
+          expect(current.dareSatchel).toEqual(['FamilyPortrait', 'MusicBox'])
+        }),
+      )
+    }),
   )
 
   const imageSources = (
-    shapes: ReadonlyArray<Canvas.Shape>,
+    shapes: ReadonlyArray<Draw.Shape>,
   ): ReadonlyArray<string> => Array.map(imagesIn(shapes), ({ src }) => src)
 
-  const firstSource = (shapes: ReadonlyArray<Canvas.Shape>): string =>
+  const firstSource = (shapes: ReadonlyArray<Draw.Shape>): string =>
     Option.getOrElse(Array.head(imageSources(shapes)), () => '')
 
   test.each([
     ['landscape', LANDSCAPE_SCREEN],
     ['portrait', DEFAULT_PORTRAIT_SCREEN],
   ])('draws the satchel with its found thing, in %s', (_, screen) => {
-    const opened = modifyFields(hunting(['FamilyPortrait']), {
+    const opened = UiStruct.evolve(hunting(['FamilyPortrait']), {
       pocketCard: () => PocketCard.Opened({ ageMs: 5_000, fresh: [] }),
       dareSatchel: () => ['FamilyPortrait'],
     })

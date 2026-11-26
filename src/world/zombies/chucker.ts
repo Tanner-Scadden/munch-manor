@@ -1,5 +1,6 @@
 import { Array, Function, Option, Order, Result, pipe } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import {
   MS_PER_SECOND,
@@ -188,7 +189,9 @@ const isWithinGrab = (chucker: Zombie) => (groaner: Zombie) =>
 const setAction =
   (id: number, action: ZombieAction) =>
   (zombie: Zombie): Zombie =>
-    zombie.id === id ? modifyFields(zombie, { action: () => action }) : zombie
+    zombie.id === id
+      ? UiStruct.evolve(zombie, { action: () => action })
+      : zombie
 
 // NOTE: once his throwing arm hangs limp (his last wear stage), he winds up
 // one-handed and slower.
@@ -217,7 +220,7 @@ const tryGrab = (model: World, slot: PlayerSlot, chucker: Zombie): World => {
     {
       onNone: () => model,
       onSome: victim =>
-        modifyFields(model, {
+        UiStruct.evolve(model, {
           zombies: zombies =>
             Array.map(zombies, zombie =>
               pipe(
@@ -257,7 +260,7 @@ const isCarriedBy = (chucker: Zombie) => (victim: Zombie) =>
   victim.action.byId === chucker.id
 
 const windChucker = (model: World, chucker: Zombie): World =>
-  modifyFields(model, {
+  UiStruct.evolve(model, {
     zombies: Array.map(
       setAction(
         chucker.id,
@@ -274,7 +277,7 @@ const release = (
 ): World => {
   const { player } = seatStateAt(model, slot)
   const target = { x: player.x, y: player.y }
-  return modifyFields(windChucker(model, chucker), {
+  return UiStruct.evolve(windChucker(model, chucker), {
     zombies: Array.map(
       setAction(
         victim.id,
@@ -309,7 +312,7 @@ const stepHeft = (
       onNone: () => windChucker(model, chucker),
       onSome: victim =>
         remainingMs > deltaMs
-          ? modifyFields(model, {
+          ? UiStruct.evolve(model, {
               zombies: Array.map(
                 setAction(
                   chucker.id,
@@ -374,12 +377,12 @@ const holdUp = (zombies: ReadonlyArray<Zombie>, victim: Zombie): Zombie => {
       isShielding(zombies, victim),
     ),
     {
-      onNone: () => modifyFields(victim, { action: dazed }),
+      onNone: () => UiStruct.evolve(victim, { action: dazed }),
       onSome: carrier =>
         Option.match(shieldAim(carrier), {
           onNone: () => victim,
           onSome: aim =>
-            modifyFields(victim, {
+            UiStruct.evolve(victim, {
               x: () =>
                 carrier.x + DetMath.cos(aim) * CHUCKER_RULES.shieldHoldPx,
               y: () =>
@@ -402,15 +405,15 @@ const carry = (zombies: ReadonlyArray<Zombie>) => (zombie: Zombie) => {
   }
 
   return Option.match(findZombie(zombies, zombie.action.byId), {
-    onNone: () => modifyFields(zombie, { action: dazed }),
+    onNone: () => UiStruct.evolve(zombie, { action: dazed }),
     onSome: carrier =>
       isHolding(zombies, zombie)
-        ? modifyFields(zombie, {
+        ? UiStruct.evolve(zombie, {
             x: () => carrier.x,
             y: () => carrier.y,
             knockback: () => ({ x: 0, y: 0 }),
           })
-        : modifyFields(zombie, { action: dazed }),
+        : UiStruct.evolve(zombie, { action: dazed }),
   })
 }
 
@@ -433,7 +436,7 @@ const fly =
 
     const { from, to, remainingMs, durationMs } = zombie.action
     if (remainingMs <= deltaMs) {
-      return modifyFields(zombie, {
+      return UiStruct.evolve(zombie, {
         x: () => to.x,
         y: () => to.y,
         knockback: () => ({ x: 0, y: 0 }),
@@ -444,7 +447,7 @@ const fly =
 
     const left = remainingMs - deltaMs
     const point = flightPoint(from, to, 1 - left / Math.max(1, durationMs))
-    return modifyFields(zombie, {
+    return UiStruct.evolve(zombie, {
       x: () => point.x,
       y: () => point.y,
       knockback: () => ({ x: 0, y: 0 }),
@@ -468,7 +471,7 @@ const landings = (
 // player in co-op.
 const land = (model: World, landing: Landing): World =>
   forEachSeatWhere(
-    modifyFields(model, {
+    UiStruct.evolve(model, {
       frameEvents: Array.append(
         GameEvent.ZombieLanded({
           x: landing.at.x,
@@ -495,7 +498,7 @@ const landOn = (landed: World, slot: PlayerSlot, landing: Landing): World => {
     directionBetween(landing.at, player),
     () => OUTWARD,
   )
-  return modifyFields(landed, {
+  return UiStruct.evolve(landed, {
     seats: atSeat(slot, {
       player: () => woundPlayer(player, CHUCKER_RULES.landDamage, direction),
     }),
@@ -564,7 +567,7 @@ const tryShield = (model: World, slot: PlayerSlot, chucker: Zombie): World => {
     {
       onNone: () => model,
       onSome: victim =>
-        modifyFields(model, {
+        UiStruct.evolve(model, {
           zombies: zombies =>
             Array.map(zombies, zombie =>
               pipe(
@@ -583,7 +586,7 @@ const tryShield = (model: World, slot: PlayerSlot, chucker: Zombie): World => {
                 ),
                 yanked =>
                   yanked.id === victim.id
-                    ? modifyFields(yanked, {
+                    ? UiStruct.evolve(yanked, {
                         hitRemainingMs: () => ZOMBIE_HIT_PULSE_MS,
                       })
                     : yanked,
@@ -603,17 +606,17 @@ const isShieldedBy = (chucker: Zombie) => (victim: Zombie) =>
   victim.action.byId === chucker.id
 
 const dropShield = (model: World, chucker: Zombie): World =>
-  modifyFields(model, {
+  UiStruct.evolve(model, {
     zombies: Array.map(zombie =>
       zombie.id === chucker.id
-        ? modifyFields(zombie, {
+        ? UiStruct.evolve(zombie, {
             action: () =>
               ZombieAction.Winded({
                 remainingMs: CHUCKER_RULES.shieldCooldownMs,
               }),
           })
         : isShieldedBy(chucker)(zombie)
-          ? modifyFields(zombie, {
+          ? UiStruct.evolve(zombie, {
               action: () =>
                 ZombieAction.Dazed({
                   remainingMs: CHUCKER_RULES.shieldDropDazedMs,
@@ -657,7 +660,7 @@ const stepShield = (
     angleBetween(chucker, seatStateAt(model, slot).player),
     (CHUCKER_RULES.shieldTurnPerSecond * deltaMs) / MS_PER_SECOND,
   )
-  return modifyFields(model, {
+  return UiStruct.evolve(model, {
     zombies: Array.map(
       setAction(
         chucker.id,
@@ -734,7 +737,7 @@ export const advanceChuckers: {
       }),
   )
   const thrownAt = landings(heaved.zombies, deltaMs)
-  const flown = modifyFields(heaved, {
+  const flown = UiStruct.evolve(heaved, {
     zombies: zombies =>
       pipe(zombies, Array.map(fly(deltaMs)), carried =>
         Array.map(carried, carry(carried)),

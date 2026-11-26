@@ -1,6 +1,6 @@
 import { Schema } from 'effect'
-import { defineMessageUnion } from 'foldkit/message'
 
+import { UiSchema } from '@effect/ui'
 import { PickedMode, RoomDifficulty } from '@munch/netcode'
 import { LobbyEvent, QuickPlayEvent, RoomEvent } from '@munch/netcode/browser'
 
@@ -15,60 +15,64 @@ import { Modifier } from '../../world/run/modifiers'
 
 // MESSAGE
 
-// NOTE: co-op's own facts. The parent's requests are its InMessages
-// (inMessage.ts).
-export const Message = defineMessageUnion({
-  ClickedQuickPlayButton: {},
-  ClickedCodeButton: {},
-  ClickedCreateButton: {},
-  ClickedBackButton: {},
-  ClickedCloseButton: {},
-  UpdatedCode: { value: Schema.String },
-  SubmittedCode: {},
+// NOTE: co-op's facts, a group of the root's Messages (src/app/message.ts).
+// Co-op is the root's own state (`coop`), so its handlers are root handlers
+// (src/app/update/coop.ts). A control's Message names co-op, as it sits in
+// the root's one union beside the other screens' buttons.
+export const coopCases = {
+  ClickedCoopQuickPlayButton: {},
+  ClickedCoopCodeButton: {},
+  ClickedCoopCreateButton: {},
+  ClickedCoopBackButton: {},
+  ClickedCoopCloseButton: {},
+  UpdatedCoopCode: { value: Schema.String },
+  SubmittedCoopCode: {},
   SucceededRequestRoom: { code: Schema.String, slot: Schema.Finite },
   FailedRequestRoom: { problem: CoopProblem },
   ReceivedQuickPlayEvent: { event: QuickPlayEvent },
-  ClickedAcceptOfferButton: {},
-  ClickedKeepWaitingButton: {},
-  ClickedCancelQueueButton: {},
-  CompletedAnswerOffer: {},
-  CompletedCancelQuickPlay: {},
+  ClickedCoopAcceptOfferButton: {},
+  ClickedCoopKeepWaitingButton: {},
+  ClickedCoopCancelQueueButton: {},
   ReceivedLobbyEvent: { event: LobbyEvent },
   ReceivedRoomEvent: { event: RoomEvent, atMs: Schema.Finite },
   CompletedSendRoomFrames: { bytes: Schema.Array(Schema.Finite) },
-  ClickedReadyButton: {},
-  ClickedKickButton: { playerId: Schema.String },
-  ClickedModePick: { mode: PickedMode },
-  ClickedDifficultyPick: { difficulty: RoomDifficulty },
-  ClickedModifierPick: { modifier: Modifier },
-  ClickedEasyBreakPick: {},
-  ClickedDareMarkPick: { mark: Schema.Finite },
-  ClickedCallingPill: {},
-  ClickedPickNudge: { reason: NudgeReason },
-  ClickedNameButton: {},
-  UpdatedNameDraft: { value: Schema.String },
-  SubmittedName: {},
-  ClickedNameDice: {},
-  ClickedNameCancel: {},
-  CompletedChangeLobby: {},
-  FailedChangeLobby: { problem: CoopProblem },
-  ClickedLeaveButton: {},
+  ClickedCoopReadyButton: {},
+  ClickedCoopKickButton: { playerId: Schema.String },
+  ClickedCoopModePick: { mode: PickedMode },
+  ClickedCoopDifficultyPick: { difficulty: RoomDifficulty },
+  ClickedCoopModifierPick: { modifier: Modifier },
+  ClickedCoopEasyBreakPick: {},
+  ClickedCoopDareMarkPick: { mark: Schema.Finite },
+  ClickedCoopCallingPill: {},
+  ClickedCoopPickNudge: { reason: NudgeReason },
+  ClickedCoopNameButton: {},
+  UpdatedCoopNameDraft: { value: Schema.String },
+  SubmittedCoopName: {},
+  ClickedCoopNameDice: {},
+  ClickedCoopNameCancel: {},
+  ClickedCoopLeaveButton: {},
   CompletedLeaveRoom: {},
-  CompletedResyncRoom: {},
-  ClickedShareButton: {},
+  ClickedCoopShareButton: {},
   CompletedShareRoomLink: { share: Share },
-  ClickedRoomCode: {},
+  ClickedCoopRoomCode: {},
   CompletedCopyRoomCode: { copy: CodeCopy },
-  CompletedRememberRoom: {},
-  CompletedFocusCoopElement: {},
-})
-export type Message = typeof Message.Type
+  // NOTE: the hero picker's events over co-op's lobby (src/features/heroes/).
+  PickedCoopHero: { calling: Calling },
+  RequestedBuyCoopHero: { calling: Calling },
+  RequestedCloseCoopHeroPicker: {},
+}
 
-// OUT MESSAGE
+export const CoopMessage = UiSchema.TaggedEnum(coopCases)
+export type CoopMessage = typeof CoopMessage.Type
 
-// NOTE: `LeftRoom` says a delivered Message dropped the room, so the
-// parent can go home from a run the room left behind.
-export const OutMessage = defineMessageUnion({
+// NOTICE
+
+// NOTE: what one of co-op's rules tells the rest of the root, which answers
+// it with its own Steps (src/app/update/coop.ts): co-op closed, the room
+// needs a newer build, the room was dropped (so a run it left goes home), a
+// hero or a name chosen in the lobby (the player's everywhere), and a hero
+// to buy with the Bones.
+export const CoopNotice = UiSchema.TaggedEnum({
   ClosedCoop: {},
   NeededNewerBuild: {},
   LeftRoom: {},
@@ -76,4 +80,4 @@ export const OutMessage = defineMessageUnion({
   ChoseName: { name: Schema.String },
   BoughtCalling: { calling: Calling },
 })
-export type OutMessage = typeof OutMessage.Type
+export type CoopNotice = typeof CoopNotice.Type

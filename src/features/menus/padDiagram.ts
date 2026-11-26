@@ -1,7 +1,9 @@
 import { Array } from 'effect'
-import type { Html } from 'foldkit/html'
 
-import type { ApplicationViewBuilder } from '../../app/composition'
+import type {
+  ApplicationHtml,
+  ApplicationViewBuilder,
+} from '../../app/definition'
 import { pixelIconUrl } from '../../art/icons'
 import { iconView } from '../../ui/menuParts'
 import { KNIFE_NAME } from '../../world/names'
@@ -98,41 +100,39 @@ const buttonView = (
   side: Side,
   { glyph, action, face }: PadButton,
   h: ApplicationViewBuilder,
-): Html => {
-  const glyphView = h.kbd(
-    [
-      h.Class('pad-glyph'),
-      h.DataAttribute('face', face),
-      ...(face === 'Plain' ? [] : [h.Style({ background: FACE_COLORS[face] })]),
-    ],
-    [glyph],
-  )
-  const actionView = h.span([h.Class('pad-action')], [action])
-  const leader = h.span([h.Class('pad-leader'), h.AriaHidden(true)])
-  return h.li(
-    [h.Class('pad-button')],
-    side === 'Left'
-      ? [actionView, glyphView, leader]
-      : [leader, glyphView, actionView],
-  )
+): ApplicationHtml => {
+  const glyphView = h.kbd
+    .class('pad-glyph')
+    .attr('data-face', face)
+    .style(face === 'Plain' ? {} : { background: FACE_COLORS[face] })
+    .children(glyph)
+  const actionView = h.span.class('pad-action').children(action)
+  const leader = h.span.class('pad-leader').attr('aria-hidden', 'true')
+  return h.li
+    .class('pad-button')
+    .children(
+      side === 'Left'
+        ? [actionView, glyphView, leader]
+        : [leader, glyphView, actionView],
+    )
 }
 
 const sideView = (
   side: Side,
   buttons: ReadonlyArray<PadButton>,
   h: ApplicationViewBuilder,
-): Html =>
-  h.ul(
-    [h.Class('pad-side'), h.DataAttribute('side', side)],
-    Array.map(buttons, padButton => buttonView(side, padButton, h)),
-  )
+): ApplicationHtml =>
+  h.ul
+    .class('pad-side')
+    .attr('data-side', side)
+    .children(Array.map(buttons, padButton => buttonView(side, padButton, h)))
 
-export const padDiagramView = (h: ApplicationViewBuilder): Html =>
-  h.section(
-    [h.Class('pad-diagram'), h.AriaLabel('Controller buttons')],
-    [
+export const padDiagramView = (h: ApplicationViewBuilder): ApplicationHtml =>
+  h.section
+    .class('pad-diagram')
+    .attr('aria-label', 'Controller buttons')
+    .children(
       sideView('Left', LEFT_BUTTONS, h),
       iconView('pad-picture', PAD_ICON, h),
       sideView('Right', RIGHT_BUTTONS, h),
-    ],
-  )
+    )

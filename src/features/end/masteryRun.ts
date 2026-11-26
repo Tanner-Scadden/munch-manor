@@ -1,5 +1,6 @@
 import { Array, Function, Option, Record } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import type { Model } from '../../app/model'
 import {
@@ -77,9 +78,9 @@ export const earnMastery: {
   }
   const run = isEnded ? after : before
   const mastery = addToMastery(after.mastery, earnedOf(run))
-  return modifyFields(after, {
+  return UiStruct.evolve(after, {
     mastery: () => mastery,
-    runGains: modifyFields({
+    runGains: UiStruct.evolve({
       masteryRun: () => ({
         wavesPaid: run.stats.wavesCleared,
         thingsPaid: dareItemsFoundOf(run),

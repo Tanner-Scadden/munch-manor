@@ -1,10 +1,9 @@
-import { Schema } from 'effect'
+import { Option, Schema } from 'effect'
 
 import { type Queue, Screen } from '../../domain/coopRoom'
 import { Calling, SavedBoughtCosmetics } from '../../shared/playerData'
-import { HeroPickerBlock } from '../heroes/block'
 
-// NOTE: co-op's own state, a Block the root Model holds. Its room and
+// NOTE: co-op's own state, the root Model's `coop` field. Its room and
 // screens are src/domain/coopRoom.ts.
 
 // NOTE: `name`, `look`, `rank`, and `calling` are what joining sends for
@@ -26,14 +25,18 @@ export const Model = Schema.Struct({
   bought: SavedBoughtCosmetics,
   // NOTE: the player's Bones, for the BUY pill's price check.
   bones: Schema.Finite,
-  // NOTE: the hero picker the lobby's pill opens, a child Block.
-  heroPicker: HeroPickerBlock.Model,
+  // NOTE: the hero picker the lobby's pill opens (src/features/heroes/): co-op
+  // owns whether it is drawn and the hero tried on, never stored by the
+  // picker. Opening or closing it ends any try-on.
+  heroPick: Schema.Struct({
+    isOpen: Schema.Boolean,
+    maybeTrying: Schema.Option(Calling),
+  }),
 })
 export type Model = typeof Model.Type
 
-// NOTE: co-op's own fields as it starts, closed; the picker starts from its
-// own init through its Binding.
-export const initialModel: Omit<Model, 'heroPicker'> = {
+// NOTE: co-op as it starts, closed, its picker shut.
+export const initialModel: Model = {
   screen: Screen.Closed(),
   name: '',
   look: '',
@@ -43,6 +46,7 @@ export const initialModel: Omit<Model, 'heroPicker'> = {
   rngState: 0,
   bought: [],
   bones: 0,
+  heroPick: { isOpen: false, maybeTrying: Option.none() },
 }
 
 export const emptyQueue: Queue = {

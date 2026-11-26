@@ -1,5 +1,7 @@
 import { Function } from 'effect'
-import type { Html, HtmlBuilder } from 'foldkit/html'
+
+import type { View } from '@effect/ui'
+import type { Html } from '@effect/ui/html'
 
 import { MODIFIER_ICONS } from '../art/icons'
 import { MODIFIER_NAMES } from '../world/names'
@@ -18,20 +20,23 @@ const bonusText = (percent: number): string => `+${percent}%`
 // the screen reader gets the whole label on the button instead.
 export const modifierFaceView: {
   <Message>(
-    h: HtmlBuilder<Message>,
-  ): (modifier: Modifier) => ReadonlyArray<Html>
-  <Message>(modifier: Modifier, h: HtmlBuilder<Message>): ReadonlyArray<Html>
+    h: Html.H<Message>,
+  ): (modifier: Modifier) => ReadonlyArray<View.Content<Message>>
+  <Message>(
+    modifier: Modifier,
+    h: Html.H<Message>,
+  ): ReadonlyArray<View.Content<Message>>
 } = Function.dual(
   2,
   <Message>(
     modifier: Modifier,
-    h: HtmlBuilder<Message>,
-  ): ReadonlyArray<Html> => [
+    h: Html.H<Message>,
+  ): ReadonlyArray<View.Content<Message>> => [
     iconView('modifier-icon', MODIFIER_ICONS[modifier], h),
-    h.span(
-      [h.Class('modifier-name'), h.AriaHidden(true)],
-      [MODIFIER_NAMES[modifier]],
-    ),
+    h.span
+      .class('modifier-name')
+      .attr('aria-hidden', 'true')
+      .children(MODIFIER_NAMES[modifier]),
   ],
 )
 
@@ -47,18 +52,17 @@ export const modifierLabel: {
 // NOTE: the total bonus as a gold chip at the end of the row. It is there,
 // dim at +0%, so the row never changes width as tiles turn on.
 export const bonusChipView: {
-  <Message>(h: HtmlBuilder<Message>): (percent: number) => Html
-  <Message>(percent: number, h: HtmlBuilder<Message>): Html
+  <Message>(h: Html.H<Message>): (percent: number) => View.Content<Message>
+  <Message>(percent: number, h: Html.H<Message>): View.Content<Message>
 } = Function.dual(
   2,
-  <Message>(percent: number, h: HtmlBuilder<Message>): Html =>
-    h.span(
-      [
-        h.Class('modifier-bonus'),
-        h.DataAttribute('state', percent > 0 ? 'On' : 'Off'),
-        h.Role('status'),
-        h.AriaLabel(`Bonus ${bonusText(percent)}`),
-      ],
-      [h.span([h.AriaHidden(true)], [bonusText(percent)])],
-    ),
+  <Message>(percent: number, h: Html.H<Message>): View.Content<Message> =>
+    h.span
+      .class('modifier-bonus')
+      .attr('data-state', percent > 0 ? 'On' : 'Off')
+      .attr('role', 'status')
+      .attr('aria-label', `Bonus ${bonusText(percent)}`)
+      .children(
+        h.span.attr('aria-hidden', 'true').children(bonusText(percent)),
+      ),
 )

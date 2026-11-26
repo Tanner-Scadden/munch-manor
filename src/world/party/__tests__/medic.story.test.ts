@@ -1,7 +1,6 @@
 import { Array, Result } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
 import { type Bot, Life, type Model } from '../../../app/model'
@@ -15,7 +14,14 @@ import {
   withPickups,
   withSeatLife,
 } from '../../../test/model.fixture'
-import { APPLICATION, hasEvent, tap, ticks } from '../../../test/testing'
+import {
+  checkModel,
+  hasEvent,
+  modelAfter,
+  steps,
+  tap,
+  ticks,
+} from '../../../test/testing'
 import type { World } from '../../schema/world'
 import { SeatAction, trySeatAction } from '../../step/stepWorld'
 import { MEDIC_RULES, isCallFresh } from '../medic'
@@ -53,40 +59,42 @@ describe('the MEDIC call', () => {
       placeSeat(0, LEFT_X, ROW_Y),
       placeSeat(1, RIGHT_X, ROW_Y, 0),
     )(crewInWave(2))
-    return Story.story(
-      APPLICATION,
-      Story.given(falling),
-      ...ticks(1, TICK_MS),
-      Story.model(current => {
-        expect(seatStateAt(current, 1).seat.life).toEqual(
-          Life.Downed({ bleedMs: 20_000, reviveMs: 0, callMs: 0 }),
-        )
-        expect(isCallFresh(seatStateAt(current, 1).seat)).toBe(true)
-      }),
-      ...ticks(1, TICK_MS),
-      Story.model(current => {
-        expect(hasEvent(current, 'MedicCalled')).toBe(true)
-        expect(isCallFresh(seatStateAt(current, 1).seat)).toBe(true)
-      }),
-      ...ticks(1, TICK_MS),
-      Story.model(current => {
-        expect(hasEvent(current, 'MedicCalled')).toBe(false)
-      }),
+    return modelAfter(
+      falling,
+      steps(
+        ticks(1, TICK_MS),
+        checkModel(current => {
+          expect(seatStateAt(current, 1).seat.life).toEqual(
+            Life.Downed({ bleedMs: 20_000, reviveMs: 0, callMs: 0 }),
+          )
+          expect(isCallFresh(seatStateAt(current, 1).seat)).toBe(true)
+        }),
+        ticks(1, TICK_MS),
+        checkModel(current => {
+          expect(hasEvent(current, 'MedicCalled')).toBe(true)
+          expect(isCallFresh(seatStateAt(current, 1).seat)).toBe(true)
+        }),
+        ticks(1, TICK_MS),
+        checkModel(current => {
+          expect(hasEvent(current, 'MedicCalled')).toBe(false)
+        }),
+      ),
     )
   })
 
   it.effect('the shout is fresh for 1.5 s', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(leadDown(0)),
-      ...ticks(Math.floor(MEDIC_RULES.freshMs / TICK_MS) - 1, TICK_MS),
-      Story.model(current => {
-        expect(isCallFresh(seatStateAt(current, 0).seat)).toBe(true)
-      }),
-      ...ticks(2, TICK_MS),
-      Story.model(current => {
-        expect(isCallFresh(seatStateAt(current, 0).seat)).toBe(false)
-      }),
+    modelAfter(
+      leadDown(0),
+      steps(
+        ticks(Math.floor(MEDIC_RULES.freshMs / TICK_MS) - 1, TICK_MS),
+        checkModel(current => {
+          expect(isCallFresh(seatStateAt(current, 0).seat)).toBe(true)
+        }),
+        ticks(2, TICK_MS),
+        checkModel(current => {
+          expect(isCallFresh(seatStateAt(current, 0).seat)).toBe(false)
+        }),
+      ),
     ),
   )
 
@@ -114,29 +122,31 @@ describe('the MEDIC call', () => {
   })
 
   it.effect('Enter shouts while downed, and the next tick sounds it', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(leadDown(MEDIC_RULES.cooldownMs)),
-      tap('Enter'),
-      Story.model(current => {
-        expect(callMsOf(current, 0)).toBe(0)
-      }),
-      ...ticks(1, TICK_MS),
-      Story.model(current => {
-        expect(hasEvent(current, 'MedicCalled')).toBe(true)
-      }),
+    modelAfter(
+      leadDown(MEDIC_RULES.cooldownMs),
+      steps(
+        tap('Enter'),
+        checkModel(current => {
+          expect(callMsOf(current, 0)).toBe(0)
+        }),
+        ticks(1, TICK_MS),
+        checkModel(current => {
+          expect(hasEvent(current, 'MedicCalled')).toBe(true)
+        }),
+      ),
     ),
   )
 
   it.effect('Enter does nothing while the last shout cools down', () => {
     const cooling = MEDIC_RULES.cooldownMs - 1000
-    return Story.story(
-      APPLICATION,
-      Story.given(leadDown(cooling)),
-      tap('Enter'),
-      Story.model(current => {
-        expect(callMsOf(current, 0)).toBe(cooling)
-      }),
+    return modelAfter(
+      leadDown(cooling),
+      steps(
+        tap('Enter'),
+        checkModel(current => {
+          expect(callMsOf(current, 0)).toBe(cooling)
+        }),
+      ),
     )
   })
 })
@@ -149,8 +159,8 @@ describe('the bots answer', () => {
   }
 
   const withBot = (base: Model): Model =>
-    modifyFields(base, {
-      runStart: modifyFields({ crewBots: () => [BOT] }),
+    UiStruct.evolve(base, {
+      runStart: UiStruct.evolve({ crewBots: () => [BOT] }),
     })
 
   it.effect('a bot leaves a power-up beside it to answer a call', () => {
@@ -162,14 +172,15 @@ describe('the bots answer', () => {
       )(withBot(crewInWave(2))),
       [pickupAt(900, 'Damage', 150, 135)],
     )
-    return Story.story(
-      APPLICATION,
-      Story.given(start),
-      ...ticks(60, TICK_MS),
-      Story.model(current => {
-        expect(current.pickups).toHaveLength(1)
-        expect(seatStateAt(current, 1).player.x).toBeLessThan(120)
-      }),
+    return modelAfter(
+      start,
+      steps(
+        ticks(60, TICK_MS),
+        checkModel(current => {
+          expect(current.pickups).toHaveLength(1)
+          expect(seatStateAt(current, 1).player.x).toBeLessThan(120)
+        }),
+      ),
     )
   })
 
@@ -200,36 +211,36 @@ describe('the payoff', () => {
     Array.map(current.cosmetics.popups, ({ kind }) => kind)
 
   it.effect('a revive shows SAVED! with confetti over the reviver', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(besideDowned(COOP_RULES.bleedOutMs)),
-      ...ticks(reviveTicks + 1, TICK_MS),
-      Story.model(current => {
-        expect(seatStateAt(current, 1).seat.life._tag).toBe('Standing')
-        expect(popupKindsOf(current)).toContain('Saved')
-        expect(popupKindsOf(current)).not.toContain('Clutch')
-        expect(
-          Array.some(
-            current.cosmetics.particles,
-            ({ kind }) => kind === 'Confetti',
-          ),
-        ).toBe(true)
-      }),
+    modelAfter(
+      besideDowned(COOP_RULES.bleedOutMs),
+      steps(
+        ticks(reviveTicks + 1, TICK_MS),
+        checkModel(current => {
+          expect(seatStateAt(current, 1).seat.life._tag).toBe('Standing')
+          expect(popupKindsOf(current)).toContain('Saved')
+          expect(popupKindsOf(current)).not.toContain('Clutch')
+          expect(
+            Array.some(
+              current.cosmetics.particles,
+              ({ kind }) => kind === 'Confetti',
+            ),
+          ).toBe(true)
+        }),
+      ),
     ),
   )
 
   it.effect('a revive with under 3 s of bleed left shows CLUTCH!', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        besideDowned(COOP_RULES.reviveMs + MEDIC_RULES.clutchBleedMs - 100),
+    modelAfter(
+      besideDowned(COOP_RULES.reviveMs + MEDIC_RULES.clutchBleedMs - 100),
+      steps(
+        ticks(reviveTicks + 1, TICK_MS),
+        checkModel(current => {
+          expect(seatStateAt(current, 1).seat.life._tag).toBe('Standing')
+          expect(popupKindsOf(current)).toContain('Clutch')
+          expect(popupKindsOf(current)).not.toContain('Saved')
+        }),
       ),
-      ...ticks(reviveTicks + 1, TICK_MS),
-      Story.model(current => {
-        expect(seatStateAt(current, 1).seat.life._tag).toBe('Standing')
-        expect(popupKindsOf(current)).toContain('Clutch')
-        expect(popupKindsOf(current)).not.toContain('Saved')
-      }),
     ),
   )
 })

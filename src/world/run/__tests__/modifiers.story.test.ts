@@ -1,10 +1,8 @@
 import { Array, Effect, Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { LobbyBinding } from '../../../app/bindings'
 import {
   type Bullet,
   Life,
@@ -18,7 +16,7 @@ import { initialModel } from '../../../app/pureApp'
 import { startOrResume } from '../../../app/runFlow'
 import { addBot } from '../../../domain/bots'
 import { effectiveModifiersOf } from '../../../domain/onlineRun'
-import { Message as LobbyMessage } from '../../../features/lobby/message'
+import { LobbyMessage } from '../../../features/lobby/message'
 import { FIXED_STEP_MS, PLAYER_MAX_HP } from '../../../shared/constants'
 import {
   DISTANT_SPAWN,
@@ -32,13 +30,16 @@ import {
 } from '../../../test/model.fixture'
 import { playRoom } from '../../../test/roomTesting'
 import {
-  APPLICATION,
   HOLD_TICKS,
   bulletInto,
+  checkModel,
+  modelAfter,
   openLobbyByKey,
   press,
   release,
   resolveFocusLobby,
+  send,
+  steps,
   throughIntro,
   tick,
   ticks,
@@ -92,7 +93,7 @@ const only = (change: Partial<Modifiers>): Modifiers => ({
 })
 
 const withModifiers = (base: Model, modifiers: Modifiers): Model =>
-  modifyFields(base, { modifiers: () => modifiers })
+  UiStruct.evolve(base, { modifiers: () => modifiers })
 
 describe('the set and its bonus', () => {
   test('the bonuses add: 15, 25, 75, and 350 make 465', () => {
@@ -157,7 +158,7 @@ describe('Friendly Fire', () => {
 
   const inTheLine = (modifiers: Modifiers): Model =>
     pipeline(placeSeat(0, 60, ROW_Y), placeSeat(1, 150, ROW_Y), current =>
-      modifyFields(current, { bullets: () => [bulletFrom(0, 140)] }),
+      UiStruct.evolve(current, { bullets: () => [bulletFrom(0, 140)] }),
     )(withModifiers(crewInWave(2), modifiers))
 
   const hpOf = (current: Model, slot: number): number =>
@@ -166,26 +167,28 @@ describe('Friendly Fire', () => {
   it.effect(
     'on, a teammate’s shot wounds the player it reaches and stops there',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(inTheLine(only({ friendlyFire: true }))),
-        ...ticks(2, TICK_MS),
-        Story.model(current => {
-          expect(hpOf(current, 1)).toBe(PLAYER_MAX_HP - 1)
-          expect(hpOf(current, 0)).toBe(PLAYER_MAX_HP)
-          expect(current.bullets).toEqual([])
-        }),
+      modelAfter(
+        inTheLine(only({ friendlyFire: true })),
+        steps(
+          ticks(2, TICK_MS),
+          checkModel(current => {
+            expect(hpOf(current, 1)).toBe(PLAYER_MAX_HP - 1)
+            expect(hpOf(current, 0)).toBe(PLAYER_MAX_HP)
+            expect(current.bullets).toEqual([])
+          }),
+        ),
       ),
   )
 
   it.effect('off, the same shot passes through', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(inTheLine(noModifiers)),
-      ...ticks(2, TICK_MS),
-      Story.model(current => {
-        expect(hpOf(current, 1)).toBe(PLAYER_MAX_HP)
-      }),
+    modelAfter(
+      inTheLine(noModifiers),
+      steps(
+        ticks(2, TICK_MS),
+        checkModel(current => {
+          expect(hpOf(current, 1)).toBe(PLAYER_MAX_HP)
+        }),
+      ),
     ),
   )
 
@@ -208,15 +211,16 @@ describe('Friendly Fire', () => {
     'with nobody to hit it does nothing: one seat never shoots itself',
     () => {
       const solo = pipeline(placeSeat(0, 150, ROW_Y), current =>
-        modifyFields(current, { bullets: () => [bulletFrom(0, 140)] }),
+        UiStruct.evolve(current, { bullets: () => [bulletFrom(0, 140)] }),
       )(withModifiers(crewInWave(1), only({ friendlyFire: true })))
-      return Story.story(
-        APPLICATION,
-        Story.given(solo),
-        ...ticks(2, TICK_MS),
-        Story.model(current => {
-          expect(focusOf(current).player.hp).toBe(PLAYER_MAX_HP)
-        }),
+      return modelAfter(
+        solo,
+        steps(
+          ticks(2, TICK_MS),
+          checkModel(current => {
+            expect(focusOf(current).player.hp).toBe(PLAYER_MAX_HP)
+          }),
+        ),
       )
     },
   )
@@ -236,13 +240,13 @@ describe('Friendly Fire', () => {
 
   const huddled = (modifiers: Modifiers): World =>
     pipeline(placeSeat(0, 60, ROW_Y), placeSeat(1, 64, ROW_Y), current =>
-      modifyFields(current, { lobs: () => [lidAt(62)] }),
+      UiStruct.evolve(current, { lobs: () => [lidAt(62)] }),
     )(withModifiers(crewInWave(2), modifiers))
 
   const onNightmare = (world: World): World =>
-    modifyFields(world, {
+    UiStruct.evolve(world, {
       difficulty: difficulty =>
-        modifyFields(difficulty, { chosen: () => 'Nightmare' }),
+        UiStruct.evolve(difficulty, { chosen: () => 'Nightmare' }),
     })
 
   test('on, a lid’s blast hurts a teammate but never its thrower, on any difficulty', () => {
@@ -312,9 +316,12 @@ describe('Big Crowd', () => {
     const endless = (modifiers: Modifiers) =>
       spawnsOf(
         beginPreparation(
-          modifyFields(withModifiers(crewInWave(1, Phase.Ready()), modifiers), {
-            mode: () => RunMode.Endless(),
-          }),
+          UiStruct.evolve(
+            withModifiers(crewInWave(1, Phase.Ready()), modifiers),
+            {
+              mode: () => RunMode.Endless(),
+            },
+          ),
           12,
           30_000,
         ),
@@ -326,16 +333,16 @@ describe('Big Crowd', () => {
 })
 
 describe('Broke', () => {
-  const fighting: Model = modifyFields(asVeteran(initialModel), {
+  const fighting: Model = UiStruct.evolve(asVeteran(initialModel), {
     phase: () => Phase.Wave({ wave: 3, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
     pacing: pacing =>
-      modifyFields(pacing, { warnedPacks: () => [DISTANT_SPAWN.pack] }),
+      UiStruct.evolve(pacing, { warnedPacks: () => [DISTANT_SPAWN.pack] }),
   })
 
   const bigLugDown = (modifiers: Modifiers): Model => {
     const victim: Zombie = zombieOf('Tank', 100, 60, 85, { hp: 1 })
     return withModifiers(
-      modifyFields(fighting, {
+      UiStruct.evolve(fighting, {
         zombies: () => [victim],
         bullets: () => [bulletInto(500, victim, { knockback: 0 })],
       }),
@@ -344,11 +351,9 @@ describe('Broke', () => {
   }
 
   const paidFor = (modifiers: Modifiers) =>
-    Story.story(
-      APPLICATION,
-      Story.given(bigLugDown(modifiers)),
-      tick(FRAME_MS),
-    ).pipe(Effect.map(current => current.keys.held))
+    modelAfter(bigLugDown(modifiers), tick(FRAME_MS)).pipe(
+      Effect.map(current => current.keys.held),
+    )
 
   it.effect('a Big Lug drops half its keys', () =>
     Effect.gen(function* () {
@@ -371,18 +376,19 @@ describe('Broke', () => {
       expect(isFridgeOffered(atFridge(100))).toBe(true)
       const broke = withModifiers(atFridge(100), only({ broke: true }))
       expect(isFridgeOffered(broke)).toBe(false)
-      return Story.story(
-        APPLICATION,
-        Story.given(broke),
-        press('Enter'),
-        ...ticks(HOLD_TICKS, FRAME_MS),
-        release('Enter'),
-        throughIntro,
-        Story.model(current => {
-          expect(current.keys.held).toBe(100)
-          expect(current.fridge.pulls).toBe(0)
-          expect(FRIDGE_RULES.keys).toBeGreaterThan(0)
-        }),
+      return modelAfter(
+        broke,
+        steps(
+          press('Enter'),
+          ticks(HOLD_TICKS, FRAME_MS),
+          release('Enter'),
+          throughIntro,
+          checkModel(current => {
+            expect(current.keys.held).toBe(100)
+            expect(current.fridge.pulls).toBe(0)
+            expect(FRIDGE_RULES.keys).toBeGreaterThan(0)
+          }),
+        ),
       )
     },
   )
@@ -429,7 +435,7 @@ describe('Glass', () => {
     )
     const hurt = pipeline(
       current =>
-        modifyFields(current, {
+        UiStruct.evolve(current, {
           zombies: () => victims,
           bullets: () =>
             Array.map(victims, victim =>
@@ -444,16 +450,18 @@ describe('Glass', () => {
       placeSeat(0, 160, 120, 2),
     )(
       withModifiers(
-        modifyFields(asVeteran(initialModel), {
+        UiStruct.evolve(asVeteran(initialModel), {
           phase: () =>
             Phase.Wave({ wave: 3, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
           pacing: pacing =>
-            modifyFields(pacing, { warnedPacks: () => [DISTANT_SPAWN.pack] }),
+            UiStruct.evolve(pacing, {
+              warnedPacks: () => [DISTANT_SPAWN.pack],
+            }),
         }),
         modifiers,
       ),
     )
-    return Story.story(APPLICATION, Story.given(hurt), tick(FRAME_MS)).pipe(
+    return modelAfter(hurt, tick(FRAME_MS)).pipe(
       Effect.map(({ pickups }) => Array.map(pickups, ({ kind }) => kind)),
     )
   }
@@ -494,7 +502,7 @@ describe('Glass', () => {
       Array.makeBy(200, index => 3 + index * 7919),
       seed => {
         const facing = withModifiers(
-          modifyFields(atFridge(1000), {
+          UiStruct.evolve(atFridge(1000), {
             loot: loot => ({ ...loot, fridgeRngState: seed }),
           }),
           modifiers,
@@ -521,66 +529,64 @@ describe('Glass', () => {
 
   it.effect('a revived teammate gets up on one heart', () => {
     const reviveTicks = Math.ceil(COOP_RULES.reviveMs / TICK_MS)
-    return Story.story(
-      APPLICATION,
-      Story.given(
-        pipeline(
-          placeSeat(0, 232, ROW_Y),
-          placeSeat(1, 240, ROW_Y, 0),
-          withSeatLife(
-            1,
-            Life.Downed({
-              bleedMs: COOP_RULES.bleedOutMs,
-              reviveMs: 0,
-              callMs: 0,
-            }),
-          ),
-        )(withModifiers(crewInWave(2), glass)),
+    return modelAfter(
+      pipeline(
+        placeSeat(0, 232, ROW_Y),
+        placeSeat(1, 240, ROW_Y, 0),
+        withSeatLife(
+          1,
+          Life.Downed({
+            bleedMs: COOP_RULES.bleedOutMs,
+            reviveMs: 0,
+            callMs: 0,
+          }),
+        ),
+      )(withModifiers(crewInWave(2), glass)),
+      steps(
+        ticks(reviveTicks, TICK_MS),
+        checkModel(current => {
+          const risen = Array.findFirst(
+            playersOf(current),
+            ({ seat }) => seat.slot === 1,
+          )
+          expect(Option.map(risen, ({ seat }) => seat.life._tag)).toEqual(
+            Option.some('Standing'),
+          )
+          expect(Option.map(risen, ({ player }) => player.hp)).toEqual(
+            Option.some(1),
+          )
+        }),
       ),
-      ...ticks(reviveTicks, TICK_MS),
-      Story.model(current => {
-        const risen = Array.findFirst(
-          playersOf(current),
-          ({ seat }) => seat.slot === 1,
-        )
-        expect(Option.map(risen, ({ seat }) => seat.life._tag)).toEqual(
-          Option.some('Standing'),
-        )
-        expect(Option.map(risen, ({ player }) => player.hp)).toEqual(
-          Option.some(1),
-        )
-      }),
     )
   })
 
   it.effect('the fallen come back at the break on one heart', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        pipeline(
-          withSeatLife(1, Life.BledOut()),
-          placeSeat(1, 240, ROW_Y, 0),
-        )(
-          withModifiers(
-            crewInWave(2, Phase.Wave({ wave: 3, elapsedMs: 0, spawns: [] })),
-            glass,
-          ),
+    modelAfter(
+      pipeline(
+        withSeatLife(1, Life.BledOut()),
+        placeSeat(1, 240, ROW_Y, 0),
+      )(
+        withModifiers(
+          crewInWave(2, Phase.Wave({ wave: 3, elapsedMs: 0, spawns: [] })),
+          glass,
         ),
       ),
-      ...ticks(1, TICK_MS),
-      Story.model(current => {
-        expect(current.phase._tag).toBe('Preparation')
-        const back = Array.findFirst(
-          playersOf(current),
-          ({ seat }) => seat.slot === 1,
-        )
-        expect(Option.map(back, ({ seat }) => seat.life._tag)).toEqual(
-          Option.some('Standing'),
-        )
-        expect(Option.map(back, ({ player }) => player.hp)).toEqual(
-          Option.some(1),
-        )
-      }),
+      steps(
+        ticks(1, TICK_MS),
+        checkModel(current => {
+          expect(current.phase._tag).toBe('Preparation')
+          const back = Array.findFirst(
+            playersOf(current),
+            ({ seat }) => seat.slot === 1,
+          )
+          expect(Option.map(back, ({ seat }) => seat.life._tag)).toEqual(
+            Option.some('Standing'),
+          )
+          expect(Option.map(back, ({ player }) => player.hp)).toEqual(
+            Option.some(1),
+          )
+        }),
+      ),
     ),
   )
 })
@@ -633,95 +639,80 @@ describe('the solo lobby', () => {
   const crewed = addBot(readyAfterRead)
 
   it.effect('a tile turns a modifier on and off where it sits', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(readyAfterRead),
-      openLobbyByKey,
-      Story.messageIn(
-        LobbyBinding,
-        LobbyMessage.ClickedModifierButton({ modifier: 'Glass' }),
+    modelAfter(
+      readyAfterRead,
+      steps(
+        openLobbyByKey,
+        send(LobbyMessage.ToggledLobbyModifier({ modifier: 'Glass' })),
+        checkModel(current => {
+          expect(current.modifiers).toEqual(only({ glass: true }))
+        }),
+        send(LobbyMessage.ToggledLobbyModifier({ modifier: 'Broke' })),
+        checkModel(current => {
+          expect(current.modifiers).toEqual(only({ glass: true, broke: true }))
+        }),
+        send(LobbyMessage.ToggledLobbyModifier({ modifier: 'Glass' })),
+        checkModel(current => {
+          expect(current.modifiers).toEqual(only({ broke: true }))
+        }),
       ),
-      Story.model(current => {
-        expect(current.modifiers).toEqual(only({ glass: true }))
-      }),
-      Story.messageIn(
-        LobbyBinding,
-        LobbyMessage.ClickedModifierButton({ modifier: 'Broke' }),
-      ),
-      Story.model(current => {
-        expect(current.modifiers).toEqual(only({ glass: true, broke: true }))
-      }),
-      Story.messageIn(
-        LobbyBinding,
-        LobbyMessage.ClickedModifierButton({ modifier: 'Glass' }),
-      ),
-      Story.model(current => {
-        expect(current.modifiers).toEqual(only({ broke: true }))
-      }),
     ),
   )
 
   it.effect('Friendly Fire is dim until a bot sits in the crew', () =>
     Effect.gen(function* () {
-      yield* Story.story(
-        APPLICATION,
-        Story.given(readyAfterRead),
-        openLobbyByKey,
-        Story.messageIn(
-          LobbyBinding,
-          LobbyMessage.ClickedModifierButton({ modifier: 'FriendlyFire' }),
+      yield* modelAfter(
+        readyAfterRead,
+        steps(
+          openLobbyByKey,
+          send(LobbyMessage.ToggledLobbyModifier({ modifier: 'FriendlyFire' })),
+          checkModel(current => {
+            expect(current.modifiers).toEqual(noModifiers)
+          }),
         ),
-        Story.model(current => {
-          expect(current.modifiers).toEqual(noModifiers)
-        }),
       )
-      yield* Story.story(
-        APPLICATION,
-        Story.given(crewed),
-        openLobbyByKey,
-        Story.messageIn(
-          LobbyBinding,
-          LobbyMessage.ClickedModifierButton({ modifier: 'FriendlyFire' }),
+      yield* modelAfter(
+        crewed,
+        steps(
+          openLobbyByKey,
+          send(LobbyMessage.ToggledLobbyModifier({ modifier: 'FriendlyFire' })),
+          checkModel(current => {
+            expect(current.modifiers).toEqual(only({ friendlyFire: true }))
+          }),
         ),
-        Story.model(current => {
-          expect(current.modifiers).toEqual(only({ friendlyFire: true }))
-        }),
       )
     }),
   )
 
   it.effect('sending the last bot home turns Friendly Fire off with it', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        withModifiers(crewed, only({ friendlyFire: true, glass: true })),
+    modelAfter(
+      withModifiers(crewed, only({ friendlyFire: true, glass: true })),
+      steps(
+        openLobbyByKey,
+        send(LobbyMessage.RequestedDropLobbyBot({ index: 0 })),
+        resolveFocusLobby(),
+        checkModel(current => {
+          expect(current.modifiers).toEqual(only({ glass: true }))
+        }),
       ),
-      openLobbyByKey,
-      Story.messageIn(
-        LobbyBinding,
-        LobbyMessage.ClickedDropBotButton({ index: 0 }),
-      ),
-      resolveFocusLobby(),
-      Story.model(current => {
-        expect(current.modifiers).toEqual(only({ glass: true }))
-      }),
     ),
   )
 
   it.effect('START plays what the tiles hold, in the run’s World', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        withModifiers(readyAfterRead, only({ glass: true, bigCrowd: true })),
+    modelAfter(
+      withModifiers(readyAfterRead, only({ glass: true, bigCrowd: true })),
+      steps(
+        openLobbyByKey,
+        send(LobbyMessage.RequestedStartFromLobby()),
+        throughIntro,
+        checkModel(current => {
+          expect(Phase.guards.Preparation(current.phase)).toBe(true)
+          expect(current.modifiers).toEqual(
+            only({ glass: true, bigCrowd: true }),
+          )
+          expect(focusOf(current).player.hp).toBe(1)
+        }),
       ),
-      openLobbyByKey,
-      Story.messageIn(LobbyBinding, LobbyMessage.ClickedStartButton()),
-      throughIntro,
-      Story.model(current => {
-        expect(Phase.guards.Preparation(current.phase)).toBe(true)
-        expect(current.modifiers).toEqual(only({ glass: true, bigCrowd: true }))
-        expect(focusOf(current).player.hp).toBe(1)
-      }),
     ),
   )
 
@@ -729,7 +720,7 @@ describe('the solo lobby', () => {
     const picked = withModifiers(home, only({ broke: true }))
     const first = startOrResume(picked, RunMode.Campaign())
     const again = startOrResume(
-      modifyFields(first, { phase: () => Phase.GameOver({ wave: 2 }) }),
+      UiStruct.evolve(first, { phase: () => Phase.GameOver({ wave: 2 }) }),
       RunMode.Campaign(),
     )
     expect(again.modifiers).toEqual(only({ broke: true }))

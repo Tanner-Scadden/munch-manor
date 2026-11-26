@@ -10,7 +10,6 @@
 // sees them together; the wave's is the client's own (`Finisher`).
 
 import { Array, Function, Option } from 'effect'
-import type { Canvas } from 'foldkit'
 
 import type { Model } from '../app/model'
 import { MS_PER_SECOND } from '../shared/constants'
@@ -24,6 +23,7 @@ import {
   clamp,
   smoothStep,
 } from '../world/step/geometry'
+import type * as Draw from './draw'
 import { rect } from './drawing'
 import type { CameraGlide } from './renderSchema'
 import type { Box } from './screen'
@@ -194,7 +194,7 @@ const BAR_FILL = '#07060a'
 // sliding in with the strongest moment's weight.
 export const cineBarShapes = (
   input: Readonly<{ model: Model; world: Box }>,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const { model, world } = input
   const weight = Array.reduce(cinesOf(model), 0, (most, cine) =>
     Math.max(most, cine.weight),

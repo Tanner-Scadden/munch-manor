@@ -1,5 +1,6 @@
 import { Array, Order, pipe } from 'effect'
-import type { Canvas } from 'foldkit'
+
+import type * as Draw from './draw'
 
 // DRAWABLE
 
@@ -19,7 +20,7 @@ const RANK_ORDER: Readonly<Record<DepthRank, number>> = {
 export type Drawable = Readonly<{
   footY: number
   rank: DepthRank
-  shapes: ReadonlyArray<Canvas.Shape>
+  shapes: ReadonlyArray<Draw.Shape>
 }>
 
 // NOTE: whatever stands nearer the bottom of the screen is nearer the viewer,
@@ -40,7 +41,7 @@ export const glowOn = ({
   shapes,
 }: Readonly<{
   bodyFootY: number
-  shapes: ReadonlyArray<Canvas.Shape>
+  shapes: ReadonlyArray<Draw.Shape>
 }>): Drawable => ({
   footY: bodyFootY + GLOW_NEARER_PX,
   rank: 'Glow',
@@ -59,7 +60,7 @@ export const ON_FRONT_PX = 1
 
 export const depthSortedShapes = (
   drawables: ReadonlyArray<Drawable>,
-): ReadonlyArray<Canvas.Shape> =>
+): ReadonlyArray<Draw.Shape> =>
   pipe(
     drawables,
     Array.sort(byDepth),

@@ -1,7 +1,6 @@
 import { Array, Effect } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
 import { Life, type Model, Phase } from '../../../app/model'
@@ -13,7 +12,7 @@ import {
   placeSeat,
   withSeatLife,
 } from '../../../test/model.fixture'
-import { APPLICATION, tick } from '../../../test/testing'
+import { modelAfter, tick } from '../../../test/testing'
 import { levelOf, startingLevel } from '../../level/arena'
 import type { DoorId, PlannedSpawn } from '../../schema/worldSchema'
 import { nearDoorsOf } from '../doorWeights'
@@ -32,7 +31,7 @@ const CELLAR_DOORS: ReadonlyArray<DoorId> = ['FarTop', 'FarBottom']
 
 const inHouseAt = ({ x, y }: { x: number; y: number }): Model =>
   placeSeat(
-    modifyFields(pastTimedBreaks(home), {
+    UiStruct.evolve(pastTimedBreaks(home), {
       level: () => OPEN_HOUSE,
       phase: () => Phase.Wave({ wave: 4, elapsedMs: 0, spawns: [] }),
     }),
@@ -100,14 +99,12 @@ describe('spawn doors weighted toward the players', () => {
     'the break rolls the next wave toward where the player stands',
     () =>
       Effect.gen(function* () {
-        const inCellar = yield* Story.story(
-          APPLICATION,
-          Story.given(inHouseAt(CELLAR)),
+        const inCellar = yield* modelAfter(
+          inHouseAt(CELLAR),
           tick(FIXED_STEP_MS),
         )
-        const inDining = yield* Story.story(
-          APPLICATION,
-          Story.given(inHouseAt(DINING)),
+        const inDining = yield* modelAfter(
+          inHouseAt(DINING),
           tick(FIXED_STEP_MS),
         )
         const fromCellar = atDoors(CELLAR_DOORS)(breakSpawns(inCellar))

@@ -1,5 +1,4 @@
 import { Array, Function, Option } from 'effect'
-import type { Canvas } from 'foldkit'
 
 import type { Model } from '../../app/model'
 import { GLYPH_HEIGHT, textShapes, textWidth } from '../../art/font'
@@ -10,6 +9,7 @@ import {
 } from '../../art/missionIcons'
 import { BONE, BONE_SIZE } from '../../art/rankArt'
 import { group, placeAt } from '../../art/sprite'
+import type * as Draw from '../../render/draw'
 import { rect } from '../../render/drawing'
 import { ALL_THREE_BONES, bonesOfMission } from '../../shared/missionData'
 import { ALL_THREE_TAG } from '../../world/names'
@@ -61,7 +61,7 @@ const bonesShapes = (
   right: number,
   centerY: number,
   pop: number,
-): Canvas.Shape => {
+): Draw.Shape => {
   const text = `+${bones}`
   const width = textWidth(text) + 2 + BONE_SIZE.width
   const centerX = right - Math.round(width / 2)
@@ -93,7 +93,7 @@ const rowShapes = (
   startMs: number,
   left: number,
   top: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const atMs = rowAtMs(startMs, index)
   if (ms < atMs) {
     return []
@@ -159,7 +159,7 @@ const allThreeShapes = (
   startMs: number,
   left: number,
   top: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const atMs = allThreeAtMs(startMs, rows)
   if (ms < atMs) {
     return []
@@ -188,13 +188,13 @@ export const missionEndShapes: {
     ms: number,
     startMs: number,
     spot: MissionSpot,
-  ): (model: Model) => ReadonlyArray<Canvas.Shape>
+  ): (model: Model) => ReadonlyArray<Draw.Shape>
   (
     model: Model,
     ms: number,
     startMs: number,
     spot: MissionSpot,
-  ): ReadonlyArray<Canvas.Shape>
+  ): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   4,
   (
@@ -202,7 +202,7 @@ export const missionEndShapes: {
     ms: number,
     startMs: number,
     spot: MissionSpot,
-  ): ReadonlyArray<Canvas.Shape> =>
+  ): ReadonlyArray<Draw.Shape> =>
     Option.match(model.runGains.maybeMissionGain, {
       onNone: () => [],
       onSome: gain => {

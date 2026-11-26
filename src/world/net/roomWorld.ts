@@ -1,6 +1,6 @@
 import { Array, Function, Option, Result, pipe } from 'effect'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import type {
   PlayerInput,
   PlayerTick,
@@ -406,7 +406,7 @@ const freshWorld = (seed: number, settings: RoomSettings): World => ({
 })
 
 const seatAt = (slot: PlayerSlot): Seat =>
-  modifyFields(soloSeat, { slot: () => slot })
+  UiStruct.evolve(soloSeat, { slot: () => slot })
 
 // NOTE: the lobby's players by their room slots. Even one player plays as
 // a crew of one, by co-op's rules: no world pause, READY for the break.
@@ -418,12 +418,12 @@ const seatSlots = (world: World, slots: ReadonlyArray<PlayerSlot>): World => {
   return modifyWorldFields(world, {
     party: () => Party.Crew(),
     seats: () => [
-      modifyFields(lead, { seat: () => seatAt(ordered[0] ?? 0) }),
+      UiStruct.evolve(lead, { seat: () => seatAt(ordered[0] ?? 0) }),
       ...Array.filterMap(mates, (mate, index) =>
         Option.match(Array.get(ordered, index + 1), {
           onNone: () => Result.failVoid,
           onSome: slot =>
-            Result.succeed(modifyFields(mate, { seat: () => seatAt(slot) })),
+            Result.succeed(UiStruct.evolve(mate, { seat: () => seatAt(slot) })),
         }),
       ),
     ],
@@ -536,7 +536,7 @@ const syncGrace = (world: World, tick: PlayerTick): World => {
   )
     ? world
     : modifySeatRecord(world, tick.slot, seat =>
-        modifyFields(seat, { graceMs: () => graceMs }),
+        UiStruct.evolve(seat, { graceMs: () => graceMs }),
       )
 }
 
@@ -718,14 +718,14 @@ const lerpSeats = (from: World, to: World, t: number): World['seats'] =>
     Option.match(maybePlayerAt(from, state.seat.slot), {
       onNone: () => state,
       onSome: was =>
-        modifyFields(state, {
+        UiStruct.evolve(state, {
           player: player => lerpPlaced(was.player, player, t),
         }),
     }),
   )
 
 const interpolateWorld = (from: World, to: World, t: number): World =>
-  modifyFields(to, {
+  UiStruct.evolve(to, {
     zombies: zombies => lerpById(from.zombies, zombies, t),
     bullets: bullets => lerpById(from.bullets, bullets, t),
     seats: () => lerpSeats(from, to, t),

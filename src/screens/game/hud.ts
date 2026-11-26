@@ -1,5 +1,4 @@
 import { Array, Function, Option, String, pipe } from 'effect'
-import { Canvas } from 'foldkit'
 
 import type { Model } from '../../app/model'
 import {
@@ -41,6 +40,7 @@ import {
 import { isCouchPlay } from '../../input/couch'
 import { bossBarShapes } from '../../render/bossView'
 import { type Camera, viewBoxOf, worldToView } from '../../render/camera'
+import * as Draw from '../../render/draw'
 import { FULL_TURN, centeredGlyphs, placeSprite } from '../../render/drawing'
 import {
   HEART_SPACING,
@@ -118,7 +118,7 @@ import { waveLabel } from './overlay'
 import { KEY_RING_SCALE, keyRingLabelOf, pocketOf } from './pocket'
 import { rattlesBubbleShapes } from './stallBubble'
 
-const streakShapes = (streak: Streak): ReadonlyArray<Canvas.Shape> =>
+const streakShapes = (streak: Streak): ReadonlyArray<Draw.Shape> =>
   Streak.match(streak, {
     Cold: () => [],
     Hot: ({ count, remainingMs }) => {
@@ -158,7 +158,7 @@ const lostHeartShape = (
   x: number,
   y: number,
   maybeHeartPulseMs: Option.Option<number>,
-): Canvas.Shape =>
+): Draw.Shape =>
   Option.match(maybeHeartPulseMs, {
     onNone: () => placeSprite(x, y, EMPTY_HEART_SPRITE),
     onSome: pulseMs => {
@@ -175,7 +175,7 @@ const lostHeartShape = (
 
 const heartShape =
   (hp: number, maybeHeartPulseMs: Option.Option<number>) =>
-  (index: number): Canvas.Shape => {
+  (index: number): Draw.Shape => {
     const x =
       HUD_MARGIN + 3 + index * HEART_SPACING + heartShakeX(maybeHeartPulseMs)
     const y = HUD_MARGIN + 3
@@ -188,7 +188,7 @@ const heartShape =
     }
   }
 
-const heartShapes = (player: Player): ReadonlyArray<Canvas.Shape> => {
+const heartShapes = (player: Player): ReadonlyArray<Draw.Shape> => {
   const maybeHeartPulseMs = Option.filter(
     maybeMsSinceHurt(player),
     msSinceHurt => msSinceHurt < HEART_PULSE_MS,
@@ -204,7 +204,7 @@ const hudText = (
   y: number,
   content: string,
   tone: TextTone,
-): ReadonlyArray<Canvas.Shape> =>
+): ReadonlyArray<Draw.Shape> =>
   textShapes(content, tone, layout.centerX, y, 'Center')
 
 // NOTE: the first timed break's countdown blinks red, so the clock is seen.
@@ -218,7 +218,7 @@ const breakSubtitleShapes = (
   model: Model,
   layout: HudLayout,
   remainingMs: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   if (isPracticeGateHeld(model)) {
     return [
       placeBaked(TRY_CONTROLS, {
@@ -261,7 +261,7 @@ const breakSubtitleShapes = (
 const roundHudShapes = (
   model: Model,
   layout: HudLayout,
-): ReadonlyArray<Canvas.Shape> =>
+): ReadonlyArray<Draw.Shape> =>
   Phase.match(model.phase, {
     Ready: () => [],
     Arriving: () => [],
@@ -330,7 +330,7 @@ const bossBarCenterOf = (model: Model, layout: HudLayout): number =>
 const keyRingShapes = (
   model: Model,
   layout: HudLayout,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const isNew = Array.some(model.frameEvents, GameEvent.isAnyOf(['KeysFound']))
   return [
     group({
@@ -356,7 +356,7 @@ const pocketShapes = (
   model: Model,
   layout: HudLayout,
   pocket: DarePocket,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const header = pocketHeaderOf(model, layout)
   return [
     ...dareCardShapes(model, layout, pocket),
@@ -436,7 +436,7 @@ const levelBarShapes = (
   width: number,
   { share, isMaxed }: LevelBar,
   isFlashing: boolean,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const filled = Math.round(clamp(share, 0, 1) * width)
   const fill = isFlashing
     ? LEVEL_FLASH_COLOR
@@ -444,7 +444,7 @@ const levelBarShapes = (
       ? LEVEL_MAXED_COLOR
       : LEVEL_BAR_COLOR
   return [
-    Canvas.Rect({
+    Draw.Rect({
       x,
       y: top,
       width,
@@ -453,7 +453,7 @@ const levelBarShapes = (
     }),
     ...(filled > 0
       ? [
-          Canvas.Rect({
+          Draw.Rect({
             x,
             y: top,
             width: filled,
@@ -487,17 +487,17 @@ const meterShapes = (
   left: number,
   y: number,
   share: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const filled = Math.round(clamp(share, 0, 1) * METER_WIDTH)
   return [
-    Canvas.Rect({
+    Draw.Rect({
       x: left,
       y,
       width: METER_WIDTH,
       height: 3,
       fill: METER_TRACK_COLOR,
     }),
-    Canvas.Rect({
+    Draw.Rect({
       x: left,
       y,
       width: Math.max(1, filled),
@@ -553,9 +553,9 @@ const tierPipShapes = (
   left: number,
   y: number,
   { weapon, tier }: SlotGun,
-): ReadonlyArray<Canvas.Shape> =>
+): ReadonlyArray<Draw.Shape> =>
   Array.makeBy(maxTier(weapon), index =>
-    Canvas.Rect({
+    Draw.Rect({
       x: left + index * (PIP_WIDTH + PIP_GAP),
       y,
       width: PIP_WIDTH,
@@ -577,7 +577,7 @@ const slotContentShapes = (
   isStacked: boolean,
   look: SlotLook,
   elapsedMs: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const {
     maybeGun,
     ammo,
@@ -669,20 +669,20 @@ const slotShapes = (
   index: number,
   look: SlotLook,
   elapsedMs: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const x = slotLeftOf(layout, index)
   const width = slotWidthOf(layout, index)
   const { height, isStacked } = layout.slots
   const top = layout.slotTop
   const shapes = [
-    Canvas.Rect({
+    Draw.Rect({
       x,
       y: top,
       width,
       height,
       fill: slotBorder(look, elapsedMs),
     }),
-    Canvas.Rect({
+    Draw.Rect({
       x: x + 1,
       y: top + 1,
       width: width - 2,
@@ -815,7 +815,7 @@ const beckonWhen = (look: SlotLook, isBeckoning: boolean): SlotLook =>
 const loadoutShapes = (
   model: Model,
   layout: HudLayout,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const { player } = focusOf(model)
   const { arsenal } = player
   const held = isWieldingMelee(player)
@@ -853,17 +853,17 @@ const trapSlotShapes = (
   count: number,
   index: number,
   isSelected: boolean,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const x = HUD_MARGIN + index * (TRAP_SLOT_WIDTH + SLOT_GAP)
   return [
-    Canvas.Rect({
+    Draw.Rect({
       x,
       y: top,
       width: TRAP_SLOT_WIDTH,
       height: SLOT_HEIGHT,
       fill: isSelected ? SLOT_HELD_BORDER : SLOT_BORDER,
     }),
-    Canvas.Rect({
+    Draw.Rect({
       x: x + 1,
       y: top + 1,
       width: TRAP_SLOT_WIDTH - 2,
@@ -884,7 +884,7 @@ const trapSlotShapes = (
 const trapStockShapes = (
   model: Model,
   layout: HudLayout,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const maybeSelected = maybeSelectedKind(model, focusSlotOf(model))
   return pipe(
     TRAP_KIND_ORDER,
@@ -907,7 +907,7 @@ const NOTICE_MARGIN_PX = 4
 const trapNoticeShapes = (
   model: Model,
   camera: Camera,
-): ReadonlyArray<Canvas.Shape> =>
+): ReadonlyArray<Draw.Shape> =>
   TrapNotice.match(model.cosmetics.trapNotice, {
     Quiet: () => [],
     Refused: ({ reason }) => {
@@ -933,10 +933,10 @@ const MATE_ROW_HEIGHT = 10
 const mateRowShapes = (
   mate: SeatState,
   row: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const y = MATE_ROW_TOP + row * MATE_ROW_HEIGHT
   return [
-    Canvas.Rect({
+    Draw.Rect({
       x: HUD_MARGIN,
       y: y + 2,
       width: 3,
@@ -953,7 +953,7 @@ const mateRowShapes = (
   ]
 }
 
-const mateHudShapes = (model: Model): ReadonlyArray<Canvas.Shape> =>
+const mateHudShapes = (model: Model): ReadonlyArray<Draw.Shape> =>
   isCouchPlay(model)
     ? Array.flatMap(
         Array.filter(
@@ -971,7 +971,7 @@ const playHudShapes = (
   model: Model,
   layout: HudLayout,
   camera: Camera,
-): ReadonlyArray<Canvas.Shape> => [
+): ReadonlyArray<Draw.Shape> => [
   ...heartShapes(focusOf(model).player),
   ...keyRingShapes(model, layout),
   ...mateHudShapes(model),
@@ -997,23 +997,16 @@ const HUD_STRIP_COLOR = 'rgba(20, 15, 24, 0.75)'
 // dark strip behind the HUD rows backs them. Portrait has its own band
 // above the world, so it needs none.
 export const hudStripShapes: {
-  (
-    screen: Screen,
-    camera: Camera,
-  ): (model: Model) => ReadonlyArray<Canvas.Shape>
-  (model: Model, screen: Screen, camera: Camera): ReadonlyArray<Canvas.Shape>
+  (screen: Screen, camera: Camera): (model: Model) => ReadonlyArray<Draw.Shape>
+  (model: Model, screen: Screen, camera: Camera): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   3,
-  (
-    model: Model,
-    screen: Screen,
-    camera: Camera,
-  ): ReadonlyArray<Canvas.Shape> => {
+  (model: Model, screen: Screen, camera: Camera): ReadonlyArray<Draw.Shape> => {
     if (screen.layout !== 'Landscape' || !isHudShown(model.phase)) {
       return []
     }
-    const stripPiece = (left: number, right: number): Canvas.Shape =>
-      Canvas.Rect({
+    const stripPiece = (left: number, right: number): Draw.Shape =>
+      Draw.Rect({
         x: left,
         y: 0,
         width: right - left,
@@ -1035,18 +1028,11 @@ export const hudStripShapes: {
 )
 
 export const hudShapes: {
-  (
-    screen: Screen,
-    camera: Camera,
-  ): (model: Model) => ReadonlyArray<Canvas.Shape>
-  (model: Model, screen: Screen, camera: Camera): ReadonlyArray<Canvas.Shape>
+  (screen: Screen, camera: Camera): (model: Model) => ReadonlyArray<Draw.Shape>
+  (model: Model, screen: Screen, camera: Camera): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   3,
-  (
-    model: Model,
-    screen: Screen,
-    camera: Camera,
-  ): ReadonlyArray<Canvas.Shape> =>
+  (model: Model, screen: Screen, camera: Camera): ReadonlyArray<Draw.Shape> =>
     isHudShown(model.phase)
       ? playHudShapes(model, hudLayoutFor(screen), camera)
       : [],

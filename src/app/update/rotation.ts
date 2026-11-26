@@ -1,9 +1,8 @@
 import { Effect, pipe } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { Command, Component, UiStruct } from '@effect/ui'
 
 import { toBrowserError } from '../../shared/describeError'
-import { ApplicationBlock } from '../definition'
-import { Message } from '../message'
 import { type Model, RotationSetting } from '../model'
 import type { UpdateStep } from './step'
 
@@ -23,25 +22,23 @@ const unlockRotation = Effect.try({
 // A lock rejects in a plain browser tab, outside full screen, and wherever
 // it is unsupported, and that refusal is ignored: the game plays on as the
 // phone is held.
-export const ApplyRotation = ApplicationBlock.makeCommand('ApplyRotation', {
-  args: { rotation: RotationSetting },
-  messages: [Message.CompletedApplyRotation],
-  handler: function* () {
-    return ({ rotation }) =>
-      pipe(
-        rotation === 'Landscape' ? lockLandscape : unlockRotation,
-        Effect.ignore,
-        Effect.as(Message.CompletedApplyRotation()),
-      )
-  },
-})
+export const ApplyRotation = Command.make(
+  'ApplyRotation',
+  { args: { rotation: RotationSetting } },
+  ({ rotation }) =>
+    pipe(
+      rotation === 'Landscape' ? lockLandscape : unlockRotation,
+      Effect.ignore,
+      Effect.as(Component.noop),
+    ),
+)
 
 // ROTATION
 
 export const toggleRotation = (model: Model): Model =>
   model.orientationLock === 'Supported'
-    ? modifyFields(model, {
-        settings: modifyFields({
+    ? UiStruct.evolve(model, {
+        settings: UiStruct.evolve({
           rotationSetting: setting =>
             setting === 'Landscape' ? 'Auto' : 'Landscape',
         }),
@@ -66,12 +63,9 @@ const shouldApplyRotation = (before: Model, after: Model): boolean =>
 
 export const applyRotationFrom =
   (before: Model): UpdateStep =>
-  stepModel =>
-    shouldApplyRotation(before, stepModel)
-      ? {
-          model: stepModel,
-          commands: [
-            ApplyRotation({ rotation: stepModel.settings.rotationSetting }),
-          ],
-        }
-      : { model: stepModel }
+  $ =>
+    shouldApplyRotation(before, $.model)
+      ? $.run(
+          ApplyRotation.make({ rotation: $.model.settings.rotationSetting }),
+        )
+      : $.model

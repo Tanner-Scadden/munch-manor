@@ -9,7 +9,8 @@ import {
   String,
   pipe,
 } from 'effect'
-import { defineTaggedUnion } from 'foldkit/schema'
+
+import { UiSchema } from '@effect/ui'
 
 import { toBrowserError } from '../shared/describeError'
 
@@ -307,7 +308,7 @@ type Request = Readonly<{
   maybeStinger: Option.Option<Fanfare>
 }>
 
-const Motion = defineTaggedUnion({
+const Motion = UiSchema.TaggedEnum({
   Looping: { mood: LoopMood, step: Schema.Finite, stepAt: Schema.Finite },
   Stinging: { stinger: Fanfare, step: Schema.Finite, stepAt: Schema.Finite },
 })

@@ -1,6 +1,6 @@
 import { Effect, Option } from 'effect'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
 import type { Model } from '../../../app/model'
@@ -15,13 +15,15 @@ import { FOUND_THINGS, diesOnWave7, ended, runAt, wave } from './rank.fixture'
 // and a loss shows the best while it is better than the run.
 
 const withBestRun = (model: Model, best: BestRun): Model =>
-  modifyFields(model, {
+  UiStruct.evolve(model, {
     bests: bests =>
-      modifyFields(bests, {
+      UiStruct.evolve(bests, {
         byDifficulty: byDifficulty =>
-          modifyFields(byDifficulty, {
+          UiStruct.evolve(byDifficulty, {
             Normal: normal =>
-              modifyFields(normal, { maybeBestRun: () => Option.some(best) }),
+              UiStruct.evolve(normal, {
+                maybeBestRun: () => Option.some(best),
+              }),
           }),
       }),
   })

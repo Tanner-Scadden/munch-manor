@@ -1,5 +1,7 @@
 import { Function } from 'effect'
-import type { Html, HtmlBuilder } from 'foldkit/html'
+
+import type { View } from '@effect/ui'
+import type { Html } from '@effect/ui/html'
 
 import { markIcon } from '../art/markArt'
 import { iconView } from './menuParts'
@@ -15,16 +17,24 @@ export const dareMarkLabel = (mark: number): string =>
   mark > 0 ? `Dare mark ${mark}` : 'Dare mark: none'
 
 export const dareMarkFaceView: {
-  <Message>(h: HtmlBuilder<Message>): (mark: number) => ReadonlyArray<Html>
-  <Message>(mark: number, h: HtmlBuilder<Message>): ReadonlyArray<Html>
+  <Message>(
+    h: Html.H<Message>,
+  ): (mark: number) => ReadonlyArray<View.Content<Message>>
+  <Message>(
+    mark: number,
+    h: Html.H<Message>,
+  ): ReadonlyArray<View.Content<Message>>
 } = Function.dual(
   2,
-  <Message>(mark: number, h: HtmlBuilder<Message>): ReadonlyArray<Html> => [
+  <Message>(
+    mark: number,
+    h: Html.H<Message>,
+  ): ReadonlyArray<View.Content<Message>> => [
     iconView('coop-pick-icon dare-mark-icon', markIcon(mark), h),
-    h.span(
-      [h.Class('dare-mark-value'), h.AriaHidden(true)],
-      [mark > 0 ? `${mark}` : '-'],
-    ),
+    h.span
+      .class('dare-mark-value')
+      .attr('aria-hidden', 'true')
+      .children(mark > 0 ? `${mark}` : '-'),
   ],
 )
 
@@ -33,31 +43,28 @@ export const dareMarkFaceView: {
 export const dareMarkBadgeView: {
   <Message>(
     className: string,
-    h: HtmlBuilder<Message>,
-  ): (mark: number) => ReadonlyArray<Html>
+    h: Html.H<Message>,
+  ): (mark: number) => ReadonlyArray<View.Content<Message>>
   <Message>(
     mark: number,
     className: string,
-    h: HtmlBuilder<Message>,
-  ): ReadonlyArray<Html>
+    h: Html.H<Message>,
+  ): ReadonlyArray<View.Content<Message>>
 } = Function.dual(
   3,
   <Message>(
     mark: number,
     className: string,
-    h: HtmlBuilder<Message>,
-  ): ReadonlyArray<Html> =>
+    h: Html.H<Message>,
+  ): ReadonlyArray<View.Content<Message>> =>
     mark > 0
       ? [
-          h.span(
-            [
-              h.Class(`dare-mark-badge ${className}`),
-              h.DataAttribute('mark', `${mark}`),
-              h.Role('img'),
-              h.AriaLabel(dareMarkLabel(mark)),
-            ],
-            [iconView('dare-mark-badge-icon', markIcon(mark), h)],
-          ),
+          h.span
+            .class(`dare-mark-badge ${className}`)
+            .attr('data-mark', `${mark}`)
+            .attr('role', 'img')
+            .attr('aria-label', dareMarkLabel(mark))
+            .children(iconView('dare-mark-badge-icon', markIcon(mark), h)),
         ]
       : [],
 )

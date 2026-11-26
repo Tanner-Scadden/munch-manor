@@ -1,49 +1,85 @@
-import { Effect, Option, String } from 'effect'
-import { Scene } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
+import { Array, Effect, Option, String } from 'effect'
 
+import { Component, UiStruct } from '@effect/ui'
+import { HtmlLocator } from '@effect/ui/html/testing'
+import { Locator } from '@effect/ui/testing'
 import { describe, it, test, expect as vitestExpect } from '@effect/vitest'
 
-import { Message } from '../../../app/message'
 import { type Model, Phase } from '../../../app/model'
+import { PressGameSurface } from '../../../app/mount'
 import { ClickSupportLink } from '../../../app/update/home'
+import { HAND_DIALOG_ID } from '../../../domain/clientSchema'
 import { RESTART_GRACE_MS } from '../../../shared/constants'
 import {
   fighting,
   home,
   inPortrait,
   withNewerBuild,
+  withoutSupportLink,
 } from '../../../test/model.fixture'
 import {
-  APPLICATION,
-  PHONE_LANDSCAPE,
-  PHONE_PORTRAIT,
+  byClass,
   emitPressedKey,
+  expectAttr,
+  expectClass,
+  measureHud,
   measureSurface,
   measureSurfaceAs,
   openHandInScene,
   settleEndShareOf,
+  showDialog,
+  withAttrs,
+} from '../../../test/sceneTesting'
+import {
+  type AppScene,
+  PHONE_LANDSCAPE,
+  PHONE_PORTRAIT,
+  type SceneStep,
+  sceneOf,
+  steps,
 } from '../../../test/testing'
 import { pause } from '../../../world/waves/waves'
 import menuCss from '../../home/menu.css?raw'
 
 const TEST_LINK = 'https://buy.stripe.com/test_coffee'
 
-const coffeeLink = Scene.role('link', { name: /buy rattles a coffee/i })
-const homeCoffee = Scene.role('link', { name: /^Buy Rattles a coffee/ })
+const coffeeLink = HtmlLocator.role('link', { name: /buy rattles a coffee/i })
+const homeCoffee = HtmlLocator.role('link', {
+  name: /^Buy Rattles a coffee/,
+})
+
+// NOTE: the coffee drawn as a link, the old `a.home-support`.
+const supportAnchor: Locator.Locator = {
+  description: 'a.home-support',
+  all: root =>
+    Array.filter(byClass('home-support').all(root), node => node.tag === 'a'),
+}
+
+// NOTE: the `index`th match of `locator`, the old `Scene.nth`.
+const nthOf = (locator: Locator.Locator, index: number): Locator.Locator => ({
+  description: `${locator.description} #${index}`,
+  all: root => Array.take(Array.drop(locator.all(root), index), 1),
+})
+
+const cornerRow = (index: number) =>
+  nthOf(
+    Locator.inside(byClass('home-corner'), byClass('home-corner-row')),
+    index,
+  )
+
+const cornerButtonIn = (row: number, index: number) =>
+  nthOf(Locator.inside(cornerRow(row), byClass('home-corner-button')), index)
+
+const cornerButtonsIn = (row: number) =>
+  Locator.inside(cornerRow(row), byClass('home-corner-button'))
 
 const withLink = (model: Model): Model =>
-  modifyFields(model, {
-    release: modifyFields({ maybeSupportUrl: () => Option.some(TEST_LINK) }),
-  })
-
-const withoutLink = (model: Model): Model =>
-  modifyFields(model, {
-    release: modifyFields({ maybeSupportUrl: () => Option.none() }),
+  UiStruct.evolve(model, {
+    release: UiStruct.evolve({ maybeSupportUrl: () => Option.some(TEST_LINK) }),
   })
 
 const onPhase = (phase: Phase, screenMs: number): Model =>
-  modifyFields(home, { phase: () => phase, screenMs: () => screenMs })
+  UiStruct.evolve(home, { phase: () => phase, screenMs: () => screenMs })
 
 const escaped = onPhase(Phase.Escaped({ wave: 10 }), RESTART_GRACE_MS)
 
@@ -64,43 +100,59 @@ const NEVER_ON: ReadonlyArray<readonly [string, Model]> = [
   ],
 ]
 
+// NOTE: the Mounts a Scene of `model` acknowledges: the surface's, the
+// HUD's gun slots in a wave, the pause screen's press on the surface, and
+// SHARE's on an end screen with its buttons up.
+const settleScene = (model: Model): SceneStep =>
+  Phase.matchOrElse(
+    model.phase,
+    {
+      Wave: () => measureHud,
+      Paused: () =>
+        steps(measureSurface, (s: AppScene) =>
+          s.expectMount(PressGameSurface()),
+        ),
+    },
+    () => steps(measureSurface, settleEndShareOf(model)),
+  )
+
 describe('the coffee button', () => {
   it.effect.each(SHOWN_ON)(
     'is not drawn on %s while the link is empty',
     ([_name, model]) =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(withoutLink(model)),
-        measureSurface,
-        ...settleEndShareOf(model),
-        Scene.expect(coffeeLink).toBeAbsent(),
-      ),
+      Effect.gen(function* () {
+        const s = yield* sceneOf(withoutSupportLink(model))
+        s.pipe(measureSurface, settleEndShareOf(model))
+          .expect(coffeeLink)
+          .toBeAbsent()
+      }),
   )
 
   it.effect.each(SHOWN_ON)(
     'opens the link in a new tab from %s',
     ([_name, model]) =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(withLink(model)),
-        measureSurface,
-        ...settleEndShareOf(model),
-        Scene.expect(coffeeLink).toExist(),
-        Scene.expect(coffeeLink).toHaveAttr('href', TEST_LINK),
-        Scene.expect(coffeeLink).toHaveAttr('target', '_blank'),
-        Scene.expect(coffeeLink).toHaveAttr('rel', 'noopener noreferrer'),
-      ),
+      Effect.gen(function* () {
+        const s = yield* sceneOf(withLink(model))
+        s.pipe(measureSurface, settleEndShareOf(model))
+          .expect(coffeeLink)
+          .toExist()
+          .pipe(
+            expectAttr(coffeeLink, 'href', TEST_LINK),
+            expectAttr(coffeeLink, 'target', '_blank'),
+            expectAttr(coffeeLink, 'rel', 'noopener noreferrer'),
+          )
+      }),
   )
 
   it.effect.each(NEVER_ON)('is never drawn on %s', ([_name, model]) =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(model),
-      measureSurface,
-      ...settleEndShareOf(model),
-      Scene.expect(coffeeLink).toBeAbsent(),
-      Scene.expect(homeCoffee).toBeAbsent(),
-    ),
+    Effect.gen(function* () {
+      const s = yield* sceneOf(model)
+      s.pipe(settleScene(model))
+        .expect(coffeeLink)
+        .toBeAbsent()
+        .expect(homeCoffee)
+        .toBeAbsent()
+    }),
   )
 })
 
@@ -124,9 +176,9 @@ const pxOf = (rule: string, property: string): number =>
 // NOTE: the whole corner showing: full screen, the coffee, the gear, the
 // update gift, and the install tile.
 const fullCorner = (model: Model): Model =>
-  modifyFields(withNewerBuild(withLink(model)), {
-    release: modifyFields({ installOffer: () => 'Ready' }),
-    settings: modifyFields({ screenFit: () => 'Fullscreen' }),
+  UiStruct.evolve(withNewerBuild(withLink(model)), {
+    release: UiStruct.evolve({ installOffer: () => 'Ready' }),
+    settings: UiStruct.evolve({ screenFit: () => 'Fullscreen' }),
   })
 
 const LAYOUTS = [
@@ -134,7 +186,7 @@ const LAYOUTS = [
   [
     'portrait',
     fullCorner(
-      inPortrait(modifyFields(home, { lastDevice: () => 'Touch' as const })),
+      inPortrait(UiStruct.evolve(home, { lastDevice: () => 'Touch' as const })),
     ),
     PHONE_PORTRAIT,
     'Portrait',
@@ -145,71 +197,64 @@ describe('the coffee in the home corner', () => {
   it.effect(
     'is a real link to the tip jar that opens in a new tab, named for Rattles',
     () =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(withLink(home)),
-        measureSurface,
-        Scene.expect(homeCoffee).toExist(),
-        Scene.expect(homeCoffee).toHaveAttr('href', TEST_LINK),
-        Scene.expect(homeCoffee).toHaveAttr('target', '_blank'),
-        Scene.expect(homeCoffee).toHaveAttr('rel', 'noopener noreferrer'),
-        Scene.expect(homeCoffee).toHaveAttr('title', 'Buy Rattles a coffee'),
-        Scene.expect(Scene.selector('a.home-support')).toExist(),
-      ),
+      Effect.gen(function* () {
+        const s = yield* sceneOf(withLink(home))
+        s.pipe(measureSurface)
+          .expect(homeCoffee)
+          .toExist()
+          .pipe(
+            expectAttr(homeCoffee, 'href', TEST_LINK),
+            expectAttr(homeCoffee, 'target', '_blank'),
+            expectAttr(homeCoffee, 'rel', 'noopener noreferrer'),
+            expectAttr(homeCoffee, 'title', 'Buy Rattles a coffee'),
+          )
+          .expect(supportAnchor)
+          .toExist()
+      }),
   )
 
   it.effect('is absent from the home menu while the link is empty', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(withoutLink(home)),
-      measureSurface,
-      Scene.expect(Scene.selector('.home-settings')).toExist(),
-      Scene.expect(homeCoffee).toBeAbsent(),
-      Scene.expect(Scene.selector('.home-support')).toBeAbsent(),
-    ),
+    Effect.gen(function* () {
+      const s = yield* sceneOf(withoutSupportLink(home))
+      s.pipe(measureSurface)
+        .expect(byClass('home-settings'))
+        .toExist()
+        .expect(homeCoffee)
+        .toBeAbsent()
+        .expect(byClass('home-support'))
+        .toBeAbsent()
+    }),
   )
 
   it.effect('is not drawn in a run, even with the link', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(withLink(fighting)),
-      measureSurface,
-      Scene.expect(homeCoffee).toBeAbsent(),
-    ),
+    Effect.gen(function* () {
+      const s = yield* sceneOf(withLink(fighting))
+      s.pipe(measureHud).expect(homeCoffee).toBeAbsent()
+    }),
   )
 
   it.effect('is no TIP JAR card in the hand', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(withLink(home)),
-      measureSurface,
-      ...openHandInScene(),
-      Scene.expect(Scene.role('link', { name: /tip jar/i })).toBeAbsent(),
-      Scene.expectAll(
-        Scene.all.selector('.hand-card[data-card="Support"]'),
-      ).toHaveCount(0),
-    ),
+    Effect.gen(function* () {
+      const s = yield* sceneOf(withLink(home))
+      s.pipe(measureSurface, openHandInScene, showDialog(HAND_DIALOG_ID))
+        .expect(byClass('hand-card'))
+        .toExist()
+        .expect(HtmlLocator.role('link', { name: /tip jar/i }))
+        .toBeAbsent()
+        .expect(withAttrs({ 'data-card': 'Support' })(byClass('hand-card')))
+        .toHaveCount(0)
+    }),
   )
 
   it.effect('B clicks the coffee link, and does nothing without a link', () =>
     Effect.gen(function* () {
-      yield* Scene.scene(
-        APPLICATION,
-        Scene.given(withLink(home)),
-        measureSurface,
-        emitPressedKey('KeyB'),
-        Scene.Command.resolve(
-          ClickSupportLink(),
-          Message.CompletedClickSupportLink(),
-        ),
-      )
-      yield* Scene.scene(
-        APPLICATION,
-        Scene.given(withoutLink(home)),
-        measureSurface,
-        emitPressedKey('KeyB'),
-        Scene.Command.expectNone(),
-      )
+      const linked = yield* sceneOf(withLink(home))
+      linked
+        .pipe(measureSurface, emitPressedKey('KeyB'))
+        .expectExact(ClickSupportLink.make())
+        .resolve(ClickSupportLink, Component.noop)
+      const unlinked = yield* sceneOf(withoutSupportLink(home))
+      unlinked.pipe(measureSurface, emitPressedKey('KeyB')).expectNone()
     }),
   )
 
@@ -240,38 +285,24 @@ describe('the coffee in the home corner', () => {
   it.effect.each(LAYOUTS)(
     'in %s the coffee stands just left of the gear, apart from the gift and the install tile',
     ([_name, model, surface, layout]) =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(model),
-        measureSurfaceAs(surface),
-        Scene.expect(Scene.selector(`[data-layout='${layout}']`)).toExist(),
-        Scene.inside(
-          Scene.nth(Scene.all.selector('.home-corner .home-corner-row'), 0),
-          Scene.expectAll(
-            Scene.all.selector('.home-corner-button'),
-          ).toHaveCount(3),
-          Scene.expect(
-            Scene.nth(Scene.all.selector('.home-corner-button'), 0),
-          ).toHaveClass('home-fullscreen'),
-          Scene.expect(
-            Scene.nth(Scene.all.selector('.home-corner-button'), 1),
-          ).toHaveId('home-support'),
-          Scene.expect(
-            Scene.nth(Scene.all.selector('.home-corner-button'), 2),
-          ).toHaveId('home-settings'),
-        ),
-        Scene.inside(
-          Scene.nth(Scene.all.selector('.home-corner .home-corner-row'), 1),
-          Scene.expectAll(
-            Scene.all.selector('.home-corner-button'),
-          ).toHaveCount(2),
-          Scene.expect(
-            Scene.nth(Scene.all.selector('.home-corner-button'), 0),
-          ).toHaveId('home-gift'),
-          Scene.expect(
-            Scene.nth(Scene.all.selector('.home-corner-button'), 1),
-          ).toHaveId('home-install'),
-        ),
-      ),
+      Effect.gen(function* () {
+        const s = yield* sceneOf(model)
+        s.pipe(measureSurfaceAs(surface))
+          .expect(Locator.attr('data-layout', layout))
+          .toExist()
+          .expect(cornerButtonsIn(0))
+          .toHaveCount(3)
+          .pipe(
+            expectClass(cornerButtonIn(0, 0), 'home-fullscreen'),
+            expectAttr(cornerButtonIn(0, 1), 'id', 'home-support'),
+            expectAttr(cornerButtonIn(0, 2), 'id', 'home-settings'),
+          )
+          .expect(cornerButtonsIn(1))
+          .toHaveCount(2)
+          .pipe(
+            expectAttr(cornerButtonIn(1, 0), 'id', 'home-gift'),
+            expectAttr(cornerButtonIn(1, 1), 'id', 'home-install'),
+          )
+      }),
   )
 })

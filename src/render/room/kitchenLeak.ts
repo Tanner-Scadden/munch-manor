@@ -1,10 +1,10 @@
 import { Array, Option } from 'effect'
-import type { Canvas } from 'foldkit'
 
 import { TILE_SIZE } from '../../shared/constants'
 import { type Level, levelOf, maybeExit } from '../../world/level/arena'
 import { KITCHEN_EXIT } from '../../world/level/exits'
 import type { World } from '../../world/schema/world'
+import type * as Draw from '../draw'
 import { rect } from '../drawing'
 import { type Box, FACE_TOP, boundingBox } from './roomPalette'
 
@@ -38,7 +38,7 @@ const checkRow = (
   box: Box,
   y: number,
   startsLit: boolean,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const left = box.x + 1
   const columns = Math.floor((box.width - 2) / CHECK_PX)
   return Array.makeBy(columns, column =>
@@ -54,7 +54,7 @@ const checkRow = (
 
 // NOTE: laid on the door's dark fill and under its planks and sign, so
 // the light and the floor show only in the gaps they leave.
-export const leakStillShapes = (box: Box): ReadonlyArray<Canvas.Shape> => {
+export const leakStillShapes = (box: Box): ReadonlyArray<Draw.Shape> => {
   const middle = box.x + box.width / 2
   const bottom = box.y + box.height
   return [
@@ -70,7 +70,7 @@ export const leakStillShapes = (box: Box): ReadonlyArray<Canvas.Shape> => {
 }
 
 // NOTE: the light on the floor just outside, three steps fading out.
-export const leakSpillShapes = (box: Box): ReadonlyArray<Canvas.Shape> => {
+export const leakSpillShapes = (box: Box): ReadonlyArray<Draw.Shape> => {
   const bottom = box.y + box.height
   return [
     rect(box.x - 2, bottom, box.width + 4, 1, SPILL_NEAR_COLOR),
@@ -135,7 +135,7 @@ export const maybeLeakSpan = (
 
 // NOTE: the light breathing and the steam rising, only while the boards are
 // up. A frame's cost is a handful of rectangles.
-export const kitchenLeakShapes = (model: World): ReadonlyArray<Canvas.Shape> =>
+export const kitchenLeakShapes = (model: World): ReadonlyArray<Draw.Shape> =>
   Option.match(closedKitchenBox(levelOf(model)), {
     onNone: () => [],
     onSome: box => {

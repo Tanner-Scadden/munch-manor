@@ -1,6 +1,6 @@
 import { Array, Function, Option, Order, Result, Schema, pipe } from 'effect'
-import { defineTaggedUnion } from 'foldkit/schema'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiSchema, UiStruct } from '@effect/ui'
 
 import {
   BARRICADE_REACH_PX,
@@ -224,12 +224,12 @@ export const stageOf = (trap: Trap): TrapStage => stageAt(trap.hp, trap.maxHp)
 const setHealth = (trap: Trap, hp: number, hitRemainingMs: number): Trap =>
   Trap.match(trap, {
     Barricade: barricade =>
-      modifyFields(barricade, {
+      UiStruct.evolve(barricade, {
         hp: () => hp,
         hitRemainingMs: () => hitRemainingMs,
       }),
     Turret: turret =>
-      modifyFields(turret, {
+      UiStruct.evolve(turret, {
         hp: () => hp,
         hitRemainingMs: () => hitRemainingMs,
       }),
@@ -278,7 +278,7 @@ export const clearBrokenTraps = (model: World): World => {
     return model
   }
 
-  return modifyFields(model, {
+  return UiStruct.evolve(model, {
     traps: Array.filter(trap => !isBroken(trap)),
     frameEvents: frameEvents => [
       ...frameEvents,
@@ -328,7 +328,7 @@ const fuseAgainst =
       Brawler: () => zombie,
       Bomber: ({ contactFuseMs }) =>
         Array.some(boxes, box => isTouchingBox(box)(zombie))
-          ? modifyFields(zombie, {
+          ? UiStruct.evolve(zombie, {
               state: () => ZombieState.Fusing({ remainingMs: contactFuseMs }),
             })
           : zombie,
@@ -353,7 +353,7 @@ const chewTraps = (model: World, seconds: number): World => {
     model.traps,
     chewTrap(level, model.zombies, seconds),
   )
-  return modifyFields(model, {
+  return UiStruct.evolve(model, {
     traps: () => Array.map(outcomes, ({ target }) => target),
     zombies: Array.map(fuseAgainst(trapBlockers(level, model.traps))),
     frameEvents: frameEvents => [
@@ -441,13 +441,13 @@ const operateTurret = (
   return Option.match(maybeAim, {
     onNone: () => [
       volley,
-      modifyFields(turret, { gun: () => restingGun(remainingMs) }),
+      UiStruct.evolve(turret, { gun: () => restingGun(remainingMs) }),
     ],
     onSome: direction => {
       if (remainingMs > 0) {
         return [
           volley,
-          modifyFields(turret, {
+          UiStruct.evolve(turret, {
             facing: () => direction,
             gun: () => TurretGun.CoolingDown({ remainingMs }),
           }),
@@ -480,7 +480,7 @@ const operateTurret = (
             }),
           ],
         },
-        modifyFields(turret, {
+        UiStruct.evolve(turret, {
           facing: () => direction,
           gun: () =>
             TurretGun.CoolingDown({
@@ -514,7 +514,7 @@ const runTurrets = (model: World, deltaMs: number): World => {
           ),
       }),
   )
-  return modifyFields(model, {
+  return UiStruct.evolve(model, {
     traps: () => traps,
     nextEntityId: () => volley.nextEntityId,
     bullets: bullets => appendOrSame(bullets, volley.bullets),
@@ -528,7 +528,7 @@ export const advanceTraps: {
 } = Function.dual(3, (model: World, seconds: number, deltaMs: number): World =>
   runTurrets(
     chewTraps(
-      modifyFields(model, {
+      UiStruct.evolve(model, {
         traps: traps =>
           sameIfUnchanged(traps, Array.map(traps, tickHit(deltaMs))),
       }),
@@ -625,7 +625,7 @@ export const cycleTrap: {
 )
 
 const addStock = (stock: TrapCounts, kind: TrapKind, amount: number) =>
-  modifyFields(stock, {
+  UiStruct.evolve(stock, {
     Barricade: count => (kind === 'Barricade' ? count + amount : count),
     Turret: count => (kind === 'Turret' ? count + amount : count),
   })
@@ -643,13 +643,13 @@ export const stockTrap: {
 
 // PLACEMENT
 
-export const TrapSpot = defineTaggedUnion({
+export const TrapSpot = UiSchema.TaggedEnum({
   Doorway: { door: DoorId },
   Floor: { column: Schema.Finite, row: Schema.Finite },
 })
 export type TrapSpot = typeof TrapSpot.Type
 
-export const PlaceVerdict = defineTaggedUnion({
+export const PlaceVerdict = UiSchema.TaggedEnum({
   Placeable: {},
   Blocked: { reason: Schema.String },
 })
@@ -947,7 +947,7 @@ const stepOutOfDoorway = (
     Doorway: ({ door }) => {
       const outward = DOOR_OUTWARD[door]
       const { left, top, right, bottom } = level.thresholds[door].box
-      return modifyFields(player, {
+      return UiStruct.evolve(player, {
         x: inwardOf(outward.x, left, right),
         y: inwardOf(outward.y, top, bottom),
       })
@@ -981,12 +981,12 @@ export const placeTrapIn: {
                 )
                 return Result.succeed({
                   trap,
-                  world: modifyFields(
+                  world: UiStruct.evolve(
                     isCoop(model)
                       ? updateSeat(model, slot, state =>
-                          modifyFields(state, {
+                          UiStruct.evolve(state, {
                             seat: seat =>
-                              modifyFields(seat, {
+                              UiStruct.evolve(seat, {
                                 trapIds: Array.append(trap.id),
                               }),
                           }),
@@ -1096,7 +1096,7 @@ const mendFor =
           MEND_RULES.fullMs
         const hp = Math.min(target.maxHp, target.hp + gain)
         const { x, y } = trapCenter(levelOf(world), target)
-        return modifyFields(world, {
+        return UiStruct.evolve(world, {
           traps: Array.map(trap =>
             trap.id === target.id
               ? setHealth(trap, hp, trap.hitRemainingMs)

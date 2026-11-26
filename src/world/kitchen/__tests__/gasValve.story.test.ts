@@ -1,7 +1,6 @@
 import { Array, Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
 import {
@@ -20,11 +19,13 @@ import {
   withFeatsOf,
 } from '../../../test/model.fixture'
 import {
-  APPLICATION,
   HOLD_TICKS,
+  checkModel,
   holdEnter,
   holdFireToward,
+  modelAfter,
   steppedWorld,
+  steps,
   ticks,
   zombieOf,
 } from '../../../test/testing'
@@ -70,7 +71,7 @@ const isValveOffered = (current: Model): boolean =>
 // NOTE: the fireplace is in the parlour, behind whichever boards the run's
 // house put it, so the fire burns once they are open.
 const parlourOpen = (arrangement: Arrangement = DEFAULT_ARRANGEMENT): Model =>
-  modifyFields(freshRunModel(), {
+  UiStruct.evolve(freshRunModel(), {
     level: () => roomOpenIn(arrangement, PARLOUR_ROOM_ID),
   })
 
@@ -92,7 +93,7 @@ const litWith = (
     x: (fire.left + fire.right) / 2 + 12,
     y: (fire.top + fire.bottom) / 2,
   }
-  return modifyFields(parlourOpen(arrangement), {
+  return UiStruct.evolve(parlourOpen(arrangement), {
     phase: () => midWave,
     gasValve: () =>
       GasValve.Lit({ owner, nextBurnMs: VALVE_RULES.burnEveryMs }),
@@ -102,9 +103,9 @@ const litWith = (
     ],
     seats: seats =>
       Array.map(seats, state =>
-        modifyFields(state, {
+        UiStruct.evolve(state, {
           player: player =>
-            modifyFields(player, {
+            UiStruct.evolve(player, {
               x: () => fire.left + 4,
               y: () => inTheFire.y,
             }),
@@ -134,8 +135,8 @@ const holdFireLeft = holdFireToward({ x: -1, y: 0 })
 
 describe('turning the gas valve', () => {
   test('the valve is in the kitchen: boarded up, nobody reaches it', () => {
-    const boarded = modifyFields(atValve(500, midWave), {
-      level: level => modifyFields(level, { openExits: () => [] }),
+    const boarded = UiStruct.evolve(atValve(500, midWave), {
+      level: level => UiStruct.evolve(level, { openExits: () => [] }),
     })
     expect(isValveOffered(boarded)).toBe(false)
     expect(isValveOffered(atValve(500, midWave))).toBe(true)
@@ -145,72 +146,71 @@ describe('turning the gas valve', () => {
   it.effect(
     'holding Enter at the valve, its feat done, costs nothing and lights the fireplace for good',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(atValve(500, midWave)),
-        ...turn,
-        Story.model(current => {
-          expect(current.keys.held).toBe(500)
-          expect(
-            GasValve.isAnyOf(['Lit'])(current.gasValve) &&
-              current.gasValve.owner,
-          ).toBe(focusSlotOf(current))
-          expect(isValveOffered(current)).toBe(false)
-          expect(focusOf(current).feats.firesLit).toBe(1)
-        }),
+      modelAfter(
+        atValve(500, midWave),
+        steps(
+          turn,
+          checkModel(current => {
+            expect(current.keys.held).toBe(500)
+            expect(
+              GasValve.isAnyOf(['Lit'])(current.gasValve) &&
+                current.gasValve.owner,
+            ).toBe(focusSlotOf(current))
+            expect(isValveOffered(current)).toBe(false)
+            expect(focusOf(current).feats.firesLit).toBe(1)
+          }),
+        ),
       ),
   )
 
   it.effect(
     'short of its feat, the valve is locked and a press turns nothing',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(
-          withFeatsOf(atValve(500, midWave), tally =>
-            modifyFields(tally, {
-              kitchenStandKills: () => VALVE_RULES.standKills - 1,
-            }),
-          ),
+      modelAfter(
+        withFeatsOf(atValve(500, midWave), tally =>
+          UiStruct.evolve(tally, {
+            kitchenStandKills: () => VALVE_RULES.standKills - 1,
+          }),
         ),
-        Story.model(current => {
-          expect(isValveOffered(current)).toBe(false)
-          expect(
-            Option.isSome(maybeValveLock(current, focusSlotOf(current))),
-          ).toBe(true)
-        }),
-        ...turn,
-        Story.model(current => {
-          expect(GasValve.isAnyOf(['Shut'])(current.gasValve)).toBe(true)
-        }),
+        steps(
+          checkModel(current => {
+            expect(isValveOffered(current)).toBe(false)
+            expect(
+              Option.isSome(maybeValveLock(current, focusSlotOf(current))),
+            ).toBe(true)
+          }),
+          turn,
+          checkModel(current => {
+            expect(GasValve.isAnyOf(['Shut'])(current.gasValve)).toBe(true)
+          }),
+        ),
       ),
   )
 
   it.effect('a kill made standing in the kitchen counts toward the valve', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        withFeatsOf(
-          modifyFields(atValve(0, midWave), {
-            zombies: () => [
-              zombieOf('Shambler', 900, AT_VALVE_SHOT.x, AT_VALVE_SHOT.y, {
-                hp: 1,
-                speed: 0,
-              }),
-            ],
-          }),
-          () => freshTally,
-        ),
+    modelAfter(
+      withFeatsOf(
+        UiStruct.evolve(atValve(0, midWave), {
+          zombies: () => [
+            zombieOf('Shambler', 900, AT_VALVE_SHOT.x, AT_VALVE_SHOT.y, {
+              hp: 1,
+              speed: 0,
+            }),
+          ],
+        }),
+        () => freshTally,
       ),
-      Story.model(current => {
-        expect(focusOf(current).feats.kitchenStandKills).toBe(0)
-      }),
-      holdFireLeft,
-      ...ticks(20, FRAME_MS),
-      Story.model(current => {
-        expect(focusOf(current).feats.kitchenStandKills).toBe(1)
-        expect(focusOf(current).feats.kitchenKills).toBe(1)
-      }),
+      steps(
+        checkModel(current => {
+          expect(focusOf(current).feats.kitchenStandKills).toBe(0)
+        }),
+        holdFireLeft,
+        ticks(20, FRAME_MS),
+        checkModel(current => {
+          expect(focusOf(current).feats.kitchenStandKills).toBe(1)
+          expect(focusOf(current).feats.kitchenKills).toBe(1)
+        }),
+      ),
     ),
   )
 })
@@ -243,28 +243,30 @@ describe('the lit fireplace', () => {
 
   it.effect('never burns a player standing in it', () => {
     const start = litWith(20)
-    return Story.story(
-      APPLICATION,
-      Story.given(start),
-      ...ticks(BURN_TICKS * 4, FRAME_MS),
-      Story.model(current => {
-        expect(focusOf(current).player.hp).toBe(focusOf(start).player.hp)
-        expect(hpOf(current, 900)).toBeLessThan(20)
-      }),
+    return modelAfter(
+      start,
+      steps(
+        ticks(BURN_TICKS * 4, FRAME_MS),
+        checkModel(current => {
+          expect(focusOf(current).player.hp).toBe(focusOf(start).player.hp)
+          expect(hpOf(current, 900)).toBeLessThan(20)
+        }),
+      ),
     )
   })
 
   it.effect('a shut valve burns nothing', () => {
-    const shut = modifyFields(litWith(20), {
+    const shut = UiStruct.evolve(litWith(20), {
       gasValve: () => GasValve.Shut(),
     })
-    return Story.story(
-      APPLICATION,
-      Story.given(shut),
-      ...ticks(BURN_TICKS * 4, FRAME_MS),
-      Story.model(current => {
-        expect(hpOf(current, 900)).toBe(20)
-      }),
+    return modelAfter(
+      shut,
+      steps(
+        ticks(BURN_TICKS * 4, FRAME_MS),
+        checkModel(current => {
+          expect(hpOf(current, 900)).toBe(20)
+        }),
+      ),
     )
   })
 

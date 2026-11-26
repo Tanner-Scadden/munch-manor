@@ -1,13 +1,12 @@
 import { Array, Effect, Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
 import { type Model, Phase, type Zombie } from '../../../app/model'
 import { FIXED_STEP_MS, PLAYER_SPEED } from '../../../shared/constants'
 import { DISTANT_SPAWN, quietWave } from '../../../test/model.fixture'
-import { APPLICATION, ticks, zombieAt } from '../../../test/testing'
+import { modelAfter, steps, ticks, zombieAt } from '../../../test/testing'
 import { Finale } from '../../dare/dareSchema'
 import { START_LEVEL } from '../../level/arena'
 import { modifyFocus } from '../../party/party'
@@ -33,13 +32,13 @@ const lastStanding = (
   spawns: ReadonlyArray<PlannedSpawn> = [],
 ): Model =>
   modifyFocus(
-    modifyFields(quietWave(3), {
+    UiStruct.evolve(quietWave(3), {
       phase: () => Phase.Wave({ wave: 3, elapsedMs: 0, spawns }),
       zombies: () => zombies,
     }),
     {
       player: player =>
-        modifyFields(player, {
+        UiStruct.evolve(player, {
           x: () => START_LEVEL.start.x,
           y: () => PLAYER_Y,
         }),
@@ -54,19 +53,15 @@ const zombieById = (model: Model, id: number): Zombie =>
 // NOTE: how far the zombie walks over the next few frames, per second.
 const paceOver = (start: Model, id: number) =>
   Effect.gen(function* () {
-    const before = yield* Story.story(APPLICATION, Story.given(start))
-    const after = yield* Story.story(
-      APPLICATION,
-      Story.given(before),
-      ...ticks(6, FRAME_MS),
-    )
+    const before = yield* modelAfter(start, steps())
+    const after = yield* modelAfter(before, ticks(6, FRAME_MS))
     const from = zombieById(before, id)
     const to = zombieById(after, id)
     return Math.hypot(to.x - from.x, to.y - from.y) / ((6 * FRAME_MS) / 1000)
   })
 
 const after = (start: Model, count: number) =>
-  Story.story(APPLICATION, Story.given(start), ...ticks(count, FRAME_MS))
+  modelAfter(start, ticks(count, FRAME_MS))
 
 describe('the last zombies', () => {
   it('wait out the delay, then ramp from their own speed to the players walk, never down', () => {
@@ -156,7 +151,7 @@ describe('the last zombies', () => {
 
   it.effect('Uncle Chunk alone never hurries', () =>
     Effect.gen(function* () {
-      const start = modifyFields(lastStanding([bossAt(FAR_X, PLAYER_Y)]), {
+      const start = UiStruct.evolve(lastStanding([bossAt(FAR_X, PLAYER_Y)]), {
         boss: () => fightingBoss(BossMove.Stalking({ cooldownMs: 60_000 })),
       })
       const later = yield* after(start, RAMP_TICKS)
@@ -166,8 +161,8 @@ describe('the last zombies', () => {
 
   it.effect('nothing hurries once the finale is under way', () =>
     Effect.gen(function* () {
-      const start = modifyFields(lastStanding([straggler]), {
-        dare: dare => modifyFields(dare, { finale: () => Finale.Open() }),
+      const start = UiStruct.evolve(lastStanding([straggler]), {
+        dare: dare => UiStruct.evolve(dare, { finale: () => Finale.Open() }),
       })
       const later = yield* after(start, RAMP_TICKS)
       expect(later.pacing.loneMs).toBe(0)

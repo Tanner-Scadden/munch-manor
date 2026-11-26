@@ -1,5 +1,4 @@
 import { Array, Function, Option, Record, Result, pipe } from 'effect'
-import type { Canvas } from 'foldkit'
 
 import {
   type Palette,
@@ -41,6 +40,7 @@ import { secretShelfOf } from '../../world/library/secretShelf'
 import type { ExitId } from '../../world/schema/entitySchema'
 import type { World } from '../../world/schema/world'
 import { type Drawable, ON_FRONT_PX } from '../depth'
+import type * as Draw from '../draw'
 import {
   CELLAR_BULB_SHAPES,
   cellarFloorShapes,
@@ -105,7 +105,7 @@ import { roseWindowShapes } from './roseWindowArt'
 
 // FLOOR DETAILS
 
-const PARLOUR_STAINS: ReadonlyArray<Canvas.Shape> = bloodTrail([
+const PARLOUR_STAINS: ReadonlyArray<Draw.Shape> = bloodTrail([
   [214, 21, 2, 5],
   [215, 26, 2, 4],
   [219, 22, 1, 6],
@@ -124,8 +124,8 @@ const PARLOUR_STAINS: ReadonlyArray<Canvas.Shape> = bloodTrail([
 // parlour has none.
 const inParlour = (
   level: Level,
-  shapes: ReadonlyArray<Canvas.Shape>,
-): ReadonlyArray<Canvas.Shape> =>
+  shapes: ReadonlyArray<Draw.Shape>,
+): ReadonlyArray<Draw.Shape> =>
   pipe(
     level.rooms,
     Array.findFirst(({ id }) => id === PARLOUR_ROOM_ID),
@@ -138,7 +138,7 @@ const inParlour = (
     }),
   )
 
-const floorDetailShapes = (level: Level): ReadonlyArray<Canvas.Shape> => [
+const floorDetailShapes = (level: Level): ReadonlyArray<Draw.Shape> => [
   ...inParlour(level, rugShapes(PARLOUR_RUG)),
   ...Option.match(boxOfKind(level, 'Hearth'), {
     onNone: () => [],
@@ -185,8 +185,8 @@ export const roomBoxOf: {
 const inRoom = (
   level: Level,
   roomId: string,
-  draw: (room: Box) => ReadonlyArray<Canvas.Shape>,
-): ReadonlyArray<Canvas.Shape> =>
+  draw: (room: Box) => ReadonlyArray<Draw.Shape>,
+): ReadonlyArray<Draw.Shape> =>
   Option.match(roomBoxOf(level, roomId), { onNone: () => [], onSome: draw })
 
 const floorOf = (room: Box): Floor => ({
@@ -198,22 +198,22 @@ const floorOf = (room: Box): Floor => ({
 
 const inDining = (
   level: Level,
-  draw: (room: Box) => ReadonlyArray<Canvas.Shape>,
-): ReadonlyArray<Canvas.Shape> => inRoom(level, DINING_ROOM_ID, draw)
+  draw: (room: Box) => ReadonlyArray<Draw.Shape>,
+): ReadonlyArray<Draw.Shape> => inRoom(level, DINING_ROOM_ID, draw)
 
-const diningFloorArt = (level: Level): ReadonlyArray<Canvas.Shape> =>
+const diningFloorArt = (level: Level): ReadonlyArray<Draw.Shape> =>
   inDining(level, room => [
     ...diningFloorShapes(room),
     ...diningRugShapes(room),
   ])
 
-const diningWallArt = (level: Level): ReadonlyArray<Canvas.Shape> =>
+const diningWallArt = (level: Level): ReadonlyArray<Draw.Shape> =>
   inDining(level, room => [
     ...diningWallShapes(level, room),
     ...diningWallDecorShapes(room),
   ])
 
-const frontDoorArt = (level: Level): ReadonlyArray<Canvas.Shape> => {
+const frontDoorArt = (level: Level): ReadonlyArray<Draw.Shape> => {
   const tiles = tilesWithSymbol(level, DOOR_SYMBOLS.Front)
   return Array.isReadonlyArrayNonEmpty(tiles)
     ? frontDoorShapes(boundingBox(tiles))
@@ -227,7 +227,7 @@ const ESCAPE_COVER_SYMBOLS: Readonly<Record<string, EscapeCoverKind>> =
     isEscapeCoverKind(kind) ? Result.succeed(kind) : Result.failVoid,
   )
 
-const roomCobwebs = (box: Box): ReadonlyArray<Canvas.Shape> => [
+const roomCobwebs = (box: Box): ReadonlyArray<Draw.Shape> => [
   ...cobweb(box.x + TILE_SIZE, box.y + FACE_TOP + 1, true, true),
   ...cobweb(box.x + box.width - TILE_SIZE, box.y + FACE_TOP + 1, false, true),
   ...cobweb(box.x + TILE_SIZE, box.y + box.height - TILE_SIZE, true, false),
@@ -241,13 +241,13 @@ const roomCobwebs = (box: Box): ReadonlyArray<Canvas.Shape> => [
 
 const onFloor = (
   floor: Floor,
-  shapes: ReadonlyArray<Canvas.Shape>,
-): ReadonlyArray<Canvas.Shape> =>
+  shapes: ReadonlyArray<Draw.Shape>,
+): ReadonlyArray<Draw.Shape> =>
   floor.x === 0 && floor.y === 0
     ? shapes
     : [group({ translate: { x: floor.x, y: floor.y }, shapes })]
 
-const cobwebShapes = (level: Floor): ReadonlyArray<Canvas.Shape> =>
+const cobwebShapes = (level: Floor): ReadonlyArray<Draw.Shape> =>
   roomCobwebs({ x: 0, y: 0, width: level.width, height: level.height })
 
 // LIBRARY AND CELLAR
@@ -255,21 +255,21 @@ const cobwebShapes = (level: Floor): ReadonlyArray<Canvas.Shape> =>
 // NOTE: the library's floor, the parlour's planks under a dusk of shade,
 // and its rug. A room's floor is drawn before the dining room's, so the
 // planks' shake margin past the library's west edge is painted over.
-const libraryFloorArt = (level: Level): ReadonlyArray<Canvas.Shape> =>
+const libraryFloorArt = (level: Level): ReadonlyArray<Draw.Shape> =>
   inRoom(level, LIBRARY_ROOM_ID, room => [
     ...onFloor(floorOf(room), slotBoardShapes(floorOf(room))),
     ...libraryFloorShadeShapes(room),
     ...libraryRugShapes(room),
   ])
 
-const cellarFloorArt = (level: Level): ReadonlyArray<Canvas.Shape> =>
+const cellarFloorArt = (level: Level): ReadonlyArray<Draw.Shape> =>
   inRoom(level, CELLAR_ROOM_ID, room => [
     ...cellarFloorShapes(room),
     ...coalHeapShapes(room),
     ...looseStoneShapes(room),
   ])
 
-const slotWallArt = (level: Level): ReadonlyArray<Canvas.Shape> => [
+const slotWallArt = (level: Level): ReadonlyArray<Draw.Shape> => [
   ...inRoom(level, LIBRARY_ROOM_ID, room => [
     ...libraryWallShapes(level, room),
     ...libraryWallDecorShapes(room),
@@ -285,7 +285,7 @@ const slotWallArt = (level: Level): ReadonlyArray<Canvas.Shape> => [
 // mask lights it (src/render/cellarDark.ts).
 const CELLAR_BULB_OFFSET = { x: 160, y: 52 }
 
-const slotPropArt = (level: Level): ReadonlyArray<Canvas.Shape> => [
+const slotPropArt = (level: Level): ReadonlyArray<Draw.Shape> => [
   ...inRoom(level, LIBRARY_ROOM_ID, ladderShapes),
   ...inRoom(level, CELLAR_ROOM_ID, room => [
     ...oddBottleShapes(room),
@@ -297,7 +297,7 @@ const slotPropArt = (level: Level): ReadonlyArray<Canvas.Shape> => [
   ]),
 ]
 
-const slotCobwebs = (level: Level): ReadonlyArray<Canvas.Shape> => [
+const slotCobwebs = (level: Level): ReadonlyArray<Draw.Shape> => [
   ...inRoom(level, LIBRARY_ROOM_ID, roomCobwebs),
   ...inRoom(level, CELLAR_ROOM_ID, room => [
     ...roomCobwebs(room),
@@ -308,7 +308,7 @@ const slotCobwebs = (level: Level): ReadonlyArray<Canvas.Shape> => [
 
 // NOTE: the secret shelf in the library's wall, shut with its red book
 // sticking out, or swung open across the floor.
-const secretShelfArt = (level: Level): ReadonlyArray<Canvas.Shape> =>
+const secretShelfArt = (level: Level): ReadonlyArray<Draw.Shape> =>
   Option.match(secretShelfOf(level), {
     onNone: () => [],
     onSome: ({ tile, side }) => [
@@ -322,7 +322,7 @@ const secretShelfArt = (level: Level): ReadonlyArray<Canvas.Shape> =>
     ],
   })
 
-const openedExitArt = (level: Level): ReadonlyArray<Canvas.Shape> =>
+const openedExitArt = (level: Level): ReadonlyArray<Draw.Shape> =>
   Array.flatMap(
     Array.filter(
       level.exits,
@@ -338,7 +338,7 @@ const openedExitArt = (level: Level): ReadonlyArray<Canvas.Shape> =>
 
 // NOTE: every shape of the room art for a level, in paint order, as plain
 // rectangles. The room images are cut from it.
-export const roomArtOf = (level: Level): ReadonlyArray<Canvas.Shape> => {
+export const roomArtOf = (level: Level): ReadonlyArray<Draw.Shape> => {
   const floor = parlourFloorOf(level)
   return [
     ...onFloor(
@@ -393,7 +393,7 @@ const exitIdsNear = (level: Level, room: Room): ReadonlyArray<ExitId> =>
 
 const levelArtCache = new WeakMap<
   LevelSpec,
-  Map<string, ReadonlyArray<Canvas.Shape>>
+  Map<string, ReadonlyArray<Draw.Shape>>
 >()
 
 // NOTE: the whole level's art with these exits open, built once for its
@@ -403,10 +403,10 @@ const levelArtCache = new WeakMap<
 const levelArtOf = (
   spec: LevelSpec,
   openExits: ReadonlyArray<ExitId>,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const key = Array.join(openExits, '+')
   const arts =
-    levelArtCache.get(spec) ?? new Map<string, ReadonlyArray<Canvas.Shape>>()
+    levelArtCache.get(spec) ?? new Map<string, ReadonlyArray<Draw.Shape>>()
   levelArtCache.set(spec, arts)
   const cached = arts.get(key)
   if (cached !== undefined) {
@@ -419,7 +419,7 @@ const levelArtOf = (
 
 const roomImageCache = new WeakMap<
   LevelSpec,
-  Map<string, ReadonlyArray<Canvas.Shape>>
+  Map<string, ReadonlyArray<Draw.Shape>>
 >()
 
 // NOTE: one room's picture with these of its exits open, cut from the whole
@@ -431,12 +431,12 @@ const roomImage = (
   spec: LevelSpec,
   room: Room,
   openExits: ReadonlyArray<ExitId>,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   // NOTE: once per room as a level is built, never per frame.
   // oxlint-disable-next-line munch/no-string-key-per-frame
   const key = `${room.id}:${Array.join(openExits, '+')}`
   const images =
-    roomImageCache.get(spec) ?? new Map<string, ReadonlyArray<Canvas.Shape>>()
+    roomImageCache.get(spec) ?? new Map<string, ReadonlyArray<Draw.Shape>>()
   roomImageCache.set(spec, images)
   const cached = images.get(key)
   if (cached !== undefined) {
@@ -459,14 +459,14 @@ const openExitsNear = (level: Level, room: Room): ReadonlyArray<ExitId> =>
     Array.contains(level.openExits, id),
   )
 
-const builtRooms = new WeakMap<Level, ReadonlyArray<Canvas.Shape>>()
+const builtRooms = new WeakMap<Level, ReadonlyArray<Draw.Shape>>()
 
 // NOTE: the room is an image for each of the level's rooms, built once for
 // each level and kept, so the floor canvas gets the same array back until an
 // exit opens and the level changes. The floor canvas paints a room with one
 // drawImage. The rooms' blocks do not overlap, so together they paint
 // exactly the level's whole picture.
-export const roomShapes = (level: Level): ReadonlyArray<Canvas.Shape> => {
+export const roomShapes = (level: Level): ReadonlyArray<Draw.Shape> => {
   const cached = builtRooms.get(level)
   if (cached !== undefined) {
     return cached
@@ -513,9 +513,7 @@ const subsetsOf = (
 
 // NOTE: every room image a level spec can show: each room with each set of
 // its own nearby exits open, for the sprite atlas.
-export const everyRoomImage = (
-  spec: LevelSpec,
-): ReadonlyArray<Canvas.Shape> => {
+export const everyRoomImage = (spec: LevelSpec): ReadonlyArray<Draw.Shape> => {
   const level = levelFor(spec)
   return Array.flatMap(level.rooms, room =>
     Array.flatMap(subsetsOf(level, exitIdsNear(level, room)), openExits =>
@@ -652,7 +650,7 @@ export const hearthFireDrawables: {
 const chandelierAt = (
   level: Level,
   state: ChandelierState,
-): ReadonlyArray<Canvas.Shape> =>
+): ReadonlyArray<Draw.Shape> =>
   Option.match(gapBoxOf(level), {
     onNone: () => [],
     onSome: gap => [
@@ -668,7 +666,7 @@ const chandelierAt = (
 // everyone who walks under it, so the scene draws it last.
 export const hungChandelierShapes = (
   world: World,
-): ReadonlyArray<Canvas.Shape> =>
+): ReadonlyArray<Draw.Shape> =>
   isChandelierDown(world) ? [] : chandelierAt(levelOf(world), 'Hung')
 
 // NOTE: fallen, it lies in the gap as cover, in the depth sort at the gap's

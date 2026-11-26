@@ -1,5 +1,6 @@
 import { Array, Function, Option, pipe } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import {
   FIXED_STEP_MS,
@@ -137,7 +138,7 @@ const movePlayer = (
     'Player',
   )
   const { bounds } = level
-  return modifyFields(player, {
+  return UiStruct.evolve(player, {
     x: () =>
       clamp(moved.x, bounds.left + PLAYER_RADIUS, bounds.right - PLAYER_RADIUS),
     y: () =>
@@ -163,7 +164,7 @@ const faceTowardIntent = (model: World, slot: PlayerSlot): World => {
   const { intent } = seatStateAt(model, slot)
   return modifySeat(model, slot, {
     player: player =>
-      modifyFields(player, {
+      UiStruct.evolve(player, {
         facing: facing =>
           pipe(
             intent.maybeAim,
@@ -243,7 +244,7 @@ export const shedParts: {
   )
   return Array.isReadonlyArrayEmpty(shed)
     ? after
-    : modifyFields(after, {
+    : UiStruct.evolve(after, {
         frameEvents: frameEvents => [...frameEvents, ...shed],
       })
 })
@@ -259,7 +260,7 @@ const heartsLostBetween = (before: World, after: World): number =>
   )
 
 const feelIntensity = (before: World, after: World, deltaMs: number): World =>
-  modifyFields(after, {
+  UiStruct.evolve(after, {
     intensity: intensity =>
       advanceIntensity(
         intensity,
@@ -349,7 +350,7 @@ const withWield = (
   seatStateAt(model, slot).player.wield === wield
     ? model
     : modifySeat(model, slot, {
-        player: player => modifyFields(player, { wield: () => wield }),
+        player: player => UiStruct.evolve(player, { wield: () => wield }),
       })
 
 // NOTE: a co-op player who is down, Downed or BledOut, cannot shoot, but
@@ -431,7 +432,7 @@ const advanceWorld = (model: World, deltaMs: number): World => {
   const level = levelOf(model)
   const blockers = trapBlockers(level, model.traps)
   const moved = forEachSeat(
-    modifyFields(model, {
+    UiStruct.evolve(model, {
       elapsedMs: elapsedMs => elapsedMs + deltaMs,
       frameEvents: emptied,
     }),
@@ -442,7 +443,7 @@ const advanceWorld = (model: World, deltaMs: number): World => {
   const armed = forEachSeat(advanceStations(routed, deltaMs), armSeat(deltaMs))
 
   // NOTE: the bullets and the zombies in one copy of the World.
-  const advanced = modifyFields(armed, {
+  const advanced = UiStruct.evolve(armed, {
     ...bulletFlightOf(armed, seconds, deltaMs),
     zombies: zombies =>
       sameIfUnchanged(zombies, advanceZombies(armed, seconds, deltaMs)),
@@ -504,14 +505,14 @@ export const advanceTick = (world: World): Tick => {
   if (isArriving(world.phase)) {
     return {
       world: advanceArrival(
-        modifyFields(world, { frameEvents: () => [] }),
+        UiStruct.evolve(world, { frameEvents: () => [] }),
         FIXED_STEP_MS,
       ),
       worldMs: FIXED_STEP_MS,
     }
   }
   const thaw = thawTick(world.hitStop, FIXED_STEP_MS)
-  const thawed = modifyFields(world, {
+  const thawed = UiStruct.evolve(world, {
     hitStop: () => thaw.hitStop,
     frameEvents: emptied,
   })

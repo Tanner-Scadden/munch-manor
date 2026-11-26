@@ -15,7 +15,7 @@ const NS_PER_MS = 1_000_000
 // update or the World (src/app/subscriptions.ts reads the game's).
 const pageNowMs = (): number =>
   // NOTE: the renderer times its own draws; no game state reads this.
-  // oxlint-disable-next-line no-restricted-properties, foldkit/no-impure-call-at-decision-time
+  // oxlint-disable-next-line no-restricted-properties
   performance.now()
 
 type Timer = Readonly<{

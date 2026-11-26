@@ -1,6 +1,6 @@
 import { Function, Option, Result, Schema } from 'effect'
-import { defineTaggedUnion } from 'foldkit/schema'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiSchema, UiStruct } from '@effect/ui'
 
 import { cycleTrap, maybeSelectedKind, placeTrapIn } from '../gear/traps'
 import {
@@ -82,7 +82,7 @@ const intentFor = (world: World, slot: PlayerSlot, intent: Intent): Intent => {
   if (isStanding(seat)) {
     return intent
   }
-  return modifyFields(intent, {
+  return UiStruct.evolve(intent, {
     move: move => (isDowned(seat) ? move : ZERO_VECTOR),
     interact: () => 'Released',
   })
@@ -146,7 +146,7 @@ export const stepWorld: {
 // A purchasable in the world is no press: it is bought by holding the
 // intent's interact, in the tick (src/world/shop/purchase.ts). CallMedic is
 // the one press a downed player has: MEDIC! (src/world/party/medic.ts).
-export const SeatAction = defineTaggedUnion({
+export const SeatAction = UiSchema.TaggedEnum({
   Swap: {},
   Melee: {},
   Draw: { slot: GunSlot },
@@ -162,7 +162,7 @@ export type SeatAction = typeof SeatAction.Type
 // it (out of the fight, nothing to place): the client stays quiet. Refused
 // is a try the game turns down, with the reason a client can show (the
 // trap notice).
-export const ActionRefusal = defineTaggedUnion({
+export const ActionRefusal = UiSchema.TaggedEnum({
   NotNow: {},
   Refused: { reason: Schema.String },
 })

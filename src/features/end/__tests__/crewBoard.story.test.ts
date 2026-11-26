@@ -1,12 +1,12 @@
 import { Array, Effect, Match, Option } from 'effect'
-import { type Canvas, Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
 import { Life, type Model, Phase } from '../../../app/model'
 import { badgeSprite } from '../../../art/rankArt'
 import { Screen } from '../../../domain/coopRoom'
+import type * as Draw from '../../../render/draw'
 import { PORTRAIT_WIDTH } from '../../../render/screen'
 import { FIXED_STEP_MS } from '../../../shared/constants'
 import {
@@ -19,7 +19,7 @@ import {
   placeSeat,
   withSeatLife,
 } from '../../../test/model.fixture'
-import { APPLICATION, ticks, zombieOf } from '../../../test/testing'
+import { checkModel, storyOf, ticks, zombieOf } from '../../../test/testing'
 import { WEAPONS } from '../../../world/gear/weapons'
 import {
   COOP_RULES,
@@ -93,15 +93,14 @@ describe("each seat's run in the World", () => {
           placeSeat(0, RIGHT_X - 8, ROW_Y),
           placeSeat(1, RIGHT_X, ROW_Y, 1),
           current =>
-            modifyFields(current, {
+            UiStruct.evolve(current, {
               zombies: () => [zombieOf('Shambler', 900, RIGHT_X + 5, ROW_Y)],
             }),
         )(crewInWave(2))
-        yield* Story.story(
-          APPLICATION,
-          Story.given(bitten),
-          ...ticks(1, TICK_MS),
-          Story.model(current => {
+        const bite = yield* storyOf(bitten)
+        bite.pipe(
+          ticks(1, TICK_MS),
+          checkModel(current => {
             expect(seatOf(current, 1).life._tag).toBe('Downed')
             expect(seatOf(current, 1).downs).toBe(1)
             expect(seatOf(current, 0).downs).toBe(0)
@@ -119,11 +118,10 @@ describe("each seat's run in the World", () => {
             }),
           ),
         )(crewInWave(3))
-        yield* Story.story(
-          APPLICATION,
-          Story.given(placeSeat(2, LEFT_X, ROW_Y)(downedBeside)),
-          ...ticks(Math.ceil(COOP_RULES.reviveMs / TICK_MS), TICK_MS),
-          Story.model(current => {
+        const revive = yield* storyOf(placeSeat(2, LEFT_X, ROW_Y)(downedBeside))
+        revive.pipe(
+          ticks(Math.ceil(COOP_RULES.reviveMs / TICK_MS), TICK_MS),
+          checkModel(current => {
             expect(seatOf(current, 1).life._tag).toBe('Standing')
             expect(seatOf(current, 0).revives).toBe(1)
             expect(seatOf(current, 1).revives).toBe(0)
@@ -154,7 +152,7 @@ describe("each seat's run in the World", () => {
         placeSeat(0, LEFT_X, ROW_Y),
         placeSeat(1, RIGHT_X, ROW_Y + 40),
         current =>
-          modifyFields(current, {
+          UiStruct.evolve(current, {
             zombies: () => [zombieOf('Shambler', 900, 150, ROW_Y, { hp: 99 })],
             bullets: () => [
               {
@@ -174,15 +172,16 @@ describe("each seat's run in the World", () => {
             ],
           }),
       )(crewInWave(2))
-      return Story.story(
-        APPLICATION,
-        Story.given(landing),
-        ...ticks(2, TICK_MS),
-        Story.model(current => {
-          expect(seatOf(current, 1).shotsHit).toBe(1)
-          expect(seatOf(current, 0).shotsHit).toBe(0)
-        }),
-      )
+      return Effect.gen(function* () {
+        const s = yield* storyOf(landing)
+        s.pipe(
+          ticks(2, TICK_MS),
+          checkModel(current => {
+            expect(seatOf(current, 1).shotsHit).toBe(1)
+            expect(seatOf(current, 0).shotsHit).toBe(0)
+          }),
+        )
+      })
     },
   )
 })
@@ -252,7 +251,7 @@ const crewCard = pipeline(
     keysFound: 4,
   })),
   current =>
-    modifyFields(current, {
+    UiStruct.evolve(current, {
       phase: () => Phase.GameOver({ wave: 5 }),
       screenMs: () => 0,
     }),
@@ -260,9 +259,9 @@ const crewCard = pipeline(
 
 // NOTE: the lobby's ranks, as each player sent them when they joined.
 const withLobbyRanks = (current: Model): Model =>
-  modifyFields(current, {
+  UiStruct.evolve(current, {
     coop: coop =>
-      modifyFields(coop, {
+      UiStruct.evolve(coop, {
         screen: () =>
           Screen.InRoom({
             room: {
@@ -279,7 +278,7 @@ const withLobbyRanks = (current: Model): Model =>
   })
 
 const imageSources = (
-  shapes: ReadonlyArray<Canvas.Shape>,
+  shapes: ReadonlyArray<Draw.Shape>,
 ): ReadonlyArray<string> =>
   Array.flatMap(shapes, shape =>
     Match.value(shape).pipe(
@@ -321,12 +320,12 @@ describe("each player's rank on the board", () => {
 })
 
 const endedCrew = (count: number, isUpright: boolean): Model => {
-  const ended = modifyFields(crewInWave(count), {
+  const ended = UiStruct.evolve(crewInWave(count), {
     phase: () => Phase.GameOver({ wave: 5 }),
     screenMs: () => 0,
   })
   return isUpright
-    ? modifyFields(inPortrait(ended), { lastDevice: () => 'Touch' })
+    ? UiStruct.evolve(inPortrait(ended), { lastDevice: () => 'Touch' })
     : ended
 }
 
@@ -423,7 +422,9 @@ describe("the crew's card", () => {
   test('its beat runs on to the awards, and a press skips there', () => {
     expect(crewDoneMs('Munched')).toBeGreaterThan(doneMs('Munched'))
     expect(
-      isBeatOver(modifyFields(crewCard, { screenMs: () => doneMs('Munched') })),
+      isBeatOver(
+        UiStruct.evolve(crewCard, { screenMs: () => doneMs('Munched') }),
+      ),
     ).toBe(false)
     const skipped = skipBeat(crewCard)
     expect(skipped.screenMs).toBe(crewDoneMs('Munched'))

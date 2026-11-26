@@ -1,10 +1,9 @@
 import { Array, Function } from 'effect'
-import type { Html } from 'foldkit/html'
 
 import type {
-  ApplicationAttribute,
+  ApplicationHtml,
   ApplicationViewBuilder,
-} from '../../app/composition'
+} from '../../app/definition'
 import type { Model } from '../../app/model'
 import { DICE_ICON } from '../../art/icons'
 import {
@@ -29,86 +28,81 @@ const rowLabel = (row: MissionRow): string =>
     ? `${MISSION_NAMES[row.mission]}: done`
     : `${MISSION_NAMES[row.mission]}: ${row.count} of ${row.goal}`
 
-const barView = (row: MissionRow, h: ApplicationViewBuilder): Html =>
-  h.span(
-    [h.Class('mission-bar'), h.AriaHidden(true)],
-    [
-      h.span([
-        h.Class('mission-bar-fill'),
-        h.Style({ width: percentOf(row.count, Math.max(1, row.goal)) }),
-      ]),
-    ],
-  )
+const barView = (row: MissionRow, h: ApplicationViewBuilder): ApplicationHtml =>
+  h.span
+    .class('mission-bar')
+    .attr('aria-hidden', 'true')
+    .children(
+      h.span
+        .class('mission-bar-fill')
+        .style({ width: percentOf(row.count, Math.max(1, row.goal)) }),
+    )
 
 // NOTE: a mission's picture, a check over it once done.
 const pictureView = (
   row: MissionRow,
   className: string,
   h: ApplicationViewBuilder,
-): Html =>
-  h.span(
-    [h.Class(`${className} mission-picture`)],
-    [
+): ApplicationHtml =>
+  h.span
+    .class(`${className} mission-picture`)
+    .children(
       iconView('mission-icon', MISSION_ICONS[row.mission], h),
       ...(row.isDone ? [iconView('mission-check', MISSION_DONE_ICON, h)] : []),
-    ],
-  )
+    )
 
 // CARD
 
-const pipView = (row: MissionRow, h: ApplicationViewBuilder): Html =>
-  h.span(
-    [
-      h.Class('mission-pip'),
-      h.DataAttribute('done', row.isDone ? 'true' : 'false'),
-    ],
-    [pictureView(row, 'mission-pip-picture', h), barView(row, h)],
-  )
+const pipView = (row: MissionRow, h: ApplicationViewBuilder): ApplicationHtml =>
+  h.span
+    .class('mission-pip')
+    .attr('data-done', row.isDone ? 'true' : 'false')
+    .children(pictureView(row, 'mission-pip-picture', h), barView(row, h))
 
-// NOTE: the home card. The screen hands it the attributes every home button
-// wears (its id, key, and focus), as only the home screen knows them.
+// NOTE: the home card's button builder, concrete so its chain stays typed
+// (Effect UI's PartTarget types `attr` loosely).
+type CardButton = ReturnType<ApplicationViewBuilder['button']['attr']>
+
+// NOTE: the home card. The screen hands it the button's builder with what
+// every home button wears already on it (its id, key, and focus), as only
+// the home screen knows them.
 export const missionCardView: {
   (
-    attributes: ReadonlyArray<ApplicationAttribute>,
-    keyCap: ReadonlyArray<Html>,
+    button: CardButton,
+    keyCap: ReadonlyArray<ApplicationHtml>,
     h: ApplicationViewBuilder,
-  ): (model: Model) => Html
+  ): (model: Model) => ApplicationHtml | null
   (
     model: Model,
-    attributes: ReadonlyArray<ApplicationAttribute>,
-    keyCap: ReadonlyArray<Html>,
+    button: CardButton,
+    keyCap: ReadonlyArray<ApplicationHtml>,
     h: ApplicationViewBuilder,
-  ): Html
+  ): ApplicationHtml | null
 } = Function.dual(
   4,
   (
     model: Model,
-    attributes: ReadonlyArray<ApplicationAttribute>,
-    keyCap: ReadonlyArray<Html>,
+    button: CardButton,
+    keyCap: ReadonlyArray<ApplicationHtml>,
     h: ApplicationViewBuilder,
-  ): Html =>
+  ): ApplicationHtml | null =>
     Array.match(missionRowsOf(model), {
-      onEmpty: () => h.empty,
+      onEmpty: () => null,
       onNonEmpty: rows =>
-        h.button(
-          [
-            ...attributes,
-            h.Class('mission-card'),
-            h.DataAttribute('all', isAllThreeDone(model) ? 'true' : 'false'),
-            h.AriaLabel(
-              `${MISSIONS_TITLE}: ${Array.join(Array.map(rows, rowLabel), ', ')}`,
-            ),
-            h.AriaHasPopup('dialog'),
-            h.OnClick(MissionMessage.ClickedMissionsButton(), {
-              propagation: 'Stop',
-            }),
-          ],
-          [
+        button
+          .attr('data-all', isAllThreeDone(model) ? 'true' : 'false')
+          .class('mission-card')
+          .attr(
+            'aria-label',
+            `${MISSIONS_TITLE}: ${Array.join(Array.map(rows, rowLabel), ', ')}`,
+          )
+          .attr('aria-haspopup', 'dialog')
+          .on('click', MissionMessage.ClickedMissionsButton())
+          .children(
             ...Array.map(rows, row => pipView(row, h)),
             iconView('mission-card-all', ALL_THREE_ICON, h),
             ...keyCap,
-          ],
-        ),
+          ),
     }),
 )
 
@@ -127,88 +121,84 @@ const bonesView = (
   bones: number,
   className: string,
   h: ApplicationViewBuilder,
-): Html =>
-  h.span(
-    [h.Class(className)],
-    [
-      h.span([h.AriaHidden(true)], ['+']),
+): ApplicationHtml =>
+  h.span
+    .class(className)
+    .children(
+      h.span.attr('aria-hidden', 'true').children('+'),
       boneCountView(bones, 'mission-bones-count', h),
-      h.span([h.Class('sr-only')], [`${bones} Bones`]),
-    ],
-  )
+      h.span.class('sr-only').children(`${bones} Bones`),
+    )
 
 // NOTE: the day's one reroll, on a mission not done yet. Once spent, every
 // dice greys out until tomorrow.
-const rerollView = (row: MissionRow, h: ApplicationViewBuilder): Html =>
+const rerollView = (
+  row: MissionRow,
+  h: ApplicationViewBuilder,
+): ApplicationHtml =>
   row.isDone
-    ? h.span([h.Class('mission-reroll-gap'), h.AriaHidden(true)])
-    : h.button(
-        [
-          h.Type('button'),
-          h.Class('mission-reroll'),
-          ...(row.canReroll ? [] : [h.AriaDisabled(true)]),
-          h.AriaLabel(`Reroll ${MISSION_NAMES[row.mission]}`),
-          h.OnClick(MissionMessage.ClickedRerollButton({ slot: row.slot }), {
-            propagation: 'Stop',
-          }),
-        ],
-        [iconView('mission-reroll-icon', DICE_ICON, h)],
-      )
+    ? h.span.class('mission-reroll-gap').attr('aria-hidden', 'true')
+    : h.button
+        .attr('type', 'button')
+        .class('mission-reroll')
+        .attr('aria-disabled', row.canReroll ? undefined : 'true')
+        .attr('aria-label', `Reroll ${MISSION_NAMES[row.mission]}`)
+        .on('click', MissionMessage.ClickedRerollButton({ slot: row.slot }))
+        .children(iconView('mission-reroll-icon', DICE_ICON, h))
 
-const rowView = (row: MissionRow, h: ApplicationViewBuilder): Html =>
-  h.li(
-    [
-      h.Class('mission-row'),
-      h.DataAttribute('done', row.isDone ? 'true' : 'false'),
-    ],
-    [
+const rowView = (row: MissionRow, h: ApplicationViewBuilder): ApplicationHtml =>
+  h.li
+    .class('mission-row')
+    .attr('data-done', row.isDone ? 'true' : 'false')
+    .children(
       pictureView(row, 'mission-row-picture', h),
-      h.span(
-        [h.Class('mission-row-main')],
-        [
-          h.span([h.Class('mission-row-name')], [MISSION_NAMES[row.mission]]),
-          h.span(
-            [h.Class('mission-row-track')],
-            [
+      h.span
+        .class('mission-row-main')
+        .children(
+          h.span.class('mission-row-name').children(MISSION_NAMES[row.mission]),
+          h.span
+            .class('mission-row-track')
+            .children(
               barView(row, h),
-              h.span(
-                [h.Class('mission-row-count'), h.AriaHidden(true)],
-                [`${row.count}/${row.goal}`],
-              ),
-            ],
-          ),
-        ],
-      ),
+              h.span
+                .class('mission-row-count')
+                .attr('aria-hidden', 'true')
+                .children(`${row.count}/${row.goal}`),
+            ),
+        ),
       bonesView(row.bones, 'mission-row-bones', h),
       rerollView(row, h),
-    ],
-  )
+    )
 
 export const missionsPanelView: {
-  (doneButton: Html, h: ApplicationViewBuilder): (model: Model) => Html
-  (model: Model, doneButton: Html, h: ApplicationViewBuilder): Html
+  (
+    doneButton: ApplicationHtml,
+    h: ApplicationViewBuilder,
+  ): (model: Model) => ApplicationHtml
+  (
+    model: Model,
+    doneButton: ApplicationHtml,
+    h: ApplicationViewBuilder,
+  ): ApplicationHtml
 } = Function.dual(
   3,
-  (model: Model, doneButton: Html, h: ApplicationViewBuilder): Html =>
-    h.div(
-      [h.Class('missions-panel')],
-      [
-        h.ul(
-          [h.Class('mission-rows')],
-          Array.map(missionRowsOf(model), row => rowView(row, h)),
+  (
+    model: Model,
+    doneButton: ApplicationHtml,
+    h: ApplicationViewBuilder,
+  ): ApplicationHtml =>
+    h.div.class('missions-panel').children(
+      h.ul
+        .class('mission-rows')
+        .children(Array.map(missionRowsOf(model), row => rowView(row, h))),
+      h.p
+        .class('mission-all')
+        .attr('data-done', isAllThreeDone(model) ? 'true' : 'false')
+        .children(
+          iconView('mission-all-icon', ALL_THREE_ICON, h),
+          h.span.class('mission-all-tag').children(ALL_THREE_TAG),
+          bonesView(ALL_THREE_BONES, 'mission-all-bones', h),
         ),
-        h.p(
-          [
-            h.Class('mission-all'),
-            h.DataAttribute('done', isAllThreeDone(model) ? 'true' : 'false'),
-          ],
-          [
-            iconView('mission-all-icon', ALL_THREE_ICON, h),
-            h.span([h.Class('mission-all-tag')], [ALL_THREE_TAG]),
-            bonesView(ALL_THREE_BONES, 'mission-all-bones', h),
-          ],
-        ),
-        h.div([h.Class('panel-actions')], [doneButton]),
-      ],
+      h.div.class('panel-actions').children(doneButton),
     ),
 )

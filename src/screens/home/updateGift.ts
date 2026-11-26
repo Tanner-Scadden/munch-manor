@@ -1,9 +1,9 @@
 import { Array, Function, Option } from 'effect'
-import type { Html } from 'foldkit/html'
 
-import type { Dialog } from '@foldkit/ui'
-
-import type { ApplicationViewBuilder } from '../../app/composition'
+import type {
+  ApplicationHtml,
+  ApplicationViewBuilder,
+} from '../../app/definition'
 import type { Model } from '../../app/model'
 import { pixelArtStyle } from '../../art/artSize'
 import {
@@ -20,6 +20,7 @@ import {
 } from '../../features/whatsNew/changelog'
 import { VersionMessage } from '../../platform/message'
 import { closeButtonView } from '../../ui/cornerButtons'
+import type { DialogParts } from '../../ui/dialog'
 import { isUpdateGiftShown } from './home'
 
 // ART
@@ -28,22 +29,22 @@ const layerView = (
   className: string,
   icon: string,
   h: ApplicationViewBuilder,
-): Html =>
-  h.span([h.Class(className), h.AriaHidden(true), h.Style(pixelArtStyle(icon))])
+): ApplicationHtml =>
+  h.span.class(className).attr('aria-hidden', 'true').style(pixelArtStyle(icon))
 
 // NOTE: the Groaner hides in the box, under the lid, until the unwrap pops
 // it out. Two sparkles twinkle around it while it waits.
-const giftArtView = (h: ApplicationViewBuilder): Html =>
-  h.span(
-    [h.Class('gift-art'), h.AriaHidden(true)],
-    [
+const giftArtView = (h: ApplicationViewBuilder): ApplicationHtml =>
+  h.span
+    .class('gift-art')
+    .attr('aria-hidden', 'true')
+    .children(
       layerView('gift-sparkle', SPARKLE_ICON, h),
       layerView('gift-sparkle', SPARKLE_ICON, h),
       layerView('gift-zombie', GIFT_ZOMBIE_ICON, h),
       layerView('gift-box', GIFT_BOX_ICON, h),
       layerView('gift-lid', GIFT_LID_ICON, h),
-    ],
-  )
+    )
 
 // GIFT
 
@@ -53,31 +54,28 @@ const UPDATE_GIFT_LABEL = 'Update ready: tap to get it'
 // paper NEW! tag on a string tied to its bow. It rattles now and then, the tag
 // swinging with it; a tap unwraps it and reloads onto the new build.
 export const updateGiftView: {
-  (h: ApplicationViewBuilder): (model: Model) => Html
-  (model: Model, h: ApplicationViewBuilder): Html
-} = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html =>
-  isUpdateGiftShown(model)
-    ? h.button(
-        [
-          h.Type('button'),
-          h.Id('home-gift'),
-          h.Class('home-corner-button home-gift'),
-          h.DataAttribute('state', model.release.updateGift),
-          h.AriaLabel(UPDATE_GIFT_LABEL),
-          h.AriaBusy(model.release.updateGift === 'Unwrapping'),
-          h.OnClick(VersionMessage.ClickedUpdateButton(), {
-            propagation: 'Stop',
-          }),
-        ],
-        [
-          giftArtView(h),
-          h.span(
-            [h.Class('gift-tag'), h.AriaHidden(true)],
-            [h.span([h.Class('gift-tag-text')], ['NEW!'])],
-          ),
-        ],
-      )
-    : h.empty,
+  (h: ApplicationViewBuilder): (model: Model) => ApplicationHtml
+  (model: Model, h: ApplicationViewBuilder): ApplicationHtml
+} = Function.dual(
+  2,
+  (model: Model, h: ApplicationViewBuilder): ApplicationHtml | null =>
+    isUpdateGiftShown(model)
+      ? h.button
+          .attr('type', 'button')
+          .id('home-gift')
+          .class('home-corner-button home-gift')
+          .attr('data-state', model.release.updateGift)
+          .attr('aria-label', UPDATE_GIFT_LABEL)
+          .attr('aria-busy', String(model.release.updateGift === 'Unwrapping'))
+          .on('click', VersionMessage.ClickedUpdateButton())
+          .children(
+            giftArtView(h),
+            h.span
+              .class('gift-tag')
+              .attr('aria-hidden', 'true')
+              .children(h.span.class('gift-tag-text').children('NEW!')),
+          )
+      : null,
 )
 
 // GREETING
@@ -85,38 +83,41 @@ export const updateGiftView: {
 const CONFETTI_PIECES = 14
 const GREETING_BULLETS = 3
 
-const confettiView = (h: ApplicationViewBuilder): Html =>
-  h.div(
-    [h.Class('greeting-confetti'), h.AriaHidden(true)],
-    Array.makeBy(CONFETTI_PIECES, index =>
-      h.span([
-        h.Class('greeting-confetti-piece'),
-        h.Style({ '--piece': `${index}` }),
-      ]),
-    ),
-  )
+const confettiView = (h: ApplicationViewBuilder): ApplicationHtml =>
+  h.div
+    .class('greeting-confetti')
+    .attr('aria-hidden', 'true')
+    .children(
+      Array.makeBy(CONFETTI_PIECES, index =>
+        h.span
+          .class('greeting-confetti-piece')
+          .style({ '--piece': `${index}` }),
+      ),
+    )
 
-const openedGiftView = (h: ApplicationViewBuilder): Html =>
-  h.div(
-    [h.Class('greeting-gift'), h.AriaHidden(true)],
-    [
+const openedGiftView = (h: ApplicationViewBuilder): ApplicationHtml =>
+  h.div
+    .class('greeting-gift')
+    .attr('aria-hidden', 'true')
+    .children(
       layerView('greeting-gift-lid', GIFT_LID_ICON, h),
       layerView('greeting-gift-zombie', GIFT_ZOMBIE_ICON, h),
       layerView('greeting-gift-box', GIFT_BOX_ICON, h),
-    ],
-  )
+    )
 
-const bulletView = (bullet: NewsBullet, h: ApplicationViewBuilder): Html =>
-  h.li(
-    [h.Class('greeting-bullet')],
-    [
-      h.span(
-        [h.Class('greeting-bullet-emoji'), h.AriaHidden(true)],
-        [bullet.emoji],
-      ),
-      h.span([h.Class('greeting-bullet-text')], [newsHeadline(bullet.text)]),
-    ],
-  )
+const bulletView = (
+  bullet: NewsBullet,
+  h: ApplicationViewBuilder,
+): ApplicationHtml =>
+  h.li
+    .class('greeting-bullet')
+    .children(
+      h.span
+        .class('greeting-bullet-emoji')
+        .attr('aria-hidden', 'true')
+        .children(bullet.emoji),
+      h.span.class('greeting-bullet-text').children(newsHeadline(bullet.text)),
+    )
 
 const greetingBullets: ReadonlyArray<NewsBullet> = Option.match(
   maybeNewestNewsDay,
@@ -127,42 +128,35 @@ const greetingBullets: ReadonlyArray<NewsBullet> = Option.match(
 )
 
 const greetingPanelView = (
-  { title, description, closeButton, initialFocus }: Dialog.RenderInfo,
+  parts: DialogParts,
   h: ApplicationViewBuilder,
-): ReadonlyArray<Html> => [
+): ReadonlyArray<ApplicationHtml | null> => [
   confettiView(h),
   openedGiftView(h),
-  h.h2([...title, h.Class('panel-title greeting-title')], ['Updated!']),
-  h.p(
-    [...description, h.Class('sr-only')],
-    ['You are on the newest version of Munch Manor. Here is what is new.'],
-  ),
+  parts.title(h.h2).class('panel-title greeting-title').children('Updated!'),
+  parts
+    .description(h.p)
+    .class('sr-only')
+    .children(
+      'You are on the newest version of Munch Manor. Here is what is new.',
+    ),
   Array.match(greetingBullets, {
-    onEmpty: () => h.empty,
+    onEmpty: () => null,
     onNonEmpty: bullets =>
-      h.ul(
-        [h.Class('greeting-bullets')],
-        Array.map(bullets, bullet => bulletView(bullet, h)),
-      ),
+      h.ul
+        .class('greeting-bullets')
+        .children(Array.map(bullets, bullet => bulletView(bullet, h))),
   }),
-  h.div(
-    [h.Class('panel-actions')],
-    [
-      h.button(
-        [
-          ...initialFocus,
-          h.Type('button'),
-          h.Class('panel-button greeting-news'),
-          h.OnClick(VersionMessage.ClickedUpdateGreetingNewsButton(), {
-            propagation: 'Stop',
-          }),
-        ],
-        [layerView('greeting-news-icon', NEWS_ICON, h), "WHAT'S NEW"],
-      ),
-    ],
+  h.div.class('panel-actions').children(
+    parts
+      .initialFocus(h.button)
+      .attr('type', 'button')
+      .class('panel-button greeting-news')
+      .on('click', VersionMessage.ClickedUpdateGreetingNewsButton())
+      .children(layerView('greeting-news-icon', NEWS_ICON, h), "WHAT'S NEW"),
   ),
   closeButtonView(
-    { attributes: closeButton, className: 'panel-close', label: 'Close' },
+    { button: parts.close(h.button), className: 'panel-close', label: 'Close' },
     h,
   ),
 ]
@@ -171,9 +165,9 @@ const greetingPanelView = (
 export const updateGreetingInsidesView: {
   (
     h: ApplicationViewBuilder,
-  ): (renderInfo: Dialog.RenderInfo) => ReadonlyArray<Html>
+  ): (parts: DialogParts) => ReadonlyArray<ApplicationHtml | null>
   (
-    renderInfo: Dialog.RenderInfo,
+    parts: DialogParts,
     h: ApplicationViewBuilder,
-  ): ReadonlyArray<Html>
+  ): ReadonlyArray<ApplicationHtml | null>
 } = Function.dual(2, greetingPanelView)

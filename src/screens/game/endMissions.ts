@@ -1,5 +1,4 @@
 import { Array, Function, Option } from 'effect'
-import type { Canvas } from 'foldkit'
 
 import type { Model } from '../../app/model'
 import {
@@ -14,6 +13,7 @@ import {
   type MissionSpot,
   missionEndShapes,
 } from '../../features/missions/missionEndView'
+import type * as Draw from '../../render/draw'
 import { type Screen, landscapeFrameOffset } from '../../render/screen'
 
 // The day's missions on the end card (src/features/missions/missionEndView.ts),
@@ -56,11 +56,11 @@ const startMsOf = (model: Model, isUpright: boolean): Option.Option<number> =>
   )
 
 export const endMissionShapes: {
-  (screen: Screen): (model: Model) => ReadonlyArray<Canvas.Shape>
-  (model: Model, screen: Screen): ReadonlyArray<Canvas.Shape>
+  (screen: Screen): (model: Model) => ReadonlyArray<Draw.Shape>
+  (model: Model, screen: Screen): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   2,
-  (model: Model, screen: Screen): ReadonlyArray<Canvas.Shape> => {
+  (model: Model, screen: Screen): ReadonlyArray<Draw.Shape> => {
     const isUpright = screen.layout === 'Portrait'
     return Option.match(
       Option.all([

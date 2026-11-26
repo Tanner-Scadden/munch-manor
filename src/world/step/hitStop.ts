@@ -3,7 +3,8 @@
 // co-op room runs it too. The cosmetics a hit makes are in src/render/juice.ts.
 
 import { Array, Function } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import {
   HIT_STOP_BLAST_MS,
@@ -145,7 +146,7 @@ export const stopForHits: {
       GameEvent.isAnyOf(['ZombieKilled'])(event) && event.kind === 'Boss',
   )
   const isWaveCleared = Array.some(events, GameEvent.isAnyOf(['WaveCleared']))
-  return modifyFields(model, {
+  return UiStruct.evolve(model, {
     hitStop: hitStop =>
       isBossFelled
         ? HitStop.Slowed({ remainingMs: BOSS_SLOW_MOTION_MS, carryMs: 0 })

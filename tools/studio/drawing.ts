@@ -1,9 +1,9 @@
 // The drawing the studio's pictures share: a sprite's frames scaled up on a
 // backdrop, with its box and the frame the clock is on.
 import { Array, Function, Option, pipe } from 'effect'
-import { Canvas } from 'foldkit'
 
 import { type Sprite, boundsOf, group } from '../../src/art/sprite'
+import * as Draw from '../../src/render/draw'
 import type { Backdrop, Model } from './block'
 import type { Bounds, Entry, Look } from './catalog'
 
@@ -67,19 +67,15 @@ export const zoomed: {
   (
     bounds: Bounds,
     zoom: number,
-  ): (shapes: ReadonlyArray<Canvas.Shape>) => Canvas.Shape
-  (
-    shapes: ReadonlyArray<Canvas.Shape>,
-    bounds: Bounds,
-    zoom: number,
-  ): Canvas.Shape
+  ): (shapes: ReadonlyArray<Draw.Shape>) => Draw.Shape
+  (shapes: ReadonlyArray<Draw.Shape>, bounds: Bounds, zoom: number): Draw.Shape
 } = Function.dual(
   3,
   (
-    shapes: ReadonlyArray<Canvas.Shape>,
+    shapes: ReadonlyArray<Draw.Shape>,
     bounds: Bounds,
     zoom: number,
-  ): Canvas.Shape =>
+  ): Draw.Shape =>
     group({
       scale: { x: zoom, y: zoom },
       shapes: [
@@ -91,12 +87,12 @@ export const zoomed: {
 type Size = Readonly<{ width: number; height: number }>
 
 export const backdropRect: {
-  (backdrop: Backdrop): (size: Size) => Canvas.Shape
-  (size: Size, backdrop: Backdrop): Canvas.Shape
+  (backdrop: Backdrop): (size: Size) => Draw.Shape
+  (size: Size, backdrop: Backdrop): Draw.Shape
 } = Function.dual(
   2,
-  ({ width, height }: Size, backdrop: Backdrop): Canvas.Shape =>
-    Canvas.Rect({ x: 0, y: 0, width, height, fill: BACKDROP_COLORS[backdrop] }),
+  ({ width, height }: Size, backdrop: Backdrop): Draw.Shape =>
+    Draw.Rect({ x: 0, y: 0, width, height, fill: BACKDROP_COLORS[backdrop] }),
 )
 
 export const sizeOf: {

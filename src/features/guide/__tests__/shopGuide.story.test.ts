@@ -1,18 +1,19 @@
-import { Array, Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
+import { Array, Effect, Option } from 'effect'
 
+import { Component, UiStruct } from '@effect/ui'
+import { Story } from '@effect/ui/testing'
 import { afterEach, describe, expect, it, test } from '@effect/vitest'
 
-import { MunchopediaBinding } from '../../../app/bindings'
+import { isPanelOpen } from '../../../app/menuState'
 import { Message } from '../../../app/message'
 import { FridgeDoor } from '../../../app/model'
 import { FIXED_STEP_MS } from '../../../shared/constants'
 import { atFridgeOnWave, home } from '../../../test/model.fixture'
 import {
-  APPLICATION,
-  resolveGuideFocus,
-  showDialog,
+  checkModel,
+  modelAfter,
+  send,
+  storyOf,
   ticks,
 } from '../../../test/testing'
 import { FRIDGE_RULES } from '../../../world/fridge/leftovers'
@@ -20,9 +21,9 @@ import { TRAPS } from '../../../world/gear/traps'
 import { UPGRADE_TIERS, WEAPONS } from '../../../world/gear/weapons'
 import { EXIT_RULES } from '../../../world/level/exits'
 import { LASER_SIGHT_NAME, PICKUP_NAMES } from '../../../world/names'
-import { GuideBinding as MunchopediaGuideBinding } from '../../munchopedia/bindings'
+import { munchopediaPropsOf } from '../../munchopedia/__tests__/munchopedia.fixture'
+import { FocusGuideControl, Munchopedia } from '../../munchopedia/block'
 import { Message as MunchopediaMessage } from '../../munchopedia/message'
-import { Message as GuideMessage } from '../message'
 import { GuideStatus } from '../model'
 import {
   type GuideEntry,
@@ -40,34 +41,29 @@ const barOf = (found: GuideEntry, stat: string) =>
   Option.getOrThrow(Array.findFirst(found.bars, bar => bar.stat === stat))
 
 describe('the Munchopedia Finds page', () => {
+  // NOTE: the root opens the panel on the Dare Journal; the guide is the
+  // Journal's own, so its taps are read in the Journal's Story, with the
+  // props the root hands it.
   it.effect(
     'the Finds tile opens the guide on Guns, and a section button turns it',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(home),
-        Story.message(Message.ClickedMunchopediaButton()),
-        showDialog(),
-        Story.messageIn(
-          MunchopediaBinding,
-          MunchopediaMessage.ClickedShopButton(),
-        ),
-        resolveGuideFocus,
-        Story.model(({ munchopedia }) => {
-          expect(munchopedia.guide.status).toEqual(
-            GuideStatus.Open({ section: 'Guns' }),
-          )
-        }),
-        Story.messageIn(
-          [MunchopediaBinding, MunchopediaGuideBinding],
-          GuideMessage.ClickedSectionButton({ section: 'House' }),
-        ),
-        Story.model(({ munchopedia }) => {
-          expect(munchopedia.guide.status).toEqual(
-            GuideStatus.Open({ section: 'House' }),
-          )
-        }),
-      ),
+      Effect.gen(function* () {
+        const opened = yield* modelAfter(
+          home,
+          send(Message.ClickedMunchopediaButton()),
+        )
+        expect(isPanelOpen(opened, 'Munchopedia')).toBe(true)
+        const s = yield* Story.make(Munchopedia, munchopediaPropsOf(opened))
+        s.send(MunchopediaMessage.ClickedShopButton()).resolve(
+          FocusGuideControl.make({ target: 'Back' }),
+          Component.noop,
+        )
+        expect(s.model.guide).toEqual(GuideStatus.Open({ section: 'Guns' }))
+        s.send(
+          MunchopediaMessage.ClickedGuideSectionButton({ section: 'House' }),
+        )
+        expect(s.model.guide).toEqual(GuideStatus.Open({ section: 'House' }))
+      }),
   )
 })
 
@@ -164,12 +160,11 @@ describe('the fridge prizes', () => {
   })
 
   it.effect('the fridge door opening on a prize writes it down, once', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        modifyFields(atFridgeOnWave(3, 0), {
+    Effect.gen(function* () {
+      const s = yield* storyOf(
+        UiStruct.evolve(atFridgeOnWave(3, 0), {
           fridge: fridge =>
-            modifyFields(fridge, {
+            UiStruct.evolve(fridge, {
               door: () =>
                 FridgeDoor.Open({
                   prize: 'Freeze',
@@ -179,14 +174,16 @@ describe('the fridge prizes', () => {
                 }),
             }),
         }),
-      ),
-      ...ticks(2, FIXED_STEP_MS),
-      Story.model(({ seenUnlocks }) => {
-        expect(
-          Array.filter(seenUnlocks, id => id === prizeUnlockId('Freeze')),
-        ).toHaveLength(1)
-        expect(seenUnlocks).not.toContain(prizeUnlockId('Cooker'))
-      }),
-    ),
+      )
+      s.pipe(
+        ticks(2, FIXED_STEP_MS),
+        checkModel(({ seenUnlocks }) => {
+          expect(
+            Array.filter(seenUnlocks, id => id === prizeUnlockId('Freeze')),
+          ).toHaveLength(1)
+          expect(seenUnlocks).not.toContain(prizeUnlockId('Cooker'))
+        }),
+      )
+    }),
   )
 })

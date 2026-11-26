@@ -1,7 +1,6 @@
-import { Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
+import { Effect, Option } from 'effect'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
 import { Message } from '../../../app/message'
@@ -9,7 +8,7 @@ import { type Model, Phase, Reload } from '../../../app/model'
 import { initialModel } from '../../../app/pureApp'
 import { holdingSecond } from '../../../test/arsenals'
 import { DISTANT_SPAWN } from '../../../test/model.fixture'
-import { APPLICATION, SURFACE } from '../../../test/testing'
+import { SURFACE, checkModel, send, storyOf } from '../../../test/testing'
 import { asVeteran } from '../../../test/veteran'
 import { heldWeapon } from '../../../world/gear/weapons'
 import { focusOf, modifyFocus } from '../../../world/party/party'
@@ -26,7 +25,7 @@ const MOVE_FINGER = 3
 
 const carrying = (loaded: number): Model =>
   modifyFocus(
-    modifyFields(asVeteran(initialModel), {
+    UiStruct.evolve(asVeteran(initialModel), {
       lastDevice: () => 'Touch',
       maybeSurface: () => Option.some(SURFACE),
       phase: () =>
@@ -35,7 +34,7 @@ const carrying = (loaded: number): Model =>
     }),
     {
       player: player =>
-        modifyFields(player, {
+        UiStruct.evolve(player, {
           arsenal: () =>
             holdingSecond({ kind: 'Smg', loaded, tier: 0, kills: 0 }),
         }),
@@ -63,82 +62,87 @@ describe('a HUD tap with the move stick held', () => {
   it.effect(
     'swaps guns while the first holds the move stick, and the stick stays held',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(carrying(20)),
-        Story.message(moveThumbDown),
-        Story.message(moveThumbDrag),
-        Story.model(({ input }) => {
-          expect(input.moveStick._tag).toBe('Active')
-        }),
-        Story.message(Message.ClickedGunSlot({ slot: 'First' })),
-        Story.model(({ input, seats: [{ player }] }) => {
-          expect(heldWeapon(player.arsenal)).toBe('Pistol')
-          expect(input.moveStick._tag).toBe('Active')
-        }),
-      ),
+      Effect.gen(function* () {
+        const s = yield* storyOf(carrying(20))
+        s.pipe(
+          send(moveThumbDown),
+          send(moveThumbDrag),
+          checkModel(({ input }) => {
+            expect(input.moveStick._tag).toBe('Active')
+          }),
+          send(Message.ClickedGunSlot({ slot: 'First' })),
+          checkModel(({ input, seats: [{ player }] }) => {
+            expect(heldWeapon(player.arsenal)).toBe('Pistol')
+            expect(input.moveStick._tag).toBe('Active')
+          }),
+        )
+      }),
   )
 
   it.effect('draws the knife and reloads while the move stick is held', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(carrying(20)),
-      Story.message(moveThumbDown),
-      Story.message(Message.ClickedMeleeSlot()),
-      Story.model(({ seats: [{ player }] }) => {
-        expect(player.wield).toBe('Melee')
-      }),
-      Story.message(Message.ClickedReloadButton()),
-      Story.model(current => {
-        expect(focusOf(current).player.wield).toBe('Gun')
-        expect(isReloading(current)).toBe(true)
-        expect(current.input.moveStick._tag).toBe('Active')
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(carrying(20))
+      s.pipe(
+        send(moveThumbDown),
+        send(Message.ClickedMeleeSlot()),
+        checkModel(({ seats: [{ player }] }) => {
+          expect(player.wield).toBe('Melee')
+        }),
+        send(Message.ClickedReloadButton()),
+        checkModel(current => {
+          expect(focusOf(current).player.wield).toBe('Gun')
+          expect(isReloading(current)).toBe(true)
+          expect(current.input.moveStick._tag).toBe('Active')
+        }),
+      )
+    }),
   )
 })
 
 describe('the reload button', () => {
   it.effect('reloads the held gun', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(carrying(20)),
-      Story.message(Message.ClickedReloadButton()),
-      Story.model(current => {
-        expect(isReloading(current)).toBe(true)
-        expect(heldWeapon(focusOf(current).player.arsenal)).toBe('Smg')
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(carrying(20))
+      s.pipe(
+        send(Message.ClickedReloadButton()),
+        checkModel(current => {
+          expect(isReloading(current)).toBe(true)
+          expect(heldWeapon(focusOf(current).player.arsenal)).toBe('Smg')
+        }),
+      )
+    }),
   )
 
   it.effect(
     'with the knife out, draws the last gun and reloads it, as R does',
     () => {
       const knifeOut = modifyFocus(carrying(20), {
-        player: player => modifyFields(player, { wield: () => 'Melee' }),
+        player: player => UiStruct.evolve(player, { wield: () => 'Melee' }),
       })
-      return Story.story(
-        APPLICATION,
-        Story.given(knifeOut),
-        Story.message(Message.ClickedReloadButton()),
-        Story.model(current => {
-          expect(focusOf(current).player.wield).toBe('Gun')
-          expect(heldWeapon(focusOf(current).player.arsenal)).toBe('Smg')
-          expect(isReloading(current)).toBe(true)
-        }),
-      )
+      return Effect.gen(function* () {
+        const s = yield* storyOf(knifeOut)
+        s.pipe(
+          send(Message.ClickedReloadButton()),
+          checkModel(current => {
+            expect(focusOf(current).player.wield).toBe('Gun')
+            expect(heldWeapon(focusOf(current).player.arsenal)).toBe('Smg')
+            expect(isReloading(current)).toBe(true)
+          }),
+        )
+      })
     },
   )
 
   it.effect('with a full magazine, loads nothing', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(carrying(30)),
-      Story.message(Message.ClickedReloadButton()),
-      Story.model(current => {
-        expect(isReloading(current)).toBe(false)
-        expect(focusOf(current).player.wield).toBe('Gun')
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(carrying(30))
+      s.pipe(
+        send(Message.ClickedReloadButton()),
+        checkModel(current => {
+          expect(isReloading(current)).toBe(false)
+          expect(focusOf(current).player.wield).toBe('Gun')
+        }),
+      )
+    }),
   )
 })

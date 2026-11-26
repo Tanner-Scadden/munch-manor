@@ -1,19 +1,37 @@
-import { Array, Predicate, Record, Result, String } from 'effect'
-import { Scene } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
+import { Array, Effect, Predicate, Record, Result, String } from 'effect'
 
+import { UiStruct } from '@effect/ui'
+import { HtmlLocator, HtmlScene } from '@effect/ui/html/testing'
+import { Locator } from '@effect/ui/testing'
 import { describe, it, expect as vitestExpect } from '@effect/vitest'
 
 import { Message } from '../../app/message'
 import { type Model, Phase } from '../../app/model'
+import { PressGameSurface } from '../../app/mount'
+import {
+  HAND_DIALOG_ID,
+  PANEL_DIALOG_ID,
+  PROFILE_DIALOG_ID,
+} from '../../domain/clientSchema'
+import { munchopediaPropsOf } from '../../features/munchopedia/__tests__/munchopedia.fixture'
+import { Munchopedia } from '../../features/munchopedia/block'
 import { ATLAS_SHEET } from '../../test/atlasHtml.setup'
 import { fighting, home } from '../../test/model.fixture'
 import {
-  APPLICATION,
-  SCENE_SUBSCRIPTIONS,
+  byClass,
+  emitPressedKey,
   measureSurface,
   openHandInScene,
   pickCardInScene,
+  requestDialogClose,
+  showDialog,
+} from '../../test/sceneTesting'
+import {
+  type SceneStep,
+  modelAfter,
+  sceneOf,
+  send,
+  steps,
 } from '../../test/testing'
 
 // NOTE: a production build draws every sprite as a cropped region of the
@@ -21,48 +39,50 @@ import {
 // an <img> or a CSS background cannot, so HTML that shows a sprite by its
 // own source shows the whole sheet squashed into the box. HTML must take
 // `standaloneSource(image)` instead.
-type Node = Readonly<{
-  sel?: string | undefined
-  data?: Readonly<Record<string, unknown>> | undefined
-  children?: ReadonlyArray<Node | string> | undefined
-}>
-
-const BAGS = ['attrs', 'props', 'style'] as const
+const BAGS = ['attrs', 'props'] as const
 
 // NOTE: every attribute, property, and style of the page (an <img> src, a
 // CSS background) that names the atlas sheet.
-const sheetUsesIn = (node: Node): ReadonlyArray<string> => [
-  ...Array.flatMap(BAGS, bag => {
-    const values = node.data?.[bag]
-    return Predicate.isObject(values)
-      ? Array.filterMap(Record.toEntries(values), ([name, value]) =>
-          Predicate.isString(value) && String.includes(ATLAS_SHEET)(value)
-            ? Result.succeed(`${node.sel ?? '?'} ${name}`)
-            : Result.failVoid,
-        )
-      : []
-  }),
-  ...Array.flatMap(node.children ?? [], child =>
-    Predicate.isString(child) ? [] : sheetUsesIn(child),
-  ),
-]
+const sheetUsesIn = (node: Locator.Node): ReadonlyArray<string> =>
+  Array.flatMap(Locator.elements(node), element =>
+    Array.flatMap(BAGS, bag => {
+      const values = element[bag]
+      return Predicate.isObject(values)
+        ? Array.filterMap(Record.toEntries(values), ([name, value]) =>
+            Predicate.isString(value) && String.includes(ATLAS_SHEET)(value)
+              ? Result.succeed(`${element.tag ?? '?'} ${name}`)
+              : Result.failVoid,
+          )
+        : []
+    }),
+  )
 
-const noSheetInHtml = () => [
-  Scene.tap(({ html }) => {
-    vitestExpect(sheetUsesIn(html)).toEqual([])
-  }),
-]
+const noSheetInHtml: SceneStep = s =>
+  s.check(() => {
+    vitestExpect(sheetUsesIn(s.root)).toEqual([])
+  })
+
+// NOTE: what `locator` finds whose src is an image of its own.
+const withOwnSource = (locator: Locator.Locator): Locator.Locator => ({
+  description: `${locator.description}[src^=data:image/png]`,
+  all: root =>
+    Array.filter(locator.all(root), node =>
+      String.startsWith('data:image/png')(node.attrs?.['src'] ?? ''),
+    ),
+})
 
 // NOTE: an image of its own, encoded from the sprite's pixels.
-const ownImages = (selected: string, count: number) => [
-  Scene.expectAll(Scene.all.selector(selected)).toHaveCount(count),
-  Scene.expectAll(
-    Scene.all.selector(`${selected}[src^="data:image/png"]`),
-  ).toHaveCount(count),
-]
+const ownImages =
+  (locator: Locator.Locator, count: number): SceneStep =>
+  s =>
+    s
+      .expect(locator)
+      .toHaveCount(count)
+      .expect(withOwnSource(locator))
+      .toHaveCount(count)
 
 const pausedOn = (device: Model['lastDevice']): Model =>
-  modifyFields(fighting, {
+  UiStruct.evolve(fighting, {
     lastDevice: () => device,
     phase: () =>
       Phase.Paused({
@@ -70,7 +90,7 @@ const pausedOn = (device: Model['lastDevice']): Model =>
       }),
   })
 
-const HELP_FRAMES = '.help-card-frame'
+const HELP_FRAMES = byClass('help-card-frame')
 
 // NOTE: every frame of the twelve control cards' moving pictures.
 const FRAMES_BY_DEVICE: Readonly<Record<Model['lastDevice'], number>> = {
@@ -83,61 +103,100 @@ describe('sprites in HTML', () => {
   it.effect(
     'How to play shows each card its own frames, not the atlas sheet',
     () =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(home),
-        measureSurface,
-        ...noSheetInHtml(),
-        ...openHandInScene(),
-        ...noSheetInHtml(),
-        ...pickCardInScene(/^How to play:/),
-        Scene.inside(
-          Scene.role('dialog', { name: 'How to play' }),
-          ...ownImages(HELP_FRAMES, FRAMES_BY_DEVICE.KeyboardMouse),
-        ),
-        ...noSheetInHtml(),
-      ),
+      Effect.gen(function* () {
+        const s = yield* sceneOf(home)
+        s.pipe(
+          measureSurface,
+          noSheetInHtml,
+          openHandInScene,
+          showDialog(HAND_DIALOG_ID),
+          noSheetInHtml,
+          pickCardInScene(/^How to play:/),
+          requestDialogClose(HAND_DIALOG_ID, 'close-press'),
+          showDialog(PANEL_DIALOG_ID),
+          ownImages(
+            Locator.inside(
+              HtmlLocator.role('dialog', { name: 'How to play' }),
+              HELP_FRAMES,
+            ),
+            FRAMES_BY_DEVICE.KeyboardMouse,
+          ),
+          noSheetInHtml,
+        )
+      }),
   )
 
   it.effect.each(['KeyboardMouse', 'Touch'] as const)(
     'the pause screen shows the %s cards without the atlas sheet',
     device =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(pausedOn(device)),
-        measureSurface,
-        ...noSheetInHtml(),
-        ...ownImages(HELP_FRAMES, FRAMES_BY_DEVICE[device]),
-      ),
+      Effect.gen(function* () {
+        const s = yield* sceneOf(pausedOn(device))
+        s.pipe(
+          measureSurface,
+          noSheetInHtml,
+          ownImages(HELP_FRAMES, FRAMES_BY_DEVICE[device]),
+          c => c.expectMount(PressGameSurface()),
+        )
+      }),
   )
 
+  // NOTE: the root opens the Dare Journal from the hand; the Journal is a
+  // child, a leaf in the root's Scene, so its list is drawn on its own with
+  // the props the root hands it.
   it.effect('the Munchopedia list shows each zombie its own image', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(home),
-      measureSurface,
-      ...openHandInScene(),
-      ...pickCardInScene(/^Dare Journal:/),
-      Scene.inside(
-        Scene.role('dialog', { name: 'Dare Journal' }),
-        ...ownImages('img', 7),
-      ),
-      ...noSheetInHtml(),
-    ),
+    Effect.gen(function* () {
+      const s = yield* sceneOf(home)
+      s.pipe(
+        measureSurface,
+        openHandInScene,
+        showDialog(HAND_DIALOG_ID),
+        pickCardInScene(/^Dare Journal:/),
+        requestDialogClose(HAND_DIALOG_ID, 'close-press'),
+        showDialog(PANEL_DIALOG_ID),
+        c =>
+          c
+            .expect(HtmlLocator.role('dialog', { name: 'Dare Journal' }))
+            .toExist(),
+        noSheetInHtml,
+      )
+      const opened = yield* modelAfter(
+        home,
+        steps(
+          send(Message.ClickedManorButton()),
+          send(Message.ClickedMunchopediaButton()),
+        ),
+      )
+      const journal = yield* HtmlScene.make(
+        Munchopedia,
+        munchopediaPropsOf(opened),
+      )
+      const images = Locator.tag('img')
+      journal
+        .expect(images)
+        .toHaveCount(7)
+        .expect(withOwnSource(images))
+        .toHaveCount(7)
+        .check(() => {
+          vitestExpect(sheetUsesIn(journal.root)).toEqual([])
+        })
+    }),
   )
 
   it.effect('the character picker shows no atlas sheet', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(home),
-      measureSurface,
-      ...openHandInScene(),
-      ...pickCardInScene(/^Character:/),
-      ...noSheetInHtml(),
-      Scene.Subscription.emit(
-        SCENE_SUBSCRIPTIONS.keyboard,
-        Message.PressedKey({ code: 'Escape' }),
-      ),
-    ),
+    Effect.gen(function* () {
+      const s = yield* sceneOf(home)
+      s.pipe(
+        steps(
+          measureSurface,
+          openHandInScene,
+          showDialog(HAND_DIALOG_ID),
+          pickCardInScene(/^Character:/),
+          requestDialogClose(HAND_DIALOG_ID, 'close-press'),
+          showDialog(PROFILE_DIALOG_ID),
+          noSheetInHtml,
+          emitPressedKey('Escape'),
+        ),
+      )
+    }),
   )
 })

@@ -1,11 +1,11 @@
 import { Array, Effect, Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
 import { Message } from '../../../app/message'
 import {
+  BreakClock,
   type DoorId,
   Frenzy,
   Invulnerability,
@@ -19,7 +19,13 @@ import {
 } from '../../../app/model'
 import { initialModel } from '../../../app/pureApp'
 import { PREPARATION_MS } from '../../../shared/constants'
-import { APPLICATION, ticks } from '../../../test/testing'
+import {
+  checkModel,
+  modelAfter,
+  send,
+  steps,
+  ticks,
+} from '../../../test/testing'
 import { TRAPS, trapBox } from '../../gear/traps'
 import { MANOR, levelOf } from '../../level/arena'
 import { distanceToBox } from '../../level/tileGrid'
@@ -52,13 +58,13 @@ const plank = (id: number, door: DoorId, hp = TRAPS.Barricade.hp): Trap =>
   Trap.Barricade({ id, door, hp, maxHp: TRAPS.Barricade.hp, hitRemainingMs: 0 })
 
 const base: Model = modifyFocus(
-  modifyFields(initialModel, {
+  UiStruct.evolve(initialModel, {
     maybeSurface: () =>
       Option.some({ left: 0, top: 0, width: 800, height: 400 }),
   }),
   {
     player: player =>
-      modifyFields(player, {
+      UiStruct.evolve(player, {
         invulnerability: () =>
           Invulnerability.Invulnerable({ remainingMs: 1e9, durationMs: 1e9 }),
       }),
@@ -69,7 +75,7 @@ const fighting = (
   spawns: ReadonlyArray<PlannedSpawn>,
   traps: ReadonlyArray<Trap>,
 ): Model =>
-  modifyFields(base, {
+  UiStruct.evolve(base, {
     phase: () =>
       Phase.Wave({ wave: 3, elapsedMs: 0, spawns: [...spawns, DISTANT_SPAWN] }),
     traps: () => traps,
@@ -99,26 +105,26 @@ describe('boarded doors are no spawn points', () => {
     'a pack due at a boarded door comes through the next open door clockwise',
     () =>
       Effect.gen(function* () {
-        yield* Story.story(
-          APPLICATION,
-          Story.given(fighting([spawnAt('North', 1)], [plank(1, 'North')])),
-          ...ticks(2, FRAME_MS),
-          Story.model(current => {
-            expect(doorsOf(current)).toEqual(['East'])
-          }),
-        )
-        yield* Story.story(
-          APPLICATION,
-          Story.given(
-            fighting(
-              [spawnAt('North', 1)],
-              [plank(1, 'North'), plank(2, 'East')],
-            ),
+        yield* modelAfter(
+          fighting([spawnAt('North', 1)], [plank(1, 'North')]),
+          steps(
+            ticks(2, FRAME_MS),
+            checkModel(current => {
+              expect(doorsOf(current)).toEqual(['East'])
+            }),
           ),
-          ...ticks(2, FRAME_MS),
-          Story.model(current => {
-            expect(doorsOf(current)).toEqual(['South'])
-          }),
+        )
+        yield* modelAfter(
+          fighting(
+            [spawnAt('North', 1)],
+            [plank(1, 'North'), plank(2, 'East')],
+          ),
+          steps(
+            ticks(2, FRAME_MS),
+            checkModel(current => {
+              expect(doorsOf(current)).toEqual(['South'])
+            }),
+          ),
         )
       }),
   )
@@ -129,47 +135,48 @@ describe('boarded doors are no spawn points', () => {
         spawnAt('North', 10, 0, 'Pincer'),
         spawnAt('South', 11, 0, 'Pincer'),
       ]
-      yield* Story.story(
-        APPLICATION,
-        Story.given(fighting(pincer, [plank(1, 'North'), plank(2, 'South')])),
-        ...ticks(2, FRAME_MS),
-        Story.model(current => {
-          expect(Array.sort(doorsOf(current), stringOrder)).toEqual([
-            'East',
-            'West',
-          ])
-        }),
+      yield* modelAfter(
+        fighting(pincer, [plank(1, 'North'), plank(2, 'South')]),
+        steps(
+          ticks(2, FRAME_MS),
+          checkModel(current => {
+            expect(Array.sort(doorsOf(current), stringOrder)).toEqual([
+              'East',
+              'West',
+            ])
+          }),
+        ),
       )
-      yield* Story.story(
-        APPLICATION,
-        Story.given(fighting(pincer, [plank(1, 'North'), plank(2, 'East')])),
-        ...ticks(2, FRAME_MS),
-        Story.model(current => {
-          expect(Array.sort(doorsOf(current), stringOrder)).toEqual([
-            'South',
-            'West',
-          ])
-        }),
+      yield* modelAfter(
+        fighting(pincer, [plank(1, 'North'), plank(2, 'East')]),
+        steps(
+          ticks(2, FRAME_MS),
+          checkModel(current => {
+            expect(Array.sort(doorsOf(current), stringOrder)).toEqual([
+              'South',
+              'West',
+            ])
+          }),
+        ),
       )
     }),
   )
 
   it.effect('the later pack of a pincer avoids the door its mate took', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        fighting(
-          [spawnAt('North', 10, 0, 'Pincer'), spawnAt('East', 11, 0, 'Pincer')],
-          [plank(1, 'North')],
-        ),
+    modelAfter(
+      fighting(
+        [spawnAt('North', 10, 0, 'Pincer'), spawnAt('East', 11, 0, 'Pincer')],
+        [plank(1, 'North')],
       ),
-      ...ticks(2, FRAME_MS),
-      Story.model(current => {
-        expect(Array.sort(doorsOf(current), stringOrder)).toEqual([
-          'East',
-          'South',
-        ])
-      }),
+      steps(
+        ticks(2, FRAME_MS),
+        checkModel(current => {
+          expect(Array.sort(doorsOf(current), stringOrder)).toEqual([
+            'East',
+            'South',
+          ])
+        }),
+      ),
     ),
   )
 
@@ -190,36 +197,36 @@ describe('boarded doors are no spawn points', () => {
         action: ZombieAction.Roaming(),
         frenzy: Frenzy.Calm(),
       }
-      return Story.story(
-        APPLICATION,
-        Story.given(
-          modifyFields(
-            fighting(
-              [spawnAt('North', 1), spawnAt('North', 2, 7000)],
-              [plank(1, 'North')],
-            ),
-            { zombies: () => [chewer] },
+      return modelAfter(
+        UiStruct.evolve(
+          fighting(
+            [spawnAt('North', 1), spawnAt('North', 2, 7000)],
+            [plank(1, 'North')],
           ),
+          { zombies: () => [chewer] },
         ),
-        ...ticks(2, FRAME_MS),
-        Story.model(current => {
-          expect(doorsOf(current)).toEqual(['North', 'East'])
-          expect(current.traps).toHaveLength(1)
-        }),
-        ...ticks(200, FRAME_MS),
-        Story.model(current => {
-          expect(current.traps).toEqual([])
-          expect(Array.drop(doorsOf(current), 2)).toEqual(['North'])
-        }),
+        steps(
+          ticks(2, FRAME_MS),
+          checkModel(current => {
+            expect(doorsOf(current)).toEqual(['North', 'East'])
+            expect(current.traps).toHaveLength(1)
+          }),
+          ticks(200, FRAME_MS),
+          checkModel(current => {
+            expect(current.traps).toEqual([])
+            expect(Array.drop(doorsOf(current), 2)).toEqual(['North'])
+          }),
+        ),
       )
     },
   )
 })
 
 const preparing: Model = modifyFocus(
-  modifyFields(base, {
+  UiStruct.evolve(base, {
     phase: () =>
       Phase.Preparation({
+        clock: BreakClock.Counting(),
         wave: 3,
         remainingMs: 15_000,
         durationMs: PREPARATION_MS,
@@ -230,7 +237,7 @@ const preparing: Model = modifyFocus(
     trapStock: () => ({ Barricade: 1, Turret: 0 }),
     selectedTrap: () => 'Barricade',
     player: player =>
-      modifyFields(player, {
+      UiStruct.evolve(player, {
         x: () => MANOR.doors.North.center.x,
         y: () => 27,
       }),
@@ -242,31 +249,31 @@ describe('the door preview follows the planks', () => {
     'a plank moves its door count, live, and a broken one moves it back',
     () =>
       Effect.gen(function* () {
-        yield* Story.story(
-          APPLICATION,
-          Story.given(preparing),
-          Story.model(current => {
-            expect(previewDoors(current)).toEqual(['North', 'West'])
-          }),
-          Story.message(Message.PressedKey({ code: 'KeyT' })),
-          Story.model(current => {
-            expect(current.traps).toHaveLength(1)
-            expect(previewDoors(current)).toEqual(['West', 'East'])
-          }),
-        )
-        yield* Story.story(
-          APPLICATION,
-          Story.given(
-            modifyFields(preparing, { traps: () => [plank(1, 'North', 0)] }),
+        yield* modelAfter(
+          preparing,
+          steps(
+            checkModel(current => {
+              expect(previewDoors(current)).toEqual(['North', 'West'])
+            }),
+            send(Message.PressedKey({ code: 'KeyT' })),
+            checkModel(current => {
+              expect(current.traps).toHaveLength(1)
+              expect(previewDoors(current)).toEqual(['West', 'East'])
+            }),
           ),
-          Story.model(current => {
-            expect(previewDoors(current)).toEqual(['West', 'East'])
-          }),
-          Story.message(Message.TickedFrame({ deltaTime: FRAME_MS })),
-          Story.model(current => {
-            expect(current.traps).toEqual([])
-            expect(previewDoors(current)).toEqual(['North', 'West'])
-          }),
+        )
+        yield* modelAfter(
+          UiStruct.evolve(preparing, { traps: () => [plank(1, 'North', 0)] }),
+          steps(
+            checkModel(current => {
+              expect(previewDoors(current)).toEqual(['West', 'East'])
+            }),
+            send(Message.TickedFrame({ deltaTime: FRAME_MS })),
+            checkModel(current => {
+              expect(current.traps).toEqual([])
+              expect(previewDoors(current)).toEqual(['North', 'West'])
+            }),
+          ),
         )
       }),
   )

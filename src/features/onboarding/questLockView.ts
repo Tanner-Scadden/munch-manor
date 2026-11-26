@@ -1,9 +1,9 @@
 import { Option } from 'effect'
-import type { Canvas } from 'foldkit'
 
 import type { Model } from '../../app/model'
 import { textShapes } from '../../art/font'
 import { group } from '../../art/sprite'
+import type * as Draw from '../../render/draw'
 import { FULL_TURN } from '../../render/drawing'
 import { doorArrowShapes } from '../../render/powerupView'
 import { maybeLockProgress, maybePadlockNudge } from './firstBreakQuest'
@@ -21,7 +21,7 @@ const PROGRESS_DROP_PX = 4
 const NUDGE_PULSE_MS = 1200
 const NUDGE_LOW = 0.35
 
-const progressShapes = (model: Model): ReadonlyArray<Canvas.Shape> =>
+const progressShapes = (model: Model): ReadonlyArray<Draw.Shape> =>
   Option.match(maybeLockProgress(model), {
     onNone: () => [],
     onSome: ({ box, held, price }) =>
@@ -34,7 +34,7 @@ const progressShapes = (model: Model): ReadonlyArray<Canvas.Shape> =>
       ),
   })
 
-const nudgeShapes = (model: Model): ReadonlyArray<Canvas.Shape> =>
+const nudgeShapes = (model: Model): ReadonlyArray<Draw.Shape> =>
   Option.match(maybePadlockNudge(model), {
     onNone: () => [],
     onSome: mark => [
@@ -50,7 +50,7 @@ const nudgeShapes = (model: Model): ReadonlyArray<Canvas.Shape> =>
     ],
   })
 
-export const questLockShapes = (model: Model): ReadonlyArray<Canvas.Shape> => [
+export const questLockShapes = (model: Model): ReadonlyArray<Draw.Shape> => [
   ...progressShapes(model),
   ...nudgeShapes(model),
 ]

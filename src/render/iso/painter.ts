@@ -3,7 +3,6 @@
 // A floor layer shows what it paints on a plane over the floor.
 
 import { Array, Match, Option } from 'effect'
-import type { Canvas } from 'foldkit'
 import {
   type Application,
   Container,
@@ -22,6 +21,7 @@ import {
 } from '@pixi/3d'
 
 import type { Level } from '../../world/level/arena'
+import type * as Draw from '../draw'
 import { type Affine, type Leaf, flatten, isSameLeaves } from './flatten'
 import { STRETCH, UNIT, zOf } from './space'
 import { type Textures, colorOf } from './textures'
@@ -53,7 +53,7 @@ const fillAndStroke = (
 
 type Trace = (graphics: Graphics) => void
 
-const traceStep = Match.type<Canvas.Path['instructions'][number]>().pipe(
+const traceStep = Match.type<Draw.Path['instructions'][number]>().pipe(
   Match.tagsExhaustive({
     MoveTo:
       ({ x, y }): Trace =>
@@ -81,13 +81,13 @@ const traceStep = Match.type<Canvas.Path['instructions'][number]>().pipe(
   }),
 )
 
-const tracePath = (graphics: Graphics, path: Canvas.Path): void => {
+const tracePath = (graphics: Graphics, path: Draw.Path): void => {
   for (const step of path.instructions) {
     traceStep(step)(graphics)
   }
 }
 
-type VectorShape = Exclude<Canvas.Shape, Canvas.Group | Canvas.Image>
+type VectorShape = Exclude<Draw.Shape, Draw.Group | Draw.Image>
 
 type Draw = (graphics: Graphics, alpha: number) => void
 
@@ -113,7 +113,6 @@ const drawOf = Match.type<VectorShape>().pipe(
         tracePath(graphics, shape)
         fillAndStroke(graphics, shape, alpha)
       },
-    Text: (): Draw => () => undefined,
   }),
 )
 
@@ -136,7 +135,7 @@ export class FlatPainter {
     this.textures = textures
   }
 
-  paint(shapes: ReadonlyArray<Canvas.Shape>): void {
+  paint(shapes: ReadonlyArray<Draw.Shape>): void {
     this.paintLeaves(flatten(shapes))
   }
 
@@ -237,7 +236,7 @@ export class FloorPicture {
     })
   }
 
-  paint(shapes: ReadonlyArray<Canvas.Shape>): void {
+  paint(shapes: ReadonlyArray<Draw.Shape>): void {
     this.paintLeaves(flatten(shapes))
   }
 

@@ -1,7 +1,6 @@
 import { Array, Effect, Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
 import { Message } from '../../app/message'
@@ -9,13 +8,18 @@ import { type Model, Phase } from '../../app/model'
 import { initialModel } from '../../app/pureApp'
 import { FIXED_STEP_MS, PLAYER_MAX_HP } from '../../shared/constants'
 import {
-  APPLICATION,
+  type AppStory,
   changeModel,
+  checkModel,
   isPlaying,
   messageIfAny,
+  modelAfter,
   playedThrough,
   resolveFocusLobby,
+  send,
   settleRunCommands,
+  steps,
+  storyOf,
   throughIntro,
 } from '../../test/testing'
 import { asVeteran } from '../../test/veteran'
@@ -152,7 +156,7 @@ const refillHearts = (current: Model): Model =>
   withWorld(current, world =>
     forEachSeat(world, seatWorld =>
       modifyFocus(seatWorld, {
-        player: player => modifyFields(player, { hp: () => PLAYER_MAX_HP }),
+        player: player => UiStruct.evolve(player, { hp: () => PLAYER_MAX_HP }),
       }),
     ),
   )
@@ -201,30 +205,36 @@ const waveFrame = (frame: number) => [
         ),
       ]
     : []),
-  Story.message(FRAME),
+  send(FRAME),
   changeModel(refillHearts),
 ]
 
 // NOTE: up to `length` frames of a wave from `start`, and the Model each
 // frame left, gathered in an array the Story alone fills.
-const waveStretch = (start: Model, first: number, length: number) =>
-  Effect.suspend(() => {
-    const ends: Array<Model> = []
-    return Story.story(
-      APPLICATION,
-      Story.given(start),
-      ...Array.flatMap(
-        Array.makeBy(length, index => first + index),
-        frame => [
-          ...waveFrame(frame),
-          Story.model((current: Model) => {
-            ends.push(current)
-          }),
-        ],
-      ),
-      settleRunCommands,
-    ).pipe(Effect.as<ReadonlyArray<Model>>(ends))
-  })
+const waveStretch = (
+  start: Model,
+  first: number,
+  length: number,
+): Effect.Effect<ReadonlyArray<Model>> =>
+  Effect.scoped(
+    Effect.gen(function* () {
+      const ends: Array<Model> = []
+      const s = yield* storyOf(start)
+      steps<AppStory>(
+        ...Array.flatMap(
+          Array.makeBy(length, index => first + index),
+          frame => [
+            ...waveFrame(frame),
+            checkModel((current: Model) => {
+              ends.push(current)
+            }),
+          ],
+        ),
+        settleRunCommands,
+      )(s)
+      return ends
+    }),
+  )
 
 type Played = Readonly<{ end: Model; frames: number }>
 
@@ -266,7 +276,7 @@ describe('two keyboards on one desktop', () => {
     () =>
       Effect.gen(function* () {
         const ready = yield* playedThrough(
-          modifyFields(asVeteran(initialModel), {
+          UiStruct.evolve(asVeteran(initialModel), {
             // NOTE: seed 4 played until the library's layer opened the
             // dining room's east door onto the yard inside the map; from
             // then on its wave 2 ended in four zombies circling the two
@@ -285,14 +295,15 @@ describe('two keyboards on one desktop', () => {
           }),
           [Message.MeasuredGameSurface(SURFACE)],
         )
-        const started = yield* Story.story(
-          APPLICATION,
-          Story.given(ready),
-          ...Array.map(tap('Enter'), Story.message),
-          resolveFocusLobby(),
-          ...Array.map(tap('Enter'), Story.message),
-          throughIntro,
-          settleRunCommands,
+        const started = yield* modelAfter(
+          ready,
+          steps<AppStory>(
+            ...Array.map(tap('Enter'), message => send(message)),
+            resolveFocusLobby(),
+            ...Array.map(tap('Enter'), message => send(message)),
+            throughIntro,
+            settleRunCommands,
+          ),
         )
         expect(playersOf(started)).toHaveLength(2)
         const { end, frames } = yield* playFrom({ end: started, frames: 0 })

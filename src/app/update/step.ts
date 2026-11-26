@@ -1,23 +1,40 @@
 import { Function, type Layer } from 'effect'
-import { type Block, Update } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
+
+import { type Component, UiStruct } from '@effect/ui'
 
 import { releaseAll } from '../../input/input'
 import type { Input } from '../../input/inputSchema'
-import type { ApplicationComposition } from '../composition'
 import { refreshIntent } from '../frame'
 import type { CommandsLayer } from '../layer'
 import type { Message } from '../message'
 import type { Model } from '../model'
 
-// NOTE: the handlers the root's Commands need, read off the Layer that
-// supplies them, so a plain Step can return any root Command. A Step that
-// opens a dialog or talks to co-op uses a Binding, which needs the root's
-// graph: author it with `makeStep` from src/app/definition.ts instead.
+// NOTE: the Command services the root's Steps may run, read off the Layer
+// that supplies them, so a Step can run any root Command and the root
+// requires exactly them.
 type AppHandlers = Layer.Success<typeof CommandsLayer>
 
-export type UpdateReturn = Update.Return<Model, Message, AppHandlers>
-export type UpdateStep = Update.Step<Model, Message, AppHandlers>
+type Tagged<Tag extends Message['_tag']> = (typeof Message.cases)[Tag]['Type']
+
+// NOTE: `$` in the root's update: a Step holding the current Model, as
+// Effect UI's `update` hands it. `Cur` is the Message being handled.
+export type App$<Cur extends Message = Message> = Component.Update<
+  Model,
+  Message,
+  never,
+  {},
+  {},
+  Cur
+>
+
+// NOTE: what a root Step returns: the next Model alone, or a Step with the
+// Commands it runs.
+type AppStep = Component.Step<Model, Message, never, AppHandlers>
+export type UpdateReturn = Model | AppStep
+
+// NOTE: a root Step: an update function over any Message, so `$.combine`
+// in any handler can run it (Effect UI, "Building a component").
+export type UpdateStep = ($: App$) => UpdateReturn
 
 export const withInput: {
   (toNextInput: (input: Input) => Input): (model: Model) => Model
@@ -25,54 +42,42 @@ export const withInput: {
 } = Function.dual(
   2,
   (model: Model, toNextInput: (input: Input) => Input): Model =>
-    refreshIntent(modifyFields(model, { input: toNextInput })),
+    refreshIntent(UiStruct.evolve(model, { input: toNextInput })),
 )
 
-export const unchanged: UpdateStep = model => ({ model })
+export const unchanged: UpdateStep = $ => $.model
 
 // NOTE: a Step that only changes the Model, from a plain Model function.
 export const modelStep =
   (change: (model: Model) => Model): UpdateStep =>
-  model => ({ model: change(model) })
+  $ =>
+    change($.model)
 
 // NOTE: lets go of every key, button, and stick, as a menu opens over play.
 export const releaseInput = modelStep(model => withInput(model, releaseAll))
 
-// NOTE: the first Step of a Step built from the Model it is given (inside
-// `makeStep`): the Model it made from that one.
+// NOTE: a Step that puts in a Model already built from the one it was
+// handed, so the Steps after it in a `$.combine` start from it.
 export const toModel =
   (next: Model): UpdateStep =>
-  () => ({ model: next })
+  () =>
+    next
 
-// NOTE: Update.combineSteps for plain Steps, typed to the root Model, so a
-// Model just built by modifyFields fits. Steps that use a Binding combine
-// with Update.combineSteps itself, inside `makeStep`.
-export const combine: {
-  (steps: ReadonlyArray<UpdateStep>): (model: Model) => UpdateReturn
-  (model: Model, steps: ReadonlyArray<UpdateStep>): UpdateReturn
-} = Function.dual(
-  2,
-  (model: Model, steps: ReadonlyArray<UpdateStep>): UpdateReturn =>
-    Update.combineSteps(model, steps),
-)
+// NOTE: Steps run one after another, each from the Model the one before
+// returned, as `$.combine` runs them.
+export const combine =
+  (steps: ReadonlyArray<UpdateStep>): UpdateStep =>
+  $ =>
+    $.combine(...steps)
 
-// NOTE: a group of the root's local handlers, authored beside the Steps it
-// calls and spread into the one exhaustive `makeUpdate` in src/app/main.ts.
-// The record keeps each handler's own result type, and its parameters are
-// typed by the tag, as they would be inline.
-// The Model a handler receives inside the Composition: it carries the
-// registered Binding graph, so a connected Step applies to it.
-type HandlerModel = Model &
-  Update.GraphCapability<
-    Model,
-    Block.RequirementsOfBindings<(typeof ApplicationComposition)['bindings']>
-  >
-
+// NOTE: a group of the root's handlers, authored beside the Steps it calls
+// and spread into the one exhaustive record in src/app/main.ts. Each
+// handler's `$` and Message are typed by its tag, as they would be inline.
 type Handlers = {
   readonly [Tag in Message['_tag']]?: (
-    model: HandlerModel,
-    message: (typeof Message)[Tag]['Type'],
-  ) => unknown
+    $: App$<Tagged<Tag>>,
+    message: Tagged<Tag>,
+  ) => UpdateReturn
 }
 
 export const defineHandlers = <const Group extends Handlers>(

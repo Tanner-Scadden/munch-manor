@@ -1,10 +1,10 @@
 import { Array, Effect, Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
 import {
+  BreakClock,
   type CarriedGun,
   GameEvent,
   type GunPerk,
@@ -32,13 +32,15 @@ import {
   withFeatsOf,
 } from '../../../test/model.fixture'
 import {
-  APPLICATION,
   FRIDGE_OPEN_TICKS,
   HOLD_TICKS,
+  checkModel,
   holdEnter,
   holdFire,
+  modelAfter,
   press,
   release,
+  steps,
   tick,
   ticks,
   ticksFor,
@@ -83,18 +85,18 @@ const heldPerk = (current: Model): Option.Option<GunPerk> =>
 const withArsenalOf = (base: Model, second: CarriedGun): Model =>
   modifyFocus(base, {
     player: player =>
-      modifyFields(player, { arsenal: () => holdingSecond(second) }),
+      UiStruct.evolve(player, { arsenal: () => holdingSecond(second) }),
   })
 
 const withPistolOf = (base: Model, pistol: CarriedGun): Model =>
   modifyFocus(base, {
     player: player =>
-      modifyFields(player, { arsenal: () => pistolOnly(pistol) }),
+      UiStruct.evolve(player, { arsenal: () => pistolOnly(pistol) }),
   })
 
 // NOTE: a wave under way in a veteran's run, on a measured surface, so a
 // thumb on the aim stick fires.
-const midWave: Model = modifyFields(freshRunModel(), {
+const midWave: Model = UiStruct.evolve(freshRunModel(), {
   phase: () => Phase.Wave({ wave: 3, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
 })
 
@@ -104,8 +106,8 @@ const withCooking = (base: Model, cooks: number, lastWave = 0): Model =>
 // NOTE: the stove's roll, made in place, so a test can start from any
 // perk on offer.
 const offering = (base: Model, perk: GunPerk): Model =>
-  modifyFields(base, {
-    stove: stove => modifyFields(stove, { perk: () => perk, wave: () => 5 }),
+  UiStruct.evolve(base, {
+    stove: stove => UiStruct.evolve(stove, { perk: () => perk, wave: () => 5 }),
   })
 
 const cookedPistol = (perk: GunPerk): CarriedGun => ({
@@ -119,20 +121,25 @@ describe('the stove rolls its perk', () => {
     () => {
       const start = atStove(500)
       const firstState = start.stove.rngState
-      return Story.story(
-        APPLICATION,
-        Story.given(start),
-        tick(FRAME_MS),
-        Story.model(current => {
-          expect(current.stove.wave).toBe(5)
-          expect(current.stove.perk).toBe(rolledFrom(firstState))
-          expect(current.stove.rngState).toBe(nextRandom(firstState).nextState)
-        }),
-        ...ticks(30, FRAME_MS),
-        Story.model(current => {
-          expect(current.stove.perk).toBe(rolledFrom(firstState))
-          expect(current.stove.rngState).toBe(nextRandom(firstState).nextState)
-        }),
+      return modelAfter(
+        start,
+        steps(
+          tick(FRAME_MS),
+          checkModel(current => {
+            expect(current.stove.wave).toBe(5)
+            expect(current.stove.perk).toBe(rolledFrom(firstState))
+            expect(current.stove.rngState).toBe(
+              nextRandom(firstState).nextState,
+            )
+          }),
+          ticks(30, FRAME_MS),
+          checkModel(current => {
+            expect(current.stove.perk).toBe(rolledFrom(firstState))
+            expect(current.stove.rngState).toBe(
+              nextRandom(firstState).nextState,
+            )
+          }),
+        ),
       )
     },
   )
@@ -140,7 +147,7 @@ describe('the stove rolls its perk', () => {
   test('the next break rolls again from where the last left off, and no other roll moves', () => {
     const rolled = rollStove(atStove(500))
     const next = rollStove(
-      modifyFields(rolled, { phase: () => kitchenBreak(6) }),
+      UiStruct.evolve(rolled, { phase: () => kitchenBreak(6) }),
     )
     expect(next.stove.wave).toBe(6)
     expect(next.stove.perk).toBe(rolledFrom(rolled.stove.rngState))
@@ -156,23 +163,25 @@ describe('the stove rolls its perk', () => {
       const inWave = (wave: number): Phase =>
         Phase.Wave({ wave, elapsedMs: 5000, spawns: [DISTANT_SPAWN] })
       return Effect.gen(function* () {
-        yield* Story.story(
-          APPLICATION,
-          Story.given(modifyFields(rolled, { phase: () => inWave(5) })),
-          tick(FRAME_MS),
-          Story.model(current => {
-            expect(current.stove).toEqual(rolled.stove)
-            expect(Option.isSome(stoveOffer(current))).toBe(true)
-          }),
+        yield* modelAfter(
+          UiStruct.evolve(rolled, { phase: () => inWave(5) }),
+          steps(
+            tick(FRAME_MS),
+            checkModel(current => {
+              expect(current.stove).toEqual(rolled.stove)
+              expect(Option.isSome(stoveOffer(current))).toBe(true)
+            }),
+          ),
         )
-        yield* Story.story(
-          APPLICATION,
-          Story.given(modifyFields(rolled, { phase: () => inWave(6) })),
-          tick(FRAME_MS),
-          Story.model(current => {
-            expect(current.stove.wave).toBe(6)
-            expect(current.stove.perk).toBe(rolledFrom(rolled.stove.rngState))
-          }),
+        yield* modelAfter(
+          UiStruct.evolve(rolled, { phase: () => inWave(6) }),
+          steps(
+            tick(FRAME_MS),
+            checkModel(current => {
+              expect(current.stove.wave).toBe(6)
+              expect(current.stove.perk).toBe(rolledFrom(rolled.stove.rngState))
+            }),
+          ),
         )
       })
     },
@@ -183,24 +192,23 @@ describe('cooking a gun', () => {
   it.effect(
     'holding Enter at the stove for a second cooks the perk into the gun in hand, free',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(
-          offering(withArsenalOf(atStove(500), freshGun('Smg')), 'Crispy'),
+      modelAfter(
+        offering(withArsenalOf(atStove(500), freshGun('Smg')), 'Crispy'),
+        steps(
+          press('Enter'),
+          ticks(HOLD_TICKS, FRAME_MS),
+          checkModel(current => {
+            expect(Option.isNone(heldPerk(current))).toBe(true)
+            expect(current.keys.held).toBe(500)
+          }),
+          ticks(COOK_TICKS - HOLD_TICKS, FRAME_MS),
+          release('Enter'),
+          checkModel(current => {
+            expect(heldPerk(current)).toEqual(Option.some('Crispy'))
+            expect(current.keys.held).toBe(500)
+            expect(focusOf(current).cooking).toEqual({ cooks: 1, lastWave: 5 })
+          }),
         ),
-        press('Enter'),
-        ...ticks(HOLD_TICKS, FRAME_MS),
-        Story.model(current => {
-          expect(Option.isNone(heldPerk(current))).toBe(true)
-          expect(current.keys.held).toBe(500)
-        }),
-        ...ticks(COOK_TICKS - HOLD_TICKS, FRAME_MS),
-        release('Enter'),
-        Story.model(current => {
-          expect(heldPerk(current)).toEqual(Option.some('Crispy'))
-          expect(current.keys.held).toBe(500)
-          expect(focusOf(current).cooking).toEqual({ cooks: 1, lastWave: 5 })
-        }),
       ),
   )
 
@@ -208,10 +216,10 @@ describe('cooking a gun', () => {
     const killsOf = (kills: number, calling: Calling): Model =>
       modifyFocus(
         withFeatsOf(rollStove(atStove(0)), tally =>
-          modifyFields(tally, { kitchenKills: () => kills }),
+          UiStruct.evolve(tally, { kitchenKills: () => kills }),
         ),
         {
-          player: player => modifyFields(player, { calling: () => calling }),
+          player: player => UiStruct.evolve(player, { calling: () => calling }),
         },
       )
     const isOffered = (model: Model): boolean =>
@@ -230,24 +238,24 @@ describe('cooking a gun', () => {
   })
 
   it.effect('a wave beginning starts the kitchen kills again', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        modifyFields(atStove(0), {
-          phase: () =>
-            Phase.Preparation({
-              wave: 5,
-              remainingMs: FRAME_MS,
-              durationMs: 120_000,
-              spawns: [DISTANT_SPAWN],
-            }),
+    modelAfter(
+      UiStruct.evolve(atStove(0), {
+        phase: () =>
+          Phase.Preparation({
+            clock: BreakClock.Counting(),
+            wave: 5,
+            remainingMs: FRAME_MS,
+            durationMs: 120_000,
+            spawns: [DISTANT_SPAWN],
+          }),
+      }),
+      steps(
+        ticks(3, FRAME_MS),
+        checkModel(current => {
+          expect(current.phase._tag).toBe('Wave')
+          expect(focusOf(current).feats.kitchenKills).toBe(0)
         }),
       ),
-      ...ticks(3, FRAME_MS),
-      Story.model(current => {
-        expect(current.phase._tag).toBe('Wave')
-        expect(focusOf(current).feats.kitchenKills).toBe(0)
-      }),
     ),
   )
 
@@ -255,22 +263,23 @@ describe('cooking a gun', () => {
     'one cook a break: once cooked the stove offers nothing more until the next break',
     () =>
       Effect.gen(function* () {
-        yield* Story.story(
-          APPLICATION,
-          Story.given(offering(atStove(1000), 'Spicy')),
-          ...cook,
-          Story.model(current => {
-            expect(heldPerk(current)).toEqual(Option.some('Spicy'))
-            expect(Option.isNone(stoveOffer(current))).toBe(true)
-          }),
-          ...cook,
-          Story.model(current => {
-            expect(focusOf(current).cooking.cooks).toBe(1)
-          }),
+        yield* modelAfter(
+          offering(atStove(1000), 'Spicy'),
+          steps(
+            cook,
+            checkModel(current => {
+              expect(heldPerk(current)).toEqual(Option.some('Spicy'))
+              expect(Option.isNone(stoveOffer(current))).toBe(true)
+            }),
+            cook,
+            checkModel(current => {
+              expect(focusOf(current).cooking.cooks).toBe(1)
+            }),
+          ),
         )
         const nextBreak = rollStove(
           withCooking(
-            modifyFields(atStove(1000), { phase: () => kitchenBreak(6) }),
+            UiStruct.evolve(atStove(1000), { phase: () => kitchenBreak(6) }),
             1,
             5,
           ),
@@ -283,19 +292,23 @@ describe('cooking a gun', () => {
     'mid-wave the stove cooks too, once a round: a cook in the break leaves nothing in its wave',
     () => {
       const inWave = (base: Model): Model =>
-        modifyFields(base, {
+        UiStruct.evolve(base, {
           phase: () =>
             Phase.Wave({ wave: 5, elapsedMs: 5000, spawns: [DISTANT_SPAWN] }),
         })
       return Effect.gen(function* () {
-        yield* Story.story(
-          APPLICATION,
-          Story.given(inWave(offering(atStove(500), 'Crispy'))),
-          ...cook,
-          Story.model(current => {
-            expect(heldPerk(current)).toEqual(Option.some('Crispy'))
-            expect(focusOf(current).cooking).toEqual({ cooks: 1, lastWave: 5 })
-          }),
+        yield* modelAfter(
+          inWave(offering(atStove(500), 'Crispy')),
+          steps(
+            cook,
+            checkModel(current => {
+              expect(heldPerk(current)).toEqual(Option.some('Crispy'))
+              expect(focusOf(current).cooking).toEqual({
+                cooks: 1,
+                lastWave: 5,
+              })
+            }),
+          ),
         )
         const cookedInBreak = inWave(
           withCooking(offering(atStove(500), 'Crispy'), 1, 5),
@@ -306,22 +319,21 @@ describe('cooking a gun', () => {
   )
 
   it.effect('cooking a gun that has a perk puts the new one in its place', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        offering(withArsenalOf(atStove(500), cookedPistol('Hearty')), 'Spicy'),
+    modelAfter(
+      offering(withArsenalOf(atStove(500), cookedPistol('Hearty')), 'Spicy'),
+      steps(
+        cook,
+        checkModel(current => {
+          expect(heldPerk(current)).toEqual(Option.some('Spicy'))
+        }),
       ),
-      ...cook,
-      Story.model(current => {
-        expect(heldPerk(current)).toEqual(Option.some('Spicy'))
-      }),
     ),
   )
 })
 
 describe('what the stove will not cook', () => {
   const knifeOut = modifyFocus(atStove(500), {
-    player: player => modifyFields(player, { wield: () => 'Melee' }),
+    player: player => UiStruct.evolve(player, { wield: () => 'Melee' }),
   })
   const freezeInHand = withArsenalOf(atStove(500), freshGun('Freeze'))
 
@@ -331,70 +343,73 @@ describe('what the stove will not cook', () => {
   ] as const)(
     '%s in hand is refused, briefly, and nothing is cooked',
     ([, base]) =>
-      Story.story(
-        APPLICATION,
-        Story.given(base),
-        tick(FRAME_MS),
-        Story.model(current => {
-          expect(
-            Option.map(stoveOffer(current), ({ isFull }) => isFull),
-          ).toEqual(Option.some(true))
-        }),
-        press('Enter'),
-        tick(FRAME_MS),
-        Story.model(current => {
-          expect(Purchase.isAnyOf(['Refused'])(focusOf(current).purchase)).toBe(
-            true,
-          )
-          expect(
-            Array.some(
-              current.frameEvents,
-              GameEvent.isAnyOf(['PurchaseRefused']),
-            ),
-          ).toBe(true)
-        }),
-        ...ticks(COOK_TICKS, FRAME_MS),
-        release('Enter'),
-        Story.model(current => {
-          expect(current.keys.held).toBe(500)
-          expect(focusOf(current).cooking.cooks).toBe(0)
-          expect(Option.isNone(heldPerk(current))).toBe(true)
-        }),
+      modelAfter(
+        base,
+        steps(
+          tick(FRAME_MS),
+          checkModel(current => {
+            expect(
+              Option.map(stoveOffer(current), ({ isFull }) => isFull),
+            ).toEqual(Option.some(true))
+          }),
+          press('Enter'),
+          tick(FRAME_MS),
+          checkModel(current => {
+            expect(
+              Purchase.isAnyOf(['Refused'])(focusOf(current).purchase),
+            ).toBe(true)
+            expect(
+              Array.some(
+                current.frameEvents,
+                GameEvent.isAnyOf(['PurchaseRefused']),
+              ),
+            ).toBe(true)
+          }),
+          ticks(COOK_TICKS, FRAME_MS),
+          release('Enter'),
+          checkModel(current => {
+            expect(current.keys.held).toBe(500)
+            expect(focusOf(current).cooking.cooks).toBe(0)
+            expect(Option.isNone(heldPerk(current))).toBe(true)
+          }),
+        ),
       ),
   )
 })
 
 describe('what each perk does', () => {
   it.effect('Spicy hits 30% harder and glows hot', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(withPistolOf(midWave, cookedPistol('Spicy'))),
-      holdFire,
-      tick(FRAME_MS),
-      Story.model(({ bullets }) => {
-        const bullet = Option.getOrThrow(Array.head(bullets))
-        expect(bullet.damage).toBeCloseTo(
-          PISTOL_DAMAGE * PERK_RULES.spicyDamageScale,
-          9,
-        )
-        expect(bullet.glaze).toBe('Spicy')
-      }),
+    modelAfter(
+      withPistolOf(midWave, cookedPistol('Spicy')),
+      steps(
+        holdFire,
+        tick(FRAME_MS),
+        checkModel(({ bullets }) => {
+          const bullet = Option.getOrThrow(Array.head(bullets))
+          expect(bullet.damage).toBeCloseTo(
+            PISTOL_DAMAGE * PERK_RULES.spicyDamageScale,
+            9,
+          )
+          expect(bullet.glaze).toBe('Spicy')
+        }),
+      ),
     ),
   )
 
   it.effect('Crispy skewers one zombie more', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(withPistolOf(midWave, cookedPistol('Crispy'))),
-      holdFire,
-      tick(FRAME_MS),
-      Story.model(({ bullets }) => {
-        const bullet = Option.getOrThrow(Array.head(bullets))
-        expect(bullet.pierce).toEqual(
-          Pierce.Skewers({ left: PERK_RULES.crispyPierce, struck: [] }),
-        )
-        expect(bullet.damage).toBe(PISTOL_DAMAGE)
-      }),
+    modelAfter(
+      withPistolOf(midWave, cookedPistol('Crispy')),
+      steps(
+        holdFire,
+        tick(FRAME_MS),
+        checkModel(({ bullets }) => {
+          const bullet = Option.getOrThrow(Array.head(bullets))
+          expect(bullet.pierce).toEqual(
+            Pierce.Skewers({ left: PERK_RULES.crispyPierce, struck: [] }),
+          )
+          expect(bullet.damage).toBe(PISTOL_DAMAGE)
+        }),
+      ),
     ),
   )
 
@@ -407,14 +422,15 @@ describe('what each perk does', () => {
       )
       expect(carriedMagazine('You', hearty)).toBe(bigger)
       expect(carriedMagazine('You', freshGun('Pistol'))).toBe(PISTOL_MAGAZINE)
-      return Story.story(
-        APPLICATION,
-        Story.given(withPistolOf(midWave, { ...hearty, loaded: 0 })),
-        press('KeyR'),
-        ...ticksFor(PISTOL_RELOAD_MS + 100, FRAME_MS),
-        Story.model(current => {
-          expect(heldGun(focusOf(current).player.arsenal).loaded).toBe(bigger)
-        }),
+      return modelAfter(
+        withPistolOf(midWave, { ...hearty, loaded: 0 }),
+        steps(
+          press('KeyR'),
+          ticksFor(PISTOL_RELOAD_MS + 100, FRAME_MS),
+          checkModel(current => {
+            expect(heldGun(focusOf(current).player.arsenal).loaded).toBe(bigger)
+          }),
+        ),
       )
     },
   )
@@ -427,7 +443,7 @@ describe('what each perk does', () => {
       const start = fridgeSeededFor(
         modifyFocus(atFridge(500), {
           player: player =>
-            modifyFields(player, {
+            UiStruct.evolve(player, {
               arsenal: () =>
                 Arsenal.HoldingSecond({
                   first: crispyPistol,
@@ -438,20 +454,21 @@ describe('what each perk does', () => {
         'Cooker',
       )
       const pull = holdEnter(HOLD_TICKS)
-      return Story.story(
-        APPLICATION,
-        Story.given(start),
-        ...pull,
-        ...ticks(FRIDGE_OPEN_TICKS, FRAME_MS),
-        ...pull,
-        Story.model(current => {
-          expect(focusOf(current).player.arsenal).toEqual(
-            Arsenal.HoldingSecond({
-              first: crispyPistol,
-              second: freshGun('Cooker'),
-            }),
-          )
-        }),
+      return modelAfter(
+        start,
+        steps(
+          pull,
+          ticks(FRIDGE_OPEN_TICKS, FRAME_MS),
+          pull,
+          checkModel(current => {
+            expect(focusOf(current).player.arsenal).toEqual(
+              Arsenal.HoldingSecond({
+                first: crispyPistol,
+                second: freshGun('Cooker'),
+              }),
+            )
+          }),
+        ),
       )
     },
   )

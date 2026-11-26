@@ -1,5 +1,4 @@
 import { Array, Option, String } from 'effect'
-import type { Canvas } from 'foldkit'
 
 import { type Sprite, TOP_LEFT, placeAt, spriteShapes } from '../art/sprite'
 import type { Vector } from '../world/schema/entitySchema'
@@ -9,6 +8,7 @@ import {
   clamp,
 } from '../world/step/geometry'
 import { type Camera, worldToView } from './camera'
+import type * as Draw from './draw'
 import { type ClearWindow, clearWindowOf } from './hudLayout'
 import type { Screen } from './screen'
 
@@ -110,7 +110,7 @@ const edgeShapesAt = (
   clear: ClearWindow,
   pointing: Pointing,
   elapsedMs: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const bob = bobOf(elapsedMs)
   const step = SCREEN_STEPS[pointing]
   const x = clamp(at.x - ARROW_SIZE / 2, clear.left, clear.right - ARROW_SIZE)
@@ -132,7 +132,7 @@ export const edgeArrowShapes = ({
   elapsedMs,
   screen,
   camera,
-}: PointerAt): ReadonlyArray<Canvas.Shape> => {
+}: PointerAt): ReadonlyArray<Draw.Shape> => {
   const at = liftedAt(camera, mark, liftPx)
   const clear = clearWindowOf(screen, EDGE_GAP)
   return Option.match(pointingOf(at, clear), {
@@ -161,7 +161,7 @@ const isOverInWindow = (at: Vector, screen: Screen): boolean => {
 const overShapes = (
   at: Vector,
   elapsedMs: number,
-): ReadonlyArray<Canvas.Shape> => [
+): ReadonlyArray<Draw.Shape> => [
   placeAt(
     Math.round(at.x - ARROW_SIZE / 2),
     Math.round(at.y) - POINTER_LIFT - ARROW_SIZE - bobOf(elapsedMs),
@@ -177,7 +177,7 @@ export const pointerArrowShapes = ({
   elapsedMs,
   screen,
   camera,
-}: PointerAt): ReadonlyArray<Canvas.Shape> => {
+}: PointerAt): ReadonlyArray<Draw.Shape> => {
   const at = liftedAt(camera, mark, liftPx)
   const clear = clearWindowOf(screen, EDGE_GAP)
   return Option.match(pointingOf(at, clear), {

@@ -1,5 +1,6 @@
 import { Function, Option } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import type { Model } from '../../app/model'
 import { Tour } from '../../domain/clientSchema'
@@ -49,21 +50,21 @@ export const advanceKitchenTour: {
   Tour.match(model.kitchenTour, {
     Waiting: () =>
       isKitchenTourOn(model)
-        ? modifyFields(model, { kitchenTour: () => Tour.Running() })
+        ? UiStruct.evolve(model, { kitchenTour: () => Tour.Running() })
         : model,
     Running: () => {
       if (isFridgeTried(model)) {
-        return modifyFields(model, {
+        return UiStruct.evolve(model, {
           kitchenTour: () => Tour.Done({ ageMs: 0 }),
         })
       } else if (!isKitchenTourOn(model)) {
-        return modifyFields(model, { kitchenTour: () => Tour.Over() })
+        return UiStruct.evolve(model, { kitchenTour: () => Tour.Over() })
       } else {
         return model
       }
     },
     Done: ({ ageMs }) =>
-      modifyFields(model, {
+      UiStruct.evolve(model, {
         kitchenTour: () =>
           ageMs + deltaMs >= KITCHEN_DONE_MS
             ? Tour.Over()
@@ -76,7 +77,7 @@ export const advanceKitchenTour: {
 // NOTE: skipping learns the timed breaks lesson, which ends the tour's
 // rules in the World: the clock runs and prices are back.
 export const skipKitchenTour = (model: Model): Model =>
-  modifyFields(withWorld(model, learnTimedBreaks), {
+  UiStruct.evolve(withWorld(model, learnTimedBreaks), {
     kitchenTour: () => Tour.Over(),
   })
 

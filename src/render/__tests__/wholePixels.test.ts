@@ -1,6 +1,6 @@
 import { Array, Option } from 'effect'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, test } from '@effect/vitest'
 
 import type { Model } from '../../app/model'
@@ -38,7 +38,7 @@ const PHONES: ReadonlyArray<Phone> = [
 ]
 
 const onTouch = ({ surface, orientation }: Phone): Model =>
-  modifyFields(initialModel, {
+  UiStruct.evolve(initialModel, {
     lastDevice: () => 'Touch',
     orientation: () => orientation,
     maybeSurface: () => Option.some(surface),
@@ -77,7 +77,7 @@ describe('every game pixel on whole device pixels', () => {
   })
 
   test('leaves a keyboard and mouse at one game pixel per screen pixel', () => {
-    const desktop = modifyFields(initialModel, {
+    const desktop = UiStruct.evolve(initialModel, {
       maybeSurface: () =>
         Option.some({
           left: 0,
@@ -95,7 +95,7 @@ describe('every game pixel on whole device pixels', () => {
     const noRatio =
       iPhone === undefined
         ? initialModel
-        : modifyFields(onTouch(iPhone), {
+        : UiStruct.evolve(onTouch(iPhone), {
             maybeSurface: () =>
               Option.some({ left: 0, top: 0, width: 375, height: 667 }),
           })

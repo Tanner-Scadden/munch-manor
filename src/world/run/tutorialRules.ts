@@ -1,5 +1,6 @@
 import { Array, Option, pipe } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import { KITCHEN_FIRST_WAVE, OPEN_BREAK_WAVE } from '../../shared/constants'
 import { caseFootOf, isCaseShown } from '../feats/caseSpots'
@@ -76,9 +77,9 @@ export const advanceTutorialKey = (world: World): World => {
   const { seat, player } = seatStateAt(world, SOLO_SLOT)
   return isStanding(seat) &&
     distanceBetween(player, spot) <= TUTORIAL_RULES.keyReachPx
-    ? modifyFields(grantKeys(world, 1, spot), {
+    ? UiStruct.evolve(grantKeys(world, 1, spot), {
         lessons: lessons =>
-          modifyFields(lessons, {
+          UiStruct.evolve(lessons, {
             dareKey: lesson => learn(lesson, world.elapsedMs),
           }),
       })
@@ -108,10 +109,10 @@ export const rigTutorialCase = (world: World): World =>
     ? Option.match(maybeTutorialCase(world), {
         onNone: () => world,
         onSome: ({ id }) =>
-          modifyFields(world, {
+          UiStruct.evolve(world, {
             cases: Array.map(displayCase =>
               displayCase.id === id
-                ? modifyFields(displayCase, {
+                ? UiStruct.evolve(displayCase, {
                     feat: () => Feat.Kills({ count: TUTORIAL_RULES.caseKills }),
                   })
                 : displayCase,

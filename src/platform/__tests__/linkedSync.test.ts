@@ -1,17 +1,13 @@
 // @vitest-environment happy-dom
 import { Array, Effect, Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { Component, UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { ProfileBinding } from '../../app/bindings'
 import { Message } from '../../app/message'
 import { AudioState, type Model } from '../../app/model'
 import { CueMusic } from '../../app/update/music'
 import { WriteSave } from '../../app/update/save'
-import { SoundMessage } from '../../audio/message'
-import { Message as ProfileMessage } from '../../features/profile/message'
 import { readyAfterRead } from '../../test/model.fixture'
 import {
   linkedPair,
@@ -20,7 +16,16 @@ import {
   until,
   write,
 } from '../../test/store.fixture'
-import { APPLICATION, checkPendingArgs, closeProfile } from '../../test/testing'
+import {
+  type StoryStep,
+  checkModel,
+  checkPendingArgs,
+  closeProfile,
+  exactStoryOf,
+  resolveAll,
+  send,
+  steps,
+} from '../../test/testing'
 import { PlayerChange } from '../playerSync'
 import { type PlayerSave, restoreSave } from '../save'
 import type { PlayerDatabase } from '../storeSqlite'
@@ -45,27 +50,32 @@ const seesOn = (
 // NOTE: the laptop with its Profile open, as it is while a player links it
 // from the Account tab, its Model read from its own store, sound on.
 const laptopModel = (save: PlayerSave): Model =>
-  modifyFields(restoreSave(readyAfterRead, save), {
+  UiStruct.evolve(restoreSave(readyAfterRead, save), {
     audio: () => AudioState.Ready(),
     profile: profile =>
-      modifyFields(profile, {
+      UiStruct.evolve(profile, {
         tab: () => 'Account',
         nameDraft: () => save.name,
       }),
-    profileDialog: dialog => modifyFields(dialog, { isOpen: () => true }),
+    profileDialog: dialog => UiStruct.evolve(dialog, { isOpen: () => true }),
   })
 
 // NOTE: the laptop's Story ends with whatever it writes back resolved and
 // handed out, as its store would get it.
-const writtenBack = (written: Array<ReadonlyArray<PlayerChange>>) =>
-  Story.steps(
-    checkPendingArgs(Story.Command.argsOf(WriteSave))(writes => {
+const writtenBack = (written: Array<ReadonlyArray<PlayerChange>>): StoryStep =>
+  steps(
+    checkPendingArgs(WriteSave)(writes => {
       Array.forEach(writes, ({ changes }) => {
-        written.push(changes)
+        written.push(Array.fromIterable(changes))
       })
     }),
-    Story.Command.resolveAll([WriteSave, Message.CompletedWriteSave()]),
+    resolveAll(WriteSave)(Message.CompletedWriteSave()),
   )
+
+// NOTE: the laptop's Model after `step`, its Story in a scope of its own,
+// so its end check runs before the test reads the stores again.
+const laptopAfter = (start: Model, step: StoryStep) =>
+  Effect.scoped(Effect.map(exactStoryOf(start), s => step(s).model))
 
 // NOTE: the phone keeps a change; the laptop's store has it once sync
 // brings it over. Sound is on first, so the laptop can hear a change.
@@ -103,16 +113,17 @@ describe('the name on two linked devices', () => {
           named('Zed').isThere,
         )
         const written: Array<ReadonlyArray<PlayerChange>> = []
-        const model = yield* Story.story(
-          APPLICATION,
-          Story.given(start),
-          Story.message(Message.UpdatedSyncedSave({ save: arrived })),
-          Story.model(current => {
-            expect(current.playerName).toBe('Zed')
-            expect(current.profile.nameDraft).toBe('Zed')
-          }),
-          closeProfile(),
-          writtenBack(written),
+        const model = yield* laptopAfter(
+          start,
+          steps(
+            send(Message.UpdatedSyncedSave({ save: arrived })),
+            checkModel(current => {
+              expect(current.playerName).toBe('Zed')
+              expect(current.profile.nameDraft).toBe('Zed')
+            }),
+            closeProfile,
+            writtenBack(written),
+          ),
         )
         expect(model.playerName).toBe('Zed')
         expect(written).toEqual([])
@@ -133,20 +144,18 @@ describe('the name on two linked devices', () => {
           named('Zed').isThere,
         )
         const written: Array<ReadonlyArray<PlayerChange>> = []
-        const model = yield* Story.story(
-          APPLICATION,
-          Story.given(start),
-          Story.messageIn(
-            ProfileBinding,
-            ProfileMessage.UpdatedNameDraft({ value: 'Mo' }),
+        const model = yield* laptopAfter(
+          start,
+          steps(
+            send(Message.UpdatedProfileNameDraft({ value: 'Mo' })),
+            send(Message.UpdatedSyncedSave({ save: arrived })),
+            checkModel(current => {
+              expect(current.playerName).toBe('Zed')
+              expect(current.profile.nameDraft).toBe('Mo')
+            }),
+            closeProfile,
+            writtenBack(written),
           ),
-          Story.message(Message.UpdatedSyncedSave({ save: arrived })),
-          Story.model(current => {
-            expect(current.playerName).toBe('Zed')
-            expect(current.profile.nameDraft).toBe('Mo')
-          }),
-          closeProfile(),
-          writtenBack(written),
         )
         expect(model.playerName).toBe('Mo')
         expect(written).toEqual([[PlayerChange.ChangedName({ name: 'Mo' })]])
@@ -168,18 +177,14 @@ describe('a setting on two linked devices', () => {
       )
       expect(start.settings.musicSetting).toBe('On')
       const written: Array<ReadonlyArray<PlayerChange>> = []
-      const model = yield* Story.story(
-        APPLICATION,
-        Story.given(start),
-        Story.message(Message.UpdatedSyncedSave({ save: arrived })),
-        Story.Command.expectExact(
-          CueMusic({ mood: 'Silence', level: 'Full', stinger: 'None' }),
-        ),
-        Story.Command.resolve(
-          CueMusic,
-          SoundMessage.CompletedCueMusic({ mood: 'Silence' }),
-        ),
-        writtenBack(written),
+      const model = yield* laptopAfter(start, s =>
+        s
+          .send(Message.UpdatedSyncedSave({ save: arrived }))
+          .expectExact(
+            CueMusic.make({ mood: 'Silence', level: 'Full', stinger: 'None' }),
+          )
+          .resolve(CueMusic, Component.noop)
+          .pipe(writtenBack(written)),
       )
       expect(model.settings.musicSetting).toBe('Off')
       expect(written).toEqual([])
@@ -195,11 +200,8 @@ describe('RECORD MY RUNS on two linked devices', () => {
         save => save.recordUnlock === 'Unlocked',
       )
       expect(start.recordUnlock).toBe('Locked')
-      const model = yield* Story.story(
-        APPLICATION,
-        Story.given(start),
-        Story.message(Message.UpdatedSyncedSave({ save: arrived })),
-        Story.Command.expectNone(),
+      const model = yield* laptopAfter(start, s =>
+        s.send(Message.UpdatedSyncedSave({ save: arrived })).expectNone(),
       )
       expect(model.recordUnlock).toBe('Unlocked')
     }).pipe(synced),

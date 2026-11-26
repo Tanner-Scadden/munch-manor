@@ -1,171 +1,121 @@
-import { Story } from 'foldkit'
+import { Effect } from 'effect'
 
+import { Component } from '@effect/ui'
+import { Story } from '@effect/ui/testing'
 import { describe, expect, it } from '@effect/vitest'
 
-import { resolveGuideFocus } from '../../../test/testing'
-import { Message as GuideMessage } from '../../guide/message'
 import { GuideStatus } from '../../guide/model'
-import { FocusGuideControl } from '../../guide/steps'
-import { GuideBinding } from '../bindings'
-import { MunchopediaBlock } from '../block'
-import { InMessage } from '../inMessage'
-import { MunchopediaLayer } from '../layer'
-import { Message, OutMessage } from '../message'
+import { FocusGuideControl, Munchopedia } from '../block'
+import { Message, MunchopediaEvents } from '../message'
 import { MunchopediaPage } from '../model'
+import { HOME_PROPS } from './munchopedia.fixture'
 
-// The Munchopedia Block on its own: its pages, the shop guide it holds for
-// its Shop page, and the entry it reports opened. The root's side, which
+// The Munchopedia component on its own: the pages it asks the root for,
+// the shop guide it holds for its Shop page, and the entry it reports
+// opened. The root owns the page and hands it down; the root's side, which
 // saves the entry and clears its NEW ENTRY, is in
 // src/features/home/__tests__/home.story.test.ts.
 
-const MUNCHOPEDIA = { block: MunchopediaBlock, layer: MunchopediaLayer }
+type MunchopediaStory = Story.Steps<typeof Munchopedia>
 
-const openShop = Story.steps(
-  Story.message(Message.ClickedShopButton()),
-  Story.Command.expectExact(
-    FocusGuideControl({ placement: 'Munchopedia', target: 'Back' }),
-  ),
-  resolveGuideFocus,
-)
+const openShop = (s: MunchopediaStory): MunchopediaStory =>
+  s
+    .send(Message.ClickedShopButton())
+    .expectExact(FocusGuideControl.make({ target: 'Back' }))
+    .resolve(FocusGuideControl, Component.noop)
 
-describe('the Munchopedia Block', () => {
-  it.effect('starts on the list with its guide shut and placed in it', () =>
-    Story.story(
-      MUNCHOPEDIA,
-      Story.init(),
-      Story.model(model => {
-        expect(model.page).toEqual(MunchopediaPage.List())
-        expect(model.guide.placement).toBe('Munchopedia')
-        expect(model.guide.status).toEqual(GuideStatus.Closed())
-      }),
-    ),
+const changedTo = (page: MunchopediaPage) =>
+  MunchopediaEvents.ChangedPage({ page })
+
+describe('the Munchopedia component', () => {
+  it.effect('starts with its guide shut, saying nothing', () =>
+    Effect.gen(function* () {
+      const s = yield* Story.make(Munchopedia, HOME_PROPS)
+      expect(s.current.props.page).toEqual(MunchopediaPage.List())
+      expect(s.model.guide).toEqual(GuideStatus.Closed())
+      expect(s.current.emitted).toEqual([])
+    }),
   )
 
   it.effect(
-    'a tile opens its entry and says so; BACK returns to the list',
+    'a tile asks for its entry and says so; BACK asks for the list',
     () =>
-      Story.story(
-        MUNCHOPEDIA,
-        Story.init(),
-        Story.message(Message.ClickedEntryButton({ kind: 'Tank' })),
-        Story.expectOutMessage(OutMessage.OpenedEntry({ kind: 'Tank' })),
-        Story.model(model => {
-          expect(model.page).toEqual(MunchopediaPage.Entry({ kind: 'Tank' }))
-        }),
-        Story.message(Message.ClickedListButton()),
-        Story.expectNoOutMessage(),
-        Story.model(model => {
-          expect(model.page).toEqual(MunchopediaPage.List())
-        }),
-      ),
+      Effect.gen(function* () {
+        const s = yield* Story.make(Munchopedia, HOME_PROPS)
+        s.send(Message.ClickedEntryButton({ kind: 'Tank' })).emitted(
+          changedTo(MunchopediaPage.Entry({ kind: 'Tank' })),
+          MunchopediaEvents.OpenedEntry({ kind: 'Tank' }),
+        )
+        s.props(props => ({
+          ...props,
+          page: MunchopediaPage.Entry({ kind: 'Tank' }),
+        }))
+          .send(Message.ClickedListButton())
+          .emitted(changedTo(MunchopediaPage.List()))
+      }),
   )
 
   it.effect(
     'the Shop tile opens its guide on Guns, which turns and goes back on its own',
     () =>
-      Story.story(
-        MUNCHOPEDIA,
-        Story.init(),
-        openShop,
-        Story.expectNoOutMessage(),
-        Story.messageIn(
-          GuideBinding,
-          GuideMessage.ClickedSectionButton({ section: 'Fridge' }),
-        ),
-        Story.model(model => {
-          expect(model.guide.status).toEqual(
-            GuideStatus.Open({ section: 'Fridge' }),
-          )
-        }),
-        Story.messageIn(GuideBinding, GuideMessage.ClickedBackButton()),
-        Story.Command.expectExact(
-          FocusGuideControl({ placement: 'Munchopedia', target: 'Opener' }),
-        ),
-        resolveGuideFocus,
-        Story.model(model => {
-          expect(model.guide.status).toEqual(GuideStatus.Closed())
-          expect(model.page).toEqual(MunchopediaPage.List())
-        }),
-      ),
+      Effect.gen(function* () {
+        const s = yield* Story.make(Munchopedia, HOME_PROPS)
+        openShop(s)
+        expect(s.model.guide).toEqual(GuideStatus.Open({ section: 'Guns' }))
+        s.send(Message.ClickedGuideSectionButton({ section: 'Fridge' }))
+        expect(s.model.guide).toEqual(GuideStatus.Open({ section: 'Fridge' }))
+        s.send(Message.ClickedGuideBackButton())
+          .expectExact(FocusGuideControl.make({ target: 'Opener' }))
+          .resolve(FocusGuideControl, Component.noop)
+        expect(s.model.guide).toEqual(GuideStatus.Closed())
+        expect(s.current.emitted).toEqual([])
+      }),
   )
 
-  it.effect('opening afresh on an entry says so and puts the guide away', () =>
-    Story.story(
-      MUNCHOPEDIA,
-      Story.init(),
-      openShop,
-      Story.inMessage(
-        InMessage.RequestedOpen({
-          page: MunchopediaPage.Entry({ kind: 'Runner' }),
-        }),
-      ),
-      Story.expectOutMessage(OutMessage.OpenedEntry({ kind: 'Runner' })),
-      Story.Command.expectNone(),
-      Story.model(model => {
-        expect(model.page).toEqual(MunchopediaPage.Entry({ kind: 'Runner' }))
-        expect(model.guide.status).toEqual(GuideStatus.Closed())
-      }),
-    ),
+  it.effect('mounted afresh on an entry says so, its guide shut', () =>
+    Effect.gen(function* () {
+      const s = yield* Story.make(Munchopedia, {
+        ...HOME_PROPS,
+        page: MunchopediaPage.Entry({ kind: 'Runner' }),
+      })
+      s.emitted(MunchopediaEvents.OpenedEntry({ kind: 'Runner' })).expectNone()
+      expect(s.model.guide).toEqual(GuideStatus.Closed())
+    }),
   )
 
-  it.effect('opening afresh on the list says nothing', () =>
-    Story.story(
-      MUNCHOPEDIA,
-      Story.init(),
-      Story.message(Message.ClickedEntryButton({ kind: 'Shambler' })),
-      Story.inMessage(
-        InMessage.RequestedOpen({ page: MunchopediaPage.List() }),
-      ),
-      Story.expectNoOutMessage(),
-      Story.model(model => {
-        expect(model.page).toEqual(MunchopediaPage.List())
-      }),
-    ),
+  it.effect('mounted afresh on the list says nothing', () =>
+    Effect.gen(function* () {
+      const s = yield* Story.make(Munchopedia, HOME_PROPS)
+      s.expectNone()
+      expect(s.current.emitted).toEqual([])
+    }),
   )
 })
 
 describe('the Dare Journal tabs', () => {
-  it.effect('each tab shows its page, and Zombies goes back to the list', () =>
-    Story.story(
-      MUNCHOPEDIA,
-      Story.init(),
-      Story.message(Message.ClickedTabButton({ tab: 'Things' })),
-      Story.model(model => {
-        expect(model.page).toEqual(MunchopediaPage.Things())
-      }),
-      Story.message(Message.ClickedTabButton({ tab: 'Rooms' })),
-      Story.model(model => {
-        expect(model.page).toEqual(MunchopediaPage.Rooms())
-      }),
-      Story.message(Message.ClickedTabButton({ tab: 'Heroes' })),
-      Story.model(model => {
-        expect(model.page).toEqual(MunchopediaPage.Heroes())
-      }),
-      Story.message(Message.ClickedTabButton({ tab: 'Zombies' })),
-      Story.model(model => {
-        expect(model.page).toEqual(MunchopediaPage.List())
-      }),
-    ),
+  it.effect('each tab asks for its page, and Zombies for the list', () =>
+    Effect.gen(function* () {
+      const s = yield* Story.make(Munchopedia, HOME_PROPS)
+      s.send(Message.ClickedTabButton({ tab: 'Things' }))
+        .emitted(changedTo(MunchopediaPage.Things()))
+        .send(Message.ClickedTabButton({ tab: 'Rooms' }))
+        .emitted(changedTo(MunchopediaPage.Rooms()))
+        .send(Message.ClickedTabButton({ tab: 'Heroes' }))
+        .emitted(changedTo(MunchopediaPage.Heroes()))
+        .send(Message.ClickedTabButton({ tab: 'Zombies' }))
+        .emitted(changedTo(MunchopediaPage.List()))
+    }),
   )
 
-  it.effect('a story page button turns to that page', () =>
-    Story.story(
-      MUNCHOPEDIA,
-      Story.init(),
-      Story.message(Message.ClickedStoryPageButton({ page: 'FirstEscape' })),
-      Story.model(model => {
-        expect(model.page).toEqual(
-          MunchopediaPage.Story({ page: 'FirstEscape' }),
+  it.effect('a story page button asks for that page', () =>
+    Effect.gen(function* () {
+      const s = yield* Story.make(Munchopedia, HOME_PROPS)
+      s.send(Message.ClickedStoryPageButton({ page: 'FirstEscape' }))
+        .emitted(changedTo(MunchopediaPage.Story({ page: 'FirstEscape' })))
+        .send(Message.ClickedStoryPageButton({ page: 'EscapeTripleDogDare' }))
+        .emitted(
+          changedTo(MunchopediaPage.Story({ page: 'EscapeTripleDogDare' })),
         )
-      }),
-      Story.message(
-        Message.ClickedStoryPageButton({ page: 'EscapeTripleDogDare' }),
-      ),
-      Story.model(model => {
-        expect(model.page).toEqual(
-          MunchopediaPage.Story({ page: 'EscapeTripleDogDare' }),
-        )
-      }),
-    ),
+    }),
   )
 })

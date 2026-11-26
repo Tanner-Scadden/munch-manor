@@ -1,5 +1,4 @@
 import { Array, Function, Option, String } from 'effect'
-import { Canvas } from 'foldkit'
 
 import type { Model } from '../app/model'
 import { bakeText, placeBaked } from '../art/font'
@@ -22,6 +21,7 @@ import { type BossBar, maybeStandingBoss } from '../world/zombies/boss'
 import { isEnraged } from '../world/zombies/bossFight'
 import { BOSS_RULES } from '../world/zombies/bossRules'
 import { ZOMBIE_KINDS } from '../world/zombies/zombies'
+import * as Draw from './draw'
 import { FULL_TURN, tellAlpha } from './drawing'
 import { barWidthOf, healthBarShapes } from './healthBarView'
 import {
@@ -50,7 +50,7 @@ const ringShapes = (
   boss: Zombie,
   ringRadius: number,
   progress: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const x = Math.round(boss.x)
   const y = Math.round(boss.y)
   return [
@@ -96,7 +96,7 @@ const quad = (
   start: number,
   end: number,
   halfWidth: number,
-): ReadonlyArray<Canvas.PathInstruction> => {
+): ReadonlyArray<Draw.PathInstruction> => {
   const corners = [
     along(lane, start, -halfWidth),
     along(lane, end, -halfWidth),
@@ -106,23 +106,23 @@ const quad = (
   return [
     ...Array.map(corners, (corner, index) =>
       index === 0
-        ? Canvas.MoveTo({ x: corner.x, y: corner.y })
-        : Canvas.LineTo({ x: corner.x, y: corner.y }),
+        ? Draw.MoveTo({ x: corner.x, y: corner.y })
+        : Draw.LineTo({ x: corner.x, y: corner.y }),
     ),
-    Canvas.Close(),
+    Draw.Close(),
   ]
 }
 
-const arrowHead = (lane: Lane): ReadonlyArray<Canvas.PathInstruction> => {
+const arrowHead = (lane: Lane): ReadonlyArray<Draw.PathInstruction> => {
   const base = lane.length - ARROW_LENGTH
   const tip = along(lane, lane.length, 0)
   const left = along(lane, base, -ARROW_HALF_WIDTH)
   const right = along(lane, base, ARROW_HALF_WIDTH)
   return [
-    Canvas.MoveTo({ x: left.x, y: left.y }),
-    Canvas.LineTo({ x: tip.x, y: tip.y }),
-    Canvas.LineTo({ x: right.x, y: right.y }),
-    Canvas.Close(),
+    Draw.MoveTo({ x: left.x, y: left.y }),
+    Draw.LineTo({ x: tip.x, y: tip.y }),
+    Draw.LineTo({ x: right.x, y: right.y }),
+    Draw.Close(),
   ]
 }
 
@@ -132,20 +132,20 @@ const laneFill = (progress: number): string =>
 const chargeLaneShapes = (
   lane: Lane,
   progress: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const shaft = Math.max(0, lane.length - ARROW_LENGTH)
   return [
-    Canvas.Path({
+    Draw.Path({
       instructions: quad(lane, 0, shaft, LANE_HALF_WIDTH),
       fill: laneFill(progress),
       stroke: RING_EDGE_COLOR,
       lineWidth: 1,
     }),
-    Canvas.Path({
+    Draw.Path({
       instructions: quad(lane, 0, shaft * progress, LANE_HALF_WIDTH - 3),
       fill: 'rgba(255, 224, 102, 0.45)',
     }),
-    Canvas.Path({
+    Draw.Path({
       instructions: arrowHead(lane),
       fill: progress > 0.5 ? RING_EDGE_COLOR : laneFill(1),
       stroke: RING_EDGE_COLOR,
@@ -245,7 +245,7 @@ const globPoint = (from: Vector, to: Vector, progress: number): Vector => ({
   y: from.y + (to.y - from.y) * progress,
 })
 
-const globGroundShapes = (glob: Glob): ReadonlyArray<Canvas.Shape> =>
+const globGroundShapes = (glob: Glob): ReadonlyArray<Draw.Shape> =>
   Glob.match(glob, {
     Flying: ({ from, to, remainingMs, durationMs }) => {
       const progress = progressOf(remainingMs, durationMs)
@@ -279,7 +279,7 @@ const globGroundShapes = (glob: Glob): ReadonlyArray<Canvas.Shape> =>
           opacity: tellAlpha(0, PUDDLE_ALPHA, fade),
           shapes: [placeAt(x, y, GOO_PUDDLE)],
         }),
-        Canvas.Rect({
+        Draw.Rect({
           x: x - 4,
           y: y - 4,
           width: 3,
@@ -290,7 +290,7 @@ const globGroundShapes = (glob: Glob): ReadonlyArray<Canvas.Shape> =>
     },
   })
 
-const flyingGlobShapes = (glob: Glob): ReadonlyArray<Canvas.Shape> => {
+const flyingGlobShapes = (glob: Glob): ReadonlyArray<Draw.Shape> => {
   if (!Glob.isAnyOf(['Flying'])(glob)) {
     return []
   }
@@ -302,7 +302,7 @@ const flyingGlobShapes = (glob: Glob): ReadonlyArray<Canvas.Shape> => {
   const y = Math.round(point.y - lift - MOUTH_ABOVE_PX * (1 - progress))
   return [
     pixelDisc(x, y, GLOB_RADIUS, GLOB_FILL),
-    Canvas.Rect({ x: x - 1, y: y - 2, width: 1, height: 1, fill: GLOB_SHINE }),
+    Draw.Rect({ x: x - 1, y: y - 2, width: 1, height: 1, fill: GLOB_SHINE }),
   ]
 }
 
@@ -320,7 +320,7 @@ const moveGroundShapes = (
   level: Level,
   move: BossMove,
   boss: Zombie,
-): ReadonlyArray<Canvas.Shape> =>
+): ReadonlyArray<Draw.Shape> =>
   BossMove.match(move, {
     Stalking: () => [],
     Recovering: () => [],
@@ -343,7 +343,7 @@ const moveGroundShapes = (
       ),
   })
 
-export const bossGroundShapes = (model: Model): ReadonlyArray<Canvas.Shape> =>
+export const bossGroundShapes = (model: Model): ReadonlyArray<Draw.Shape> =>
   Boss.isAnyOf(['Fighting'])(model.boss)
     ? [
         ...Array.flatMap(model.boss.globs, globGroundShapes),
@@ -371,21 +371,21 @@ const STEAM_COLOR = 'rgb(244, 241, 222)'
 const starShapes = (
   boss: Zombie,
   elapsedMs: number,
-): ReadonlyArray<Canvas.Shape> =>
+): ReadonlyArray<Draw.Shape> =>
   Array.flatMap(Array.range(0, STAR_COUNT - 1), index => {
     const angle =
       (FULL_TURN * elapsedMs) / STAR_ORBIT_MS + (FULL_TURN * index) / STAR_COUNT
     const x = Math.round(boss.x + Math.cos(angle) * 10)
     const y = Math.round(boss.y - HEAD_ABOVE_PX + Math.sin(angle) * 3)
     return [
-      Canvas.Rect({
+      Draw.Rect({
         x: x - 1,
         y: y - 2,
         width: 3,
         height: 5,
         fill: STAR_COLOR,
       }),
-      Canvas.Rect({
+      Draw.Rect({
         x: x - 2,
         y: y - 1,
         width: 5,
@@ -398,7 +398,7 @@ const starShapes = (
 const steamShapes = (
   boss: Zombie,
   elapsedMs: number,
-): ReadonlyArray<Canvas.Shape> =>
+): ReadonlyArray<Draw.Shape> =>
   Array.makeBy(STEAM_COUNT, index => {
     const phase =
       ((elapsedMs + (index * STEAM_CYCLE_MS) / STEAM_COUNT) % STEAM_CYCLE_MS) /
@@ -419,9 +419,7 @@ const steamShapes = (
 
 bakeDiscs(1, 3, STEAM_COLOR)
 
-export const bossOverheadShapes = (
-  model: Model,
-): ReadonlyArray<Canvas.Shape> =>
+export const bossOverheadShapes = (model: Model): ReadonlyArray<Draw.Shape> =>
   Boss.isAnyOf(['Fighting'])(model.boss)
     ? [
         ...Array.flatMap(model.boss.globs, flyingGlobShapes),
@@ -452,13 +450,13 @@ export const bossBarShapes: {
     centerX: number,
     y: number,
     elapsedMs: number,
-  ): (bar: BossBar) => ReadonlyArray<Canvas.Shape>
+  ): (bar: BossBar) => ReadonlyArray<Draw.Shape>
   (
     bar: BossBar,
     centerX: number,
     y: number,
     elapsedMs: number,
-  ): ReadonlyArray<Canvas.Shape>
+  ): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   4,
   (
@@ -466,7 +464,7 @@ export const bossBarShapes: {
     centerX: number,
     y: number,
     elapsedMs: number,
-  ): ReadonlyArray<Canvas.Shape> => {
+  ): ReadonlyArray<Draw.Shape> => {
     const label = bar.isEnraged ? ENRAGED : BAR_NAME
     const total = label.width + BAR_GAP + barWidthOf('Large')
     const left = Math.round(centerX - total / 2)
@@ -512,7 +510,7 @@ const bandOpacity = (remainingMs: number, durationMs: number): number => {
   )
 }
 
-export const bossBandShapes = (model: Model): ReadonlyArray<Canvas.Shape> =>
+export const bossBandShapes = (model: Model): ReadonlyArray<Draw.Shape> =>
   Boss.isAnyOf(['Arriving'])(model.boss)
     ? entranceBand(
         BAND_TOPS[model.hintBand],
@@ -527,7 +525,7 @@ const entranceBand = (
   top: number,
   opacity: number,
   elapsedMs: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const titleWidth = TITLE.width * TITLE_SCALE
   const iconWidth = ICON_WIDTH * ICON_SCALE
   const groupWidth = iconWidth + ICON_GAP + titleWidth
@@ -537,21 +535,21 @@ const entranceBand = (
     group({
       opacity,
       shapes: [
-        Canvas.Rect({
+        Draw.Rect({
           x: 0,
           y: top - BAND_LIFT,
           width: VIEW_WIDTH,
           height: BAND_HEIGHT,
           fill: BAND_FILL,
         }),
-        Canvas.Rect({
+        Draw.Rect({
           x: 0,
           y: top - BAND_LIFT - 1,
           width: VIEW_WIDTH,
           height: 1,
           fill: BAND_EDGE,
         }),
-        Canvas.Rect({
+        Draw.Rect({
           x: 0,
           y: top - BAND_LIFT + BAND_HEIGHT,
           width: VIEW_WIDTH,

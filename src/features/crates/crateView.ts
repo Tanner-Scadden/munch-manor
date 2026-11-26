@@ -1,5 +1,4 @@
 import { Array, Option } from 'effect'
-import type { Canvas } from 'foldkit'
 
 import type { Model } from '../../app/model'
 import { type Sprite, bakeShapes, placeAt } from '../../art/sprite'
@@ -10,6 +9,7 @@ import {
   TRAP_ICONS,
 } from '../../art/sprites/traps'
 import type { Drawable } from '../../render/depth'
+import type * as Draw from '../../render/draw'
 import { type RingPixel, rect, ringPixels } from '../../render/drawing'
 import {
   type CrateFind,
@@ -44,7 +44,7 @@ const findShapes = (
   model: Model,
   crate: Crate,
   spot: Readonly<{ x: number; y: number }>,
-): ReadonlyArray<Canvas.Shape> =>
+): ReadonlyArray<Draw.Shape> =>
   Option.match(maybeFindIn(model, crate), {
     onNone: () => [],
     onSome: find => {
@@ -96,7 +96,7 @@ const MEND_RINGS: Array.NonEmptyReadonlyArray<Sprite> = (() => {
   ]
 })()
 
-const mendRingShapes = (model: Model, trap: Trap): Canvas.Shape => {
+const mendRingShapes = (model: Model, trap: Trap): Draw.Shape => {
   const center = trapCenter(levelOf(model), trap)
   const step = Math.min(
     MEND_RING_STEPS,
@@ -113,7 +113,7 @@ const mendRingShapes = (model: Model, trap: Trap): Canvas.Shape => {
 
 // NOTE: over everything: a ring round each trap a player is mending, filled
 // as far as the trap is whole.
-export const mendRingsOf = (model: Model): ReadonlyArray<Canvas.Shape> =>
+export const mendRingsOf = (model: Model): ReadonlyArray<Draw.Shape> =>
   Array.map(
     Array.dedupeWith(
       Array.getSomes(

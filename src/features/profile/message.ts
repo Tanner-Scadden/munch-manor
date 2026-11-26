@@ -1,5 +1,6 @@
 import { Schema } from 'effect'
-import { defineMessageUnion } from 'foldkit/message'
+
+import { UiSchema } from '@effect/ui'
 
 import { LookPart } from '../../domain/looks'
 import { LinkProblem } from '../../platform/playerSync'
@@ -22,21 +23,21 @@ export const SettingTile = Schema.Literals([
 ])
 export type SettingTile = typeof SettingTile.Type
 
-// NOTE: the Profile's own facts. The root's requests are its InMessages
-// (inMessage.ts).
-export const Message = defineMessageUnion({
+// NOTE: the Profile component's own facts: a tab, the name field and its
+// dice, the link flow's buttons and field, the code copied and the
+// clipboard read (its Mounts, linkClipboard.ts), a tile, the tutorial
+// reset, a prop style, and the Look tab's events passed up. A tab comes
+// from ui-kit's Tabs as a string, read back to its literal in the update.
+export const Message = UiSchema.TaggedEnum({
+  SelectedTab: { value: Schema.String },
   UpdatedNameDraft: { value: Schema.String },
   SubmittedName: {},
   BlurredNameInput: {},
   ClickedNameDiceButton: {},
   ClickedLinkDeviceButton: {},
-  SucceededRequestLinkCode: { code: Schema.String },
-  FailedRequestLinkCode: { problem: LinkProblem },
   ClickedUseCodeButton: {},
   UpdatedLinkCode: { value: Schema.String },
   SubmittedLinkCode: {},
-  SucceededRedeemLinkCode: {},
-  FailedRedeemLinkCode: { problem: LinkProblem },
   ClickedCancelLinkButton: {},
   SucceededCopyLinkCode: {},
   SucceededReadClipboard: { text: Schema.String, typed: Schema.String },
@@ -44,31 +45,77 @@ export const Message = defineMessageUnion({
   ClickedResetTutorialButton: {},
   ClickedConfirmResetTutorialButton: {},
   ClickedCancelResetTutorialButton: {},
-  CompletedFocusTutorialReset: {},
-  CompletedFocusLookOption: {},
   ClickedPropStyle: { style: PropStyle },
-})
-export type Message = typeof Message.Type
-
-// NOTE: what happened in the Profile that the root acts on: the name kept
-// (each with the name, cleaned), the dice, a setting's tile, the tutorial
-// reset, the link flow's moments (for their sounds), and the Look tab's
-// picks, which change the root's look and Bones, and the MASTERY tab's
-// prop style. A pick's outcome comes back
-// as `InformedOfLookOutcome`, and a dice name as `InformedOfRolledName`.
-export const OutMessage = defineMessageUnion({
-  SwitchedTab: { tab: ProfileTab, name: Schema.String },
-  KeptName: { name: Schema.String },
-  SubmittedName: { name: Schema.String },
-  RolledNameDice: { current: Schema.String },
-  ClickedSetting: { setting: SettingTile },
-  ConfirmedTutorialReset: {},
-  ShowedLinkCode: {},
-  LinkedDevice: {},
   ChoseLook: { part: LookPart, value: Schema.String },
   FlippedLook: { toggle: LookToggle },
   RolledLookDice: {},
   ClickedBuyLook: { part: LookPart, value: Schema.String },
-  ChosePropStyle: { style: PropStyle },
 })
-export type OutMessage = typeof OutMessage.Type
+export type Message = typeof Message.Type
+
+// NOTE: what happened in the Profile, for the root to act on. The root owns
+// the panel's state (the tab, the draft, the link flow, the tutorial reset,
+// the try-on) and what the game reads (the name, the settings, the look,
+// the Bones), so every one of them goes up, and the root answers by the
+// props. The dice draw from the root's seeded generator.
+export const Events = UiSchema.TaggedEnum({
+  SwitchedTab: { tab: ProfileTab },
+  UpdatedNameDraft: { value: Schema.String },
+  SubmittedName: {},
+  BlurredNameInput: {},
+  RolledNameDice: {},
+  ClickedLinkDevice: {},
+  ClickedUseCode: {},
+  UpdatedLinkCode: { value: Schema.String },
+  SubmittedLinkCode: {},
+  ClickedCancelLink: {},
+  CopiedLinkCode: {},
+  ReadClipboard: { text: Schema.String, typed: Schema.String },
+  ClickedSetting: { setting: SettingTile },
+  ClickedResetTutorial: {},
+  ConfirmedTutorialReset: {},
+  CancelledTutorialReset: {},
+  ChosePropStyle: { style: PropStyle },
+  ChoseLook: { part: LookPart, value: Schema.String },
+  FlippedLook: { toggle: LookToggle },
+  RolledLookDice: {},
+  ClickedBuyLook: { part: LookPart, value: Schema.String },
+})
+export type Events = typeof Events.Type
+
+// NOTE: the root's Messages from the Profile, joined into the root's union
+// (src/app/message.ts): each of its events, and the device link Commands'
+// answers. Their handlers are `profileHandlers` in
+// src/app/update/profile.ts.
+export const profileCases = {
+  SwitchedProfileTab: { tab: ProfileTab },
+  UpdatedProfileNameDraft: { value: Schema.String },
+  SubmittedProfileName: {},
+  BlurredProfileName: {},
+  RolledProfileNameDice: {},
+  ClickedLinkDevice: {},
+  ClickedUseLinkCode: {},
+  UpdatedLinkCode: { value: Schema.String },
+  SubmittedLinkCode: {},
+  ClickedCancelLink: {},
+  CopiedLinkCode: {},
+  ReadLinkClipboard: { text: Schema.String, typed: Schema.String },
+  SucceededRequestLinkCode: { code: Schema.String },
+  FailedRequestLinkCode: { problem: LinkProblem },
+  SucceededRedeemLinkCode: {},
+  FailedRedeemLinkCode: { problem: LinkProblem },
+  ClickedProfileSetting: { setting: SettingTile },
+  ClickedResetTutorial: {},
+  ConfirmedTutorialReset: {},
+  CancelledTutorialReset: {},
+  ChoseProfileLook: { part: LookPart, value: Schema.String },
+  FlippedProfileLook: { toggle: LookToggle },
+  RolledProfileLookDice: {},
+  ClickedBuyProfileLook: { part: LookPart, value: Schema.String },
+  ChoseProfilePropStyle: { style: PropStyle },
+}
+
+// NOTE: the Profile's root Messages as their own union, for the device link
+// Commands' `success`.
+export const ProfileMessage = UiSchema.TaggedEnum(profileCases)
+export type ProfileMessage = typeof ProfileMessage.Type
