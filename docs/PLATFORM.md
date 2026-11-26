@@ -277,7 +277,7 @@ What we borrow from LiveStore's design: an append-only event log as the source o
 
 ### What phase 4 built
 
-Built on 2026-10-29. The engine's design, API, protocol, and limits are in [`packages/sync-engine/README.md`](./packages/sync-engine/README.md); this is how Munch Manor uses it.
+Built on 2026-10-29. The engine's design, API, protocol, and limits are in [`packages/sync-engine/README.md`](../packages/sync-engine/README.md); this is how Munch Manor uses it.
 
 **Decisions taken while building it:**
 

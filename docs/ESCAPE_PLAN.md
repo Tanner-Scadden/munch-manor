@@ -1,6 +1,6 @@
 # Escape the Manor: the build plan
 
-How the Munch Manor dare was built, layer by layer, as one stack of pull requests that landed in one big update. The story is in [`LORE.md`](../LORE.md), the rules in "Escape the manor" in [`GAME_DESIGN.md`](../GAME_DESIGN.md), and the flow in [`FLOW.md`](../FLOW.md). This file is the order of work, what each layer touched, and how each was checked. Written with the owner on 2026-11-10 from a Q&A and a survey of the code; kept as the record of the build.
+How the Munch Manor dare was built, layer by layer, as one stack of pull requests that landed in one big update. The story is in [`LORE.md`](./LORE.md), the rules in "Escape the manor" in [`GAME_DESIGN.md`](./GAME_DESIGN.md), and the flow in [`FLOW.md`](./FLOW.md). This file is the order of work, what each layer touched, and how each was checked. Written with the owner on 2026-11-10 from a Q&A and a survey of the code; kept as the record of the build.
 
 ## Status
 
