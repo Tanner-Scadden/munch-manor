@@ -22,15 +22,6 @@ import type { ApplicationHtml, ApplicationViewBuilder } from './definition'
 import { Message } from './message'
 import type { Model } from './model'
 
-// NOTE: the root's own dialogs, each ui-kit's Dialog over a field of the
-// root's Model (src/ui/dialog.ts). Opening one is the root's Step
-// (`openRootDialog` in src/app/update/dialog.ts); a close it asks for,
-// Escape, a press outside, or its close button, comes back as `ClosedDialog`.
-
-// NOTE: the menu panel's children, the Munchopedia and the Proof Shelf,
-// each a component drawn with the root's facts as props and the panel's
-// Done button in its `done` slot, built at module scope so a frame makes no
-// closure for them.
 const munchopediaView: PanelChildViews['munchopedia'] = (model, done, h) =>
   Munchopedia(h, {
     key: 'munchopedia',

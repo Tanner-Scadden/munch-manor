@@ -35,16 +35,11 @@ import {
 import { modifyFocus } from '../../world/party/party'
 import { advanceTells, mendedSpots } from '../heroTells'
 
-// The heroes' tells (src/render/heroTells.ts, src/art/appearance.ts, and the name tags):
-// each hero wears its trade on the body under any hat and shows a small
-// effect to the whole crew. YOU shows nothing.
-
 const HEROES: ReadonlyArray<Calling> = Array.filter(
   CALLINGS,
   calling => calling !== 'You',
 )
 
-// NOTE: the blank row and the six rows of the face.
 const HEAD_ROWS = 7
 
 const lookWith = (patch: Partial<Appearance>): Appearance => ({
@@ -65,7 +60,6 @@ const runningRight = (current: Model): Model =>
 const SECOND_MS = 1000
 const FRAME_MS = 1000 / 60
 
-// NOTE: a second of frames of the tells alone, the way the frame makes them.
 const tellsFor = (start: Model, ms = SECOND_MS): Model =>
   Array.reduce(
     Array.makeBy(Math.round(ms / FRAME_MS), () => 0),
@@ -94,7 +88,6 @@ describe('the body prop on the sprite', () => {
             const plainPoses = [...plain.idle, ...plain.walk]
             Array.forEach(poses, (frame, index) => {
               const bare = plainPoses[index] ?? []
-              // NOTE: below the face something changed: the prop.
               const below =
                 HEAD_ROWS + 1 + (hat === 'None' ? 0 : HAT_ART[hat].above)
               expect(frame.slice(below)).not.toEqual(bare.slice(below))
@@ -138,8 +131,6 @@ describe('the signature effects', () => {
     ).toEqual([])
   })
 
-  // NOTE: the seat's kills found keys since the last frame
-  // (src/world/keys/keys.ts), or none did.
   const keyed = (calling: Calling, hasFound: boolean): Model =>
     modifyFocus(
       UiStruct.evolve(withCalling(calling)(playingModel), {
@@ -169,8 +160,6 @@ describe('the signature effects', () => {
     expect(kindsOf(advanceTells(keyed('You', true), FRAME_MS))).toEqual([])
   })
 
-  // NOTE: standing still at a Plank Pile in a break, mending it past a
-  // third of its health since the last frame.
   const atTheTrap = (calling: Calling): Model =>
     modifyFocus(
       UiStruct.evolve(withCalling(calling)(playingModel), {
@@ -214,7 +203,6 @@ describe('the signature effects', () => {
     expect(Array.map(mendCues(mended, after), ({ sound }) => sound)).toEqual([
       'Tink',
     ])
-    // NOTE: seen now, so the next frame makes no more.
     expect(mendCues(after, advanceTells(after, FRAME_MS))).toEqual([])
     expect(kindsOf(advanceTells(after, FRAME_MS))).toHaveLength(
       kindsOf(after).length,

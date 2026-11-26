@@ -37,13 +37,6 @@ import {
   openedLobby,
 } from '../model'
 
-// The single player lobby. The Lobby component holds no state: each tap
-// comes up as an event. The root judges and makes each one
-// (src/app/update/lobby.ts): it opens on PLAY, makes each pick and focuses
-// START, opens the hero picker in its Dialog, and plays the hero worn. The
-// root's side of starting a run, the bot rolled, and the hero bought is in
-// lobby.story.test.ts.
-
 const PICKS: LobbyPicks = {
   mode: 'Campaign',
   difficulty: { chosen: 'Normal', nightmare: 'Locked' },
@@ -70,8 +63,6 @@ const PROPS: LobbyProps = {
   isKeyboard: true,
 }
 
-// NOTE: each of the component's Messages and the event it raises for the
-// root, one row each.
 const TAPS: ReadonlyArray<readonly [LobbyComponentMessage, Events]> = [
   [LobbyComponentMessage.ClickedBackButton(), Events.RequestedLeave()],
   [LobbyComponentMessage.ClickedBackdrop(), Events.RequestedLeave()],
@@ -130,8 +121,6 @@ describe('the Lobby component', () => {
   )
 })
 
-// THE ROOT'S RULES
-
 const ranked = (model: Model): Model =>
   UiStruct.evolve(model, {
     rank: UiStruct.evolve({ earnedPoints: () => pointsForRank(3) }),
@@ -154,7 +143,6 @@ const onDifficulty =
       difficulty: () => ({ chosen, nightmare: 'Locked' }),
     })
 
-// NOTE: a pick puts focus on START, so Enter plays next.
 const focusesStart: StoryStep = s =>
   s
     .expectExact(FocusLobbyControl.make({ control: 'Start' }))
@@ -238,8 +226,6 @@ describe("the lobby's rules on the root", () => {
     }),
   )
 
-  // NOTE: owner, 2026-11-12: on Dare the lobby picks the break's clock,
-  // none first; above Dare there is no pill to press.
   it.effect('on Dare the break clock steps to its next choice', () =>
     Effect.gen(function* () {
       const s = yield* storyOf(onDifficulty('Easy')(readyModel))
@@ -283,9 +269,6 @@ describe("the lobby's rules on the root", () => {
     }),
   )
 
-  // NOTE: the dare ladder (GAME_DESIGN.md, "The dare ladder"): the mark's
-  // pick steps through the marks opened, round to none, and asks nothing
-  // before an escape opens mark 1.
   const markedAt = (dareMark: number, best: number): Model =>
     UiStruct.evolve(readyModel, {
       dareMark: () => dareMark,

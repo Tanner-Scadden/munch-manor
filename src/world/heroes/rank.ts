@@ -7,18 +7,6 @@ import {
 } from '../../shared/playerData'
 import { costOfRank, pointsForRank, rankOf } from '../../shared/rankCurve'
 
-// Rank and Bones (GAME_DESIGN.md, "Rank and Bones"): the pure rules. A
-// finished run pays rank points; points make a rank; a tenth of a run's
-// points are Bones, a currency kept for good. Nothing here reads the Model:
-// src/features/end/rankRun.ts reads a run into a `RunPayInput`, and the save keeps what
-// was earned (src/shared/playerData.ts, SavedRank).
-
-// POINTS FOR A RUN
-
-// NOTE: the escape's pay (docs/ESCAPE_PLAN.md, "Rewards"): 10 a wave, 25
-// for each thing on the dare's list found, 50 for felling Uncle Chunk,
-// 100 for walking out, all times the
-// difficulty. A run that ends short still pays for what it found.
 const POINTS_PER_WAVE = 10
 const POINTS_PER_DARE_ITEM = 25
 const BOSS_POINTS = 50
@@ -27,18 +15,11 @@ const AWARD_POINTS = 10
 const REVIVE_POINTS = 5
 const POINTS_PER_BONE = 10
 
-// NOTE: READY before the break's clock runs out pays a rank point for
-// every READY_MS_PER_POINT left on it (owner, 2026-11-10, the pacing
-// report's pick 4c): 6 on a full 30 s break. Points only, never keys, so
-// it leaves the balance alone. The World counts them into its stats
-// (src/world/waves/waves.ts, startWaveEarly).
 const READY_MS_PER_POINT = 5000
 
 export const readyPointsFor = (remainingMs: number): number =>
   Math.max(0, Math.floor(remainingMs / READY_MS_PER_POINT))
 
-// NOTE: the difficulty's multiplier as a fraction, so the rounding down is
-// exact integer math: Easy 3/4, Normal 1, Hard 3/2, Nightmare 2.
 type Fraction = Readonly<{ top: number; bottom: number }>
 
 const MULTIPLIERS: Readonly<Record<Difficulty, Fraction>> = {
@@ -48,12 +29,6 @@ const MULTIPLIERS: Readonly<Record<Difficulty, Fraction>> = {
   Nightmare: { top: 2, bottom: 1 },
 }
 
-// NOTE: what one finished run pays for. `wavesCleared`, `bossesFelled`,
-// and `readyPoints` are only the ones not paid yet, so nothing is paid
-// twice. `dareItems` is the things on the list found; `isEscape` the
-// finale's (felling Uncle Chunk counts in `bossesFelled`). `awards` and
-// `revives` are the player's own seat in co-op, 0 alone.
-// A guided run (the player never got past the practice gate) pays nothing.
 export type RunPayInput = Readonly<{
   difficulty: Difficulty
   wavesCleared: number
@@ -63,8 +38,6 @@ export type RunPayInput = Readonly<{
   isEscape: boolean
   awards: number
   revives: number
-  // NOTE: the run modifiers' bonus, in percent (src/world/run/modifiers.ts): the total
-  // multiplies the points, so the Bones follow.
   bonusPercent: number
   isGuided: boolean
 }>
@@ -90,14 +63,6 @@ export const pointsForRun = (input: RunPayInput): number => {
 export const bonesForPoints = (points: number): number =>
   Math.floor(Math.max(0, points) / POINTS_PER_BONE)
 
-// BONES FOR A RUN
-
-// NOTE: more pay early (docs/PROGRESSION_PLAN.md, pillar A): a run that ends
-// at the end card with any points pays at least BONES_FLOOR Bones; the
-// day's first such run pays its Bones twice; and the first escape on each
-// difficulty adds FIRST_ESCAPE_BONES once. A run left for home pays its
-// points' Bones only, so quitting never farms the floor or spends the
-// double, and a guided run still pays nothing. Points are never doubled.
 const BONES_FLOOR = 3
 
 export const BONE_BONUSES = ['Floor', 'Double', 'FirstEscape'] as const
@@ -139,18 +104,12 @@ export const bonesForRun = (input: RunBonesInput): RunBones => {
   }
 }
 
-// RANKS
-
-// NOTE: the curve lives in src/shared/rankCurve.ts, where the player scope
-// reads it to pay a purse: rank 2 at 50 points, rank 10 at 1,170.
 export { costOfRank, pointsForRank, rankOf }
 
 export type RankProgress = Readonly<{
   rank: number
-  // NOTE: points earned into this rank, and what the rank costs.
   into: number
   cost: number
-  // NOTE: 0 to 1, for the bar.
   fraction: number
 }>
 
@@ -161,11 +120,6 @@ export const rankProgressOf = (points: number): RankProgress => {
   return { rank, into, cost, fraction: Math.min(1, into / cost) }
 }
 
-// THE STRIP
-
-// NOTE: the end card's rank strip reads everything from the points it is
-// showing, so a bar that fills past a rank's end turns into the next rank's
-// bar, and the number and the badge change as it goes.
 export const shownPointsOf: {
   (gained: number, t: number): (pointsBefore: number) => number
   (pointsBefore: number, gained: number, t: number): number
@@ -184,8 +138,6 @@ export const isRankUp: {
     rankOf(pointsBefore + gained) > rankOf(pointsBefore),
 )
 
-// BADGES
-
 export type BadgeTier = 'Wood' | 'Tin' | 'Bronze' | 'Silver' | 'Gold' | 'Skull'
 
 const BADGE_TIERS: ReadonlyArray<BadgeTier> = [
@@ -199,8 +151,6 @@ const BADGE_TIERS: ReadonlyArray<BadgeTier> = [
 
 const RANKS_PER_TIER = 10
 
-// NOTE: the badge changes look every 10 ranks: wood for 1 to 10, tin for 11
-// to 20, and so on to gold at 41 to 50, then the skull crest for good.
 export const badgeTierOf = (rank: number): BadgeTier =>
   BADGE_TIERS[
     Math.min(
@@ -209,22 +159,11 @@ export const badgeTierOf = (rank: number): BadgeTier =>
     )
   ] ?? 'Wood'
 
-// THE VETERAN GRANT
-
-// NOTE: a player who played before rank existed starts with a point for
-// each kill the save holds, capped at rank 10's points, so a veteran meets
-// a few callings and gifts but not all of them.
 export const VETERAN_CAP_POINTS = pointsForRank(10)
 
 export const veteranPointsOf = (totalKills: number): number =>
   Math.min(VETERAN_CAP_POINTS, Math.max(0, Math.floor(totalKills)))
 
-// PROGRESS
-
-// NOTE: what the save keeps of rank (SavedRank in src/shared/playerData.ts):
-// earned points and Bones only ever add (two linked devices both count); the
-// veteran grant is merged as the larger and happens once; spent Bones are
-// for the closet (not built yet).
 export type RankTotals = SavedRank
 
 export const noRank: RankTotals = {

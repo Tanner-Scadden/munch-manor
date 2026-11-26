@@ -1,11 +1,3 @@
-// The "find the kitchen" pass: the boarded door up close with its light and
-// steam, Rattles' bubble on screen and pinned at the edge, and the rooms
-// counter in a break before and after the kitchen opens, on a 1280x720
-// desktop, an 844x390 phone on its side, and a 390x844 phone held upright, as
-// `sfk-<TAG>-<viewport>-<scene>.png`. The back door scenes show the way out
-// shut, open once a thing is found, held, and the CHICKEN end card after.
-//   TAG=after bun run heavy -- --shared bun tools/audit/shotsFindKitchen.ts
-// ONLY picks scenes, and VIEWPORTS picks screens.
 import { Effect } from 'effect'
 
 import { runHarnessAudit } from './harnessServer'

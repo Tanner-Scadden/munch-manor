@@ -4,8 +4,6 @@ import type { PickupKind } from '../../world/schema/entitySchema'
 import { type Palette, type Sprite, spriteShapes } from '../sprite'
 import { HEART_PALETTE, HEART_PIXELS } from './hearts'
 
-// PICKUPS
-
 const PICKUP_OUTLINE = '#2a1418'
 
 const PICKUP_PIXELS: Readonly<
@@ -99,8 +97,6 @@ const PICKUP_PIXELS: Readonly<
   },
 }
 
-// NOTE: each pickup's own color, read off its art: the glow under it on the
-// floor, its HUD chip, and the Dinner Gong's ring.
 export const PICKUP_TINTS: Readonly<Record<PickupKind, string>> = {
   RapidFire: '#e8b84a',
   Damage: '#d8e0ee',

@@ -8,18 +8,8 @@ import type { Vector } from '../schema/worldSchema'
 import { stationBoxOf } from '../stations/stationSpots'
 import { TOOL_RULES, isToolActive } from '../stations/toolRules'
 
-// The kitchen's soup pot (docs/ROOM_RESEARCH.md, "The kitchen: HEAT AND
-// SLIP"), a room tool. Worked (a still player at the pot below the ovens,
-// src/world/stations/stations.ts), it tips over: a fresh puddle of soup
-// spills in front of it for a while, and a zombie that steps in from dry
-// floor slips on it as on the kitchen's old soup (src/world/kitchen/
-// kitchen.ts): skids on and lies dazed a moment. Skid them into the ovens'
-// flames. Big Lugs, Ankle Biters, and Uncle Chunk keep their feet, as on
-// any soup. The puddle is read off its station's clock.
-
 const RULES = TOOL_RULES.SoupPot
 
-// NOTE: the puddle while the pot's tool is active: its middle and size.
 export type Puddle = Readonly<{ x: number; y: number; radius: number }>
 
 export const puddleOf = (world: World): Option.Option<Puddle> =>

@@ -30,8 +30,6 @@ const PICKUP_CHIRP: ReadonlyArray<ToneLayer> = [
 
 const JINGLE_START_SECONDS = 0.08
 
-// NOTE: one click for each face of the fridge's spin, on the faces' own
-// beat, then a thunk where it lands.
 const SPIN_CLICK_STARTS: ReadonlyArray<number> = Array.map(
   Array.makeBy(FRIDGE_SPIN_STEPS_MS.length, index =>
     Array.reduce(
@@ -112,7 +110,6 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
       },
     ],
   },
-  // NOTE: Old Thunder: a sharp crack with a long rolling boom behind it.
   RifleShot: {
     variationCents: 40,
     tones: [
@@ -142,8 +139,6 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
       },
     ],
   },
-  // NOTE: the Big Blunder: a deep, wheezy whump, lower and longer than the
-  // Barn Buster's.
   BlunderbussBlast: {
     variationCents: 80,
     tones: [
@@ -820,8 +815,6 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
       },
     ],
   },
-  // NOTE: the Handyman's tink on a repair: a small, quiet hit of metal on
-  // metal, shorter and softer than the Clang.
   Tink: {
     variationCents: 200,
     tones: [
@@ -845,8 +838,6 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
       },
     ],
   },
-  // NOTE: the knife: a quick, thin swish through the air, and a wet chop
-  // when it meets a zombie.
   Swish: {
     variationCents: 140,
     tones: [],
@@ -961,8 +952,6 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
       },
     ],
   },
-  // NOTE: the rank up fanfare on the end card: a bright climb that lands on
-  // a held chord.
   RankUp: {
     variationCents: 0,
     tones: [
@@ -986,9 +975,6 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
       },
     ],
   },
-  // NOTE: MEDIC! from a downed player (src/world/party/medic.ts): two quick notes
-  // up, me-DIC!, a square shout with a triangle under it, then a short
-  // siren wobble, so a teammate hears it over a fight.
   MedicCall: {
     variationCents: 40,
     tones: [
@@ -1010,8 +996,6 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
     ],
     noises: [],
   },
-  // NOTE: SAVED! or CLUTCH! (src/world/party/medic.ts): a bright little run up and a
-  // ring on top, a shorter cousin of the rank up.
   Rescue: {
     variationCents: 0,
     tones: [
@@ -1028,9 +1012,6 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
     ],
     noises: [],
   },
-  // NOTE: the dare's music box (src/features/dare/musicBox.ts): a few plinked
-  // notes of a wind-up tune, sine over triangle for the comb's ring, played
-  // again and again from its spot, louder and panned as a player nears.
   MusicBox: {
     variationCents: 0,
     tones: Array.flatMap(
@@ -1050,9 +1031,6 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
     ),
     noises: [],
   },
-  // NOTE: the kitchen behind the boards, heard when the player is near and
-  // the exit is still shut (src/features/kitchen/kitchenCall.ts). Both are quiet: a lid
-  // rattling on a pot, and a slow bubble.
   PotClatter: {
     variationCents: 240,
     tones: Array.map([0, 0.09, 0.16, 0.22], (delay, index) => ({
@@ -1135,8 +1113,6 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
     ],
     noises: [],
   },
-  // NOTE: CHICKEN OUT in the lobby: three quick bawks, each a squawk that
-  // jumps up and falls, with a scratchy throat under it.
   Cluck: {
     variationCents: 60,
     tones: Array.map([0, 0.11, 0.2], (start, index) => ({
@@ -1157,8 +1133,6 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
       },
     ],
   },
-  // NOTE: a pencil scratching a thing onto the dare card: two quick strokes
-  // of high, papery noise, the second a little lower.
   Scribble: {
     variationCents: 180,
     tones: [],

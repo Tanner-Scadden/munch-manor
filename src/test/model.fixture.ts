@@ -1,8 +1,3 @@
-// Named Models for Story and Scene tests, and the changes tests make to one
-// most often. A test starts from one with `given(...)`, so the setup it does
-// not care about reads as a name, and the steps it is about stay in the test.
-// Steps and locators live in `testing.ts`.
-
 import { Array, Function, Option, Order } from 'effect'
 
 import { UiStruct } from '@effect/ui'
@@ -94,9 +89,6 @@ import {
 } from './testing'
 import { asVeteran } from './veteran'
 
-// The stretch of the blink after a bite on Normal, where the named Models
-// play: a bite's invulnerability is the base times this.
-// NOTE: every level the game builds, shut and with all its exits open.
 export const EVERY_LEVEL: ReadonlyArray<Level> = Array.flatMap(
   EVERY_LEVEL_SPEC,
   spec => [
@@ -110,8 +102,6 @@ export const EVERY_LEVEL: ReadonlyArray<Level> = Array.flatMap(
 
 export const NORMAL_BITE_GRACE = biteGraceScale('Normal')
 
-// SPAWNS
-
 export const plannedSpawn = (atMs: number): PlannedSpawn => ({
   atMs,
   kind: 'Shambler',
@@ -123,18 +113,11 @@ export const plannedSpawn = (atMs: number): PlannedSpawn => ({
   formation: 'Squad',
 })
 
-// NOTE: a spawn planned so far out that it never comes, so a wave that holds
-// it stays in progress with only the zombies a test puts in the room.
 export const DISTANT_SPAWN: PlannedSpawn = plannedSpawn(1e9)
 
-// NOTE: the spawns a break has rolled for the wave ahead, none outside one.
 export const breakSpawns = (model: Model): ReadonlyArray<PlannedSpawn> =>
   Phase.isAnyOf(['Preparation'])(model.phase) ? model.phase.spawns : []
 
-// PHASES
-
-// NOTE: wave 2 under way, and the break before it, each holding a spawn
-// that never comes.
 export const WAVE_2_FIGHT = Phase.Wave({
   wave: 2,
   elapsedMs: 0,
@@ -149,7 +132,6 @@ export const WAVE_2_BREAK = Phase.Preparation({
   spawns: [DISTANT_SPAWN],
 })
 
-// NOTE: the break before wave 3, with nothing planned.
 export const WAVE_3_BREAK = Phase.Preparation({
   clock: BreakClock.Counting(),
   wave: 3,
@@ -158,10 +140,6 @@ export const WAVE_3_BREAK = Phase.Preparation({
   spawns: [],
 })
 
-// HOME
-
-// NOTE: the ids of the heroes a player of this rank could have bought, all
-// of them bought, for tests that pick or start a run as a hero.
 export const heroesBoughtBy = (rank: number): ReadonlyArray<string> =>
   Array.flatMap(CALLINGS, calling =>
     calling !== 'You' && isCallingUnlocked(calling, rank)
@@ -169,11 +147,6 @@ export const heroesBoughtBy = (rank: number): ReadonlyArray<string> =>
       : [],
   )
 
-// NOTE: a returning player on the home menu: the tutorial is done, so no
-// lesson or first-run card gets in the way.
-// NOTE: the UTC day known (src/platform/today.ts), for the day's Bones
-// bonuses and missions, a while ago: the day's three already frozen, as
-// the first Message after the day came in left them.
 export const knowingDay: {
   (day: string): (model: Model) => Model
   (model: Model, day: string): Model
@@ -184,7 +157,6 @@ export const knowingDay: {
   })
 })
 
-// NOTE: `keys` on the crew's ring (src/world/keys/keys.ts), to spend.
 export const withKeys: {
   (keys: number): <M extends World>(base: M) => M
   <M extends World>(base: M, keys: number): M
@@ -197,47 +169,36 @@ export const withKeys: {
 
 export const home: Model = asVeteran(initialModel)
 
-// NOTE: the home menu once the save has been read, so the menu's buttons are
-// up. A save that was read has been granted its veteran start (0 here).
 export const homeAfterRead: Model = UiStruct.evolve(home, {
   rank: rank => grantedVeteran(rank, 0),
   saving: UiStruct.evolve({ saveStatus: () => 'Read' }),
 })
 
-// NOTE: a returning player on a measured surface, ready to start a run.
 export const readyModel: Model = UiStruct.evolve(home, {
   maybeSurface: () => Option.some(SURFACE),
 })
 
-// NOTE: a new player on a measured surface: the tutorial is still ahead.
 export const newPlayerReady: Model = UiStruct.evolve(initialModel, {
   maybeSurface: () => Option.some(SURFACE),
 })
 
-// NOTE: a new player on a measured surface who has picked a difficulty, so
-// the card does not come up.
 export const newPlayerCardSeen: Model = UiStruct.evolve(initialModel, {
   difficultyCard: () => DifficultyCard.Seen(),
   maybeSurface: () => Option.some(SURFACE),
 })
 
-// NOTE: a returning player on a measured surface once the save has been
-// read.
 export const readyAfterRead: Model = UiStruct.evolve(home, {
   maybeSurface: () => Option.some(SURFACE),
   rank: rank => grantedVeteran(rank, 0),
   saving: UiStruct.evolve({ saveStatus: () => 'Read' }),
 })
 
-// NOTE: the boot splash, still reading the save.
 export const loadingSave: Model = UiStruct.evolve(initialModel, {
   maybeSurface: () => Option.some(SURFACE),
   saving: UiStruct.evolve({
     loading: () => Loading.Loading({ pending: ['Save'] }),
   }),
 })
-
-// FIGHTING
 
 export const fighting: Model = UiStruct.evolve(initialModel, {
   phase: () => Phase.Wave({ wave: 3, elapsedMs: 4000, spawns: [] }),
@@ -247,10 +208,6 @@ export const veteranFighting: Model = UiStruct.evolve(home, {
   phase: () => Phase.Wave({ wave: 3, elapsedMs: 4000, spawns: [] }),
 })
 
-// THE DARE
-
-// NOTE: a run with these things in the house (src/world/dare/dare.ts), the
-// asked ones its list.
 export const withDareThings: {
   (things: ReadonlyArray<DareThing>): (model: Model) => Model
   (model: Model, things: ReadonlyArray<DareThing>): Model
@@ -264,8 +221,6 @@ export const withDareThings: {
   }),
 )
 
-// NOTE: the first hiding spot of a room of the level, by the room's id, in
-// world pixels: where the dare lays that room's thing.
 export const hidingSpotIn: {
   (room: string): (level: Level) => Vector
   (level: Level, room: string): Vector
@@ -281,9 +236,6 @@ export const hidingSpotIn: {
   ),
 )
 
-// THE FINALE
-
-// NOTE: a run's finale where it stands (src/world/dare/finale.ts).
 export const withFinale: {
   (finale: Finale): (model: Model) => Model
   (model: Model, finale: Finale): Model
@@ -293,13 +245,9 @@ export const withFinale: {
   }),
 )
 
-// NOTE: just inside the start room's front door, where a player steps out
-// once it is open.
 export const FRONT_DOOR_SILL: Readonly<{ x: number; y: number }> =
   frontDoorSillOf(levelOf(initialModel))
 
-// NOTE: the front door open and the lead player on its sill: the next frame
-// walks them out.
 export const escaping = (model: Model): Model =>
   withPlayerAt(
     withFinale(model, Finale.Open()),
@@ -307,9 +255,6 @@ export const escaping = (model: Model): Model =>
     FRONT_DOOR_SILL.y,
   )
 
-// NOTE: wave 2 under way with three rounds in the pistol and the shotgun
-// on the back, so a swap, a reload, or a shot shows, for the key and
-// controller tests.
 export const armedFight: Model = modifyFocus(
   UiStruct.evolve(readyModel, { phase: () => WAVE_2_FIGHT }),
   {
@@ -324,19 +269,15 @@ export const armedFight: Model = modifyFocus(
   },
 )
 
-// NOTE: the same, in wave 2's break.
 export const armedBreak: Model = UiStruct.evolve(armedFight, {
   phase: () => WAVE_2_BREAK,
 })
 
-// NOTE: a new player's first wave on a wide surface with nothing coming
-// in, for the contact and bite tests that stand zombies by hand.
 export const openFloorWave: Model = UiStruct.evolve(initialModel, {
   maybeSurface: () => Option.some({ left: 0, top: 0, width: 800, height: 400 }),
   phase: () => Phase.Wave({ wave: 1, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
 })
 
-// NOTE: the World's clock set to `elapsedMs`, for what is read off it.
 export const atClock: {
   (elapsedMs: number): (model: Model) => Model
   (model: Model, elapsedMs: number): Model
@@ -344,16 +285,12 @@ export const atClock: {
   UiStruct.evolve(model, { elapsedMs: () => elapsedMs }),
 )
 
-// A wave in progress on a measured surface, with nothing coming in.
 export const quietWave = (wave: number): Model =>
   UiStruct.evolve(initialModel, {
     maybeSurface: () => Option.some(SURFACE),
     phase: () => Phase.Wave({ wave, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
   })
 
-// NOTE: a quiet wave 3 with the player carrying `arsenal` and a shot from
-// `weapon` about to land on a one-health zombie in front of them: one tick
-// is one kill for that gun.
 export const killShot: {
   (weapon: WeaponKind): (arsenal: Arsenal) => Model
   (arsenal: Arsenal, weapon: WeaponKind): Model
@@ -367,13 +304,9 @@ export const killShot: {
   ),
 )
 
-// NOTE: the focused player's second gun, the one `killShot` holds.
 export const spareGunOf = (current: Model): CarriedGun =>
   Option.getOrThrow(maybeSpareGun(focusOf(current).player.arsenal))
 
-// NOTE: past the first break's lessons, so the dining room's trap crate
-// rolls its find (a new save's guided first break always holds a Plank
-// Pile, see src/world/gear/crates.ts) and no tour key lies on the floor.
 export const pastFirstBreak = (model: Model): Model =>
   UiStruct.evolve(model, {
     lessons: lessons =>
@@ -385,7 +318,6 @@ export const pastFirstBreak = (model: Model): Model =>
       }),
   })
 
-// NOTE: a break before `wave` with nothing coming in for a long while.
 export const breakBefore = (wave: number): Phase =>
   Phase.Preparation({
     clock: BreakClock.Counting(),
@@ -395,15 +327,10 @@ export const breakBefore = (wave: number): Phase =>
     spawns: [DISTANT_SPAWN],
   })
 
-// NOTE: a returning player's start Model on a measured surface, past the
-// first break: where the trap tests start.
 export const trapReady: Model = UiStruct.evolve(pastFirstBreak(initialModel), {
   maybeSurface: () => Option.some({ left: 0, top: 0, width: 800, height: 400 }),
 })
 
-// NOTE: past the kitchen tour's break, so the break before wave 3 counts
-// down and the kitchen and the fridge have their prices (the tour holds the
-// clock and gives them away in a new save, see src/world/run/tutorialRules.ts).
 export const pastTimedBreaks = (model: Model): Model =>
   UiStruct.evolve(model, {
     lessons: lessons =>
@@ -412,13 +339,11 @@ export const pastTimedBreaks = (model: Model): Model =>
       }),
   })
 
-// NOTE: Hard, for a test of Hard's own rules (the default Model is Normal).
 export const onHard = (model: Model): Model =>
   UiStruct.evolve(model, {
     difficulty: setting => UiStruct.evolve(setting, { chosen: () => 'Hard' }),
   })
 
-// NOTE: the run on `difficulty`, for a rule read off the dial.
 export const onDifficulty: {
   (difficulty: Difficulty): (model: Model) => Model
   (model: Model, difficulty: Difficulty): Model
@@ -429,7 +354,6 @@ export const onDifficulty: {
   }),
 )
 
-// NOTE: data first when the Model leads: a Model is no array, zombies are.
 export const withActors: {
   (
     zombies: ReadonlyArray<Zombie>,
@@ -462,7 +386,6 @@ export const withPlayerAt: {
   }),
 )
 
-// NOTE: the melee slot in hand, the knife or the Pan, with the guns kept.
 export const withKnifeOut = (base: Model): Model =>
   modifyFocus(base, {
     player: player => UiStruct.evolve(player, { wield: () => 'Melee' }),
@@ -477,9 +400,6 @@ export const withArsenal: {
   }),
 )
 
-// NOTE: runs a step on a World with the seat at `slot` first, so the seat
-// reads as `focusOf(world)`, then puts the seats back in the order they
-// were.
 export const withSeat: {
   (slot: number, step: (focused: World) => World): (world: World) => World
   (world: World, slot: number, step: (focused: World) => World): World
@@ -499,7 +419,6 @@ export const withSeat: {
   },
 )
 
-// NOTE: a change to the record of the seat a World is about.
 export const modifyLeadSeat: {
   (change: (seat: Seat) => Seat): (world: World) => World
   (world: World, change: (seat: Seat) => Seat): World
@@ -507,7 +426,6 @@ export const modifyLeadSeat: {
   modifySeatRecord(world, focusSlotOf(world), change),
 )
 
-// NOTE: changes one seat of a co-op World held in the Model.
 export const atSeat: {
   (slot: number, change: (world: World) => World): (current: Model) => Model
   (current: Model, slot: number, change: (world: World) => World): Model
@@ -516,8 +434,6 @@ export const atSeat: {
   (current: Model, slot: number, change: (world: World) => World): Model =>
     withWorld(current, world => withSeat(world, slot, change)),
 )
-
-// SCREENS
 
 export const inPortrait = (model: Model): Model =>
   UiStruct.evolve(model, {
@@ -532,10 +448,6 @@ export const withNewerBuild = (model: Model): Model =>
     }),
   })
 
-// THE HOUSE
-
-// NOTE: the boards to open, in order, to reach a slot room where the house
-// stands it: those its slot requires, then its own.
 export const exitsToRoom: {
   (room: SlotRoomId): (arrangement: Arrangement) => ReadonlyArray<ExitId>
   (arrangement: Arrangement, room: SlotRoomId): ReadonlyArray<ExitId>
@@ -551,7 +463,6 @@ export const exitsToRoom: {
     ),
 )
 
-// NOTE: a run's house stood as `arrangement`, its boards to `room` open.
 export const roomOpenIn: {
   (room: SlotRoomId): (arrangement: Arrangement) => LevelState
   (arrangement: Arrangement, room: SlotRoomId): LevelState
@@ -563,10 +474,6 @@ export const roomOpenIn: {
   ),
 )
 
-// MYSTERY LEFTOVERS
-
-// NOTE: a fresh run with the kitchen open and the player at the fridge's
-// door in a break, for the fridge's Story tests.
 export function freshRunModel(): Model {
   const veteran = asVeteran(initialModel)
   return UiStruct.evolve(
@@ -589,7 +496,6 @@ export const AT_FRIDGE = {
   y: fridgeBox.bottom + 8,
 }
 
-// NOTE: at the fridge in the break before `wave`.
 export const atFridgeOnWave: {
   (keys: number): (wave: number) => Model
   (wave: number, keys: number): Model
@@ -615,8 +521,6 @@ export const atFridgeOnWave: {
 
 export const atFridge = (keys: number): Model => atFridgeOnWave(5, keys)
 
-// NOTE: a fridge whose stream's next draw lands on `prize`, found by trying
-// seeds, so a test can ask for each prize without knowing the stream.
 export const fridgeSeededFor: {
   (prize: FridgePrize): (current: Model) => Model
   (current: Model, prize: FridgePrize): Model
@@ -636,8 +540,6 @@ export const fridgeSeededFor: {
   })
 })
 
-// NOTE: typed as the Wave it is, not as any Phase, so a test can pause it
-// as a round.
 export const FIGHTING_PHASE = Phase.Wave({
   wave: 1,
   elapsedMs: 0,
@@ -655,17 +557,12 @@ export const withZombies: {
   UiStruct.evolve(base, { zombies: () => zombies }),
 )
 
-// CO-OP CREWS
-
-// NOTE: wave 3 under way with a spawn that never comes, for a crew's tests.
 const CREW_WAVE = Phase.Wave({
   wave: 3,
   elapsedMs: 0,
   spawns: [DISTANT_SPAWN],
 })
 
-// NOTE: a crew of `count` seats in one World, on a surface, mid-wave.
-// NOTE: data first when the count leads: a count is a number, a Phase is not.
 export const crewInWave: {
   (phase?: Phase): (count: number) => Model
   (count: number, phase?: Phase): Model
@@ -681,7 +578,6 @@ export const crewInWave: {
     ),
 )
 
-// NOTE: data first when the Model leads: a Model is an object, a slot is not.
 export const placeSeat: {
   (slot: number, x: number, y: number, hp?: number): (current: Model) => Model
   (current: Model, slot: number, x: number, y: number, hp?: number): Model
@@ -717,8 +613,6 @@ export const withSeatLife: {
   ),
 )
 
-// NOTE: changes made to a Model one after another, in order.
-// NOTE: a seat no zombie can hurt, so a long test keeps its run going.
 export const untouchableSeat =
   (slot: number) =>
   (current: Model): Model =>
@@ -740,7 +634,6 @@ export const pipeline =
   (start: Model): Model =>
     Array.reduce(steps, start, (current, step) => step(current))
 
-// NOTE: one heart left and a zombie on the player, so the next tick bites.
 export const lastHeart = (base: Model): Model =>
   modifyFocus(
     UiStruct.evolve(base, {
@@ -751,9 +644,6 @@ export const lastHeart = (base: Model): Model =>
     { player: player => UiStruct.evolve(player, { hp: () => 1 }) },
   )
 
-// PICKUPS
-
-// NOTE: data first when the id leads: an id is a number, a kind is not.
 export const pickupAt: {
   (
     kind: PickupKind,
@@ -788,10 +678,6 @@ export const withPickups: {
     modifyWorldFields(base, { pickups: () => pickups }),
 )
 
-// THE STOVE AND THE GAS VALVE
-
-// NOTE: a fresh run with the kitchen open, in `phase`, and the player at
-// `spot` with `keys` to spend, for the stove's and the valve's tests.
 const inKitchen = (
   spot: Readonly<{ x: number; y: number }>,
   keys: number,
@@ -826,8 +712,6 @@ const AT_STOVE = {
   y: stoveBox.bottom + 8,
 }
 
-// NOTE: a player whose tally has done `feat`'s count already, so what it
-// opens (src/world/feats/feats.ts) is theirs.
 export const withFeatsOf: {
   (change: (tally: FeatTally) => FeatTally): (model: Model) => Model
   (model: Model, change: (tally: FeatTally) => FeatTally): Model
@@ -837,7 +721,6 @@ export const withFeatsOf: {
     modifyFocus(model, { feats: change }),
 )
 
-// NOTE: at the stove in a break, its feat (kitchen kills last wave) done.
 export const atStove = (balance: number): Model =>
   withFeatsOf(inKitchen(AT_STOVE, balance, kitchenBreak(5)), tally =>
     UiStruct.evolve(tally, { kitchenKills: () => STOVE_RULES.kitchenKills }),
@@ -861,8 +744,6 @@ export const atValve: {
   ),
 )
 
-// DISPLAY CASES
-
 const firstCaseBox = caseBoxOf(START_LEVEL, {
   id: 0,
   spot: 0,
@@ -871,19 +752,15 @@ const firstCaseBox = caseBoxOf(START_LEVEL, {
   state: CaseState.Locked(),
 })
 
-// NOTE: on the floor just below the first case spot, within its reach.
 export const AT_CASE = {
   x: (firstCaseBox.left + firstCaseBox.right) / 2,
   y: firstCaseBox.bottom + 8,
 }
 
-// NOTE: one case at the first spot holding `prize`, its feat `feat`, in
-// `state`, with the player standing at it; the run's other cases gone.
 export const atCase: {
   (prize: CasePrize, state: CaseState, feat?: Feat): (model: Model) => Model
   (model: Model, prize: CasePrize, state: CaseState, feat?: Feat): Model
 } = Function.dual(
-  // NOTE: data-first starts with the Model; data-last with the prize, a string.
   (args: IArguments) => typeof args[0] !== 'string',
   (
     model: Model,
@@ -902,8 +779,6 @@ export const atCase: {
     ),
 )
 
-// NOTE: at the first case in a break, opened for the player, holding
-// `prize`.
 export const atOpenedCase: {
   (prize: CasePrize): (model: Model) => Model
   (model: Model, prize: CasePrize): Model
@@ -915,13 +790,10 @@ export const atOpenedCase: {
   ),
 )
 
-// NOTE: a root Dialog's state shown open, for a test that starts on it
-// without its show Command (`profileDialog: openedDialog`).
 export const openedDialog = (
   dialog: Model['panelDialog'],
 ): Model['panelDialog'] => UiStruct.evolve(dialog, { isOpen: () => true })
 
-// NOTE: `model` on a build with no tip jar link, so no coffee shows.
 export const withoutSupportLink = (model: Model): Model =>
   UiStruct.evolve(model, {
     release: UiStruct.evolve({ maybeSupportUrl: () => Option.none() }),

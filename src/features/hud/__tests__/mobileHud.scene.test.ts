@@ -85,8 +85,6 @@ const breakWithTraps: Model = modifyFocus(
   { trapStock: () => ({ Barricade: 1, Turret: 1 }) },
 )
 
-// NOTE: a gun slot by its name: the reload button past the knife shares the
-// held gun's name, so a slot is looked for among the slots.
 const slotNamed = (name: string) =>
   Locator.inside(byClass('gun-slots'), button(name))
 
@@ -105,7 +103,6 @@ const keyBadgeIn = (locator: Locator.Locator) =>
 const slotNumberIn = (locator: Locator.Locator) =>
   Locator.inside(locator, byClass('slot-number'))
 
-// NOTE: a thumb on the left of the surface: the move stick.
 const moveThumb = pressSurface({
   pointerId: 3,
   device: 'Touch',
@@ -234,9 +231,6 @@ describe('the gun cluster', () => {
       const s = yield* sceneOf(fightingWith(30))
       s.pipe(
         measureHud,
-        // NOTE: the 2:1 surface widens the screen to 360
-        // (src/render/screen.ts), and the gun pair stays centered on it, 20
-        // pixels further right.
         expectStyle(cluster, 'left', `${(139 / 360) * 100}%`),
         expectStyle(cluster, 'width', `${(112 / 360) * 100}%`),
         expectAttr(pistolSlot, 'data-held', 'false'),
@@ -519,9 +513,6 @@ describe('the corner', () => {
           .pipe(clickOn(settingsButton), showDialog(PROFILE_DIALOG_ID))
           .expect(profileDialog)
           .toExist()
-        // NOTE: the Profile is a child, a leaf in the root's Scene, so its
-        // Settings tile is read in a Scene of its own, with the props the
-        // root hands it.
         const onSettings = yield* modelAfter(
           canFill(initialModel),
           send(Message.ClickedSettingsButton()),
@@ -560,8 +551,6 @@ describe('the install tile', () => {
         clickOn(button('Play')),
         resolveFocusLobby(),
         expectAttr(homeUnderLobby, 'inert', ''),
-        // NOTE: the home menu under the lobby is aria-hidden as well as
-        // inert, so its tile is looked for among hidden elements.
         expectAttr(
           HtmlLocator.role('button', {
             name: 'Add to Home Screen: show me how',
@@ -590,8 +579,6 @@ describe('the install tile', () => {
         s.pipe(clickOn(homeScreenTip), showDialog(HOME_SCREEN_STEPS_ID))
           .expect(guide)
           .toExist()
-          // NOTE: the steps are pictures, aria-hidden, so they are counted
-          // among hidden elements.
           .expect(
             Locator.inside(
               guide,
@@ -610,8 +597,6 @@ describe('the install tile', () => {
         s.pipe(expectAttr(homeScreenTip, 'data-tip', 'Dismissed'))
           .expect(Locator.inside(guide, button('Close')))
           .toExist()
-        // NOTE: the X is the Dialog's own close part, so its press comes up
-        // as the Dialog's close request.
         s.pipe(requestDialogClose(HOME_SCREEN_STEPS_ID, 'close-press'))
           .expect(guide)
           .toBeAbsent()

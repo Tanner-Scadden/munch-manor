@@ -11,10 +11,6 @@ import {
 } from './sprite'
 import { GNOME_PALETTE, GNOME_PIXELS, TRAP_ICON_PIXELS } from './sprites/traps'
 
-// NOTE: a hint shows instead of explaining: a small moving picture of the
-// key, mouse, thumb, or thing to use, and at most three words. A part with no
-// words is a picture that leads into the next part, such as the T key before
-// the planks. How to play draws the same pictures (src/features/menus/pauseHelp.ts).
 export const HintIcon = Schema.Literals([
   'Wasd',
   'Mouse',
@@ -29,10 +25,6 @@ export const HintIcon = Schema.Literals([
   'GunLevel',
 ])
 export type HintIcon = typeof HintIcon.Type
-
-// NOTE: the tutorial's pictures. Each icon is a few frames of pixel art,
-// every frame baked once into one sprite image as the game loads, and the
-// hint picks the frame from how long it has been shown.
 
 type Pixels = ReadonlyArray<string>
 
@@ -116,8 +108,6 @@ export const hintIconFrame: {
     ),
 )
 
-// KEYS
-
 const KEY_GLYPH = '#'
 
 const faceRow = (glyphRow: string, face: string, glyph: string): string =>
@@ -132,9 +122,6 @@ const keyWidth = (label: string): number =>
     Math.max(widest, row.length),
   ) + 4
 
-// NOTE: light letters on a dark cap, and a press lights them yellow. Dark
-// letters on a light cap read backwards at this size: the eye takes the
-// light gaps between the strokes for the letters, and E turns into a 3.
 export const keyPixels: {
   (isPressed: boolean): (label: string) => Pixels
   (label: string, isPressed: boolean): Pixels
@@ -178,8 +165,6 @@ const WASD = iconOf(23, 17, 300, [
   wasdFrame('S'),
   wasdFrame('A'),
 ])
-
-// MOUSE
 
 const mousePixels = (isClicked: boolean): Pixels => {
   const button = isClicked ? 'yyy' : 'kkk'
@@ -236,8 +221,6 @@ const MOUSE = iconOf(19, 12, 260, [
   ],
 ])
 
-// THUMB STICKS
-
 const ring = (color: string): Pixels =>
   Array.map(
     [
@@ -293,8 +276,6 @@ const AIM_STICK = iconOf(RING_SIZE + 9, RING_SIZE, 140, [
   aimStickFrame(2),
 ])
 
-// TAP
-
 const HAND: Pixels = [
   '...oo.....',
   '..ohho....',
@@ -316,8 +297,6 @@ const TAP = iconOf(10, 15, 380, [
   [layer(HAND, 0, 3)],
   [layer(HAND, 0, 2), layer(TAP_RIPPLE, 0, 0)],
 ])
-
-// THINGS
 
 const DOOR: Pixels = ['fffffffffff', ...Array.makeBy(11, () => 'fdddddddddf')]
 
@@ -366,9 +345,6 @@ const gunsFrame = (isFirstHeld: boolean): ReadonlyArray<Layer> => [
 
 const GUNS = iconOf(23, 8, 500, [gunsFrame(true), gunsFrame(false)])
 
-// NOTE: guns level up on their own kills (src/world/gear/gunLevels.ts): a
-// skull, then the gun lighting gold under a rising arrow. The first time
-// hint and How to play's Guns card draw it.
 const SKULL: Pixels = [
   '.wwwww.',
   'wwwwwww',
@@ -404,9 +380,6 @@ const GUN_LEVEL = iconOf(26, 9, 320, [
   gunLevelFrame('Up'),
 ])
 
-// NOTE: the kitchen's stove cooks a perk onto the gun in hand
-// (src/world/kitchen/stove.ts): the gun over the flames, then wearing its
-// chili sticker, as its HUD slot does.
 const CHILI: Pixels = ['..v', '.vr', 'rrR', 'rR.', 'R..']
 const CHILI_PALETTE: Palette = { ...ICON_PALETTE, v: '#6fae4a' }
 const FLAMES: Pixels = ['.r..r..r.', 'ryr.ryr.r', 'ryyryyrry']
@@ -429,14 +402,6 @@ const STOVE_DEMO = iconOf(13, 13, 300, [
     layer(STOVE_TOP, 1, 12),
   ],
 ])
-
-// HOW TO PLAY DEMOS
-
-// NOTE: tiny looping demos for the How to play cards whose action a still
-// picture cannot show: stabbing with the knife, and the dare's loop: a
-// skeleton key dropping, a padlock opening the boards on a room's thing, a
-// display case's lock ticking open, the dare card filling up, and walking
-// out the front door holding Uncle Chunk's big key.
 
 const KNIFE_PALETTE: Palette = { X: '#e9e3cf', R: '#a8302a' }
 

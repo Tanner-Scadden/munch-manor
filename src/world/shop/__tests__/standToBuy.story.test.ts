@@ -38,13 +38,7 @@ import { EXIT_RULES } from '../../level/exits'
 import { focusOf, modifyFocus } from '../../party/party'
 import { PURCHASE_RULES, holdProgress } from '../purchase'
 
-// NOTE: enough keys for the kitchen's padlock, with two to spare.
 const KEYS = EXIT_RULES.kitchenKeys + 2
-
-// Standing still to buy (src/world/shop/purchase.ts): at a purchasable, a player who
-// stands still for a second buys it, as a teammate revives by standing
-// still; the interact key still buys in half a second. Firing, stabbing,
-// or moving resets the ring, and one buy never chains into the next.
 
 const FRAME_MS = FIXED_STEP_MS
 const atBoards = (keys: number): Model =>

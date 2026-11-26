@@ -10,14 +10,6 @@ import {
   tilesWithSymbol,
 } from '../../world/level/tileGrid'
 
-// NOTE: a level's room is drawn once, as one sprite image, on the cached
-// floor canvas. Only the hearth's flames move, and they are one small image
-// drawn on the scene canvas each frame. The furniture, the walls, the doors,
-// and the exits come from the map. The rug, the pictures on the wall, and
-// the stains are placed by hand for the parlour.
-
-// PALETTE
-
 export const FLOOR_COLOR = '#3b2b23'
 export const PLANK_SEAM_COLOR = '#2d2019'
 export const PLANK_JOINT_COLOR = '#271b15'
@@ -87,8 +79,6 @@ export const FACE_TOP = 3
 export const CHAIR_RAIL_Y = 13
 export const BASEBOARD_Y = 19
 
-// NOTE: a fixed roll for each decoration, from its two indices, so the room
-// looks the same on every load.
 export const roll: {
   (second: number): (first: number) => number
   (first: number, second: number): number

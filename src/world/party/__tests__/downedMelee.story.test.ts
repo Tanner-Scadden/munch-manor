@@ -20,11 +20,6 @@ import { type Intent, idleIntent } from '../../schema/worldSchema'
 import { type InputsByPlayer, stepWorld } from '../../step/stepWorld'
 import { modifyFocus, seatStateAt } from '../party'
 
-// A co-op player who is down, Downed or BledOut, cannot shoot, but the
-// trigger swings their melee slot: the knife, or the Clang Pan
-// (swingWhileDown in src/world/step/simulation.ts). The gun stays drawn for when they
-// get up.
-
 const PLAYER_X = 100
 const ROW_Y = 104
 const TANK_ID = 7
@@ -37,8 +32,6 @@ const swinging: Intent = {
 
 const DOWNED = Life.Downed({ bleedMs: 10_000, reviveMs: 0, callMs: 0 })
 
-// NOTE: player 1 lies at PLAYER_X with a Tank close in front; player 2
-// stands far off, so the run goes on.
 const downedBeside = (life: Life = DOWNED): Model =>
   withZombies(
     withSeatLife(

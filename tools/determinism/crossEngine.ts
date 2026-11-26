@@ -1,27 +1,3 @@
-// The cross-engine determinism check: the same scripted run, fed the same
-// inputs, in Bun (JavaScriptCore, Safari's engine), Node (V8), headless
-// Chrome (V8, a browser), and workerd (V8, the runtime of Durable Objects).
-// Each engine hashes the gameplay state (see fields.ts and hash.ts) every N
-// frames. For every pair that disagrees, it finds the exact first frame,
-// dumps both engines' state at that frame, and reports which fields differ
-// and the first path inside them, with both values.
-//
-// Heavy (each engine plays the whole run), so run it through the guard:
-//   bun run determinism -- [options]
-//
-// Options:
-//   --frames N           frames to play (default 18000, 5 minutes)
-//   --seed S             the run's seed (default 1)
-//   --mode Endless       endless instead of the campaign
-//   --pattern Mixed      variable frame lengths instead of a fixed 60 Hz step
-//   --every N            hash every N frames (default 1)
-//   --engines a,b        any of bun,node,chrome,workerd (default all four)
-//   --no-build           reuse out/ from the last build
-//   --json               print the report as JSON
-//
-// It exits 1 when any two engines disagree. The game takes its
-// transcendental math from src/shared/detMath.ts, so they never should.
-
 import {
   Array,
   Clock,
@@ -82,7 +58,6 @@ class EnginesDisagree extends Schema.TaggedError<
   { readonly brand: unique symbol }
 >()('EnginesDisagree', { pairs: Schema.Finite }) {}
 
-// NOTE: the value an Option holds, or the run fails with `reason`.
 const orFail = <A>(
   maybe: Option.Option<A>,
   reason: string,
@@ -90,8 +65,6 @@ const orFail = <A>(
   Effect.fromOption(maybe).pipe(
     Effect.mapError(() => EngineFailed.make({ message: reason })),
   )
-
-// ARGUMENTS
 
 const argv = process.argv.slice(2)
 const flag = (name: string): boolean => argv.includes(name)
@@ -113,8 +86,6 @@ const engines = Array.flatMap(
   name => Array.filter(ALL_ENGINES, engine => engine === name),
 )
 const asJson = flag('--json')
-
-// ENGINES
 
 const unescapeHtml = (text: string): string =>
   String.replaceAll(
@@ -159,8 +130,6 @@ const runChrome = (params: string) =>
           '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
         ),
       )
-      // NOTE: a throwaway profile, so the run never touches the owner's
-      // Chrome. It goes with the scope.
       const profile = yield* fs.makeTempDirectoryScoped({
         prefix: 'determinism-chrome-',
       })
@@ -251,8 +220,6 @@ const askDump = (engine: EngineName, frame: number) =>
       `${engine} answered no dump for frame ${frame}`,
     ),
   )
-
-// THE CHECK
 
 type Divergence = Readonly<{
   a: EngineName
@@ -354,8 +321,6 @@ const divergencesOf = (
   )
 }
 
-// THE REPORT
-
 const shown = (value: unknown): string => {
   const text =
     typeof value === 'number'
@@ -366,8 +331,6 @@ const shown = (value: unknown): string => {
   return text.length > 120 ? `${String.slice(0, 117)(text)}...` : text
 }
 
-// NOTE: the --json report. A difference's values are whatever the states
-// held there, so they pass through as they are.
 const Report = Schema.Struct({
   request: EngineRequest,
   engines: Schema.Array(
@@ -462,7 +425,6 @@ const program = Effect.gen(function* () {
   const runs = yield* playEngines
   const divergences = yield* divergencesOf(runs)
   yield* report(runs, divergences)
-  // NOTE: exits 1 when any two engines disagree.
   if (divergences.length > 0) {
     return yield* EnginesDisagree.make({ pairs: divergences.length })
   }

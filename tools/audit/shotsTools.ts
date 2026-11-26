@@ -1,12 +1,3 @@
-// The room tools (docs/ESCAPE_PLAN.md, layer 20): each tool mid-wave with
-// every exit open, idle with the player a few steps off (its first time
-// ring and arrow), being worked (its gold ring half full), and firing with a
-// crowd in its room; then the cellar's dark, unlit with a crowd near and far
-// (only the near zombies drawn) and lit. On a 1280x720 desktop, an 844x390
-// phone on its side, and a 390x844 phone held upright, as
-// `tools-<TAG>-<viewport>-<scene>.png`.
-//   TAG=after bun run heavy -- --shared bun tools/audit/shotsTools.ts
-// ONLY picks scenes, and VIEWPORTS picks screens.
 import { Array, Effect } from 'effect'
 
 import { runHarnessAudit } from './harnessServer'
@@ -29,10 +20,6 @@ const LEARNED =
 const OPEN = 'openexits=Kitchen,West,East,Far,Secret'
 const WAVE = `${LEARNED}&wave=3&start=wave&elapsed=6000&${OPEN}`
 
-// NOTE: each tool in the first house (src/world/level/plan.ts,
-// ARRANGEMENTS): the spot a player works it from, a spot a few steps off,
-// how long after it fired its effect shows best, and where its room's crowd
-// stands (the harness's crowd spots, moved by `crowdx` and `crowdy`).
 type Tool = Readonly<{
   id: string
   at: readonly [number, number]
@@ -110,9 +97,6 @@ const toolScenes = (tool: Tool): ReadonlyArray<Scene> => {
   ]
 }
 
-// NOTE: the cellar with its crowd spread from its west door to its east
-// wall, the player a step from one of them: in the dark only the zombies
-// within about three tiles show; lit, all of them.
 const CELLAR = `${LEARNED}&wave=3&start=wave&elapsed=6000&${OPEN}&crowd=8&crowdx=680&px=915&py=119`
 
 const SCENES: ReadonlyArray<Scene> = [

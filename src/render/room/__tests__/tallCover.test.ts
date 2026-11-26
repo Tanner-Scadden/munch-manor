@@ -16,8 +16,6 @@ import { type TallCover, tallCoverDrawables, tallCoverOf } from '../tallCover'
 
 const level = levelFor(MANOR_SPEC)
 
-// NOTE: a freestanding piece: one with floor above it, so someone can stand
-// behind it. The widest keeps the test clear of its sides.
 const piece: TallCover = Option.getOrThrow(
   Array.last(
     Array.sort(
@@ -36,14 +34,11 @@ const piece: TallCover = Option.getOrThrow(
 
 const middle = (piece.left + piece.right) / 2
 
-// NOTE: spots by the feet: a player's and a Groaner's feet are 5 px under
-// their middle.
 type Spot = Readonly<{ x: number; footY: number }>
 const FOOT_PX = 5
 
 const behindIt: Spot = { x: middle, footY: piece.artTop + 12 }
 const inFront: Spot = { x: middle, footY: piece.footY + 4 }
-// NOTE: across the house, far from anything behind the piece.
 const farAway: Spot = { x: middle + 400, footY: piece.footY + 200 }
 
 const playerOn = ({ x, footY }: Spot): Player => ({
@@ -77,8 +72,6 @@ const drawnFor = (
     ({ footY }) => footY === piece.footY,
   )
 
-// NOTE: how deep a piece carved upright goes, and the cover tiles north of
-// its foot under its middle: what blocks a walker there.
 const uprightDepthOf = ({ shapes }: TallCover): Option.Option<number> =>
   Option.flatMap(Array.head(shapes), shape =>
     shape._tag === 'Image' && spriteDepthOf(shape)?.isUpright === true

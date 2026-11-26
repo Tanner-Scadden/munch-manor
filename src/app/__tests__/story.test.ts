@@ -65,7 +65,6 @@ const dyingZombieAt = (id: number, x: number, y: number): Zombie =>
   })
 const RIGHT = { x: 1, y: 0 }
 
-// NOTE: the keys walk the screen's ways, turned onto the floor by the lens.
 const KEY_LEFT = screenToFloorDirection({ x: -1, y: 0 })
 const KEY_DOWN = screenToFloorDirection({ x: 0, y: 1 })
 const KEY_UP_RIGHT = screenToFloorDirection({
@@ -255,7 +254,6 @@ describe('zombies', () => {
     Effect.gen(function* () {
       const s = yield* storyOf(
         withZombies(playingModel, [
-          // NOTE: west of the start spot, short of the candelabra.
           zombieAt(100, START_LEVEL.start.x - 40, START_LEVEL.start.y, {
             speed: 20,
           }),

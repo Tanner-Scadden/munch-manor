@@ -6,10 +6,6 @@ import { lookOfCode } from '../shared/lookCodes'
 import { type Calling, callingOfCode } from '../shared/playerData'
 import type { Appearance } from '../world/schema/worldSchema'
 
-// NOTE: each player's own look rides in the lobby (the member's `look`,
-// sent with the join). Your own seat wears your own look; a teammate whose
-// look did not come, or does not read, wears one of these, by seat, in the
-// lobby and in the run alike.
 export const SEAT_LOOKS: Array.NonEmptyReadonlyArray<Appearance> = [
   {
     body: 'Broad',
@@ -74,8 +70,6 @@ export const seatLook = (seat: number): Appearance =>
     Array.headNonEmpty(SEAT_LOOKS),
   )
 
-// NOTE: looks are read every frame for the teammates in the run, so each
-// code is read once.
 const readLooks = new Map<string, Option.Option<Appearance>>()
 
 const lookOfCodeOnce = (code: string): Option.Option<Appearance> => {
@@ -99,8 +93,6 @@ const memberLookAt = (
     ),
   )
 
-// NOTE: the calling a lobby member brought, as text in the lobby; a word that
-// is none of ours reads as YOU, which has no prop.
 export const callingOfMember = (member: LobbyMember): Calling =>
   Option.getOrElse(callingOfCode(member.calling), (): Calling => 'You')
 

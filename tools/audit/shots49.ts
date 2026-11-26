@@ -1,9 +1,3 @@
-// The untimed breaks pass: a solo break with no clock (Normal) with READY
-// and then with the nudge, and a co-op break with the other player READY
-// and then with the nudge, on 1280x720, 844x390, and 390x844, as
-// `s49-<TAG>-<viewport>-<scene>.png`. It exits with 1 when a phone's READY is
-// under 48 px, the button is covered at its center, or the nudge moves it.
-//   TAG=after bun run heavy -- --shared bun tools/audit/shots49.ts
 import { Console, Effect, String } from 'effect'
 
 import { runHarnessAudit } from './harnessServer'

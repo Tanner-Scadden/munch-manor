@@ -1,7 +1,3 @@
-// NOTE: the look sheet (`looksheet`): every look part's options on one
-// picture, painted by Pixi as the game's overlay is, and walk frames,
-// facings, and the hit flash for a few mixed looks.
-
 import { Array } from 'effect'
 
 import { UiStruct } from '@effect/ui'
@@ -34,10 +30,6 @@ const CELL_H = 16
 const SHEET_W = 168
 const SHEET_H = 268
 
-// NOTE: the look sheet: one row per part, each option of it on the classic
-// look (the bodies three times: in a tee, in a dress, and in overalls with
-// the Rainbow print, a beard, and glasses), then walk frames, both facings,
-// and the hit flash for four mixed looks.
 const lookSheetShapes = (): Array<Draw.Shape> => {
   const shapes: Array<Draw.Shape> = [
     Draw.Rect({
@@ -199,7 +191,6 @@ const lookSheetShapes = (): Array<Draw.Shape> => {
   return shapes
 }
 
-// NOTE: the sheet's shapes never change, so they are built once.
 const SHEET_SHAPES = lookSheetShapes()
 
 export const lookSheetView = (h: ApplicationViewBuilder): ApplicationHtml =>

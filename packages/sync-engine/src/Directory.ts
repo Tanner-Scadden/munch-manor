@@ -26,9 +26,6 @@ import {
 } from './Pairing'
 import { decodeRows, randomBytes } from './Rows'
 
-// NOTE: the server's map from devices to players, and the link codes. It
-// runs over any SqlClient; Munch Manor keeps it in one Durable Object.
-
 const fail = (failure: IdentityFailure) =>
   Effect.fail(IdentityRefused.make({ failure }))
 
@@ -77,7 +74,6 @@ const refusedStep = (failure: IdentityFailure): RedeemStep =>
 const unavailable = (_: SqlError.SqlError) =>
   IdentityRefused.make({ failure: IdentityFailure.cases.Unavailable.make({}) })
 
-/** @stability unstable */
 export const makeDirectory = (
   secret: string,
 ): Effect.Effect<Directory, SqlError.SqlError, SqlClient.SqlClient> =>
@@ -148,9 +144,6 @@ export const makeDirectory = (
         return { token, deviceId, playerId, devices, expiresMs }
       })
 
-    // NOTE: a known device keeps the player it is mapped to, whatever it
-    // claims. A new device registers with the player id it made, unless
-    // another device already holds it.
     const session = (request: SessionRequest, nowMs: number) =>
       Effect.gen(function* () {
         yield* pipe(
@@ -219,7 +212,6 @@ export const makeDirectory = (
         return yield* issue(deviceId, playerId.value, nowMs)
       })
 
-    // NOTE: one live code per player: asking again replaces the old one.
     const createLinkCode = (claims: SessionClaims, nowMs: number) =>
       pipe(
         sql.withTransaction(
@@ -266,8 +258,6 @@ export const makeDirectory = (
           window_start_ms = excluded.window_start_ms, failures = excluded.failures`
       })
 
-    // NOTE: every wrong, expired, or malformed code counts against the
-    // device. A code is single use: redeeming it deletes it.
     const redeem = (claims: SessionClaims, input: string, nowMs: number) =>
       Effect.gen(function* () {
         const step = yield* pipe(

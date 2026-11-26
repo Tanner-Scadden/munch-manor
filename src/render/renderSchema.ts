@@ -1,6 +1,3 @@
-// The client's cosmetics the render layer keeps in the Model: particles,
-// decals, and what the hero tells saw last frame.
-
 import { Schema } from 'effect'
 
 import { DareKind } from '../world/dare/dareSchema'
@@ -59,10 +56,6 @@ export const Decal = Schema.Struct({
 })
 export type Decal = typeof Decal.Type
 
-// NOTE: what the hero tells (src/render/heroTells.ts) saw of the World last frame,
-// to see what changed in it: each trap's health (a rise is a repair) and
-// each seat's earnings (a rise beside a kill is a kill paid). A cosmetic of
-// the client's own, so the room's World needs nothing new for it.
 export const TellWatch = Schema.Struct({
   traps: Schema.Array(Schema.Struct({ id: Schema.Finite, hp: Schema.Finite })),
   keysFound: Schema.Array(
@@ -73,8 +66,6 @@ export type TellWatch = typeof TellWatch.Type
 
 export const noTellWatch: TellWatch = { traps: [], keysFound: [] }
 
-// NOTE: the motion a hands-on action loops while it works
-// (src/render/actionPose.ts).
 export const Motion = Schema.Literals([
   'Compress',
   'Rummage',
@@ -90,7 +81,6 @@ export const Motion = Schema.Literals([
 ])
 export type Motion = typeof Motion.Type
 
-// NOTE: the payoff a hands-on action ends with (src/render/actionPose.ts).
 export const Payoff = Schema.Literals([
   'HoldUp',
   'FistPump',
@@ -102,8 +92,6 @@ export const Payoff = Schema.Literals([
 ])
 export type Payoff = typeof Payoff.Type
 
-// NOTE: one payoff a seat is playing: what, since when on the World's
-// clock, and the thing held up for a find.
 export const ActionBeat = Schema.Struct({
   slot: Schema.Finite,
   payoff: Payoff,
@@ -112,12 +100,6 @@ export const ActionBeat = Schema.Struct({
 })
 export type ActionBeat = typeof ActionBeat.Type
 
-// NOTE: what the actions saw of the World last frame, to see what changed
-// in it: the payoffs playing, the weapon each seat held (a change is a
-// swap), the traps standing (a new one was just set down), and each seat
-// at work, its motion's frame and where (a strike frame not seen before
-// is a blow landed). A cosmetic of the client's own, like the hero tells'
-// watch.
 export const ActionWatch = Schema.Struct({
   beats: Schema.Array(ActionBeat),
   held: Schema.Array(
@@ -143,8 +125,6 @@ export const noActionWatch: ActionWatch = {
   working: [],
 }
 
-// NOTE: the blow that cleared the wave, where it landed and how long ago on
-// the display's clock, while the camera glides to it (src/render/cine.ts).
 export const Finisher = Schema.Struct({
   x: Schema.Finite,
   y: Schema.Finite,
@@ -152,10 +132,6 @@ export const Finisher = Schema.Struct({
 })
 export type Finisher = typeof Finisher.Type
 
-// NOTE: how far the camera has glided off the player toward the big
-// moments, and how fast it is going, in world pixels: a spring's state, so
-// the glide eases in and out and two moments never jump it
-// (src/render/cine.ts).
 export const CameraGlide = Schema.Struct({
   offset: Vector,
   velocity: Vector,

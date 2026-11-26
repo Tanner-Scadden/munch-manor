@@ -207,7 +207,6 @@ const hudText = (
 ): ReadonlyArray<Draw.Shape> =>
   textShapes(content, tone, layout.centerX, y, 'Center')
 
-// NOTE: the first timed break's countdown blinks red, so the clock is seen.
 const COUNTDOWN_BLINK_MS = 400
 
 const TRY_CONTROLS = bakeText('TRY THE CONTROLS', 'Prompt')
@@ -306,8 +305,6 @@ const roundHudShapes = (
     GameOver: () => [],
   })
 
-// NOTE: a portrait HUD puts the shut dare pocket on the boss bar's row, at
-// its right end, so the bar centers on what the pocket leaves of the row.
 const BOSS_BAR_CARD_GAP = 3
 
 const bossBarCenterOf = (model: Model, layout: HudLayout): number =>
@@ -323,10 +320,6 @@ const bossBarCenterOf = (model: Model, layout: HudLayout): number =>
       )
     : layout.centerX
 
-// NOTE: the crew's one key ring (src/world/keys/keys.ts), a skeleton key
-// and its count (the font draws `$` as the key) at twice the font's size,
-// the same for every player in co-op. It flashes and hops a pixel the frame
-// a key comes in.
 const keyRingShapes = (
   model: Model,
   layout: HudLayout,
@@ -350,8 +343,6 @@ const keyRingShapes = (
   ]
 }
 
-// NOTE: the dare pocket, and in the open pocket's header the rooms opened,
-// which show only in a break.
 const pocketShapes = (
   model: Model,
   layout: HudLayout,
@@ -378,8 +369,6 @@ const PIP_LEFT = 3
 const PIP_DROP = 3
 const PIP_ON_COLOR = '#ffe066'
 
-// NOTE: where a stacked (portrait) slot's parts sit, down from its top: the
-// icon's middle, the pips under it, then the ammo or the dent meter.
 const STACKED_ICON_Y = 6
 const STACKED_PIP_Y = 10
 const STACKED_TEXT_Y = 14
@@ -391,9 +380,6 @@ type SlotGun = Readonly<{ weapon: WeaponKind; tier: number }>
 
 type AmmoLook = 'Loaded' | 'Last' | 'Reloading' | 'Empty'
 
-// NOTE: `maybeMeter` is the Clang Pan's dent meter in the melee slot, from
-// 1 (flat) to 0 (fully dented), drawn as a bar in place of a count. `isBeckoning` pulses
-// the slot's border gold: the other gun, until the player has swapped once.
 type SlotLook = Readonly<{
   maybeGun: Option.Option<SlotGun>
   ammo: string
@@ -407,10 +393,6 @@ type SlotLook = Readonly<{
   isLevelFlashing?: boolean
 }>
 
-// NOTE: a gun's kills toward its next level (src/world/gear/gunLevels.ts),
-// a bar under its slot that fills as the gun kills, like an XP bar. At its
-// top level it stays full, in a deeper gold. A gun with no levels (Brain
-// Freeze) and the knife have none.
 type LevelBar = Readonly<{ share: number; isMaxed: boolean }>
 
 export const maybeLevelBarOf = (gun: CarriedGun): Option.Option<LevelBar> =>
@@ -465,17 +447,12 @@ const levelBarShapes = (
   ]
 }
 
-// NOTE: a slot whose gun just leveled flashes its border white and gold
-// for a beat, with the pop over the player (src/render/powerupView.ts).
 const LEVEL_FLASH_MS = 900
 const LEVEL_FLASH_BLINK_MS = 110
 
 const isLevelFlashOn = (elapsedMs: number): boolean =>
   Math.floor(elapsedMs / LEVEL_FLASH_BLINK_MS) % 2 === 0
 
-// NOTE: a cooked gun's perk (src/world/kitchen/stove.ts) sits on its slot's top left
-// corner like a sticker, half over the border, clear of the icon and the
-// count.
 const PERK_STICKER_OUT_PX = 3
 
 const METER_WIDTH = 8
@@ -514,9 +491,6 @@ const AMMO_TONES: Readonly<Record<AmmoLook, TextTone>> = {
   Empty: 'Alert',
 }
 
-// NOTE: a magazine's last few shots blink the count red, so the reload is
-// hard to miss. The blink reads the game's clock, so a paused game holds
-// still.
 const LAST_BLINK_MS = 180
 const SLOT_LAST_BORDER = '#ff4a4f'
 const SLOT_BECKON_MS = 520
@@ -567,9 +541,6 @@ const tierPipShapes = (
 const pipsWidth = ({ weapon }: SlotGun): number =>
   Math.max(0, maxTier(weapon) * (PIP_WIDTH + PIP_GAP) - PIP_GAP)
 
-// NOTE: what a slot shows, in one line (landscape) or stacked (portrait):
-// the gun's or the melee weapon's icon with its tier pips, then the ammo, or
-// the Pan's dent meter.
 const slotContentShapes = (
   x: number,
   top: number,
@@ -721,11 +692,8 @@ const ammoLook = (
   }
 }
 
-// NOTE: no gun runs out, so a slot shows its magazine alone.
 const ammoText = (gun: CarriedGun): string => `${gun.loaded}`
 
-// NOTE: the player's own gun reached its tier this beat: the level up's
-// pop is still young (src/app/frame.ts keeps only the focused seat's).
 export const isJustLeveled: {
   (gun: CarriedGun): (model: Model) => boolean
   (model: Model, gun: CarriedGun): boolean
@@ -759,11 +727,6 @@ const EMPTY_SLOT: SlotLook = {
   ammoLook: 'Loaded',
 }
 
-// THE MELEE SLOT
-
-// NOTE: the melee slot, right of the guns: the knife's icon and ∞, or once
-// the fridge has given one, the Clang Pan's icon, tier pips, and dent
-// meter. Held when it is in hand.
 const KNIFE_PALETTE: Palette = { X: '#e9e3cf', R: '#a8302a', o: '#140c10' }
 
 const KNIFE_SPRITE = spriteShapes(
@@ -803,9 +766,6 @@ export const meleeSlotLook: {
   ammoLook: 'Loaded',
 }))
 
-// NOTE: until the player has swapped once, the gun they are not holding
-// pulses, where the swap happens (its Q badge on a keyboard, a tap on
-// touch), in place of a SWAP GUNS label in the room.
 const isSwapBeckoning = (model: Model): boolean =>
   isRoundActive(model.phase) && isPending(model.lessons.swap)
 
@@ -925,8 +885,6 @@ const trapNoticeShapes = (
     },
   })
 
-// NOTE: players sharing the keyboard each get a row under the HUD: their
-// seat's color, and their hearts (MULTIPLAYER.md, Phase 1).
 const MATE_ROW_TOP = 24
 const MATE_ROW_HEIGHT = 10
 
@@ -992,10 +950,6 @@ const playHudShapes = (
 
 const HUD_STRIP_COLOR = 'rgba(20, 15, 24, 0.75)'
 
-// NOTE: in landscape the top HUD sits over the north wall, whose pictures,
-// candles, and shelves made the hearts and the wave hard to read. A slim
-// dark strip behind the HUD rows backs them. Portrait has its own band
-// above the world, so it needs none.
 export const hudStripShapes: {
   (screen: Screen, camera: Camera): (model: Model) => ReadonlyArray<Draw.Shape>
   (model: Model, screen: Screen, camera: Camera): ReadonlyArray<Draw.Shape>

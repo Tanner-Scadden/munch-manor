@@ -1,24 +1,8 @@
-// The home layout pass: the home menu fresh (news pips on the MANOR
-// deck), with bests, a NEW ENTRY pop, the update chip, and full screen, in
-// Endless, the MANOR hand and once found, What's New
-// and an older day, the Munchopedia empty and half found, an unlocked, a
-// locked, and Uncle Chunk's entry, How to play, Settings (also with ROTATE),
-// the difficulty picker by PLAY (also on Hard), the shop, and Game Over with a NEW ENTRY notice, on 667x375
-// and 844x390 phones with touch and on 1280x720 and 1920x1080 with a
-// keyboard, as `s33-<TAG>-<viewport>-<scene>.png`. On a keyboard it also
-// walks the arrow keys from PLAY and shoots each focused button as
-// `s33-<TAG>-<viewport>-focus-<n>.png`.
-// It prints any visible button smaller than 48 px on a phone, any two home
-// buttons that overlap, any panel or page that scrolls, and whether PLAY sits
-// in the same box in both modes. Exits with 1 on a problem.
-//   TAG=after bun shots33.ts
-// ONLY picks scenes, such as `ONLY=home,munchopedia`. SHOTS_PARALLEL sets
-// how many screens run at once, each in its own browser contexts (3 by
-// default).
 import { Array, Effect, String } from 'effect'
 import type { Page } from 'playwright-core'
 
 import { runHarnessAudit } from './harnessServer'
+import { readLayout } from './inPage/shots33'
 import {
   DESKTOP_1280,
   DESKTOP_1920,
@@ -170,80 +154,9 @@ const press = (
     yield* settleAnimations(page)
   })
 
-// NOTE: runs in the page, which has no Effect: plain loops, so no native
-// Array method is left for the Effect rules to flag.
-const readLayout = ({
-  minSide,
-  isPhone,
-}: Readonly<{ minSide: number; isPhone: boolean }>) => {
-  const openDialog = document.querySelector('dialog[open]')
-  const scope: ParentNode = openDialog ?? document
-  const buttons: Array<{ label: string; box: DOMRect }> = []
-  for (const button of scope.querySelectorAll('button, a.home-support')) {
-    if (openDialog === null && button.closest('dialog') !== null) {
-      continue
-    }
-    const box = button.getBoundingClientRect()
-    if (box.width > 0 && box.height > 0) {
-      buttons.push({
-        // NOTE: runs in the page, where effect's String is not loaded.
-        // @effect-diagnostics-next-line preferEffectString:off
-        label: button.getAttribute('aria-label') ?? button.textContent.trim(),
-        box,
-      })
-    }
-  }
-  const small: Array<string> = []
-  if (isPhone) {
-    for (const { label, box } of buttons) {
-      if (box.width < minSide - 0.5 || box.height < minSide - 0.5) {
-        small.push(
-          `${label} ${Math.round(box.width)}x${Math.round(box.height)}`,
-        )
-      }
-    }
-  }
-  const overlaps: Array<string> = []
-  if (openDialog === null) {
-    for (let index = 0; index < buttons.length; index++) {
-      const first = buttons[index]
-      for (let next = index + 1; next < buttons.length; next++) {
-        const second = buttons[next]
-        if (
-          first !== undefined &&
-          second !== undefined &&
-          first.box.left < second.box.right - 1 &&
-          second.box.left < first.box.right - 1 &&
-          first.box.top < second.box.bottom - 1 &&
-          second.box.top < first.box.bottom - 1
-        ) {
-          overlaps.push(`${first.label} / ${second.label}`)
-        }
-      }
-    }
-  }
-  const panel = document.querySelector('dialog[open] .panel')
-  const panelScroll =
-    panel === null ? 0 : panel.scrollHeight - panel.clientHeight
-  const pageScroll = document.documentElement.scrollHeight - window.innerHeight
-  const play = document.querySelector('#home-play')?.getBoundingClientRect()
-  return {
-    small,
-    overlaps,
-    panelScroll,
-    pageScroll,
-    play:
-      play === undefined
-        ? 'none'
-        : `${Math.round(play.x)},${Math.round(play.y)} ${Math.round(play.width)}x${Math.round(play.height)}`,
-  }
-}
-
 const check = (page: Page, side: number, phone: boolean) =>
   attempt(() => page.evaluate(readLayout, { minSide: side, isPhone: phone }))
 
-// NOTE: one viewport is one unit of work, since PLAY's box is compared
-// across its scenes and the focus walk follows them.
 const checkViewport = (
   pages: ScenePages,
   tag: string,
@@ -351,9 +264,6 @@ runHarnessAudit(
   Effect.gen(function* () {
     const tag = yield* auditTag
     const browser = yield* openBrowser
-    // NOTE: every scene plays 72 frames (1.2 s) at once and holds there, so
-    // the pictures are the same on every run, and a page per screen switches
-    // scenes in place.
     const pages = scenePages(browser, ['tick=72'])
     const parallel = yield* parallelFrom('SHOTS_PARALLEL')
     const problems = yield* forEachInOrder(

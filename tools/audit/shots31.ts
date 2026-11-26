@@ -1,16 +1,7 @@
-// The gun cluster pass: the guns at the bottom middle with the icons beside
-// them, in a wave, with a low magazine, in a break with traps, and in a break
-// with traps and a low magazine, on four landscape phones with touch and on a
-// 1280x720 desktop with a keyboard, as `s31-<TAG>-<viewport>-<scene>.png`.
-// For every visible button it checks that the center and four points just
-// inside its edges hit that button, that it is at least 48 px on a phone, and
-// that it covers no doorway, the stall, the player, or another button. Exits
-// with 1 on any problem.
-//   TAG=after bun shots31.ts
-// ONLY picks scenes, such as `ONLY=wave,break`.
 import { Array, Console, Effect } from 'effect'
 
 import { runHarnessAudit } from './harnessServer'
+import { readButtons } from './inPage/shots31'
 import {
   ANDROID_915,
   DESKTOP_1280,
@@ -86,70 +77,6 @@ const overlaps = (a: Box, b: Box) =>
   b.x < a.x + a.width &&
   a.y < b.y + b.height &&
   b.y < a.y + a.height
-
-// NOTE: runs in the page, which has no Effect: plain loops, so no native
-// Array method is left for the Effect rules to flag.
-const readButtons = (inset: number) => {
-  const stage = document.querySelector('.game-stage')
-  if (stage === null) {
-    throw new Error('No .game-stage on the page')
-  }
-  const rect = stage.getBoundingClientRect()
-  const model = window.__model
-  const buttons: Array<{
-    label: string
-    x: number
-    y: number
-    width: number
-    height: number
-    misses: Array<string>
-  }> = []
-  for (const button of document.querySelectorAll('button')) {
-    const box = button.getBoundingClientRect()
-    const style = getComputedStyle(button)
-    if (
-      !(
-        box.width > 0 &&
-        style.visibility !== 'hidden' &&
-        style.display !== 'none' &&
-        button.closest('dialog') === null
-      )
-    ) {
-      continue
-    }
-    const cx = box.x + box.width / 2
-    const cy = box.y + box.height / 2
-    const points = [
-      ['center', cx, cy],
-      ['left', box.left + inset, cy],
-      ['right', box.right - inset, cy],
-      ['top', cx, box.top + inset],
-      ['bottom', cx, box.bottom - inset],
-    ] as const
-    const misses: Array<string> = []
-    for (const [name, x, y] of points) {
-      const hit = document.elementFromPoint(x, y)
-      if (hit === null || !button.contains(hit)) {
-        misses.push(name)
-      }
-    }
-    buttons.push({
-      // NOTE: runs in the page, where effect's String is not loaded.
-      // @effect-diagnostics-next-line preferEffectString:off
-      label: button.getAttribute('aria-label') ?? button.textContent.trim(),
-      x: box.x,
-      y: box.y,
-      width: box.width,
-      height: box.height,
-      misses,
-    })
-  }
-  return {
-    stage: { x: rect.x, y: rect.y, scale: rect.width / 320 },
-    player: { x: model.seats[0].player.x, y: model.seats[0].player.y },
-    buttons,
-  }
-}
 
 runHarnessAudit(
   Effect.gen(function* () {

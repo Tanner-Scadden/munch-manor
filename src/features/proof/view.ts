@@ -52,14 +52,6 @@ import {
 type H = Html.H<Message>
 type Content = View.Content<Message>
 
-// The Proof Shelf in the menu panel: your friends' treehouse shelf, a row
-// per difficulty (its skull at the end), the house's things along it and
-// Uncle Chunk's hook last; under it the picked slot's stamp, and the
-// calendar of mission days. Show, don't explain: a filled slot is the thing
-// in color with its ending's stamp, an empty one a dim outline.
-
-// TEXT
-
 const thingName = (thing: ShelfThing): string =>
   isBigKey(thing) ? BIG_KEY_NAME : DARE_NAMES[thing]
 
@@ -96,16 +88,12 @@ const slotLabel = (
     { onNone: () => 'not yet', onSome: stampText },
   )}`
 
-// PICTURES
-
 const thingIcon = (thing: ShelfThing, isFilled: boolean): string => {
   if (isBigKey(thing)) {
     return isFilled ? BIG_KEY_URL : HOOK_URL
   }
   return isFilled ? DARE_ICON_URLS[thing] : DARE_SILHOUETTE_URLS[thing]
 }
-
-// THE SHELF
 
 const isPicked = (model: Model, spot: ShelfSpot): boolean =>
   Option.exists(
@@ -193,8 +181,6 @@ const shelfView = (model: Model, props: ProofShelfProps, h: H): Content =>
       Array.map(SHELF_ROWS, difficulty => rowView(model, props, difficulty, h)),
     )
 
-// THE STAMP
-
 const crewView = (
   crew: ReadonlyArray<CrewMate>,
   h: H,
@@ -259,7 +245,6 @@ const pickedView = (
   ]
 }
 
-// NOTE: nothing picked: the trophy and how full the shelf is.
 const tallyView = (props: ProofShelfProps, h: H): ReadonlyArray<Content> => [
   iconView('proof-card-thing', TROPHY_ICON, h),
   h.p
@@ -280,8 +265,6 @@ const cardView = (model: Model, props: ProofShelfProps, h: H): Content =>
         onSome: spot => pickedView(props, spot, h),
       }),
     )
-
-// THE CALENDAR
 
 const calendarDayView = (
   month: DayStamp,
@@ -336,8 +319,6 @@ const calendarView = (props: ProofShelfProps, h: H): ReadonlyArray<Content> =>
     },
   })
 
-// NOTE: the panel's body under the title the root's menu panel draws, the
-// panel's Done (the `done` slot) in its actions row.
 export const proofShelfView = ({
   h,
   model,

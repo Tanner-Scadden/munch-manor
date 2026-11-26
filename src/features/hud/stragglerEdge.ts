@@ -11,13 +11,6 @@ import { ZombieAction } from '../../world/schema/worldSchema'
 import { clamp } from '../../world/step/geometry'
 import { isLastZombie } from '../../world/zombies/lastZombie'
 
-// NOTE: the wave's last zombies, once they hurry (src/world/zombies/lastZombie.ts),
-// may be rooms away. Each one out of the window gets the co-op teammate's
-// edge badge in the rage's red, blinking, pinned to the window's edge toward
-// it, so the player knows where to go (owner, 2026-11-10: the one exception
-// to "No off-screen hints" for zombies). Read off the World alone; one still
-// under the floor gets none.
-
 const EDGE_GAP = 3
 const BLINK_MS = 160
 

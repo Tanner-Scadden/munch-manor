@@ -19,15 +19,8 @@ import { ChangeLobby } from '../steps'
 import { CODE, type lobbyOf } from '../testing'
 import { type CoopCommand, type CoopResult, open, updateCoop } from '../update'
 
-// What the co-op Story and Scene tests start from. Co-op is the root's own
-// state (its `coop` field), so a test drives the root with co-op open in
-// it: a player on the hub with one hero bought, and a room around them.
-
-// NOTE: co-op's start Model, as the root's init leaves it.
 const startModel: CoopModel = initialModel.coop
 
-// NOTE: co-op opened on the hub with no name, look, or rank of its own, so
-// the room requests it makes are plain to read.
 const onHubCoop: CoopModel = open({
   name: '',
   maybeCode: Option.none(),
@@ -40,8 +33,6 @@ const onHubCoop: CoopModel = open({
   introSeen: false,
 })(startModel).model
 
-// NOTE: the root on the home menu with `coop` as co-op's state, the
-// Handyman bought, as co-op's own Model says.
 export const withCoop = (coop: CoopModel): Model =>
   UiStruct.evolve(home, {
     coop: () => coop,
@@ -63,8 +54,6 @@ export const inRoom = (slot: number): Model => withCoop(inRoomCoop(slot))
 export const lobbyUpdate = (lobby: ReturnType<typeof lobbyOf>) =>
   Message.ReceivedLobbyEvent({ event: { _tag: 'Updated', lobby } })
 
-// NOTE: the root with co-op on the screen a Scene looks at, one hero
-// bought.
 export const coopAt = (screen: Screen): Model =>
   withCoop(
     UiStruct.evolve(startModel, {
@@ -73,12 +62,6 @@ export const coopAt = (screen: Screen): Model =>
     }),
   )
 
-// CO-OP'S RULES ALONE
-
-// NOTE: co-op driven by its rules alone, with every Command they issued, for
-// the root's requests that only a run in the root makes (a frame with this
-// client's controls, a press, a frame held for hit-stop): co-op's Model and
-// the Commands so far.
 export type Driven = Readonly<{
   coop: CoopModel
   commands: ReadonlyArray<CoopCommand>
@@ -86,7 +69,6 @@ export type Driven = Readonly<{
 
 export const drivenFrom = (coop: CoopModel): Driven => ({ coop, commands: [] })
 
-// NOTE: one rule run on co-op as it stands, its Commands added.
 export const byRule =
   (rule: (coop: CoopModel) => CoopResult) =>
   (driven: Driven): Driven => {
@@ -97,12 +79,10 @@ export const byRule =
     }
   }
 
-// NOTE: one of co-op's Messages, by the rule the root runs for it.
 export const byMessage = (
   message: Parameters<typeof updateCoop>[0],
 ): ((driven: Driven) => Driven) => byRule(updateCoop(message))
 
-// NOTE: the args of every Command `definition` issued, typed by its args.
 export const argsIssued =
   <D extends Command.Definition.Any & Readonly<{ args: Schema.Top }>>(
     definition: D,
@@ -118,7 +98,6 @@ export const argsIssued =
         Schema.is(definition.args)(args),
     )
 
-// NOTE: co-op's `change` sent to the room's lobby, reporting nothing.
 export const lobbyChanged =
   (change: LobbyChange): RootStep =>
   s =>

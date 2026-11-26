@@ -6,13 +6,6 @@ import type { CrewAward } from '../../world/names'
 import { isCoop, playersOf } from '../../world/party/party'
 import type { PlayerSlot } from '../../world/schema/worldSchema'
 
-// The crew on a co-op end card (MULTIPLAYER.md, "The crew board"): each
-// player's run read off their seat in the World, so every client shows the
-// same numbers for everyone, and the awards those numbers win. Single
-// player has no crew.
-
-// THE CREW
-
 export type CrewMember = Readonly<{
   slot: PlayerSlot
   name: string
@@ -27,7 +20,6 @@ export type CrewMember = Readonly<{
 
 const PERCENT = 100
 
-// NOTE: a pierced shot can land more than once, so aim tops out at 100.
 const aimOf = (fired: number, hit: number): number =>
   fired > 0 ? Math.min(PERCENT, Math.round((PERCENT * hit) / fired)) : 0
 
@@ -50,9 +42,6 @@ export const crewOf = (model: Model): ReadonlyArray<CrewMember> => {
   }))
 }
 
-// AWARDS
-
-// NOTE: the order a player's awards are shown in, the first their title.
 export const CREW_AWARDS: ReadonlyArray<CrewAward> = [
   'Mvp',
   'Medic',
@@ -61,8 +50,6 @@ export const CREW_AWARDS: ReadonlyArray<CrewAward> = [
   'MostMunched',
 ]
 
-// NOTE: aim counts only for a player who fired this many shots, so one
-// lucky shot is not a Sharpshooter.
 export const SHARPSHOOTER_MIN_SHOTS = 20
 
 const SCORES: Readonly<
@@ -85,8 +72,6 @@ const byScoreThenSeat: Order.Order<Scored> = Order.combine(
   Order.mapInput(Order.Number, (scored: Scored) => scored.slot),
 )
 
-// NOTE: an award goes to the highest score above 0, and a tie to the lower
-// seat, so every player sees the same winner.
 const winnerOf = (
   crew: ReadonlyArray<CrewMember>,
   award: CrewAward,
@@ -108,13 +93,10 @@ const winnerOf = (
     Option.map(scored => scored.slot),
   )
 
-// NOTE: the most kills wears the crown.
 export const mvpOf = (
   crew: ReadonlyArray<CrewMember>,
 ): Option.Option<PlayerSlot> => winnerOf(crew, 'Mvp')
 
-// NOTE: every award a player won, in CREW_AWARDS order. A crew of one wins
-// nothing: there is nobody to beat.
 export const awardsOf: {
   (
     slot: PlayerSlot,

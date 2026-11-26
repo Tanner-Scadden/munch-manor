@@ -16,14 +16,6 @@ import {
 } from './roomPalette'
 import { type Span, spansWithin } from './roomWalls'
 
-// NOTE: the cellar: flagstones, rough stone walls, long wine racks, a
-// block of barrels with a tap, the coal heap under the chute, and one bare
-// bulb on a wire. It is dark in play, from a light mask laid over it, so it
-// is drawn here at the same brightness as the other rooms. The bulb is its
-// own sprite, so the mask can light around it.
-
-// PALETTE
-
 const MORTAR_COLOR = '#211d1c'
 const STONE_SHADES: Array.NonEmptyReadonlyArray<string> = [
   '#4a4642',
@@ -71,8 +63,6 @@ const WIRE_COLOR = '#16141a'
 const SOCKET_COLOR = '#5a5a66'
 const BULB_COLOR = '#fff2b0'
 const FILAMENT_COLOR = '#ffb84a'
-
-// FLOOR
 
 const STONE_HEIGHT = 8
 
@@ -153,8 +143,6 @@ export const cellarFloorShapes = (room: Box): ReadonlyArray<Draw.Shape> => {
   ]
 }
 
-// NOTE: the loose flagstone, a hiding spot, sitting proud of the others with
-// a dark gap round it, placed by hand on the drafted map.
 export const looseStoneShapes = (room: Box): ReadonlyArray<Draw.Shape> => {
   const x = room.x + 271
   const y = room.y + 151
@@ -167,8 +155,6 @@ export const looseStoneShapes = (room: Box): ReadonlyArray<Draw.Shape> => {
   ]
 }
 
-// NOTE: the coal heap under the chute, a hiding spot, spilling onto the
-// flagstones.
 export const coalHeapShapes = (room: Box): ReadonlyArray<Draw.Shape> => {
   const x = room.x + 44
   const y = room.y + 12
@@ -199,8 +185,6 @@ export const coalHeapShapes = (room: Box): ReadonlyArray<Draw.Shape> => {
     ),
   ]
 }
-
-// WALLS
 
 const stoneFaceShapes = ({ x, y, width }: Span): ReadonlyArray<Draw.Shape> => {
   const top = y - TILE_SIZE * 2 + FACE_TOP + 2
@@ -247,9 +231,6 @@ const stoneFaceShapes = ({ x, y, width }: Span): ReadonlyArray<Draw.Shape> => {
   ]
 }
 
-// NOTE: rough stone over the whole face, from the trim down to the
-// baseboard, in place of the paper and wainscot upstairs, on the north wall
-// faces in the cellar's own block.
 export const cellarWallShapes: {
   (room: Box): (level: Level) => ReadonlyArray<Draw.Shape>
   (level: Level, room: Box): ReadonlyArray<Draw.Shape>
@@ -257,12 +238,8 @@ export const cellarWallShapes: {
   Array.flatMap(spansWithin(level, room), stoneFaceShapes),
 )
 
-// WINE RACKS
-
 const CUBBY = 5
 
-// NOTE: a wine rack along a row of tiles, standing a tile taller than its
-// footing: a lattice of cubbies, most with a bottle's end in them.
 export const wineRackShapes = ({
   x,
   y,
@@ -322,8 +299,6 @@ export const wineRackShapes = ({
   ]
 }
 
-// NOTE: the bottle that is not wine, a hiding spot in the north-east rack,
-// placed by hand on the drafted map: purple, and it glints.
 export const oddBottleShapes = (room: Box): ReadonlyArray<Draw.Shape> => {
   const x = room.x + 276
   const y = room.y + 37
@@ -335,11 +310,6 @@ export const oddBottleShapes = (room: Box): ReadonlyArray<Draw.Shape> => {
   ]
 }
 
-// HEART JARS
-
-// NOTE: three pickled hearts in jars of green brine on a plank shelf high
-// on the north wall, the Munches' oddest preserve. The hearts and the brine
-// glow of themselves in the dark (src/render/iso/emissives.ts).
 const HEART_JAR_PIXELS: ReadonlyArray<string> = [
   '.kkk.',
   '.ccc.',
@@ -360,7 +330,6 @@ const HEART_JAR_PALETTE: Readonly<Record<string, string>> = {
   H: '#ff6a7a',
 }
 
-// NOTE: what glows of a jar: the brine dim, the heart bright.
 const HEART_GLOW_PALETTE: Readonly<Record<string, string>> = {
   b: 'rgba(90, 200, 110, 0.55)',
   h: '#e8304e',
@@ -402,9 +371,6 @@ export const heartJarGlowShapes = (room: Box): ReadonlyArray<Draw.Shape> => {
   )
 }
 
-// BARRELS
-
-// NOTE: a barrel's half width down its side, bulging at the middle.
 const BARREL_PROFILE: ReadonlyArray<number> = [
   7, 8, 8, 9, 9, 9, 9, 9, 9, 9, 9, 8, 8, 7,
 ]
@@ -448,9 +414,6 @@ const standingBarrel = (
   ]
 }
 
-// NOTE: four barrels standing in a block, the back two first, with a tap
-// in the east one dripping wine on the floor (a hiding spot), and a candle
-// stub on one lid.
 export const barrelsShapes = ({
   x,
   y,
@@ -476,11 +439,6 @@ export const barrelsShapes = ({
   ]
 }
 
-// THE BULB
-
-// NOTE: the one bare bulb: its wire up into the dark, the socket, the glass
-// with its glowing filament, and a soft halo. Its pool on the floor is the
-// light mask's to draw. Drawn about the bulb's own middle.
 export const CELLAR_BULB_SHAPES: ReadonlyArray<Draw.Shape> = [
   rect(-9, -9, 19, 19, 'rgba(255, 230, 150, 0.06)'),
   rect(-6, -6, 13, 13, 'rgba(255, 230, 150, 0.08)'),
@@ -493,7 +451,5 @@ export const CELLAR_BULB_SHAPES: ReadonlyArray<Draw.Shape> = [
   rect(-2, -3, 1, 1, '#ffffff'),
 ]
 
-// NOTE: the bulb's sprite, built once; its rectangles above are for a room
-// image that bakes it in with everything else (the studio's preview).
 export const CELLAR_BULB_SPRITE: ReadonlyArray<Draw.Shape> =
   bakeShapes(CELLAR_BULB_SHAPES)

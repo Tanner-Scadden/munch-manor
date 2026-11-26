@@ -106,11 +106,7 @@ describe('the first break tracker', () => {
   )
 })
 
-// NOTE: the last step: START WAVE glows, an arrow bobs over it (the key's
-// cap beside it on a keyboard), and starting the wave by a tap or the key
-// ticks the step off in the tracker as the wave begins.
 describe('the START WAVE step', () => {
-  // NOTE: a wave with a zombie to come, so it does not clear at once.
   const onStart = (device: Model['lastDevice']): Model =>
     UiStruct.evolve(questBreak, {
       phase: () =>
@@ -125,8 +121,6 @@ describe('the START WAVE step', () => {
       lastDevice: () => device,
     })
 
-  // NOTE: a frame of the wave just started: the HUD's slots, mounted anew,
-  // acknowledged first, and its sounds and cues played.
   const frame: SceneStep = s =>
     s.pipe(
       ackHudSlots,

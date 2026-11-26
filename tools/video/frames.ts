@@ -27,17 +27,14 @@ import {
   encodePlan,
 } from './shotList'
 import { type ClipCue, decodeAudioLog } from './soundtrackRequest'
-
-// THE DIRECTOR'S CAMERA
-//
-// NOTE: plays one shot through the built audit harness with `director` on
-// (tools/audit/harness/director.ts): the page holds still, and this asks
-// it for `step` ticks at a time, then captures the picture. CSS
-// animations, such as the shop's MINE! stamp, are paused and set to the
-// shot's own clock before each capture, so they too land on the same
-// picture every render. Captions, fades, the director's own camera, the
-// split screen of devices, and dissolves are drawn over the page, so a
-// captured frame is the finished frame.
+import {
+  type Base,
+  type Box,
+  type CaptionDrawing,
+  type Device,
+  type Overlay,
+  paintOverlay,
+} from './inPage/paintOverlay'
 
 class PageFailed extends Schema.TaggedError<
   PageFailed,
@@ -53,9 +50,6 @@ const onPage = <A>(
     catch: error => PageFailed.make({ step, reason: globalThis.String(error) }),
   })
 
-// NOTE: the CSS size and device scale of each format. Both are six screen
-// pixels a game pixel: the landscape screen is 320x180 game pixels, and an
-// upright phone's portrait screen is 180 wide and, at 9:16, 320 tall.
 const VIEWPORTS: Readonly<
   Record<
     Format,
@@ -66,7 +60,6 @@ const VIEWPORTS: Readonly<
   '9:16': { width: 360, height: 640, scale: 3, isTouch: true },
 }
 
-// NOTE: screen pixels a game pixel, in both formats.
 const UNIT = 6
 
 export const outputSize = (format: Format) => {
@@ -77,8 +70,6 @@ export const outputSize = (format: Format) => {
   }
 }
 
-// NOTE: what the game draws over the world: the HUD's canvas layer, the
-// thumb area, and the HTML controls, for a clean plate.
 const HIDE_HUD_CSS = `
 .overlay-layer-canvas, .thumb-area, .touch-stick, .ghost-sticks,
 .hud-tap-frame, .gun-cluster, .corner-buttons, .debut-card {
@@ -102,10 +93,6 @@ export const openShotPage = ({
       }),
     )
     const page = yield* onPage('open the page', () => context.newPage())
-    // NOTE: the page's animation clock stands still, so an animation
-    // starts and stays at its first frame until `holdAnimations` sets it
-    // to the shot's clock, however long a capture takes. A short one can
-    // no longer run out unseen between two captures.
     const devTools = yield* onPage('open the page', () =>
       context.newCDPSession(page),
     )
@@ -116,10 +103,6 @@ export const openShotPage = ({
     return page
   })
 
-// CAPTIONS
-
-// NOTE: each font pixel is as many screen pixels as the largest of these
-// that fits the caption in nine tenths of the frame's width.
 const CAPTION_PIXEL_SIZES = [18, 12, 9, 6]
 const CAPTION_COLORS: Readonly<Record<string, string>> = {
   Plain: '#f4f1de',
@@ -132,13 +115,6 @@ const CAPTION_COLORS: Readonly<Record<string, string>> = {
 const CAPTION_OUTLINE = '#140c10'
 const CAPTION_SHADOW = '#2a1418'
 
-type CaptionDrawing = Readonly<{
-  rows: ReadonlyArray<string>
-  pixel: number
-  color: string
-  place: 'Top' | 'Middle' | 'Bottom'
-  top: number | undefined
-}>
 
 const captionDrawing = (
   caption: Caption,
@@ -164,338 +140,6 @@ const captionDrawing = (
   }
 }
 
-// THE OVERLAY
-
-type Box = Readonly<{
-  x: number
-  y: number
-  width: number
-  height: number
-}>
-
-// NOTE: a laptop or a phone in the split screen: its outside and its
-// screen, in frame pixels, the part of the page's picture its screen shows,
-// and the size of one of its pixels.
-type Device = Readonly<{
-  kind: 'Laptop' | 'Phone'
-  outer: Box
-  screen: Box
-  crop: Box
-  unit: number
-}>
-
-// NOTE: what the overlay draws under the captions, over the page: the
-// page's own picture through the director's camera (a crop of it, scaled
-// back up to the frame), the split screen of devices, or a finished frame
-// from disk. It is plain data for code that runs in the page, where
-// Effect's Match is not loaded, hence `kind` and a switch.
-type Base =
-  | Readonly<{ kind: 'Camera'; src: string; crop: Box }>
-  | Readonly<{ kind: 'Devices'; src: string; devices: ReadonlyArray<Device> }>
-  | Readonly<{ kind: 'Frame'; src: string }>
-
-type Overlay = Readonly<{
-  base: Base | undefined
-  captions: ReadonlyArray<CaptionDrawing>
-  // NOTE: a finished frame laid over everything at this opacity, for a
-  // dissolve between two shots.
-  dissolve: Readonly<{ src: string; alpha: number }> | undefined
-  fade: number
-  outline: string
-  shadow: string
-}>
-
-// NOTE: runs in the page: the overlay with the shot's base, captions,
-// dissolve, and fade, as one SVG over the page in device pixels, so the
-// screenshot takes it a pixel for a pixel with no 2D canvas. Effect is not
-// loaded there, so it speaks promises.
-// @effect-diagnostics-next-line asyncFunction:off
-const paintOverlay = async ({
-  base,
-  captions,
-  dissolve,
-  fade,
-  outline,
-  shadow,
-}: Overlay) => {
-  const SVG = 'http://www.w3.org/2000/svg'
-  const ratio = window.devicePixelRatio
-  const width = Math.round(window.innerWidth * ratio)
-  const height = Math.round(window.innerHeight * ratio)
-  const id = 'director-overlay'
-  const existing = document.getElementById(id)
-  const svg =
-    existing instanceof SVGSVGElement
-      ? existing
-      : document.body.appendChild(document.createElementNS(SVG, 'svg'))
-  svg.id = id
-  svg.setAttribute('viewBox', `0 0 ${width} ${height}`)
-  svg.setAttribute('preserveAspectRatio', 'none')
-  svg.setAttribute('shape-rendering', 'crispEdges')
-  svg.style.cssText = `position:fixed;left:0;top:0;width:${width / ratio}px;height:${height / ratio}px;z-index:2147483647;pointer-events:none`
-  const shapes: Array<SVGElement> = []
-  const loads: Array<Promise<void>> = []
-  const element = (
-    tag: string,
-    attributes: Readonly<Record<string, string | number>>,
-  ): SVGElement => {
-    const made = document.createElementNS(SVG, tag)
-    // NOTE: in the page, where Effect's Record is not loaded.
-    // @effect-diagnostics-next-line preferEffectRecord:off
-    for (const name of Object.keys(attributes)) {
-      made.setAttribute(name, `${attributes[name]}`)
-    }
-    return made
-  }
-  // NOTE: in the page too, with no Effect: the picture's own size.
-  // @effect-diagnostics-next-line asyncFunction:off
-  const sizeOf = async (
-    src: string,
-  ): Promise<Readonly<{ width: number; height: number }>> => {
-    const image = new Image()
-    image.src = src
-    await image.decode()
-    return { width: image.naturalWidth, height: image.naturalHeight }
-  }
-  // NOTE: an SVG image, its load awaited before the screenshot.
-  const imageOf = (
-    src: string,
-    attributes: Readonly<Record<string, string | number>>,
-  ): SVGElement => {
-    const image = element('image', attributes)
-    loads.push(
-      // NOTE: in the page, where an image's load is only an event.
-      // @effect-diagnostics-next-line newPromise:off
-      new Promise<void>(resolve => {
-        image.addEventListener('load', () => resolve(), { once: true })
-        image.addEventListener('error', () => resolve(), { once: true })
-      }),
-    )
-    image.setAttribute('href', src)
-    return image
-  }
-  // NOTE: a crop of a picture stretched into a box, as drawImage's nine
-  // argument form drew it: a nested SVG whose view box is the crop.
-  const cropped = (
-    src: string,
-    size: Readonly<{ width: number; height: number }>,
-    crop: Box,
-    into: Box,
-    rendering: 'pixelated' | 'auto',
-  ): SVGElement => {
-    const view = element('svg', {
-      x: into.x,
-      y: into.y,
-      width: into.width,
-      height: into.height,
-      viewBox: `${crop.x} ${crop.y} ${crop.width} ${crop.height}`,
-      preserveAspectRatio: 'none',
-    })
-    view.append(
-      imageOf(src, {
-        x: 0,
-        y: 0,
-        width: size.width,
-        height: size.height,
-        preserveAspectRatio: 'none',
-        style: `image-rendering:${rendering}`,
-      }),
-    )
-    return view
-  }
-  const fill = (
-    x: number,
-    y: number,
-    boxWidth: number,
-    boxHeight: number,
-    color: string,
-  ) => {
-    shapes.push(
-      element('rect', {
-        x,
-        y,
-        width: boxWidth,
-        height: boxHeight,
-        fill: color,
-      }),
-    )
-  }
-  const whole: Box = { x: 0, y: 0, width, height }
-  if (base !== undefined) {
-    const size = await sizeOf(base.src)
-    switch (base.kind) {
-      case 'Camera': {
-        shapes.push(cropped(base.src, size, base.crop, whole, 'pixelated'))
-        break
-      }
-      case 'Frame': {
-        shapes.push(
-          cropped(
-            base.src,
-            size,
-            { x: 0, y: 0, width: size.width, height: size.height },
-            whole,
-            'auto',
-          ),
-        )
-        break
-      }
-      case 'Devices': {
-        // NOTE: the split screen: a dark room with a purple glow, and each
-        // device drawn in blocks of its unit, its screen showing its crop.
-        fill(0, 0, width, height, '#160b24')
-        const rings: ReadonlyArray<readonly [number, string]> = [
-          [0.56, '#1d0f30'],
-          [0.42, '#24123a'],
-          [0.3, '#2b1749'],
-        ]
-        for (const [share, color] of rings) {
-          shapes.push(
-            element('circle', {
-              cx: width / 2,
-              cy: height / 2,
-              r: Math.max(width, height) * share,
-              fill: color,
-              'shape-rendering': 'auto',
-            }),
-          )
-        }
-        for (const device of base.devices) {
-          const { outer, screen, unit } = device
-          const middle = outer.x + outer.width / 2
-          fill(
-            outer.x - unit,
-            outer.y - unit,
-            outer.width + unit * 2,
-            outer.height + unit * 2,
-            outline,
-          )
-          fill(outer.x, outer.y, outer.width, outer.height, '#3a3550')
-          fill(outer.x, outer.y, outer.width, unit, '#5a5478')
-          if (device.kind === 'Laptop') {
-            const lipY = outer.y + outer.height + unit
-            fill(
-              outer.x - unit * 8,
-              lipY,
-              outer.width + unit * 16,
-              unit * 4,
-              outline,
-            )
-            fill(
-              outer.x - unit * 7,
-              lipY + unit,
-              outer.width + unit * 14,
-              unit * 2,
-              '#5a5478',
-            )
-            fill(middle - unit * 10, lipY + unit, unit * 20, unit, '#3a3550')
-          } else {
-            fill(middle - unit * 3, outer.y + unit * 2, unit * 6, unit, outline)
-            fill(
-              middle - unit * 4,
-              outer.y + outer.height - unit * 3,
-              unit * 8,
-              unit,
-              '#5a5478',
-            )
-          }
-          fill(
-            screen.x - unit,
-            screen.y - unit,
-            screen.width + unit * 2,
-            screen.height + unit * 2,
-            outline,
-          )
-          shapes.push(cropped(base.src, size, device.crop, screen, 'auto'))
-          // NOTE: a glint across the glass.
-          fill(
-            screen.x + unit * 2,
-            screen.y + unit * 2,
-            unit * 3,
-            unit,
-            'rgba(255, 255, 255, 0.35)',
-          )
-        }
-        break
-      }
-    }
-  }
-  for (const caption of captions) {
-    const { rows, pixel } = caption
-    const columns = rows[0]?.length ?? 0
-    const left = Math.round((width - columns * pixel) / 2 / pixel) * pixel
-    const textHeight = rows.length * pixel
-    const top =
-      caption.top !== undefined
-        ? Math.round(height * caption.top)
-        : caption.place === 'Top'
-          ? Math.round(height * 0.08)
-          : caption.place === 'Bottom'
-            ? Math.round(height * 0.86 - textHeight)
-            : Math.round((height - textHeight) / 2)
-    const filled = (x: number, y: number) => rows[y]?.[x] === '#'
-    // NOTE: a one pixel outline around the letters, and under it a one
-    // pixel drop shadow, as the game's own text has.
-    const inked = (x: number, y: number) =>
-      filled(x, y) ||
-      filled(x - 1, y) ||
-      filled(x + 1, y) ||
-      filled(x, y - 1) ||
-      filled(x, y + 1)
-    // NOTE: each row's cells of one color as runs, one rect a run, so a
-    // caption is a few hundred rects and not thousands.
-    const runs = (
-      from: number,
-      to: number,
-      y: number,
-      colorAt: (x: number) => string | undefined,
-    ) => {
-      let start = from
-      while (start <= to) {
-        const color = colorAt(start)
-        let end = start
-        while (end + 1 <= to && colorAt(end + 1) === color) {
-          end++
-        }
-        if (color !== undefined) {
-          fill(
-            left + start * pixel,
-            top + y * pixel,
-            (end - start + 1) * pixel,
-            pixel,
-            color,
-          )
-        }
-        start = end + 1
-      }
-    }
-    for (let y = -1; y <= rows.length + 1; y++) {
-      runs(-1, columns, y, x =>
-        inked(x, y) ? outline : inked(x, y - 1) ? shadow : undefined,
-      )
-    }
-    for (let y = 0; y < rows.length; y++) {
-      runs(0, columns - 1, y, x => (filled(x, y) ? caption.color : undefined))
-    }
-  }
-  if (dissolve !== undefined) {
-    const size = await sizeOf(dissolve.src)
-    const faded = cropped(
-      dissolve.src,
-      size,
-      { x: 0, y: 0, width: size.width, height: size.height },
-      whole,
-      'auto',
-    )
-    faded.setAttribute('opacity', `${dissolve.alpha}`)
-    shapes.push(faded)
-  }
-  if (fade > 0) {
-    fill(0, 0, width, height, `rgba(0, 0, 0, ${fade})`)
-  }
-  svg.replaceChildren(...shapes)
-  await Promise.all(loads)
-}
 
 const EMPTY_OVERLAY: Overlay = {
   base: undefined,
@@ -506,8 +150,6 @@ const EMPTY_OVERLAY: Overlay = {
   shadow: CAPTION_SHADOW,
 }
 
-// NOTE: runs in the page: every CSS animation paused at its age on the
-// shot's clock, counted from the tick it was first seen on.
 const holdAnimations = (tick: number) => {
   const starts = (window.__animationStarts ??= new WeakMap())
   for (const animation of document.getAnimations()) {
@@ -522,8 +164,6 @@ const holdAnimations = (tick: number) => {
 
 const pngSource = (png: Uint8Array): string =>
   `data:image/png;base64,${Buffer.from(png).toString('base64')}`
-
-// THE CAMERA
 
 const cameraAt = (
   keys: ReadonlyArray<CameraKey>,
@@ -554,8 +194,6 @@ const clampBox = (box: Box, within: Box): Box => ({
   y: Math.min(Math.max(box.y, within.y), within.y + within.height - box.height),
 })
 
-// NOTE: the part of the frame the camera sees, in frame pixels, or none
-// when it sees all of it.
 const cameraCrop = (shot: Shot, format: Format, tick: number) => {
   const size = outputSize(format)
   return pipe(
@@ -577,8 +215,6 @@ const cameraCrop = (shot: Shot, format: Format, tick: number) => {
   )
 }
 
-// THE SPLIT SCREEN
-
 type Seats = Readonly<{
   world: Box
   seats: ReadonlyArray<Readonly<{ slot: number; x: number; y: number }>>
@@ -586,9 +222,6 @@ type Seats = Readonly<{
 
 type Frame = Readonly<{ outer: Box; screen: Box }>
 
-// NOTE: a laptop and three phones held upright, in game pixels of the
-// screen: side by side on a wide frame, the laptop over the phones on an
-// upright one.
 const DEVICE_LAYOUTS: Readonly<
   Record<Format, { laptop: Frame; phones: ReadonlyArray<Frame> }>
 > = {
@@ -631,8 +264,6 @@ const scaled = (box: Box): Box => ({
   height: box.height * UNIT,
 })
 
-// NOTE: the laptop shows the whole room; each phone shows one teammate's
-// own camera, close on them, at the same moment.
 const PHONE_REACH = 0.8
 
 const devicesOf = (format: Format, { world, seats }: Seats) => {
@@ -684,10 +315,7 @@ const devicesOf = (format: Format, { world, seats }: Seats) => {
   ]
 }
 
-// THE SHOT
-
 type ShotFrames = Readonly<{
-  // NOTE: the clip frame each captured tick starts on, by tick.
   frameOfTick: ReadonlyMap<number, number>
   frameCount: number
   cues: ReadonlyArray<ClipCue>
@@ -735,15 +363,12 @@ const capture = (page: Page, overlay: Overlay) =>
     ),
   )
 
-// NOTE: waits for the page to settle, then sets its animations to `tick`.
 const settleAt = (step: string, page: Page, tick: number) =>
   Effect.andThen(
     onPage(step, () => whenSettled(page)),
     onPage(step, () => page.evaluate(holdAnimations, tick)),
   )
 
-// NOTE: writes a frame in place of whatever is there. A repeated frame is a
-// hard link, so the old name is removed first, not written through.
 const replaceFrame = (file: string, png: Uint8Array) =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
@@ -758,10 +383,6 @@ const readSource = (file: string) =>
     return pngSource(value_1)
   })
 
-// NOTE: plays a shot and writes its frames from `firstFrame` on, as
-// frame-000000.png and up in `dir`. The frames before `overlapEnd` are the
-// last shot's end: this shot's start dissolves over them, frame by frame.
-/** @stability unstable */
 export const captureShot = ({
   page,
   shot,
@@ -802,10 +423,6 @@ export const captureShot = ({
     }
     const hudTop = shot.hudTop
     if (hudTop !== undefined) {
-      // NOTE: the HUD's canvas cut off above a share of the screen, so the
-      // band at the top (wave, counts, money) no longer covers what is
-      // under it, while what the HUD draws lower, such as the fridge's
-      // reel, stays.
       const css = `.overlay-layer-canvas { clip-path: inset(${hudTop * 100}% 0 0 0); }`
       yield* onPage('cut the HUD band', () =>
         page.addStyleTag({ content: css }).then(() => undefined),
@@ -824,9 +441,6 @@ export const captureShot = ({
     yield* awaitTick(page, 0)
     const skip = shot.skip ?? 0
     if (skip > 0) {
-      // NOTE: what is animating already, such as a co-op room's countdown
-      // or a dialog opening, starts on the shot's clock at tick 0, so the
-      // skipped ticks play it out too.
       yield* settleAt('start the animations', page, 0)
       yield* onPage('skip', () =>
         page.evaluate(n => window.__director.step(n), skip),
@@ -859,8 +473,6 @@ export const captureShot = ({
         shot.devices.from <= tick &&
         tick < shot.devices.to
       const maybeCrop = cameraCrop(shot, format, tick)
-      // NOTE: the camera and the split screen draw from the page's own
-      // picture, taken first with the overlay clear.
       let base: Base | undefined = undefined
       if (isDevices) {
         const value_2 = yield* capture(page, EMPTY_OVERLAY)
@@ -891,7 +503,6 @@ export const captureShot = ({
       for (let copy = 0; copy < repeatsAt(shot, tick); copy++) {
         const file = path.join(dir, frameName(frame))
         if (frame < overlapEnd) {
-          // NOTE: the last shot's frame on top, thinning out to nothing.
           const alpha = 1 - (frame - firstFrame + 1) / (overlap + 1)
           const under = yield* readSource(file)
           const png = yield* capture(page, {
@@ -917,10 +528,7 @@ export const captureShot = ({
       page.evaluate((): unknown => window.__director.audio()),
     )
     const audio = yield* decodeAudioLog(value_5)
-    // NOTE: a sound logged on tick t is heard on the first frame that
-    // shows the world after it.
     const captured = [...frameOfTick.entries()]
-    // NOTE: what played in the skipped ticks is not heard.
     const heard = Array.filter(audio, cue => cue.tick >= skip - 1)
     const cues = Array.getSomes(
       Array.map(heard, cue =>
@@ -940,12 +548,6 @@ export const captureShot = ({
     } satisfies ShotFrames
   })
 
-// THE LOOP
-
-// NOTE: the clip's last `overlap` frames dissolve into its first ones, so
-// the clip plays round with no seam: frame i shows the head's frame i with
-// the tail's frame i over it, thinning out. The tail is then dropped.
-/** @stability unstable */
 export const loopFrames = ({
   page,
   dir,

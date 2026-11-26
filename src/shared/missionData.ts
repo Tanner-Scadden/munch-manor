@@ -2,20 +2,6 @@ import { Array, Function, Option, Record, Schema } from 'effect'
 
 import { DayStamp } from './dayStamp'
 
-// Daily missions' data (docs/PROGRESSION_PLAN.md, pillar C): the pool's ids,
-// each mission's size, goal, and kind, the Bones they pay, and the saved
-// record of a player's day. The player scope (src/platform/playerScope.ts)
-// applies the same rules here as the client does, so a sync Worker and a
-// device agree on what a claim pays. Names a player reads are in
-// src/world/names.ts (MISSION_NAMES); rolling and counting are the client's
-// (src/features/missions/).
-
-// THE POOL
-
-// NOTE: every mission any day can roll. The list only grows at its end: a
-// saved progress names an id, and a device that does not know an id keeps
-// it untouched. Leaving early (pillar A, build order step 4) joined last,
-// a Medium: out the kitchen's back door once (src/world/kitchen/backDoor.ts).
 export const MissionId = Schema.Literals([
   'HotfootKills',
   'PullFridge',
@@ -35,7 +21,6 @@ export const MissionId = Schema.Literals([
 ])
 export type MissionId = typeof MissionId.Type
 
-// NOTE: a mission's size sets its Bones, and each day rolls one of each.
 export const MissionSize = Schema.Literals(['Small', 'Medium', 'Large'])
 export type MissionSize = typeof MissionSize.Type
 
@@ -45,12 +30,8 @@ export const MISSION_SIZES: Array.NonEmptyReadonlyArray<MissionSize> = [
   'Large',
 ]
 
-// NOTE: the owner's four kinds (docs/PROGRESSION_PLAN.md, "Settled in Q&A"
-// 3), for the card's icon frame.
 type MissionKind = 'Kills' | 'Dare' | 'House' | 'Crew'
 
-// NOTE: who can roll a mission: everyone, a player who has played an
-// online co-op run, or one who owns the Handyman.
 type MissionGate = 'Anyone' | 'PlayedCoop' | 'OwnsHandyman'
 
 export type MissionRule = Readonly<{
@@ -60,8 +41,6 @@ export type MissionRule = Readonly<{
   gate: MissionGate
 }>
 
-// NOTE: goals sized so each is doable in one to three runs: a Small in
-// one, a Medium in one or two, a Large in two or three.
 export const MISSION_RULES: Readonly<Record<MissionId, MissionRule>> = {
   HotfootKills: { size: 'Small', goal: 15, kind: 'Kills', gate: 'Anyone' },
   PullFridge: { size: 'Small', goal: 1, kind: 'House', gate: 'Anyone' },
@@ -85,7 +64,6 @@ export const MISSION_RULES: Readonly<Record<MissionId, MissionRule>> = {
   LeaveEarly: { size: 'Medium', goal: 1, kind: 'Dare', gate: 'Anyone' },
 }
 
-// NOTE: how many zombies one chandelier drop must crush for ChandelierCrush.
 export const CHANDELIER_CRUSH_GOAL = 3
 
 const MISSION_BONES: Readonly<Record<MissionSize, number>> = {
@@ -94,16 +72,12 @@ const MISSION_BONES: Readonly<Record<MissionSize, number>> = {
   Large: 20,
 }
 
-// NOTE: all three of a day's missions done pays this once, and stamps the
-// day for the Proof Shelf (pillar B).
 export const ALL_THREE_BONES = 25
 
 const MISSIONS_A_DAY = 3
 
 const maybeMissionId = Schema.decodeUnknownOption(MissionId)
 
-// NOTE: a saved id this build knows, so a newer device's mission is kept
-// and never read.
 export const knownMissionOf = (id: string): Option.Option<MissionId> =>
   maybeMissionId(id)
 
@@ -119,16 +93,6 @@ const goalOfId = (id: string): number =>
     onSome: mission => MISSION_RULES[mission].goal,
   })
 
-// SAVED
-
-// NOTE: save version 23 added a player's daily missions: the day the
-// progress is for, the day's three as first rolled (frozen, so a gate the
-// player passes later that day changes nothing until tomorrow), each
-// mission's count toward its goal and the claimed ones that day, the slot
-// rerolled that day and what it became, every day
-// all three were done (kept for the Proof Shelf), and whether the player has
-// played an online co-op run. Ids are strings, so a device that does not
-// know one keeps it. No streak: a missed day costs nothing.
 export const MissionReroll = Schema.Struct({
   slot: Schema.Finite,
   mission: Schema.String,
@@ -156,9 +120,6 @@ export const noMissions: SavedMissions = {
   hasPlayedCoop: false,
 }
 
-// NOTE: the record as of `day`: a later day starts its progress, claims,
-// and reroll afresh; the same day is kept. An earlier day is never asked
-// for (onDay is only called with a day at least the saved one).
 export const onDay: {
   (day: DayStamp): (saved: SavedMissions) => SavedMissions
   (saved: SavedMissions, day: DayStamp): SavedMissions
@@ -171,8 +132,6 @@ export const onDay: {
 const isStale = (saved: SavedMissions, day: DayStamp): boolean =>
   saved.day !== null && saved.day > day
 
-// NOTE: counts added toward `day`'s missions, each capped at its goal. A
-// count for a day older than the saved one is too late and adds nothing.
 export const addProgress: {
   (
     day: DayStamp,
@@ -210,7 +169,6 @@ export const addProgress: {
   },
 )
 
-// NOTE: a mission's count toward its goal in the record, 0 untouched.
 export const progressOf: {
   (id: string): (saved: SavedMissions) => number
   (saved: SavedMissions, id: string): number
@@ -218,8 +176,6 @@ export const progressOf: {
   Option.getOrElse(Record.get(saved.progress, id), () => 0),
 )
 
-// NOTE: a mission claimed on `day`, once its goal is met and only once:
-// Some with the record that holds the claim, None when it pays nothing.
 export const claimMission: {
   (
     day: DayStamp,
@@ -245,8 +201,6 @@ export const claimMission: {
       : Option.some({ ...saved, claimed: Array.append(saved.claimed, id) }),
 )
 
-// NOTE: `day` stamped once all three are claimed: Some with the stamp, None
-// when it is not due or already stamped.
 export const stampDay: {
   (day: DayStamp): (saved: SavedMissions) => Option.Option<SavedMissions>
   (saved: SavedMissions, day: DayStamp): Option.Option<SavedMissions>
@@ -263,7 +217,6 @@ export const stampDay: {
         }),
 )
 
-// NOTE: the day's one reroll, kept as the first device made it.
 export const rerollOn: {
   (
     day: DayStamp,
@@ -285,8 +238,6 @@ export const rerollOn: {
   },
 )
 
-// NOTE: the day's three as first rolled, kept as the first device froze
-// them.
 export const freezeOn: {
   (
     day: DayStamp,
@@ -317,11 +268,6 @@ export const freezeOn: {
 const later = (a: DayStamp | null, b: DayStamp | null): DayStamp | null =>
   a === null ? b : b === null ? a : a >= b ? a : b
 
-// NOTE: two records of the same player merged (a synced save over the
-// Model's): the later day's, the three as the reached record froze them
-// (the store's, where the first device's stands) or else as kept, the
-// larger count of each, the claims and stamps of both, the first reroll,
-// and co-op once played.
 export const mergeMissions: {
   (reached: SavedMissions): (kept: SavedMissions) => SavedMissions
   (kept: SavedMissions, reached: SavedMissions): SavedMissions

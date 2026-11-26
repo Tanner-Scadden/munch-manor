@@ -3,13 +3,6 @@ import { type Plugin, defineConfig } from 'vitest/config'
 
 const INFRA = import.meta.dirname
 
-// NOTE: src/platform/analytics.ts, src/shared/playerData.ts, src/platform/playerScope.ts, the sync
-// engine in packages/sync-engine, and the netcode in packages/netcode are
-// shared with the game, so their `effect` imports would resolve from the
-// game's own node_modules, an older Effect, and two Effects would meet in
-// one Schema. This plugin resolves an `effect` import (and subpaths such as
-// `effect/sql`) from outside infra as if infra made it, as the Worker
-// bundle's alias in alchemy.run.ts and the `paths` in tsconfig.json do.
 const oneEffect: Plugin = {
   name: 'one-effect',
   enforce: 'pre',
@@ -27,8 +20,6 @@ const oneEffect: Plugin = {
   },
 }
 
-// NOTE: the tests run under Bun (`bun --bun vitest run`), since the
-// in-memory database is @effect/sql-sqlite-bun on bun:sqlite.
 export default defineConfig({
   plugins: [oneEffect],
   test: {

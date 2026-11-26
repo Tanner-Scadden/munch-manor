@@ -28,9 +28,6 @@ import { STARTING_PISTOL, freshGun } from '../../../world/gear/weapons'
 import { modifyFocus } from '../../../world/party/party'
 import { isOnLastShots } from '../ammoWarning'
 
-// NOTE: no gun runs out, but a magazine does: its last few shots tick and
-// blink red, so the reload is hard to miss.
-
 const FRAME_MS = FIXED_STEP_MS
 
 const smg = (loaded: number): CarriedGun => ({ ...freshGun('Smg'), loaded })
@@ -70,7 +67,6 @@ describe('the last shots of a magazine', () => {
   })
 })
 
-// NOTE: one frame with the trigger held, whose sound Commands are read.
 const firedFrame = steps(holdFire, tick(FRAME_MS))
 
 describe('the last shots tick', () => {

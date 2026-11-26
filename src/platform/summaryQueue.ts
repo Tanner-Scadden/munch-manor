@@ -7,16 +7,6 @@ import { sendRunSummary } from './analyticsBeacon'
 import { API_ORIGIN } from './apiOrigin'
 import { PlayerStore } from './store'
 
-// NOTE: a run that ends with no network cannot reach the analytics Worker, so
-// its summary waits in the store (device local, never synced) and goes out
-// when the game is next online: when it starts, and after the next run's
-// summary is sent. The browser says it is offline with navigator.onLine,
-// which is right when there is no network at all and says nothing about a
-// bad one, so a summary sent on a bad network is still lost, as before.
-
-// NOTE: the Worker allows 6 summaries a minute per visit id, and a queue can
-// hold several runs of one visit, so they go out one at a time, this far
-// apart.
 const QUEUE_SPACING: Duration.Input = '11 seconds'
 
 export const isOnline: Effect.Effect<boolean> = Effect.sync(
@@ -30,12 +20,6 @@ const queueRunSummary = (summary: RunSummary) =>
     Effect.flatMap(body => PlayerStore.use(store => store.queueSummary(body))),
   )
 
-// NOTE: a queued summary is taken out of the store before it is sent, so two
-// drains never send the same one. One that cannot be read any more (the
-// summary's version moved on) is dropped, and one that fails to send goes
-// back in the queue and stops the drain. A version 1 summary, queued by a
-// build before co-op summaries, still goes: the Worker takes it. Answers
-// whether to send the next.
 const sendNextQueued = (origin: string) =>
   pipe(
     isOnline,
@@ -84,10 +68,6 @@ const drainSummaryQueue = (origin: string) =>
 
 type SendFailure = Readonly<{ reason: string }>
 
-// NOTE: a build with no API origin sends nothing, so it queues nothing.
-// A summary sent while online also sends the ones that waited, in the
-// background, so the run's own Message is not held up by the spacing.
-// The failure is the store's or the send's, each with its reason.
 export const sendOrQueueRunSummary: {
   (
     origin?: string,
@@ -113,8 +93,6 @@ export const sendOrQueueRunSummary: {
     ),
 )
 
-// NOTE: at start, a player who has since turned sharing off loses what was
-// queued instead of sending it.
 export const startSummaryQueue = (origin: string = API_ORIGIN) =>
   pipe(
     PlayerStore.use(store => store.load),

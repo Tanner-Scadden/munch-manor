@@ -27,16 +27,10 @@ import { modifyFocus } from '../../../world/party/party'
 import type { Arrangement, Vector } from '../../../world/schema/worldSchema'
 import { CLOCHE_TOTAL_MS } from '../clocheReveal'
 
-// NOTE: enough keys for any room's padlock.
 const PLENTY = EXIT_RULES.farKeys
-
-// The cloche reveal (src/features/cloche/clocheReveal.ts): the boards to a
-// slot come down, and the cloche over the doorway lifts on whichever room
-// this run's house rolled in behind them.
 
 const FRAME_MS = FIXED_STEP_MS
 
-// NOTE: in front of the dining room's west boards.
 const BY_WEST_BOARDS: Vector = { x: 18, y: 130 }
 
 const atBoards = (

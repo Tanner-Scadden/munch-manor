@@ -3,7 +3,6 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 
 import { ShadowWatch } from '../shadowWatch'
 
-// NOTE: two fills side by side, each straight down on its own floor.
 const CONES = [
   {
     from: { x: 0, y: 10, z: 0 },
@@ -44,7 +43,6 @@ const at = (x: number, z = 0): ReadonlyArray<number> => [
 
 type Cast = Readonly<{ shape: object; x: number; z?: number }>
 
-// NOTE: one frame of casters, and which cones the watch says changed.
 const frame = (
   watch: ShadowWatch,
   casts: ReadonlyArray<Cast>,
@@ -115,8 +113,6 @@ describe('the shadow watch', () => {
   test('a body reaching in from outside the cone counts', () => {
     const watch = watching()
     frame(watch, [])
-    // NOTE: the cone reaches about 6.2 either way on the floor; this sphere's
-    // middle stands outside it and its edge inside.
     expect(frame(watch, [{ shape: ZOMBIE, x: -6.3 }])).toEqual([true, false])
   })
 
@@ -138,8 +134,6 @@ describe('the shadow watch', () => {
     vi.restoreAllMocks()
   })
 
-  // NOTE: the cone as the plain angles say it: the angle off its axis at
-  // most its half angle (with the spare) and the angle the sphere fills.
   const isInConePlainly = (
     cone: (typeof CONES)[number],
     x: number,
@@ -171,8 +165,6 @@ describe('the shadow watch', () => {
 
   test('a cone holds the casters the plain angles put in it', () => {
     const watch = watching()
-    // NOTE: a sweep across both cones, near and far, low and high, small
-    // and big, steering clear of the edge itself, where rounding decides.
     for (let x = -12; x <= 52; x += 1.37) {
       for (let y = -4; y <= 26; y += 2.9) {
         for (const radius of [0.4, 1.5, 4]) {
@@ -188,8 +180,6 @@ describe('the shadow watch', () => {
           })
           watch.end()
           const seen = [watch.isChanged(0), watch.isChanged(1)]
-          // NOTE: the watch grows a sphere by the matrix's whole size, the
-          // root of its nine turn and scale terms squared: here three ones.
           const grown = radius * Math.sqrt(3)
           expect(seen, `${x}, ${y}, ${radius}`).toEqual(
             Array.map(CONES, cone => isInConePlainly(cone, x, y, 0.3, grown)),
@@ -199,9 +189,6 @@ describe('the shadow watch', () => {
     }
   })
 
-  // NOTE: every caster is tested against every fill's cone every frame, so
-  // the test compares cosines and squares, never the trigonometry and roots
-  // that once cost about 1.5% of a busy frame at 4x throttle.
   test('a cast calls no acos, asin, or hypot', () => {
     const watch = watching()
     const calls = [

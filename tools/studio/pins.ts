@@ -1,6 +1,3 @@
-// Pins over a picture: each note's spot, numbered as the note list numbers
-// it, and the spot of the note being written, as marks in the picture's own
-// screen pixels for the view to stand as HTML (./marksView.ts).
 import { Array, Option, pipe } from 'effect'
 
 import { TILE_SIZE } from '../../src/shared/constants'
@@ -12,7 +9,6 @@ const OPEN_COLOR = '#ffb020'
 const DONE_COLOR = '#3fbf6a'
 const DRAFT_COLOR = '#4fa3ff'
 
-// NOTE: a pin's middle, its label, and its color, in screen pixels.
 export type PinMark = Readonly<{
   x: number
   y: number
@@ -32,14 +28,11 @@ const pinMark = (
   color,
 })
 
-// NOTE: a note's number among the notes about one thing, oldest first, the
-// same in the list and on its pin.
 export const numberedNotes = (
   notes: ReadonlyArray<StoredNote>,
 ): ReadonlyArray<readonly [number, StoredNote]> =>
   Array.map(notes, (note, index) => [index + 1, note] as const)
 
-// NOTE: how a picture is laid out: the box it shows, at what zoom.
 export type PictureFrame = Readonly<{ bounds: Bounds; zoom: number }>
 
 export const pinMarksOf = (
@@ -74,8 +67,6 @@ export const pinMarksOf = (
   ]
 }
 
-// NOTE: the same pins as marks for the 3D stage (./stage3d.ts), which
-// draws them where each pixel's blocks stand.
 export const stagePinsOf = ({
   model,
   notes,
@@ -104,15 +95,12 @@ export const stagePinsOf = ({
   }),
 ]
 
-// NOTE: where a press on a picture lands, in the picture's own pixels.
 export const pinAt =
   ({ bounds, zoom }: PictureFrame) =>
   ({ x, y }: Readonly<{ x: number; y: number }>): Pin => ({
     x: Math.floor(x / zoom + bounds.left),
     y: Math.floor(y / zoom + bounds.top),
   })
-
-// AREAS
 
 const AREA_FILL: Readonly<Record<'Open' | 'Done' | 'Draft', string>> = {
   Open: 'rgba(255, 176, 32, 0.18)',
@@ -126,8 +114,6 @@ const AREA_LINE: Readonly<Record<'Open' | 'Done' | 'Draft', string>> = {
   Draft: DRAFT_COLOR,
 }
 
-// NOTE: an area's box in screen pixels, its colors, and its pin at the top
-// left.
 export type AreaMark = Readonly<{
   x: number
   y: number
@@ -161,8 +147,6 @@ const areaMark = (
   }
 }
 
-// NOTE: the room's notes as the tiles each picked, numbered as the note list
-// numbers them, and the tiles picked for the note being written.
 export const areaMarksOf = (
   input: Readonly<{
     model: Model

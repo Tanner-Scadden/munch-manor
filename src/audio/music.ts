@@ -14,8 +14,6 @@ import { UiSchema } from '@effect/ui'
 
 import { toBrowserError } from '../shared/describeError'
 
-// CUE
-
 export const MusicMood = Schema.Literals([
   'Silence',
   'Creep',
@@ -47,8 +45,6 @@ type LoopMood = typeof LoopMood.Type
 
 const Fanfare = MusicStinger.pick(['Cleared', 'Escaped', 'Chicken', 'GameOver'])
 type Fanfare = typeof Fanfare.Type
-
-// NOTATION
 
 type Instrument = 'Bass' | 'Organ' | 'Stab' | 'Spook' | 'Kick' | 'Snare' | 'Hat'
 
@@ -170,8 +166,6 @@ const line = (instrument: Instrument, pattern: string): Line => ({
   pattern,
 })
 
-// TUNES
-
 const CREEP = tune(100, 0.34, [
   line(
     'Bass',
@@ -271,8 +265,6 @@ const ESCAPED = tune(140, 0, [
   line('Snare', '. . x . . . x x | x . . . . . . .'),
 ])
 
-// NOTE: leaving early by the back door: a quick, silly bop down and out,
-// half a chicken dance, with the bass tiptoeing off.
 const CHICKEN = tune(170, 0.15, [
   line('Organ', 'G4 G4 A4 A4 E4 E4 G4 - | C5 B4 A4 G4 E4 - C4 .'),
   line('Stab', '. D4 . D4 . C4 . C4 | . E4 . D4 . C4 . .'),
@@ -300,8 +292,6 @@ const STINGERS: Readonly<Record<Fanfare, Tune>> = {
   Chicken: CHICKEN,
   GameOver: GAME_OVER,
 }
-
-// DECK
 
 type Request = Readonly<{
   mood: MusicMood
@@ -392,8 +382,6 @@ export const makeMusicDeck: {
     }
   },
 )
-
-// INSTRUMENTS
 
 type Voice = Readonly<{
   sources: Array.NonEmptyReadonlyArray<AudioScheduledSourceNode>
@@ -617,8 +605,6 @@ const startVoice = (deck: MusicDeck, voice: Voice, at: number): void => {
   })
 }
 
-// SCHEDULER
-
 type Position = readonly [Option.Option<Motion>, Request]
 
 const tuneOf = (motion: Motion): Tune =>
@@ -766,8 +752,6 @@ export const runMusicScheduler = (deck: MusicDeck): Effect.Effect<void> =>
     Effect.repeat(Schedule.spaced(SCHEDULER_INTERVAL)),
     Effect.asVoid,
   )
-
-// CUEING
 
 const releaseTrack = (deck: MusicDeck, track: GainNode, now: number): void => {
   const timer = deck.context.createConstantSource()

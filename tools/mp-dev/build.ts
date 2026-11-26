@@ -1,8 +1,3 @@
-// Builds the co-op dev page into tools/mp-dev/dist/page (gitignored): main.js and
-// index.html, nothing else. The API origin it talks to comes from
-// MP_DEV_API_ORIGIN (set by the preview deploy in infra/alchemy.run.ts),
-// else the page's own origin; `?api=` on the page overrides either.
-//   MP_DEV_API_ORIGIN=http://127.0.0.1:8798 bun tools/mp-dev/build.ts
 import { Config, Console, Effect, FileSystem, Path, Schema } from 'effect'
 import type { PlatformError } from 'effect/PlatformError'
 
@@ -23,7 +18,6 @@ const outdirOf = Effect.gen(function* () {
   return path.resolve(here, 'dist/page')
 })
 
-/** @stability unstable */
 export const buildPage = (
   apiOrigin: string,
 ): Effect.Effect<
@@ -47,8 +41,6 @@ export const buildPage = (
           minify: true,
           metafile: false,
           plugins: [],
-          // NOTE: Bun's `define` takes the value as source text: a JSON
-          // string.
           define: { __MP_API_ORIGIN__: encodeJson(Schema.String)(apiOrigin) },
         }),
       catch: error =>

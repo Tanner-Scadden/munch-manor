@@ -7,11 +7,6 @@ import type { DareOutcome } from '../../domain/beatLink'
 import type * as Draw from '../../render/draw'
 import type { BeatComparison, BeatVerdict } from './beatRun'
 
-// A friend's dare on its end card (src/features/end/beatRun.ts): the
-// verdict over the tally in the quip's place, BEAT IT! or NOT YET with its
-// line, and the friend's result on the wave's row, where the best run's
-// ghost would sit: PAL, how it ended, the wave, and the things they found.
-
 const ICON_STRIDE = DARE_ICON_SIZE + 1
 const TEXT_GAP = 3
 
@@ -26,8 +21,6 @@ const OUTCOME_SHORT: Readonly<Record<DareOutcome, string>> = {
   Munched: 'MUNCHED',
 }
 
-// NOTE: the verdict and its line, centered on `centerX` at `y`, the
-// verdict loud and the line as the quip would be.
 export const beatVerdictShapes: {
   (
     centerX: number,
@@ -62,7 +55,6 @@ export const beatVerdictShapes: {
   },
 )
 
-// NOTE: the friend's result centered on `centerX` at the text's top `y`.
 export const friendRowShapes: {
   (centerX: number, y: number): (comparison: BeatComparison) => Draw.Shape
   (comparison: BeatComparison, centerX: number, y: number): Draw.Shape

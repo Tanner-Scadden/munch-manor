@@ -21,8 +21,6 @@ import {
   WAVE_LENGTH_TARGETS,
 } from './targets'
 
-// HAND-MADE TABLES
-
 const TEN_A_SECOND: GunStats = {
   damage: 1,
   pellets: 1,
@@ -221,14 +219,8 @@ describe('a wave as a flow of health', () => {
   })
 })
 
-// GUARDRAILS
-
 const MODEL = balanceModel()
 const normal = MODEL.Normal
-// NOTE: the sawtooth is held on Hard, whose scales are the waves' own feel
-// for a sharp player (the AIM=sharp bot). Since 2026-10-31 Easy and Normal
-// scale the same waves down for the human bot, whose misses the model's
-// hit shares do not count, so their peaks read low against its damage.
 const sawtooth = MODEL.Hard
 const ratioOf = (wave: number): number =>
   Option.getOrElse(
@@ -241,14 +233,6 @@ const ratioOf = (wave: number): number =>
 
 type Standing = 'Met' | 'NotYet'
 
-// NOTE: a guardrail the game meets today is a test, so a change that breaks
-// it fails. One it does not meet yet is a todo that prints today's value,
-// so the pacing pass can see how far off it is. Flip NotYet to Met once a
-// change brings it in. Since the kitchen made the campaign ten waves long,
-// the model has the run holding a full kit from wave 8 on, so the waves
-// after it peak low against that kit and the campaign pays a little more
-// than the kit costs. The bot, which the waves were tuned on, never gets
-// there: these wait on a pass that plays the bot's real loadout.
 const guardrail = (
   name: string,
   standing: Standing,
@@ -264,19 +248,10 @@ const guardrail = (
 const inPeakRange = (ratio: number) =>
   ratio >= PEAK_RATIO_TARGET.min && ratio <= PEAK_RATIO_TARGET.max
 
-// NOTE: waves 5 and 7 were Met until traps became found, not bought
-// (docs/ESCAPE_PLAN.md, layer 6), and wave 6 until the shop went (layer 7).
-// Since the balance layer (layer 17) the model takes the Chatterbox from a
-// display case at the bot's median wave (ASSUMPTIONS.caseGunWave), and all
-// three are back in range.
 const PEAK_STANDING: Readonly<Record<number, Standing>> = {
   5: 'Met',
   6: 'Met',
   7: 'Met',
-  // NOTE: wave 10 was Met until the 2026-11-01 boss change (Hard boss health
-  // x2.2, attacks x0.8 apart): the model counts his health as incoming, so the
-  // ratio rose past 2.5. Deliberate; the snapshots hold the real fight. In an
-  // escape Uncle Chunk comes by the list, not wave 10.
   10: 'NotYet',
 }
 
@@ -410,12 +385,6 @@ describe('guardrails from GAME_DESIGN.md', () => {
     },
   })
 
-  // NOTE: the money was the shop's; since layer 7 it is keys, spent on the
-  // rooms' padlocks and the fridge, and guns come from display cases. Each
-  // room holds one thing on the dare's list, so the padlocks pace the hunt:
-  // the first two waves' keys open the kitchen, and every room takes the
-  // keys of seven or eight waves, so the last room opens about wave 8
-  // (8, 40, 75, and 90 since the pacing report, 2026-11-10).
   const keysBy = (wave: number) => sumOf(expectedPays(ASSUMPTIONS, wave))
   const kitchen = EXIT_RULES.kitchenKeys
   const everyRoom = kitchen + sumOf(EXIT_RULES.roomKeys) + EXIT_RULES.farKeys
@@ -450,8 +419,6 @@ describe('guardrails from GAME_DESIGN.md', () => {
   )
 })
 
-// UNCLE CHUNK
-
 describe('Uncle Chunk at the front door', () => {
   const rows = chunkRows(balanceModel())
   const secondsOf = (difficulty: string, crew: number): number =>
@@ -466,9 +433,6 @@ describe('Uncle Chunk at the front door', () => {
       () => 0,
     )
 
-  // NOTE: the bot's real fight runs about three times the model's perfect
-  // aim (44 s against 14 s on Normal, 50 runs, 2026-11-10): it dodges his
-  // tells and shoots the crowd half the time.
   test('on Normal, a lone player needs ten seconds or more of perfect aim', () => {
     expect(secondsOf('Normal', 1)).toBeGreaterThanOrEqual(10)
     expect(secondsOf('Normal', 1)).toBeLessThanOrEqual(40)

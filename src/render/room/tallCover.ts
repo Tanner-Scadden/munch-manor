@@ -20,17 +20,7 @@ import {
 } from './libraryArt'
 import { COVER_DRAWINGS, coverBlocks } from './roomCover'
 
-// NOTE: the room image is baked flat on the floor canvas, under everyone, so
-// a tall piece of furniture there could never hide someone standing behind
-// it. Each tall piece gets its own image of its art, drawn in the depth sort
-// at its foot, but only while someone stands behind it: it paints the same
-// pixels the floor already has, so it hides them as the furniture should.
-// While a player is behind one, or a zombie close to a player, it fades, so
-// nobody loses themselves or a threat behind a china cabinet or a stack.
-
-// NOTE: the kinds whose art rises a body's height or so above the floor
-// they stand on.
-const TALL_KINDS: ReadonlyArray<CoverKind> = [
+const TALL_KINDS: ReadonlySet<CoverKind> = new Set<CoverKind>([
   'Piano',
   'Bookshelf',
   'Pantry',
@@ -43,17 +33,8 @@ const TALL_KINDS: ReadonlyArray<CoverKind> = [
   'Hearth',
   'Oven',
   'Fridge',
-]
+])
 
-// NOTE: the pieces against a wall whose art is their front, standing
-// upright on their own tiles, a box as deep as the tiles go, so they read
-// as standing against the wall and nobody looks for a way behind them: the
-// cabinets, shelves, and racks, and the hearth, stove, and fridge. What is
-// drawn on one every frame (the hearth's fire, the stove's window, the
-// fridge's door) stands upright on its front (`ON_FRONT_PX`). The others
-// lean square to the pitch as every sprite does: a library stack's art is
-// its whole length seen from the room, which its lean already lays over
-// its tiles.
 const UPRIGHT_KINDS: ReadonlyArray<CoverKind> = [
   'Piano',
   'Bookshelf',
@@ -81,9 +62,6 @@ const drawingOf = (
 ) => ReadonlyArray<Draw.Shape>) =>
   isEscapeCoverKind(kind) ? ESCAPE_COVER_DRAWINGS[kind] : COVER_DRAWINGS[kind]
 
-// NOTE: a faint glow on the floor around a piece (a candle's, a
-// candelabra's) has nothing solid under it in the piece's own image, so it
-// would paint a second time over the floor's. The image leaves it out.
 const GLOW_ALPHA = 0.2
 
 const alphaOf = (fill: string): number =>
@@ -152,9 +130,6 @@ const tallCoverOfKind = (
   })
 }
 
-// NOTE: the library's secret shelf swung open stands across the floor as
-// a piece of furniture does (src/render/room/libraryArt.ts), drawn as if in
-// the west wall from the shelf's tile and flipped for the east.
 const swungShelfOf = (level: Level): ReadonlyArray<TallCover> =>
   Array.contains(level.openExits, SECRET_EXIT)
     ? Option.match(secretShelfOf(level), {
@@ -179,21 +154,19 @@ const swungShelfOf = (level: Level): ReadonlyArray<TallCover> =>
       })
     : []
 
+const TALL_SYMBOLS = Array.filter(Record.toEntries(COVER_SYMBOLS), ([, kind]) =>
+  TALL_KINDS.has(kind),
+)
+
 const builtTallCover = new WeakMap<Level, ReadonlyArray<TallCover>>()
 
-// NOTE: built once for each level and kept, like the room images. The
-// images depend only on the map's cover, so every level of one spec bakes
-// the same ones, and src/art/spritePrecompile.ts builds them for the atlas.
 export const tallCoverOf = (level: Level): ReadonlyArray<TallCover> => {
   const cached = builtTallCover.get(level)
   if (cached !== undefined) {
     return cached
   }
   const pieces = pipe(
-    Record.toEntries(COVER_SYMBOLS),
-    // NOTE: a few cover kinds, once a level (cached).
-    // oxlint-disable-next-line munch/no-nested-scan
-    Array.filter(([, kind]) => Array.contains(TALL_KINDS, kind)),
+    TALL_SYMBOLS,
     Array.flatMap(([symbol, kind]) => tallCoverOfKind(level, symbol, kind)),
     Array.appendAll(swungShelfOf(level)),
   )
@@ -201,28 +174,15 @@ export const tallCoverOf = (level: Level): ReadonlyArray<TallCover> => {
   return pieces
 }
 
-// BEHIND
-
-// NOTE: about the width of a player's or a Groaner's body either side of
-// their middle.
 const BODY_HALF_PX = 7
-// NOTE: a zombie this close to a player shows through what it is behind.
 const REVEAL_PX = 96
-// NOTE: the fade deepens as the body goes behind, over these many pixels
-// down and across, so it follows a step in and out with no clock.
 const FADE_DEPTH_PX = 8
 const FADE_ACROSS_PX = 6
-// NOTE: a body just grazing a piece's side does not fade it.
 const GRAZE_PX = 2
 const MIN_OPACITY = 0.4
 const NOT_BEHIND = -1
-// NOTE: how far a zombie's middle can sit from its feet, Uncle Chunk's
-// included, with room to spare: a zombie farther than this from a piece's
-// span is not behind it, and its feet are never worked out.
 const NEAR_PX = 48
 
-// NOTE: past this from every player a piece is off the screen, so it is
-// not checked at all: the scene's zombies are the ones on camera.
 const SCREEN_X_PX = 240
 const SCREEN_Y_PX = 160
 
@@ -241,9 +201,6 @@ const isOnScreen = (
 
 const clampUnit = (value: number): number => Math.min(1, Math.max(0, value))
 
-// NOTE: how far a body is behind a piece, from 0 (just) to 1 (well in), or
-// NOT_BEHIND when its feet are in front of it or its body clears the art.
-// It runs for every piece and body each frame, so it is plain arithmetic.
 const behindness = (piece: TallCover, x: number, footY: number): number => {
   if (footY >= piece.footY || footY <= piece.artTop) {
     return NOT_BEHIND
@@ -269,9 +226,6 @@ const isNearAny = (players: ReadonlyArray<Player>, zombie: Zombie): boolean =>
     player => Math.hypot(player.x - zombie.x, player.y - zombie.y) < REVEAL_PX,
   )
 
-// NOTE: how far the piece fades: by the deepest player behind it, or a
-// zombie behind it near a player. A zombie behind it far from everyone
-// only makes it draw, unfaded: NOT_BEHIND when nobody is behind it.
 const fadeOf = (
   piece: TallCover,
   players: ReadonlyArray<Player>,
@@ -295,9 +249,6 @@ const fadeOf = (
     },
   )
 
-// NOTE: the tall pieces someone stands behind, each at its foot in the depth
-// sort, faded for whoever should show through it: the players always, the
-// zombies only near a player, so a threat is never lost behind a cabinet.
 export const tallCoverDrawables: {
   (
     players: ReadonlyArray<Player>,

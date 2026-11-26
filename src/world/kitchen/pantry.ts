@@ -30,20 +30,6 @@ import {
 import { distanceBetween } from '../step/geometry'
 import { isKitchenOpen } from './kitchen'
 
-// The pantry stash (owner, 2026-11-02): once the kitchen is open, each break
-// the pantry cupboard in its north-west corner holds one goodie: a skeleton
-// key for the crew's ring (it held $15 to $30 before keys, docs/ESCAPE_PLAN.md
-// layer 7), or a heart for a hurt player. A heart the taker cannot use is a
-// key instead. (A Lid Stack went with endless ammo.) It sits in
-// front of the cupboard for the round, the break and the wave after it
-// (since 2026-11-10; it was the break only), and the first player to walk
-// onto it takes it, one a round. The walk is its price: in a fight, a walk
-// to the kitchen's far corner.
-//
-// The goodie is drawn from the World's generator (`rngState`, salted) without
-// advancing it, so stocking the pantry never shifts the waves, the drops, or
-// the fridge's pulls, and the same break always holds the same goodie.
-
 type PantryRules = Readonly<{
   keys: number
   frontPx: number
@@ -60,13 +46,10 @@ const PANTRY_SEED_SALT = 0x9a27c4b1
 
 const GOODIES: Array.NonEmptyReadonlyArray<PantryGoodie> = ['Key', 'Heart']
 
-// NOTE: the sound of a take: a key's ching or a heart.
 export const PANTRY_SOUNDS: Readonly<Record<PantryGoodie, SoundEffect>> = {
   Key: 'Purchase',
   Heart: 'GrabHeart',
 }
-
-// WHERE
 
 const PANTRY_SYMBOL = pipe(
   Record.toEntries(COVER_SYMBOLS),
@@ -77,7 +60,6 @@ const PANTRY_SYMBOL = pipe(
 
 const pantryBoxes = new WeakMap<Level, Option.Option<Box>>()
 
-// NOTE: the pantry cupboard's tiles on the map; a level keeps its box.
 const pantryBoxOf = (level: Level): Option.Option<Box> => {
   const cached = pantryBoxes.get(level)
   if (cached !== undefined) {
@@ -90,21 +72,17 @@ const pantryBoxOf = (level: Level): Option.Option<Box> => {
   return box
 }
 
-// NOTE: the goodie sits on the floor in front of the cupboard's doors.
 export const pantrySpotOf = (level: Level): Option.Option<Vector> =>
   Option.map(pantryBoxOf(level), box => ({
     x: Math.round((box.left + box.right) / 2),
     y: box.bottom + PANTRY_RULES.frontPx,
   }))
 
-// NOTE: the round the pantry stocks for: a break and the wave after it share
-// one goodie, keyed by the round's wave number.
 const roundOf = (world: World): Option.Option<number> =>
   Phase.isAnyOf(['Preparation', 'Wave'])(world.phase)
     ? Option.some(world.phase.wave)
     : Option.none()
 
-// NOTE: the goodie waiting in this round, if there is one.
 export const maybeStash = (world: World): Option.Option<PantryStash> =>
   Option.flatMap(roundOf(world), wave =>
     Pantry.isAnyOf(['Stocked'])(world.pantry) && world.pantry.round === wave
@@ -112,10 +90,6 @@ export const maybeStash = (world: World): Option.Option<PantryStash> =>
       : Option.none(),
   )
 
-// STOCKING
-
-// NOTE: each round with the kitchen open stocks the pantry once, also in a
-// round where the kitchen has just been opened.
 const stock = (world: World, wave: number): World => {
   const kindDraw = nextRandom((world.rngState ^ PANTRY_SEED_SALT) >>> 0)
   const goodie = Option.getOrElse(
@@ -127,10 +101,6 @@ const stock = (world: World, wave: number): World => {
   })
 }
 
-// TAKING
-
-// NOTE: what the stash gives this taker: the goodie if they can use it, else
-// a key. A Glass run's one heart stays one heart.
 const goodieFor = (
   world: World,
   player: Player,
@@ -188,8 +158,6 @@ const takeFor = (world: World, slot: PlayerSlot): World => {
   )
 }
 
-// NOTE: one tick of the pantry: stock it each round with the kitchen open,
-// then the first standing player in slot order on the spot takes it.
 export const advancePantry = (world: World): World =>
   Option.match(roundOf(world), {
     onNone: () => world,

@@ -1,7 +1,3 @@
-// The art studio's page (see ./README.md). Served by `bun dev` at
-// /tools/studio/, never built into the game.
-// NOTE: first, as in src/app/entry.ts, so the atlas is in place before any
-// sprite is built.
 import '../../src/art/spriteAtlasBoot'
 import { Effect, Layer } from 'effect'
 
@@ -16,8 +12,6 @@ import { init, update } from './update'
 import { titleOf, view } from './view'
 import { defineStudioWorld } from './worldStage'
 
-// NOTE: the studio as made: its init, update, view, Subscriptions, and the
-// page's title. Its Commands need no service.
 const Studio = StudioDef.make({
   init,
   update,

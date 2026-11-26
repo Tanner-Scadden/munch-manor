@@ -59,15 +59,6 @@ import {
   setupOnce,
 } from './syncCore.ts'
 
-// NOTE: the GameRoom's logic apart from the Workers runtime, so `bun test`
-// covers it over in-memory SQLite: the `room:<code>` scope host and what
-// the Durable Object does around it (creating, seating, recording results,
-// reacting to lobby mutations), and the answer to a game socket's Hello.
-// The game's own rules are the pure Room in @munch/netcode.
-
-// ROOM HOST
-
-/** @stability unstable */
 export interface RoomHost {
   readonly scope: ScopeHost
   readonly lobby: Effect.Effect<Option.Option<Lobby>>
@@ -120,8 +111,6 @@ const ticketOf = (
     },
   )
 
-// NOTE: a server mutation's delta goes to every socket joined to the scope,
-// as the engine's own pushes do.
 const broadcastApplied = (
   host: ScopeHost,
   delta: Delta,
@@ -140,7 +129,6 @@ const broadcastApplied = (
     ),
   )
 
-/** @stability unstable */
 export const makeRoomHost: {
   (
     secret: string,
@@ -320,8 +308,6 @@ export const makeRoomHost: {
     }),
 )
 
-// NOTE: built once per Durable Object on first use, like the sync scopes.
-/** @stability unstable */
 export const roomHostOnce: {
   <E>(
     scope: string,
@@ -344,30 +330,18 @@ export const roomHostOnce: {
     setupOnce(buildOn(sql, makeRoomHost(scope, secret))),
 )
 
-// NOTE: a look a player sent is kept only when it reads back as one of the
-// game's looks (src/shared/playerData.ts); anything else seats them with none,
-// and the game draws their seat's own look.
 export const lookOfRequest = (look: string): string =>
   Option.match(lookOfCode(look), {
     onNone: () => '',
     onSome: lookCodeOf,
   })
 
-// NOTE: a calling a player sent is kept only when it reads back as one of
-// the game's callings (src/shared/playerData.ts); anything else seats them as YOU.
-// The Worker cannot check the player's rank reached it: like the rank, it
-// is for show and for the seat's gun and hearts, never for scoring.
 const callingOfRequest = (calling: string): string =>
   Option.match(callingOfCode(calling), {
     onNone: () => DEFAULT_CALLING,
     onSome: known => known,
   })
 
-// REACTIONS
-
-// NOTE: what the Durable Object does after lobby mutations from players
-// apply: start the run if the last READY started it, stop it, or drop a
-// player who was kicked or left.
 export type Reaction =
   | { readonly _tag: 'MaybeStart' }
   | { readonly _tag: 'EndGame' }
@@ -416,8 +390,6 @@ export const reactionsOf = (
     Array.getSomes,
   )
 
-// GAME SOCKETS
-
 export type HelloAnswer =
   | { readonly _tag: 'Refuse'; readonly reason: RefusedReason }
   | {
@@ -432,8 +404,6 @@ const refuse = (reason: RefusedReason): HelloAnswer => ({
   reason,
 })
 
-// NOTE: the first frame on a game socket must be a Hello with a version
-// both sides speak and a session token of a member of this room.
 export const answerHello: {
   (
     secret: string,
@@ -489,10 +459,6 @@ export const answerHello: {
     }),
 )
 
-// INTERNAL REQUESTS
-
-// NOTE: what the Worker asks the room after checking the token, with the
-// player it vouches for.
 export const InternalCreate = Schema.fromJsonString(
   Schema.Struct({
     playerId: Schema.String,
@@ -523,9 +489,6 @@ export const INTERNAL_PATHS = {
 
 export const ROOM_CODE_HEADER = 'x-room-code'
 
-// NOTE: when the watchdog or the cleanup should run next. A room with a
-// game checks its loop every minute; any other room is deleted a day after
-// its last change.
 const WATCHDOG_MS = 60 * 1000
 export const DELETE_AFTER_MS = 24 * 60 * 60 * 1000
 export const STALLED_LOOP_MS = 5000
@@ -560,11 +523,6 @@ export const decideAlarm = (options: {
   })
 }
 
-// QUICK PLAY
-
-// NOTE: what a public room tells the Matchmaker after its lobby changed:
-// how many it seats, and whether it still takes players. A private room
-// says nothing.
 export const listingOf = (
   lobby: Lobby,
 ): Option.Option<Matchmaking.RoomListing> =>

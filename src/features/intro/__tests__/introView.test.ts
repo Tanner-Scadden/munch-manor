@@ -18,9 +18,6 @@ import type { IntroCut } from '../../../world/schema/worldSchema'
 import { introFrameAt } from '../introBeat'
 import { introShapes, widestFriendBubble } from '../introView'
 
-// The intro's drawing on either screen: every beat of either cut covers the
-// whole screen, and its picture sits inside it at a whole scale.
-
 const arrivingAt = (cut: IntroCut, elapsedMs: number): Model =>
   UiStruct.evolve(readyModel, {
     phase: () => Phase.Arriving({ elapsedMs, cut }),
@@ -93,8 +90,6 @@ describe('the intro drawn', () => {
     expect(widestFriendBubble()).toBeLessThanOrEqual(PICTURE_WIDTH - 4)
   })
 
-  // NOTE: the shapes in the picture at `ms` into `cut`, with and without the
-  // friends' line.
   const pictureCount = (cut: IntroCut, ms: number, hasLine: boolean) =>
     groupOf(
       groupOf(
@@ -115,7 +110,6 @@ describe('the intro drawn', () => {
     expect(pictureCount('Short', 600, true)).toBeGreaterThan(
       pictureCount('Short', 600, false),
     )
-    // NOTE: the full cut said it in the car; its knock is the house's.
     expect(pictureCount('Full', 8_000, true)).toBe(
       pictureCount('Full', 8_000, false),
     )

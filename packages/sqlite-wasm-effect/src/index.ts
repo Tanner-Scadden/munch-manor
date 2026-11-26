@@ -1,4 +1,3 @@
-/** @stability unstable */
 export * as Browser from './Browser'
 export { ChangeOperation, Persistence, SqlValue, TableChange } from './Protocol'
 export {

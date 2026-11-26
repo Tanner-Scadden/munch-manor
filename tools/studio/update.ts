@@ -1,6 +1,4 @@
-// The art studio's init and update: the controls, picking and pinning, the
-// note being written and sent, and the notes coming back.
-import { Array, Option, String } from 'effect'
+import { Array, Function, Option, String } from 'effect'
 
 import { type Component, UiStruct } from '@effect/ui'
 
@@ -35,7 +33,6 @@ import {
   roomTitleOf,
 } from './room'
 
-// NOTE: the update's `$`, as the studio's handlers take it.
 type Studio$ = Component.Update<
   Model,
   Message,
@@ -64,8 +61,6 @@ export const init = StudioDef.init($ =>
   }),
 )
 
-// THE VIEW
-
 const savedViewOf = (model: Model): SavedView => ({
   tab: model.tab,
   zoom: model.zoom,
@@ -90,12 +85,9 @@ const savedViewOf = (model: Model): SavedView => ({
   isLabOpen: model.isLabOpen,
 })
 
-// NOTE: a change to the saved part of the view, written to sessionStorage.
 const saved = ($: Studio$, next: Model) =>
   $.set(next).run(SaveView.make({ view: savedViewOf(next) }))
 
-// NOTE: what a note is about: the picked sprite, or the room on the Rooms
-// tab.
 export const targetIdOf = (model: Model): Option.Option<string> =>
   model.tab === 'Rooms'
     ? Option.some(roomTargetOf(model.room))
@@ -106,8 +98,6 @@ export const pickedEntry = (model: Model): Option.Option<Entry> =>
     ? Option.none()
     : Option.flatMap(model.maybeSelectedId, entryById)
 
-// NOTE: opening something marks its done notes seen, so their sparkle
-// goes, and keeps the view.
 const picking = ($: Studio$, next: Model, targetId: string) => {
   const seenDone = Array.appendAll(
     next.seenDone,
@@ -119,8 +109,6 @@ const picking = ($: Studio$, next: Model, targetId: string) => {
       )
     : saved($, next)
 }
-
-// THE NOTE
 
 const draftOf = (model: Model, targetId: string): NoteDraft => {
   const maybePin = model.maybeDraftPin
@@ -149,8 +137,6 @@ const draftOf = (model: Model, targetId: string): NoteDraft => {
   }
 }
 
-// NOTE: the canvas a note's before picture comes from: the big view's art,
-// or the room around the picked tiles (the whole room with none).
 const captureOf = (model: Model): Capture =>
   model.tab !== 'Rooms' && model.stageMode === 'Blocks'
     ? { selector: '.stage-shot', crop: null }
@@ -170,9 +156,6 @@ const captureOf = (model: Model): Capture =>
           }
         : { selector: '.stage-art canvas', crop: null }
 
-// THE LAB
-
-// NOTE: where the lab's values were tried, as its note says.
 const labWhereOf = (model: Model): string =>
   model.tab === 'Rooms'
     ? model.room === 'Live'
@@ -186,7 +169,6 @@ const labWhereOf = (model: Model): string =>
             : entry.title,
       })
 
-// NOTE: the lab's note: its values, before and after, about what is open.
 const labDraftOf = (model: Model, targetId: string): NoteDraft => ({
   tab: model.tab,
   targetId,
@@ -213,18 +195,12 @@ const isSendable = (model: Model): boolean =>
   model.sendStatus !== 'Sending' &&
   Option.isSome(targetIdOf(model))
 
-// NOTE: the notes as they stand, so a poll that brings nothing new keeps the
-// Model as it is and nothing redraws.
 const notesKey = (notes: ReadonlyArray<StoredNote>): string =>
   Array.join(
     Array.map(notes, note => `${note.noteId}:${note.status}`),
     ',',
   )
 
-// THE CLOCK
-
-// NOTE: one frame back or on in the big view: the clock moves by the picked
-// sprite's frame length, and the animation stops so the frame holds.
 const stepped = (model: Model, step: number): Model =>
   Option.match(pickedEntry(model), {
     onNone: () => model,
@@ -244,10 +220,7 @@ const sending = ($: Studio$, draft: NoteDraft) =>
     SendNote.make({ draft, capture: captureOf($.model) }),
   )
 
-// NOTE: update is a function Effect UI calls with its `$`, with no data-last
-// form to give it.
-// @effect-diagnostics-next-line missingPipeableSignature:off
-export const update = StudioDef.update({
+const handle = StudioDef.update({
   ClickedTab: ($, { tab }) =>
     saved(
       $,
@@ -450,3 +423,12 @@ export const update = StudioDef.update({
       },
     ),
 })
+
+type Handled = ReturnType<typeof handle>
+
+export const update: {
+  (message: Message): ($: Studio$) => Handled
+  ($: Studio$, message: Message): Handled
+} = Function.dual(2, ($: Studio$, message: Message): Handled =>
+  handle($, message),
+)

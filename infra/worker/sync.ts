@@ -48,9 +48,6 @@ import {
   tryCall,
 } from './syncCore.ts'
 
-// NOTE: GAME_ROOMS and MATCHMAKER are optional so a Worker without them
-// (an older deploy, a test) answers that rooms are unavailable instead of
-// failing.
 export type SyncBindings = Readonly<{
   SYNC_SCOPES: DurableObjectNamespace
   SYNC_DIRECTORY: DurableObjectNamespace
@@ -72,9 +69,6 @@ type Attachment = typeof AttachmentSchema.Type
 
 const decodeAttachment = Schema.decodeUnknownOption(AttachmentSchema)
 
-// NOTE: the values encoded here are built in this file from their own
-// Schemas, so an encode cannot fail; if one did, it would be a defect, or
-// for the linked devices body, a failed call like the fetch it goes in.
 const encodeAttachment = (attachment: Attachment) =>
   Effect.orDie(Schema.encodeEffect(AttachmentSchema)(attachment))
 
@@ -95,10 +89,6 @@ const decodeLinkedDevices = (body: string) =>
     BadSyncBody.make({ reason: error.message }),
   )
 
-// SCOPE
-
-// NOTE: one message is handled at a time: the input gate only covers
-// storage, and token checks await WebCrypto.
 export class SyncScope {
   private readonly lock = Semaphore.makeUnsafe(1)
   private host: Option.Option<Effect.Effect<ScopeHost, SyncSetupFailed>> =
@@ -115,8 +105,6 @@ export class SyncScope {
     )
   }
 
-  // NOTE: the object is named by its scope (fetch checks), so every caller
-  // passes the same scope and the first one builds the host.
   private hostFor(scope: string): Effect.Effect<ScopeHost, SyncSetupFailed> {
     return Effect.suspend(() =>
       Option.getOrElse(this.host, () => {
@@ -252,8 +240,6 @@ export class SyncScope {
   }
 }
 
-// DIRECTORY
-
 export class SyncDirectory {
   private readonly host: DirectoryHost
 
@@ -272,9 +258,6 @@ export class SyncDirectory {
   }
 }
 
-// NOTE: the cross-scope step, done by hand until there is an outbox for
-// server mutations: after a link, the player's scope records the new device
-// count. The id makes a retry harmless.
 const tellScope = (env: SyncBindings, linked: Linked) =>
   Effect.gen(function* () {
     const scope = playerScopeId(linked.playerId)
@@ -298,10 +281,6 @@ const tellScope = (env: SyncBindings, linked: Linked) =>
     }
   })
 
-// ROUTES
-
-// NOTE: a rate limiter that errors lets the request through, as the
-// analytics limits do, and is logged.
 const isWithinRate = (env: SyncBindings, request: Request) => {
   const address = request.headers.get('cf-connecting-ip') ?? 'unknown'
   return tryCall('check the rate limit', () =>
@@ -374,8 +353,6 @@ const routeSyncPath = (request: Request, env: SyncBindings, url: URL) =>
     return json(404, '{}')
   })
 
-// NOTE: every /sync path. The rest of the Worker is the analytics API. Every
-// failure is answered here, so the effect never fails.
 export const routeSync: {
   (
     env: SyncBindings,

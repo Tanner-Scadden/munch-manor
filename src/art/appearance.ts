@@ -37,12 +37,6 @@ import {
   styledProp,
 } from './sprites/propStyles'
 
-// OPTIONS
-
-// NOTE: every part works with every body: nothing here is tied to anything
-// else (decided with the owner on 2026-10-30, see "Character" in
-// GAME_DESIGN.md). The lists come straight from the Schemas, so the picker,
-// the dice, and the save always agree.
 export const BODIES: Array.NonEmptyReadonlyArray<Body> = Body.literals
 
 export const HAIR_STYLES: Array.NonEmptyReadonlyArray<HairStyle> =
@@ -63,8 +57,6 @@ export const PRINTS: Array.NonEmptyReadonlyArray<Print> = Print.literals
 
 export const ON_OFF: Array.NonEmptyReadonlyArray<boolean> = [false, true]
 
-// PALETTES
-
 type HairShade = Readonly<{ base: string; shine: string }>
 
 export const HAIR_SHADES: Readonly<Record<HairColor, HairShade>> = {
@@ -78,9 +70,6 @@ export const HAIR_SHADES: Readonly<Record<HairColor, HairShade>> = {
 
 type SkinShade = Readonly<{ skin: string; eye: string }>
 
-// NOTE: six tones, lightest to deepest, evenly spaced in CIELAB lightness
-// (from L* 89 down to L* 30, about 11.8 apart) on one warm hue line, so no
-// step is bigger than the next.
 export const SKIN_SHADES: Readonly<Record<SkinTone, SkinShade>> = {
   Fair: { skin: '#fadac2', eye: '#1b1b2a' },
   Light: { skin: '#e9b489', eye: '#1b1b2a' },
@@ -107,10 +96,6 @@ export const SHIRT_SHADES: Readonly<Record<ShirtColor, ShirtShade>> = {
   Ember: { base: '#c2361a', dark: '#6e1a0e' },
 }
 
-// NOTE: the Rainbow print, the six stripes of the pride flag in their real
-// colors. A torso is six pixels wide and three tall, so the stripes stand
-// upright across the shirt, one column each; the picker's swatch shows
-// them as the flag is flown.
 export const RAINBOW_STRIPES: Array.NonEmptyReadonlyArray<string> = [
   '#e40303',
   '#ff8c00',
@@ -137,7 +122,6 @@ const TOQUE_BAND_COLOR = '#c9c3ad'
 const hexByte = (value: number): string =>
   String.padStart(2, '0')(Math.round(value).toString(16))
 
-// NOTE: a color between two others, `amount` of the way from the first.
 const mix = (from: string, to: string, amount: number): string =>
   `#${Array.join(
     Array.map([0, 1, 2], index =>
@@ -149,11 +133,8 @@ const mix = (from: string, to: string, amount: number): string =>
     '',
   )}`
 
-// NOTE: the symbols a player's pixel maps use. The Rainbow print's stripes
-// are the digits 0 to 5, one per column of the torso.
 const RAINBOW_SYMBOLS = '012345'
 
-// NOTE: the symbol at a column of a pixel row, or the fallback past its end.
 const symbolAt = (row: string, x: number, fallback: string): string =>
   Option.getOrElse(String.charAt(row, x), () => fallback)
 
@@ -193,8 +174,6 @@ export const playerPalette = (appearance: Appearance): Palette => {
   }
 }
 
-// PIXEL PARTS
-
 export const PLAYER_WIDTH = 8
 
 const BLANK_ROW = padRow('', PLAYER_WIDTH, 0)
@@ -210,13 +189,8 @@ const FACE: Rows = [
   '..SSSS..',
 ]
 
-// NOTE: the face is six rows; row 4 holds the eyes and row 5 the chin. The
-// torso starts on row 6, so a beard can hang onto the chest.
 const TORSO_ROW = 6
 
-// NOTE: the outfit's top, the six pixels between the hand (column 0) and
-// the gun strap (column 7), for each of the torso's three rows. B and D are
-// the shirt and its shade, and only they take a print.
 type Legs = Readonly<{
   stand: Rows
   stride: Rows
@@ -245,7 +219,6 @@ const mapLegs = (legs: Legs, row: (row: string) => string): Legs => ({
 
 const bare = (row: string): string => String.replaceAll('L', 'S')(row)
 
-// NOTE: a dress ends in one hem row, wider than the hips, over bare legs.
 const DRESS_LEGS: Legs = {
   stand: ['BBBBBBBB', ...Array.map(Array.drop(PANTS.stand, 1), bare)],
   stride: ['BBBBBBBB', ...Array.map(Array.drop(PANTS.stride, 1), bare)],
@@ -263,8 +236,6 @@ const OUTFIT_ART: Readonly<Record<Outfit, OutfitArt>> = {
   },
 }
 
-// NOTE: where the hand is, by frame: on the torso's top, middle, or bottom
-// row as the arm swings.
 type HandRow = 0 | 1 | 2
 
 const torsoRows = (top: OutfitArt['top'], hand: HandRow): Rows =>
@@ -273,16 +244,11 @@ const torsoRows = (top: OutfitArt['top'], hand: HandRow): Rows =>
     (middle, y) => `${y === hand ? 'S' : '.'}${middle}${y === 0 ? '.' : 'G'}`,
   )
 
-// NOTE: the idle breath squashes the torso to its top and bottom rows.
 const exhaleRows = (top: OutfitArt['top']): Rows => [
   `S${top[0]}G`,
   `.${top[2]}G`,
 ]
 
-// NOTE: the hands of an action stance (src/render/actionPose.ts): each
-// arm's hand on a torso row, raised over the head, or out of sight. The
-// back arm is column 0 and the front arm column 7, where the gun strap
-// hangs: the figure faces right as drawn and is mirrored to face left.
 type Hand = HandRow | 'Up' | 'Hidden'
 
 const ARMS_UP_ROWS = 5
@@ -301,16 +267,12 @@ const actTorsoRows = (top: OutfitArt['top'], back: Hand, front: Hand): Rows =>
       `${armColumn(back, y, '.')}${middle}${armColumn(front, y, y === 0 ? '.' : 'G')}`,
   )
 
-// NOTE: a raised arm, over the face's rows: the hand at the top of the
-// head and the sleeve down to the shoulder.
 const raisedArmRows = (back: Hand, front: Hand): Rows =>
   Array.makeBy(ARMS_UP_ROWS + 1, y => {
     const symbol = y === 0 ? 'S' : 'B'
     return `${back === 'Up' ? symbol : '.'}......${front === 'Up' ? symbol : '.'}`
   })
 
-// NOTE: kneeling on the floor, as one row: the back shoe, the thighs in
-// the outfit's own leg color (a dress's hem), and the front shoe.
 const kneelRow = (stand: Rows): string => {
   const thigh = Option.getOrElse(
     Array.findFirst(
@@ -325,13 +287,9 @@ const kneelRow = (stand: Rows): string => {
   return `K${String.repeat(6)(thigh)}K`
 }
 
-// BODY SHAPES
-
 const setAt = (row: string, x: number, symbol: string): string =>
   `${String.slice(0, x)(row)}${symbol}${String.slice(x + 1)(row)}`
 
-// NOTE: legs apart, as standing or in a stride, are `.XX..XX.` in the
-// pants' own symbol; Slim draws them one pixel thin.
 const LEGS_APART = /^\.(.)\1\.\.\1\1\.$/
 
 const slimLeg = (row: string): string =>
@@ -339,8 +297,6 @@ const slimLeg = (row: string): string =>
     ? `..${symbolAt(row, 1, '')}..${symbolAt(row, 1, '')}..`
     : row
 
-// NOTE: Slim narrows the shoulders a pixel each side, the raised hand
-// coming in with them.
 const slimShoulders = (row: string): string => {
   const narrowed = setAt(setAt(row, 1, TRANSPARENT), 6, TRANSPARENT)
   return symbolAt(row, 0, '') === 'S'
@@ -348,8 +304,6 @@ const slimShoulders = (row: string): string => {
     : narrowed
 }
 
-// NOTE: Broad fills the empty pixel each side of the shoulders with the
-// shirt beside it; a raised hand stays where it is.
 const broadShoulders = (row: string): string => {
   const widen = (line: string, x: number, from: number) =>
     symbolAt(line, x, '') === TRANSPARENT
@@ -358,10 +312,6 @@ const broadShoulders = (row: string): string => {
   return widen(widen(row, 0, 1), 7, 6)
 }
 
-// NOTE: a body is a silhouette, never a sex. Broad squares the shoulders
-// out a pixel each side of the figure the game always drew; Slim narrows
-// them and the legs. The six columns of the top stay, so a print shows
-// whole on both.
 type BodyShape = Readonly<{
   torso: (rows: Rows, isExhale: boolean) => Rows
   legs: (rows: Rows) => Rows
@@ -383,8 +333,6 @@ const BODY_SHAPES: Readonly<Record<Body, BodyShape>> = {
     legs: rows => Array.map(rows, slimLeg),
   },
 }
-
-// HAIR AND FACE
 
 const HAIR_ART: Readonly<Record<HairStyle, Rows>> = {
   Short: ['........', '..HHHH..', '.HHHHIH.', '.H....H.'],
@@ -408,23 +356,13 @@ const HAIR_ART: Readonly<Record<HairStyle, Rows>> = {
   ],
   Curly: ['..HHHH..', '.HHIHHH.', 'HHHHHHHH', 'HH....HH', 'H......H'],
   Mohawk: ['...HI...', '..THHT..', '.TTHHTT.', '.T....T.'],
-  // NOTE: no hair, only the shine of the scalp.
   Bald: ['........', '...U....'],
 }
 
 const BEARD: Rows = ['', '', '', '', '.H....H.', '.HHHHHH.', '..HHHH..']
 
-// NOTE: glasses sit one column off center, as the face looks the way the
-// gun points.
 const GLASSES: Rows = ['', '', '', '', '.RERRER.']
 
-// CALLING PROPS
-
-// NOTE: the small prop each calling wears over the player's own look, so
-// the Look tab still decides the face (a worn hat hides the prop): the Handyman's hard hat, the Track
-// Star's sweatband, the Penny Pincher's green visor with a coin on it, and
-// the Line Cook's toque. YOU wears nothing. Rows start at the face's first
-// row and lay over the hair and glasses.
 const CALLING_PROPS: Readonly<Record<Calling, Rows>> = {
   You: [],
   Handyman: ['..YYYY..', '.ZYYYYZ.'],
@@ -433,16 +371,6 @@ const CALLING_PROPS: Readonly<Record<Calling, Rows>> = {
   LineCook: ['.WWWWWW.', '.NNNNNN.'],
 }
 
-// BODY PROPS
-
-// NOTE: what each hero wears on the body, under the head and so over any
-// hat (owner decision, 2026-11-01: players own the head, heroes add on top).
-// Each prop is the torso's three rows, eight columns wide like the figure;
-// `.` leaves the figure's own pixel, so the hand (column 0) and the gun
-// strap (column 7) stay. The Handyman's tool belt hangs a hammer on the
-// hip, the Track Star's race bib shows a 1 on the chest, the Line Cook's
-// apron is white with a pocket, and the Penny Pincher's coin purse sits on
-// the hip. YOU wears nothing. Symbols come from the hat colors (HAT_COLORS).
 const BODY_PROPS: Readonly<Record<Calling, Rows>> = {
   You: [],
   Handyman: ['........', '.ss.....', '.tddydd.'],
@@ -451,7 +379,6 @@ const BODY_PROPS: Readonly<Record<Calling, Rows>> = {
   LineCook: ['...ww...', '.hwwwwh.', '.wwhhww.'],
 }
 
-// NOTE: the Track Star's sneakers, bright in place of the black shoes.
 const SNEAKER_COLOR_SYMBOL = 'o'
 
 const sneakered = (calling: Calling, row: string): string =>
@@ -477,8 +404,6 @@ const overlayRows = (base: Rows, top: Rows): Rows =>
     }),
   )
 
-// NOTE: a hero's two props in the look's mastery style
-// (src/art/sprites/propStyles.ts): YOU wears the medal once a style is on.
 const propsOf = (
   calling: Calling,
   appearance: Appearance,
@@ -509,13 +434,6 @@ const withBodyProp = (
             }),
       )
 
-// HATS
-
-// NOTE: a hat sits over the hair and glasses. It reaches above the head, so
-// the figure's rows grow at the top and nothing below them moves: the sprite
-// is anchored at its feet. A worn hat shows for every calling and the
-// calling's prop (CALLING_PROPS) is left off under it, so the two never draw
-// on top of each other (owner decision, 2026-11-01).
 const withHat = (rows: Rows, look: Appearance): Rows => {
   const hat = look.hat
   const art = hat === 'None' ? NO_HAT : HAT_ART[hat]
@@ -527,11 +445,6 @@ const withHat = (rows: Rows, look: Appearance): Rows => {
       )
 }
 
-// PRINTS
-
-// NOTE: the pixels of a print that is a picture, on the shirt's six columns
-// and three rows: `.` leaves the shirt's own pixel, W is white, K the dark of
-// a skull's eyes, F and C the flames' orange and yellow.
 const PRINT_TILES: Readonly<
   Record<'Polka' | 'Checker' | 'Skull' | 'Flames', Rows>
 > = {
@@ -544,8 +457,6 @@ const PRINT_TILES: Readonly<
 const isTilePrint = (print: Print): print is keyof typeof PRINT_TILES =>
   print in PRINT_TILES
 
-// NOTE: the symbol a print puts on the shirt's pixel at a torso row and
-// column, or the shirt's own symbol where the print leaves it.
 const printSymbolAt = (
   print: Print,
   torsoRow: number,
@@ -566,9 +477,6 @@ const printSymbolAt = (
   return symbol === TRANSPARENT ? shirt : symbol
 }
 
-// NOTE: a print paints the shirt's own pixels (B and D) on the torso rows:
-// Stripes a white band across the middle row, Rainbow a stripe per column,
-// and the rest a small picture.
 const withPrint = (
   rows: Rows,
   torsoRowOf: (y: number) => number,
@@ -592,8 +500,6 @@ const withPrint = (
         )
       })
 
-// NOTE: a print as a patch of the shirt: its three rows on the shirt's own
-// base, for the Look tab's swatch.
 export const printSwatchRows = (print: Print): Rows =>
   Array.makeBy(3, torsoRow =>
     Array.join(
@@ -602,14 +508,8 @@ export const printSwatchRows = (print: Print): Rows =>
     ),
   )
 
-// FRAMES
-
 type FramePixels = Array.NonEmptyReadonlyArray<Rows>
 
-// NOTE: the stances a player's hands-on actions are drawn in
-// (src/render/actionPose.ts), each one frame: standing with the front hand
-// out low, level, or high; an arm or both raised over the head; and
-// kneeling with the front hand low, level, or raised.
 const ACT_STANCES = [
   'Reach',
   'ReachLow',
@@ -637,10 +537,6 @@ const STANCE_ART: Readonly<Record<ActStance, StanceArt>> = {
   KneelUp: { back: 2, front: 'Up', isKneeling: true },
 }
 
-// NOTE: where a stance's front hand is from the feet, facing right, for a
-// tool held in it (src/render/actionView.ts): its pixel's top left. Every
-// stance is the standing frame's twelve rows: a blank row, the face, the
-// torso, and two rows of legs, or kneeling, two blank rows and one of legs.
 export const FRAME_ROWS = 1 + FACE.length + 3 + 2
 
 export const frontHandOf = (
@@ -670,8 +566,6 @@ export const playerPixels: {
     const hair = HAIR_ART[appearance.hairStyle]
     const props = propsOf(calling, appearance)
 
-    // NOTE: the torso's pixel rows read the print by their own row: the full
-    // torso its three rows, the exhale its top and bottom.
     const upper = (torso: Rows, isExhale: boolean, raised: Rows = []): Rows => {
       const torsoRowOf = (y: number) => (isExhale && y === 1 ? 2 : y)
       const printed = withBodyProp(
@@ -747,10 +641,6 @@ export const playerPixels: {
   },
 )
 
-// NOTE: a hat option's picture: the head under the tallest hat's room, its
-// top padded so every hat sits at the same height from the chin, and nothing
-// under the face. Rows are the standing frame's, so the hat sits as it does
-// in a run. The blank row over the head and the face's six rows are seven.
 const HEAD_ROWS = 7
 
 export const hatHeadRows = (look: Appearance): Rows => {
@@ -763,8 +653,6 @@ export const hatHeadRows = (look: Appearance): Rows => {
     MAX_HAT_ABOVE + HEAD_ROWS,
   )
 }
-
-// SPRITES
 
 type PlayerSprites = Readonly<{
   walk: SpriteFrames
@@ -816,10 +704,6 @@ const SPRITE_CACHE_SIZE = 16
 
 const spriteCache = new Map<string, PlayerSprites>()
 
-// NOTE: the view asks for the player's sprites every frame. Building them
-// means composing the pixel maps and turning them into shapes, so each look
-// is built once and kept here, and the oldest look is dropped once more than
-// a handful have been tried, such as by pressing Randomize over and over.
 export const playerSprites: {
   (calling?: Calling): (appearance: Appearance) => PlayerSprites
   (appearance: Appearance, calling?: Calling): PlayerSprites
@@ -844,17 +728,12 @@ export const playerSprites: {
   },
 )
 
-// NOTE: every sprite image built so far, with the given look's frames built
-// first. The warm-up canvases and the loading splash read it once the game
-// has loaded, so it holds the sprites of every module.
 export const spriteWarmUpSources = (
   look: Appearance,
 ): ReadonlyArray<string> => {
   playerSprites(look)
   return recordedSpriteSources()
 }
-
-// RANDOMIZE
 
 const pickFrom = <A>(
   options: Array.NonEmptyReadonlyArray<A>,
@@ -881,10 +760,6 @@ const nextOption = <A>(options: Array.NonEmptyReadonlyArray<A>, current: A) => {
   )
 }
 
-// NOTE: the dice draws every part from its full list, each as likely as the
-// next, from the cosmetic generator in the Model, and never lands on the
-// look already showing. The earned shirt colors and prints are in the draw
-// only once the player owns them, and the hat and gun skin stay as worn.
 const ownedOptions = <A extends string>(
   kind: 'Shirt' | 'Print',
   options: Array.NonEmptyReadonlyArray<A>,

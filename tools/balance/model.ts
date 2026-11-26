@@ -1,10 +1,3 @@
-// The analytical balance model: per wave and difficulty, straight from the
-// game's tables, with no bot and no frames. It rolls each wave's real spawn
-// list for a few seeds, buys the bot's loadout from the skeleton keys those
-// waves drop (src/world/keys/keys.ts), and drains the incoming health with that loadout's sustained damage
-// a second, holds and quiet hurries included. Run it with
-// `bun tools/balance/model.ts`. It is instant, so it runs in `bun run test`.
-
 import {
   Array,
   Console,
@@ -69,10 +62,6 @@ import {
 } from './modelShop'
 import { mean } from './summary'
 
-// KILLS
-
-// NOTE: a wave's kills go to the gun the model holds (heldGun), and its
-// tier follows them.
 export const withKills: {
   (kills: number): (loadout: Loadout) => Loadout
   (loadout: Loadout, kills: number): Loadout
@@ -97,8 +86,6 @@ export const withKills: {
   }),
 )
 
-// DAMAGE
-
 export const heldGun = (
   loadout: Loadout,
 ): Readonly<{ gun: Gun; tier: number }> =>
@@ -107,8 +94,6 @@ export const heldGun = (
     onSome: ({ kind, tier }) => ({ gun: kind, tier }),
   })
 
-// NOTE: the default bot fights with its spare gun, whose ammo never runs
-// out, so the held gun is the spare once it has one.
 export const loadoutDps: {
   (assumptions: Assumptions): (loadout: Loadout) => number
   (loadout: Loadout, assumptions: Assumptions): number
@@ -121,8 +106,6 @@ export const loadoutDps: {
       ((gnome.damage * assumptions.gnomeHitShare * 1000) / gnome.fireIntervalMs)
   )
 })
-
-// THE REAL WAVES
 
 export type RolledWave = Readonly<{
   spawns: ReadonlyArray<PlannedSpawn>
@@ -173,9 +156,6 @@ const incomingOf = (rolled: RolledWave): ReadonlyArray<Incoming> =>
     arrival: arrivalOf(spawn, rolled.spawns),
   }))
 
-// The keys a wave drops on average when the bot kills everything and wipes
-// every frenzied pack: each kill's odds, the boss's, a key a wiped pack,
-// and the clear's (src/world/keys/keys.ts). The model's "money" is keys.
 export const wavePay: {
   (wave: number): (rolled: RolledWave) => number
   (rolled: RolledWave, wave: number): number
@@ -187,8 +167,6 @@ export const wavePay: {
     frenzyPacksOf(rolled.spawns).length * KEY_RULES.perPackWiped +
     KEY_RULES.perWaveCleared,
 )
-
-// THE MODEL
 
 export type WaveRow = Readonly<{
   wave: number
@@ -214,12 +192,8 @@ export type Economy = Readonly<{
   pays: ReadonlyArray<number>
 }>
 
-// NOTE: what a wave pays and how many it kills, the kills leveling the
-// held gun before the next visit.
 export type WaveTake = Readonly<{ pay: number; kills: number }>
 
-// NOTE: wave 1 is the tutorial and its stall is closed, so the first visit
-// buys nothing. Traps need repairs from the third visit on.
 const FIRST_VISIT: Visit = {
   moneyOnArrival: 0,
   bought: [],
@@ -230,10 +204,6 @@ const FIRST_VISIT: Visit = {
 
 const FIRST_UPKEEP_WAVE = 3
 
-// NOTE: upkeep is the money a visit spends on staying alive rather than on
-// getting stronger. Traps mend for free and hearts are found, not bought
-// (docs/ESCAPE_PLAN.md, layer 6), so the model's upkeep is nothing; the
-// knob stays for trying a cost again.
 export const upkeepFor: {
   (assumptions: Assumptions): (wave: number) => number
   (wave: number, assumptions: Assumptions): number
@@ -241,9 +211,6 @@ export const upkeepFor: {
   wave >= FIRST_UPKEEP_WAVE ? assumptions.upkeepPerVisit : 0,
 )
 
-// The visit before each wave, index 0 for wave 1. Money does not depend on
-// the level, since bounties and the clear bonus are the same on every level
-// and the model kills everything.
 export const economy: {
   (
     takes: ReadonlyArray<WaveTake>,
@@ -290,7 +257,6 @@ export const economy: {
 const waveNumbers = (lastWave: number): Array.NonEmptyReadonlyArray<number> =>
   Array.makeBy(Math.max(1, lastWave), index => index + 1)
 
-// The expected pay of each wave, on the mean over the model's seeds.
 export const expectedPays: {
   (lastWave: number): (assumptions: Assumptions) => ReadonlyArray<number>
   (assumptions: Assumptions, lastWave: number): ReadonlyArray<number>
@@ -306,8 +272,6 @@ export const expectedPays: {
     ),
 )
 
-// The expected kills of each wave on a level, on the mean over the model's
-// seeds: every zombie and the boss.
 const expectedKills = (
   assumptions: Assumptions,
   lastWave: number,
@@ -399,8 +363,6 @@ export const balanceModel = (
   Nightmare: modelRows('Nightmare', assumptions),
 })
 
-// TIME TO KILL
-
 export type KillTime = Readonly<{
   kind: ZombieKind
   hp: number
@@ -412,8 +374,6 @@ const KILL_TIME_KINDS: ReadonlyArray<ZombieKind> = [
   'Boss',
 ]
 
-// Seconds to kill one zombie of each kind on a level, at the base health
-// scale, for every gun at tier.
 const killTimes = (
   difficulty: Difficulty,
   tierOf: (gun: Gun) => number,
@@ -439,16 +399,11 @@ const killTimes = (
 
 export const maxTierOf = (gun: Gun): number => UPGRADE_TIERS[gun].length
 
-// MONEY AGAINST PRICES
-
 export type Prices = Readonly<{
   earned: number
   fullKit: Readonly<Record<SpareGun, number>>
 }>
 
-// The whole campaign's pay against the price of a full kit: the spare gun,
-// two planks, two gnomes, and the kitchen. Tiers are earned by kills, so
-// they cost nothing.
 export const moneyAgainstPrices = (): Prices => {
   const kit = (gun: SpareGun) =>
     CATALOG.gunPrice[gun] +
@@ -460,8 +415,6 @@ export const moneyAgainstPrices = (): Prices => {
     fullKit: { Shotgun: kit('Shotgun'), Smg: kit('Smg') },
   }
 }
-
-// PRINTING
 
 const fixed = (value: number, digits: number, width: number): string =>
   String.padStart(width)(value.toFixed(digits))

@@ -14,27 +14,10 @@ import {
 } from '../schema/worldSchema'
 import { isFloorKind } from '../zombies/zombies'
 
-// Opening a room wakes it (docs/ROOM_RESEARCH.md, "Decided", owner
-// 2026-11-10): a short rush of zombies from the opened room's own doors,
-// about 10 s, a small crescendo the players set off themselves.
-//
-// When (decided for layer 21): opened mid-wave, the rush starts once its
-// doors have rattled, a pack warning from now; opened in a break, the room
-// stirs and the rush comes as the next wave starts, so the break stays a
-// breather. Either way the rush is planned spawns on the round's own list,
-// so the doors rattle first, the wave cannot clear while any are to come,
-// and it rides the co-op wire as every spawn does.
-//
-// Who wakes: guests drawn from the round's own planned spawns through a
-// door (the wave's kinds with its difficulty and crowd scales), on the
-// round's seeded generator, so the same run wakes the same rush.
-
 type WakeRules = Readonly<{
   rushMs: number
   count: number
   perExtraPlayer: number
-  // NOTE: wake packs' ids start here, one per door, far above any wave's
-  // (GROUP_ID_STRIDE groups), so no wave rule ever claims one.
   packBase: number
 }>
 
@@ -45,7 +28,6 @@ export const WAKE_RULES: WakeRules = {
   packBase: 900_000,
 }
 
-// NOTE: a plain guest, should the round plan nobody through a door.
 const PLAIN_GUEST: Omit<PlannedSpawn, 'atMs' | 'door' | 'offset' | 'pack'> = {
   kind: 'Shambler',
   speedScale: 1,
@@ -70,8 +52,6 @@ const drawIndex = (state: number, length: number): Seeded<number> => {
   return [draw.nextState, Math.min(length - 1, Math.floor(draw.value * length))]
 }
 
-// NOTE: the rush's spawns from `startMs`, spread over its time and dealt
-// round the room's doors in turn.
 const rushSpawns = (
   state: number,
   templates: ReadonlyArray<PlannedSpawn>,
@@ -115,10 +95,6 @@ const rushSpawns = (
     },
   )
 
-// NOTE: wakes the room whose doors just opened: its rush joins the round
-// under way, or the coming wave's start in a break. Nothing outside a
-// round, and nothing for an opening with no doors of its own (the secret
-// shelf).
 export const wakeRoom: {
   (newDoors: ReadonlyArray<DoorId>): (world: World) => World
   (world: World, newDoors: ReadonlyArray<DoorId>): World

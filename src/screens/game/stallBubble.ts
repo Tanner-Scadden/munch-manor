@@ -42,16 +42,6 @@ import type { Vector } from '../../world/schema/worldSchema'
 import { hintBoxesOf } from './overlay'
 import { pinnedKeepoutsOf } from './pocket'
 
-// NOTE: Rattles hollers his hints in a speech bubble of pictures, hung
-// from the spot it is about, and when that spot is out of view it waits at
-// the window's edge with an arrow toward it. It never points at a zombie.
-// His stall and its bubble of goods went with the shop
-// (docs/ESCAPE_PLAN.md, layer 7).
-//
-// The kitchen tour (src/features/onboarding/kitchenTour.ts) hangs the same bubble from its
-// spots: a gift over the boards and the fridge it gives away, and, under
-// the prize's TAKE tag and its ring (which teach taking), footprints and a
-// cross for leaving it by walking away.
 type BubbleKind = 'Gift' | 'Leave' | 'Soup0' | 'Soup1' | 'Soup2'
 
 type Good = Readonly<{
@@ -86,7 +76,6 @@ const GIFT = tourIcon([
   '.rrrrr.',
 ])
 
-// NOTE: two footprints walking off, for leaving the prize behind.
 const FOOTSTEPS = tourIcon([
   '....oo.',
   '...ooo.',
@@ -107,8 +96,6 @@ const CROSS = tourIcon([
   'r.....r',
 ])
 
-// NOTE: Rattles' holler about the boarded kitchen (src/features/kitchen/kitchenCall.ts): a
-// steaming pot and a goofy line, in dark ink on the bubble.
 const POT_STEAM = '#aeb6bd'
 
 const potGood: Good = {
@@ -175,8 +162,6 @@ const bubbleWidth = (kind: BubbleKind): number => goodsWidth(GOODS[kind])
 const BUBBLE_INK = '#140c10'
 const BUBBLE_FILL = '#f4f1de'
 
-// NOTE: the frame and its tail, a fixed set of whole pixel rectangles,
-// baked once per kind. The tail sits at the bottom right, toward Rattles.
 const frameRects = (
   width: number,
   height: number,
@@ -238,23 +223,16 @@ const FRAMES: Readonly<Record<BubbleKind, Sprite>> = {
   ),
 }
 
-// PLACING
-
 type Side = 'Left' | 'Right' | 'Up' | 'Down' | 'Inside'
 
 const EDGE_MARGIN = 4
 const HUD_CLEARANCE = 22
 const ARROW_LENGTH = 4
-// NOTE: how far an arrow reaches past the bubble's side (its one pixel gap
-// and its length), and how far the bob moves the bubble each way.
 const ARROW_REACH = ARROW_LENGTH + 1
 const BOB_PX = 1
 const BOB_MS = 900
 const RATTLES_HEAD_LIFT = 6
 
-// NOTE: Rattles' spot, where his bubble's tail tip hangs when it points at
-// nothing else: by his head, over his trunk by the front door
-// (src/features/rattles/rattlesSpot.ts).
 const RATTLES_TIP: Vector = {
   x: RATTLES_BOX.left + 1,
   y: RATTLES_BOX.top - RATTLES_HEAD_LIFT,
@@ -330,8 +308,6 @@ const arrowRects = (
   })
 }
 
-// NOTE: each good centered on the bubble's height, so a line sits level
-// with a big icon beside it.
 const goodsShapes = (
   goods: ReadonlyArray<Good>,
   x: number,
@@ -369,7 +345,6 @@ const bubbleOfKind = (kind: BubbleKind): Bubble => ({
   height: goodsHeight(GOODS[kind]),
 })
 
-// NOTE: a bubble baked once from its goods.
 const bubbleOf = (goods: ReadonlyArray<Good>): Bubble => {
   const width = goodsWidth(goods)
   const height = goodsHeight(goods)
@@ -399,15 +374,6 @@ const bubbleShapes = (
     camera,
   )
 
-// NOTE: what a bubble keeps out of, in screen pixels: the HUD's buttons and
-// panels, the shop's tags as they are pinned, and a banner's rows while one
-// shows (`pinnedKeepoutsOf`), the fridge's odds note, the tours' hint rows
-// under the banner (BLOCK DOOR), and the quest's arrow over its next spot.
-// A bubble over one moves to the nearest place clear of them all, under or
-// over one of them.
-
-// NOTE: the guided quest's arrow bobbing over its next spot
-// (src/screens/game/worldView.ts), while in view.
 const questArrowKeepout = (
   model: Model,
   camera: Camera,
@@ -435,9 +401,6 @@ const keepoutsOf = (model: Model, camera: Camera): ReadonlyArray<Keepout> => {
   ]
 }
 
-// NOTE: where a bubble goes: the spot its tail tip points at, whether it
-// draws its own arrow toward that spot out of view, and how much further
-// in from the window's edge it waits (room for the dare's gold arrow).
 type Placing = Readonly<{
   bubble: Bubble
   tipInWorld: Vector
@@ -446,9 +409,6 @@ type Placing = Readonly<{
   maybeUnder: Option.Option<Vector>
 }>
 
-// NOTE: a bubble whose tail tip points at a spot in the world, pinned to
-// the window's edge, with an arrow toward the spot when it is out of view
-// and the bubble points.
 const placedBubble = (
   { bubble, tipInWorld, isPointing, inset, maybeUnder }: Placing,
   model: Model,
@@ -468,8 +428,6 @@ const placedBubble = (
   const wantedX = Math.round(tip.x) - width + 2
   const wantedY = Math.round(tip.y) - height - TAIL
   const x = Math.max(left, Math.min(right, wantedX))
-  // NOTE: with no room over the spot in view, the bubble hangs under the
-  // spot it may name, so it never covers the thing it is about.
   const underY = Option.getOrElse(
     Option.filter(
       Option.map(maybeUnder, under => Math.round(worldToView(camera, under).y)),
@@ -479,8 +437,6 @@ const placedBubble = (
   )
   const side = sideOf({ x: wantedX, y: wantedY }, left, right, top, bottom)
   const arrowSide = isPointing ? side : 'Inside'
-  // NOTE: what the bubble covers as it bobs, with its arrow past the side
-  // it points to, is what keeps clear of the HUD and the tags.
   const above = BOB_PX + (arrowSide === 'Up' ? ARROW_REACH : 0)
   const below = BOB_PX + (arrowSide === 'Down' ? ARROW_REACH : 0)
   const before = arrowSide === 'Left' ? ARROW_REACH : 0
@@ -506,9 +462,6 @@ const placedBubble = (
   ]
 }
 
-// NOTE: the kitchen tour's bubbles: a gift over the boards, then over the
-// fridge, and while the prize floats, under its TAKE tag (and the ring that
-// teaches taking), footprints and a cross for leaving it.
 const LEAVE_TIP_RIGHT = 26
 const LEAVE_TIP_DROP = 32
 
@@ -544,8 +497,6 @@ const kitchenBubbleShapes: {
 
 const SOUP_KINDS: ReadonlyArray<BubbleKind> = ['Soup0', 'Soup1', 'Soup2']
 
-// NOTE: Rattles' holler about the kitchen's boards, pinned to the window's
-// edge with an arrow toward them when they are out of view.
 export const soupBubbleShapes: {
   (camera: Camera): (model: Model) => ReadonlyArray<Draw.Shape>
   (model: Model, camera: Camera): ReadonlyArray<Draw.Shape>
@@ -562,9 +513,6 @@ export const soupBubbleShapes: {
     }),
 )
 
-// RATTLES' HINTS
-
-// NOTE: the thing a hint is about, big and clear beside the line.
 const dareIconGood = (kind: DareKind): Good => ({
   sprite: DARE_BIG_ICONS[kind],
   isCentered: false,
@@ -572,7 +520,6 @@ const dareIconGood = (kind: DareKind): Good => ({
   height: DARE_BIG_ICON_SIZE,
 })
 
-// NOTE: every hint's bubble baked once: the thing it is about, and the line.
 const HINT_BUBBLES: ReadonlyMap<string, Bubble> = new Map(
   Array.map(HINT_LINES, ({ line, maybeIcon }): readonly [string, Bubble] => [
     line,
@@ -583,16 +530,10 @@ const HINT_BUBBLES: ReadonlyMap<string, Bubble> = new Map(
   ]),
 )
 
-// NOTE: a hint about a thing hangs over the gold arrow over it
-// (src/features/dare/darePointer.ts), and out of view waits further in
-// than that arrow at the window's edge, which points the way in its place.
 const HINT_TIP_OVER_POINTER = 12
 const HINT_INSET = 12
 const HINT_UNDER_GAP = 6
 
-// NOTE: Rattles' hint about the dare (src/features/dare/rattlesHint.ts):
-// over the thing it is about, pinned to the window's edge with an arrow
-// toward it when it is out of view, or from his own spot, pointing nowhere.
 export const dareHintShapes: {
   (camera: Camera): (model: Model) => ReadonlyArray<Draw.Shape>
   (model: Model, camera: Camera): ReadonlyArray<Draw.Shape>
@@ -647,10 +588,6 @@ export const dareHintShapes: {
     ),
 )
 
-// RATTLES' HELLO
-
-// NOTE: each line of his hello (src/features/onboarding/rattlesIntro.ts)
-// baked once.
 const INTRO_BUBBLES: ReadonlyMap<string, Bubble> = new Map(
   Array.map(RATTLES_INTRO_LINES, (line): readonly [string, Bubble] => [
     line,
@@ -658,8 +595,6 @@ const INTRO_BUBBLES: ReadonlyMap<string, Bubble> = new Map(
   ]),
 )
 
-// NOTE: his hello hangs from his own spot and points at it, so with him off
-// screen the bubble waits at the window's edge with an arrow toward him.
 const rattlesIntroShapes: {
   (camera: Camera): (model: Model) => ReadonlyArray<Draw.Shape>
   (model: Model, camera: Camera): ReadonlyArray<Draw.Shape>
@@ -688,11 +623,6 @@ const rattlesIntroShapes: {
     ),
 )
 
-// RATTLES' ONE BUBBLE
-
-// NOTE: Rattles says one thing at a time, so two of his bubbles never stack
-// up over each other: the kitchen tour's first, then his hello, then his
-// holler about the kitchen, then a hint about the dare.
 const RATTLES_BUBBLES: ReadonlyArray<
   (model: Model, camera: Camera) => ReadonlyArray<Draw.Shape>
 > = [

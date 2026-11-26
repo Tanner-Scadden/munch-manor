@@ -1,16 +1,3 @@
-// The phone keyboard pass. On a phone upright and on its side, it taps each
-// text field the game has (the Profile's name, the link code, co-op's room
-// code, and co-op's name picker), then brings up a fake keyboard two ways:
-// as iOS does, shrinking only the visual viewport, and as a browser that
-// ignores `interactive-widget=overlays-content` does, shrinking the page
-// itself. Neither may change the game's measured surface, its portrait or
-// landscape, or its screen height, and the field must keep its focus and
-// show above the keyboard, the page lifted if it has to be. Once
-// the field lets go, the game measures again. A screenshot of each field
-// with the keyboard up lands in tools/audit/shots/. Exits with 1 on any
-// change.
-//   bun run heavy -- --shared bun tools/audit/keyboard.ts
-// VIEWPORTS picks screens.
 import { Array, Effect, Schema } from 'effect'
 import type { Page } from 'playwright-core'
 
@@ -33,9 +20,7 @@ import { attempt, decodedFrom } from './page'
 
 const VIEWPORTS = [UPRIGHT_390, PHONE_844]
 
-// NOTE: how much of the screen the fake keyboard covers.
 const KEYBOARD_SHARE = 0.45
-// NOTE: how long the game gets to answer a resize before it is read.
 const SETTLE_MS = 400
 
 type Field = Readonly<{ name: string; query: string; selector: string }>
@@ -67,7 +52,6 @@ const Layout = Schema.Struct({
 })
 type Layout = typeof Layout.Type
 
-// NOTE: what the keyboard must not change, read off the root and the Model.
 const layoutOf = (page: Page, selector: string) =>
   decodedFrom(Layout, () =>
     page.evaluate(field => {
@@ -95,8 +79,6 @@ const layoutOf = (page: Page, selector: string) =>
     }, selector),
   )
 
-// NOTE: iOS's keyboard: the layout viewport stays and only the visual
-// viewport shrinks, with its resize events.
 const fakeIosKeyboard = (page: Page, height: number) =>
   attempt(() =>
     page.evaluate(visibleHeight => {
@@ -145,8 +127,6 @@ const changesFrom = (
   ]
 }
 
-// NOTE: the field must show above the keyboard, lifted if it has to be,
-// and never off the top of the screen.
 const hiddenUnder = (
   where: string,
   layout: Layout,

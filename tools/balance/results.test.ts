@@ -11,9 +11,6 @@ import {
 } from './bot/results'
 import { tallyShopVisits } from './summary'
 
-// NOTE: simulate.ts's workers write their results as JSON and the main
-// process decodes them, so a batch split over workers must read exactly as
-// one played in a single process.
 const encodeRuns = encodeJson(RunResults)
 const decodeRuns = decodeJson(RunResults)
 
@@ -119,7 +116,6 @@ const runWith = (
   },
 })
 
-// NOTE: the second run skips the shop before wave 3 and dies with no killer.
 const RUNS: ReadonlyArray<RunResult> = [
   {
     ...runWith(1, [

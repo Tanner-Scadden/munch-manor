@@ -18,19 +18,6 @@ import { Phase } from '../../world/schema/worldSchema'
 import { type HelpCard, HelpMessage } from './message'
 import { pauseProgressView } from './pauseProgress'
 
-// CONTROLS
-
-// NOTE: the one list of things a new player needs to do. The home menu's HOW
-// TO PLAY and the pause screen both draw it as a grid of small cards: a
-// moving picture for the last device used and a word or two. Each card also
-// has one line of how to do it, from a playtester who found a picture and a
-// word taught nothing. On the home menu a card is a
-// button that shows its line when focused, tapped, or hovered; on the pause
-// screen, where a tap resumes, the line shows on hover and is read out. The
-// top row is the controls and the bottom row the dare: keys, rooms, cases,
-// the list, and the way out (the escape the manor update, 2026-11-10), with
-// gun levels and the stove beside the cases (owner, 2026-11-10: "I am also
-// very confused on how I do the upgrades for the weapon now.").
 type Input = Readonly<{ line: string; sprites: HintIconSprites }>
 
 type ControlCard = Readonly<{
@@ -204,8 +191,6 @@ export const CONTROL_CARDS: Array.NonEmptyReadonlyArray<ControlCard> = [
 
 type ExtraKey = Readonly<{ key: string; action: string }>
 
-// NOTE: the rest of the keyboard's keys, one short line under the cards, so
-// every key still has a home on the screen that teaches the controls.
 const EXTRA_KEYS: Array.NonEmptyReadonlyArray<ExtraKey> = [
   { key: 'R', action: 'reload' },
   { key: '1 2 3', action: 'pick a slot' },
@@ -247,8 +232,6 @@ export const helpCardElementId = (card: HelpCard): string =>
 export const helpLineElementId = (card: HelpCard): string =>
   `${helpCardElementId(card)}-line`
 
-// VIEW
-
 const HELP_TITLE_ID = 'pause-help-title'
 
 type Frame = Readonly<{
@@ -259,10 +242,6 @@ type Frame = Readonly<{
   height: number
 }>
 
-// NOTE: each frame of a hint icon is one baked image. Where none was baked
-// (a test without a canvas) the card shows no picture. A built game draws it
-// from a region of the sprite atlas, which an <img> cannot crop, so each
-// frame takes an image of its own.
 const framesOf = (sprites: HintIconSprites): ReadonlyArray<Frame> =>
   Array.flatMap(sprites.frames, frame =>
     Array.flatMap(frame, (shape): ReadonlyArray<Frame> =>
@@ -283,8 +262,6 @@ const framesOf = (sprites: HintIconSprites): ReadonlyArray<Frame> =>
 const percent = (part: number, whole: number): string =>
   `${(part / whole) * 100}%`
 
-// NOTE: the frames stack in one box and a CSS animation shows each in
-// turn, so the picture moves with no work in the game's frame.
 const movingView = (
   sprites: HintIconSprites,
   h: ApplicationViewBuilder,
@@ -318,8 +295,6 @@ const movingView = (
     )
 }
 
-// NOTE: How to play on the home menu lets a card show its line; the pause
-// screen, where a press resumes the game, only shows it on hover.
 export type HelpCards = 'Interactive' | 'Static'
 
 const cardFaceView = (
@@ -388,8 +363,6 @@ const extraKeysView = (h: ApplicationViewBuilder): ApplicationHtml =>
 
 export const helpLabel = (device: InputDevice): string => DEVICE_LABELS[device]
 
-// NOTE: the home menu's HOW TO PLAY adds its own keys under the cards on a
-// keyboard.
 export const howToPlayView: {
   (
     cards: HelpCards,
@@ -434,9 +407,6 @@ export const howToPlayView: {
 const isPauseHelpUp = (model: Model): boolean =>
   Phase.isAnyOf(['Paused'])(model.phase)
 
-// NOTE: the game surface's press (PressGameSurface in src/app/mount.ts),
-// handed in by the root's view, since a feature imports nothing of `app/`:
-// a press on the help card is a press on the surface.
 type PressSurface = ApplicationMount
 
 export const pauseHelpView: {

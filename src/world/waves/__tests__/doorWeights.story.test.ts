@@ -18,8 +18,6 @@ import type { DoorId, PlannedSpawn } from '../../schema/worldSchema'
 import { nearDoorsOf } from '../doorWeights'
 import { rollWave } from '../endlessWaves'
 
-// NOTE: the whole house open, the default arrangement: the parlour west,
-// the library east, the cellar far beyond it.
 const OPEN_HOUSE = {
   ...startingLevel,
   openExits: ['Kitchen', 'West', 'East', 'Far'] as const,

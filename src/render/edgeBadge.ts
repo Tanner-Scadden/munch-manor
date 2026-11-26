@@ -1,11 +1,6 @@
 import { bakeShapes } from '../art/sprite'
 import * as Draw from './draw'
 
-// The small square badge pinned to the window's edge toward someone out of
-// sight: a teammate in co-op, in their seat's color
-// (src/features/onlineRun/coopMarksView.ts), and the wave's last zombies
-// once they hurry, in the rage's red (src/features/hud/stragglerEdge.ts).
-
 export const EDGE_BADGE_PX = 9
 export const EDGE_BADGE_INK = '#1a0f14'
 

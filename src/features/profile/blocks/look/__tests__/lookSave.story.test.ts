@@ -28,9 +28,6 @@ import { legacySave } from '../../../../../test/store.fixture'
 import { jsonOf } from '../../../../../test/testing'
 import { pointsForRank } from '../../../../../world/heroes/rank'
 
-// The hat, shirt color, print, and gun skin in what is kept and what is
-// sent: the save at version 16, and the look code the co-op lobby carries.
-
 const BARE = defaultAppearance
 
 const MOHAWK: Appearance = {

@@ -99,15 +99,12 @@ type WearArt = Readonly<{
   palette: Palette
   litPalette: Palette
   ragePalette: Palette
-  // NOTE: the letter its eyes wear in every palette, which glow in the dark.
   eye: string
   anchorX: number
   icon: ReadonlyArray<string>
   maybeTauntAt: Option.Option<(stage: number) => ReadonlyArray<string>>
 }>
 
-// NOTE: a frenzied zombie's eyes glow red, so its rage frames are its walk
-// frames with the eye color swapped.
 const withRedEyes = (palette: Palette, eye: string): Palette => ({
   ...palette,
   [eye]: FRENZY_EYE,
@@ -154,8 +151,6 @@ const zombieSprites = (given: WearArt): ZombieSprites => {
   }
 }
 
-// NOTE: every image of a kind's worn frames, each tone and facing, to
-// carve to its hand set depth (`deepSprite`).
 const deepZombie =
   (depth: SpriteDepth) =>
   (sprites: ZombieSprites): ZombieSprites => {
@@ -282,8 +277,6 @@ export const wornFramesAt: {
 
 export const BOSS_ICON = ZOMBIE_SPRITES.Boss.icon
 
-// KABOOMER FUSE
-
 const EXPLODER_FRAME_HEIGHT = firstFrame(0, exploderWalkPixels).length
 const EXPLODER_FRAME_WIDTH = spriteWidth(firstFrame(0, exploderWalkPixels))
 const FUSE_HEADROOM = 3
@@ -355,9 +348,6 @@ const FUSE_SPRITES: ReadonlyArray<
 
 const NO_FUSE: Readonly<Record<Facing, Sprite>> = { Left: [], Right: [] }
 
-// NOTE: the fuse is one prebuilt image for each length and walk frame, laid
-// over the Kaboomer's sprite in the same frame of reference, so it sways and
-// mirrors with him.
 export const kaboomerFuseSprite: {
   (frameIndex: number, facing: Facing): (length: number) => Sprite
   (length: number, frameIndex: number, facing: Facing): Sprite
@@ -399,8 +389,6 @@ export const kaboomerFuseTip: {
   },
 )
 
-// NOTE: a zombie walking outside the room, on the new zombie card or in the
-// title parade, with its props: the Kaboomer carries his fuse at full length.
 export const showcaseWalk: {
   (stride: number, facing: Facing): (kind: ZombieKind) => Sprite
   (kind: ZombieKind, stride: number, facing: Facing): Sprite

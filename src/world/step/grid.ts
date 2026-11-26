@@ -2,36 +2,16 @@ import { Function } from 'effect'
 
 import type { Vector } from '../schema/worldSchema'
 
-// NOTE: a uniform grid for the checks between nearby things (zombies pushing
-// apart, a bullet's sweep). It is built from scratch whenever a step needs it,
-// by a counting sort of entity indices into two Int32Arrays, and thrown away
-// with the step: a pure function of the list, never stored on the World and
-// never kept between ticks. Typed arrays are allocated per build, not shared
-// in a module buffer, so a Grid can be held across calls (a step builds two
-// at once, or the room steps while a test still holds one) with nothing to
-// clear or to get stale. Each is private to the step that built it.
-//
-// NOTE: `queryBox` hands back the original list's indices in ASCENDING order,
-// exactly the order a loop over the whole list visits them (`queryAround`
-// leaves them in cell order, for a caller that keeps a few and sorts those
-// with `sortAscending`). Summing floats and
-// "who is first" (the lowest index wins a tie) therefore come out bit for bit
-// as the all-pairs loops did. A query returns a superset of what is in reach
-// (whole cells): the caller keeps its exact test.
-
 export type Grid = Readonly<{
   minX: number
   minY: number
   inverseCellPx: number
   cols: number
   rows: number
-  // cell c holds items[starts[c] .. starts[c + 1]), each cell ascending
   starts: Int32Array
   items: Int32Array
 }>
 
-// NOTE: a spread-out list (a zombie far outside) widens the cells instead of
-// growing the grid, so the cell count stays bounded.
 const MAX_CELLS_PER_SIDE = 48
 
 const cellAt = (
@@ -124,15 +104,11 @@ export const buildGrid: {
   },
 )
 
-// NOTE: room for any query's answer: one list of candidates per caller, reused
-// across that caller's queries within one step.
 export const queryBuffer = (grid: Grid): Int32Array =>
   new Int32Array(grid.items.length)
 
 const INSERTION_SORT_MAX = 24
 
-// NOTE: writes into `out` the indices of every included point in the cells
-// that touch the box, cell by cell, and returns how many.
 const gatherBox = (
   grid: Grid,
   out: Int32Array,
@@ -160,7 +136,6 @@ const gatherBox = (
   return count
 }
 
-// NOTE: puts the first `count` indices of `out` in ascending order.
 export const sortAscending: {
   (count: number): (out: Int32Array) => void
   (out: Int32Array, count: number): void
@@ -180,8 +155,6 @@ export const sortAscending: {
   }
 })
 
-// NOTE: writes into `out` the indices of every included point in the cells
-// that touch the box, in ascending order, and returns how many.
 export const queryBox: {
   (
     out: Int32Array,
@@ -214,9 +187,6 @@ export const queryBox: {
   },
 )
 
-// NOTE: the indices in the cells within `reachPx` of a point, cell by cell
-// and NOT ascending: a caller that keeps a few of many candidates sorts only
-// those it keeps (`sortAscending`), which costs far less than sorting all.
 export const queryAround: {
   (out: Int32Array, center: Vector, reachPx: number): (grid: Grid) => number
   (grid: Grid, out: Int32Array, center: Vector, reachPx: number): number

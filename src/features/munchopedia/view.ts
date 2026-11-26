@@ -31,8 +31,6 @@ import {
 type H = Html.H<Message>
 type Content = View.Content<Message>
 
-// TEXT
-
 const UNKNOWN_NAME = '???'
 
 const isBoss = (kind: ZombieKind): boolean => kind === 'Boss'
@@ -46,8 +44,6 @@ const lockedHint = (kind: ZombieKind): string =>
   isBoss(kind)
     ? 'Beat the boss at the end of the campaign to fill in this page.'
     : 'Splat one to fill in this page.'
-
-// PICTURE
 
 const PICTURE_PX = 64
 
@@ -83,10 +79,6 @@ const pictureAlt = (kind: ZombieKind, isKnown: boolean): string =>
     ? `${entryName(kind)} shuffling along and falling apart`
     : 'A dark silhouette of a zombie you have not met yet'
 
-// NOTE: a known zombie stands carved in blocks, turning on a lit plinth,
-// drawn by the world's renderer (src/render/iso/plinthElement.ts); Uncle
-// Chunk is lit from below in red, his hero shot. One not met yet stays a
-// flat silhouette.
 const plinthView = (props: MunchopediaProps, kind: ZombieKind, h: H): Content =>
   h.div.class('munch-stage munch-stage-plinth').children(
     Option.match(plinthImageAt(kind, props.screenMs), {
@@ -103,8 +95,6 @@ const plinthView = (props: MunchopediaProps, kind: ZombieKind, h: H): Content =>
           }),
     }),
   )
-
-// LIST
 
 const tileView = (
   props: MunchopediaProps,
@@ -151,9 +141,6 @@ const tileView = (
   )
 }
 
-// NOTE: the Shop tile beside the zombies opens the shop guide
-// (src/features/guide/), which gives it focus back when it goes back. It
-// wears Rattles' face and is always known.
 const shopTileView = (h: H): Content =>
   h.li.class('munch-tile-item').children(
     h.button
@@ -188,8 +175,6 @@ const listView = (props: MunchopediaProps, h: H): Content =>
       Array.map(MUNCHOPEDIA, entry => tileView(props, entry, h)),
       shopTileView(h),
     )
-
-// ENTRY
 
 const ENTRY_NAME_ID = 'munch-entry-name'
 
@@ -275,8 +260,6 @@ const entryView = (
     )
 }
 
-// BODY
-
 const entryActionsView = (done: View.Outlet, h: H): Content =>
   h.div.class('panel-actions').children(
     backButtonView(
@@ -312,11 +295,6 @@ const pagesView = (
   }),
 ]
 
-// NOTE: the panel's body under the title the root's menu panel draws. Its
-// box takes no room of its own, so the panel lays out the page and its
-// actions row as its own children. The shop guide stands over the zombies
-// while it is open, with its own BACK and the panel's Done (the `done`
-// slot, placed once in whichever row shows).
 export const munchopediaView = ({
   h,
   model,

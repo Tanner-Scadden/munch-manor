@@ -24,9 +24,6 @@ type PixelRun = Readonly<{
 
 export const TRANSPARENT = '.'
 
-// NOTE: one pass along the row that grows the last run in place, since this
-// runs for every row of every sprite as the game loads. Copying the run list
-// for each pixel made a long row cost the square of its length.
 const rowRuns = (
   row: string,
   y: number,
@@ -83,8 +80,6 @@ const mergeVertically = (
     },
   )
 
-// NOTE: an image needs no vertical merging, which costs more than the image,
-// so sprite images are painted from each row's runs.
 const rowRunsOf = (
   pixels: ReadonlyArray<string>,
   palette: Palette,
@@ -131,7 +126,6 @@ export const spriteRects: {
     anchor?: Anchor,
   ): ReadonlyArray<Draw.Rect>
 } = Function.dual(
-  // NOTE: data-first starts with the pixel rows, the only array argument.
   (args: IArguments): boolean => Array.isArray(args[0]),
   (
     pixels: ReadonlyArray<string>,
@@ -149,8 +143,6 @@ export const spriteRects: {
     ),
 )
 
-// SPRITE IMAGES
-
 const fillsOf = (
   runs: ReadonlyArray<PixelRun>,
 ): Option.Option<ReadonlyArray<Fill>> =>
@@ -166,8 +158,6 @@ const fillsOf = (
     ),
   )
 
-// NOTE: the size and every run in paint order, which is everything the PNG is
-// built from, so two equal keys always make the same image.
 const contentKeyOf = (
   width: number,
   height: number,
@@ -182,14 +172,6 @@ const contentKeyOf = (
 
 const sourcesByContent = new Map<string, Option.Option<string>>()
 
-// NOTE: a sprite image is a PNG data URL built here from its pixel runs, not
-// an SVG. The browser makes a whole SVG document for every SVG image and
-// redraws its shapes each time a canvas draws it, which cost seconds at load
-// and nothing saved per frame over the Rect shapes. A PNG decodes once into a
-// bitmap that drawImage copies. About a third of the sprites the game builds
-// come out the same as one built before (a flash frame of an all white
-// sprite, a wear stage with no wear yet, a glyph in two tones that match), so
-// each distinct image is encoded once and its data URL reused.
 const runsDataUrl = (
   width: number,
   height: number,
@@ -218,10 +200,6 @@ export const spriteDataUrl: {
 
 const builtSpriteSources = new Set<string>()
 
-// NOTE: a sprite image draws nothing until the browser has decoded it, so
-// every sprite image is recorded here as it is built. The sprites the game
-// builds as it loads are all recorded before the first frame, and the warm-up
-// canvas in layers.ts draws them once so none blinks when it first appears.
 export const recordedSpriteSources = (): ReadonlyArray<string> =>
   Array.fromIterable(builtSpriteSources)
 
@@ -236,15 +214,11 @@ const imageAt = (
   return Draw.Image({ src, x, y, width, height, rendering: 'Pixelated' })
 }
 
-// NOTE: how to build a prebuilt sprite's image on its own, by where it sits
-// in the atlas, for HTML that shows a sprite as an <img>, which cannot crop.
 const recipesByPlace = new Map<string, () => Option.Option<string>>()
 
 const placeOf = (src: string, x: number, y: number): string =>
   `${src}#${x},${y}`
 
-// NOTE: a sprite's image as a source of its own: a prebuilt sprite's built
-// on first use, anything else's own source.
 export const standaloneSource = (image: Draw.Image): string => {
   if (image.crop === undefined) {
     return image.src
@@ -257,8 +231,6 @@ export const standaloneSource = (image: Draw.Image): string => {
     : Option.getOrElse(recipe(), () => image.src)
 }
 
-// NOTE: a one image sprite as an image for HTML, which cannot crop the
-// atlas: a badge, or the prize on the touch hold button.
 export type ArtImage = Readonly<{ src: string; width: number; height: number }>
 
 export const spriteImage = (
@@ -277,7 +249,6 @@ export const spriteImage = (
     ),
   )
 
-// NOTE: a prebuilt sprite is a cropped region of one of the atlas's files.
 const atlasImageAt = (
   hit: AtlasHit,
   x: number,
@@ -297,8 +268,6 @@ const atlasImageAt = (
   })
 }
 
-// CONTENT
-
 export type SpriteContent = Readonly<{
   width: number
   height: number
@@ -307,8 +276,6 @@ export type SpriteContent = Readonly<{
 
 const contentsByKey = new Map<string, SpriteContent>()
 
-// NOTE: every sprite built in stand-in mode, by key, with its pixels as the
-// fills to paint. The atlas generator packs these, and tests read them.
 export const spriteContents = (): ReadonlyMap<string, SpriteContent> =>
   contentsByKey
 
@@ -317,9 +284,6 @@ export const spriteContentOf = (src: string): Option.Option<SpriteContent> =>
     Option.fromNullishOr(contentsByKey.get(key)),
   )
 
-// NOTE: the image for a sprite the atlas does not hold: a stand-in named by
-// its key in stand-in mode, else a PNG data URL encoded here. None when a
-// palette color cannot be read, so the caller keeps rectangles.
 const builtSource = (
   key: string,
   width: number,
@@ -335,8 +299,6 @@ const builtSource = (
   })
 }
 
-// NOTE: a pixel map's key: its size, its rows, and its palette in symbol
-// order, so the same map and colors always find the same prebuilt image.
 const pixelsKeyOf = (
   width: number,
   pixels: ReadonlyArray<string>,
@@ -370,15 +332,8 @@ const builtSpriteShapes = (
   })
 }
 
-// FLASH
-
 const FLASH_COLOR = '#ffffff'
 
-// NOTE: a hit flash is pure white whatever light it stands in (owner,
-// 2026-11-14, from a hit feel guide: a tint multiplies, so a dark pixel stays
-// dark). So the flash palettes, and the sprites built from them, are known
-// by identity: the 3D renderer draws a flash sprite unlit
-// (src/render/iso/scene.ts). Weak, so a sprite let go is forgotten.
 const FLASH_PALETTES = new WeakSet<Palette>()
 const FLASH_SHAPES = new WeakSet<Draw.Shape>()
 
@@ -391,21 +346,10 @@ export const flashPalette = (palette: Palette): Palette => {
 export const isFlashShape = (shape: Draw.Shape): boolean =>
   FLASH_SHAPES.has(shape)
 
-// GLOWS
-
-// NOTE: what glows of itself in the 3D renderer, lit by no room: the eyes
-// of a sprite drawn from a palette marked here with its eyes' letters (the
-// zombies', Rattles'), and any shape marked one by one (a Kaboomer's
-// sparks). Known by identity, as a flash is. A marked sprite's eye pixels
-// are read off its pixel map once, as it is built, so the carve gives them
-// their own glowing faces (src/render/iso/voxels.ts) and nothing else of
-// the body, gold buttons and all, ever glows.
 const EYE_LETTERS = new WeakMap<Palette, string>()
 const EYE_PIXELS = new WeakMap<Draw.Shape, EyePixels>()
 const GLOW_SHAPES = new WeakSet<Draw.Shape>()
 
-// NOTE: a sprite's eye pixels: 1 for each pixel of its map, row by row,
-// that wears an eye's letter.
 export type EyePixels = Readonly<{
   width: number
   height: number
@@ -471,21 +415,11 @@ const noteFlash = (
   return shapes
 }
 
-// NOTE: a sprite that is a light of itself (a hearth's flames) stands in
-// the 3D world glowing, the same in any light. Known by its image's source
-// and crop, since placing a sprite copies its image.
-// NOTE: a table by sprite image, known by its sheet and its crop's corner:
-// in a production build every sprite is a crop of a few atlas sheets, so
-// the sheet alone names many. The 3D renderer asks it for every part of
-// every body each frame, so a lookup builds no key: the sheet's string
-// keeps its own hash, and the corner is one number.
 export type CropTable<V> = Readonly<{
   get: (image: Draw.Image) => V | undefined
-  // NOTE: every image of a sprite, set to one value.
   setSprite: (sprite: ReadonlyArray<Draw.Shape>, value: V) => void
 }>
 
-// NOTE: wider than any sheet, so each corner is its own number.
 const CORNER_SPAN = 65536
 
 const cornerOf = (image: Draw.Image): number =>
@@ -513,7 +447,6 @@ export const makeCropTable = <V>(): CropTable<V> => {
   }
 }
 
-// NOTE: whether an image is one of these sprites', by its crop.
 export const cropSetOf = (
   sprites: ReadonlyArray<ReadonlyArray<Draw.Shape>>,
 ): ((image: Draw.Image) => boolean) => {
@@ -534,14 +467,6 @@ export const glowingSprite = (sprite: Sprite): Sprite => {
 export const isGlowingShape = (shape: Draw.Shape): boolean =>
   shape._tag === 'Image' && GLOWING_IMAGES.get(shape) === true
 
-// NOTE: how a sprite stands carved in the 3D world when its round default
-// reads wrong, set beside its pixel map: `most`, its depth cap; `isBox`,
-// every pixel the cap deep with its front flush, as a fridge or a stove
-// is; `rows`, a hand drawn depth map over the pixel map, a digit a pixel
-// (how many blocks deep, flush), `.` for the round default; `isUpright`,
-// a piece of the house standing straight up on its foot rather than leaned
-// square to the pitch, a box `most` game pixels deep north along the floor,
-// so it fills its own tiles and stands against the wall behind them.
 export type SpriteDepth = Readonly<{
   most?: number
   isBox?: boolean
@@ -562,10 +487,6 @@ export const deepSprite: {
 export const spriteDepthOf = (shape: Draw.Image): SpriteDepth | undefined =>
   SPRITE_DEPTHS.get(shape)
 
-// NOTE: a sprite is one image of its pixel map, drawn with a single
-// drawImage, instead of a rectangle for each run of same colored pixels. A
-// prebuilt one is found by its key with no pixel work at all. A palette color
-// that is not a hex or rgb() color keeps the rectangles.
 export const spriteShapes: {
   (
     palette: Palette,
@@ -577,7 +498,6 @@ export const spriteShapes: {
     anchor?: Anchor,
   ): ReadonlyArray<Draw.Shape>
 } = Function.dual(
-  // NOTE: data-first starts with the pixel rows, the only array argument.
   (args: IArguments): boolean => Array.isArray(args[0]),
   (
     pixels: ReadonlyArray<string>,
@@ -612,8 +532,6 @@ export type Box = Readonly<{
   bottom: number
 }>
 
-// BOUNDS
-
 const EMPTY_BOUNDS: Box = {
   left: Infinity,
   top: Infinity,
@@ -647,9 +565,6 @@ const shiftBounds = (bounds: Box, x: number, y: number): Box => ({
   bottom: bounds.bottom + y,
 })
 
-// NOTE: the box a list of shapes covers, in their own coordinates, for
-// laying sprites side by side (a take's tag) and the art studio's frames.
-// Paths and text are left out: no sprite is made of them.
 export const boundsOf = (shapes: ReadonlyArray<Draw.Shape>): Box =>
   Array.reduce(shapes, EMPTY_BOUNDS, (bounds: Box, shape): Box =>
     joinBounds(
@@ -770,10 +685,6 @@ const bakeRuns = (
   })
 }
 
-// NOTE: bakes a fixed list of whole pixel rectangles, such as a stall part
-// drawn with Rect shapes, into one sprite image that paints the same pixels
-// in the same order. Anything else, such as a circle or a scaled group, keeps
-// its shapes as they are.
 export const bakeShapes = (
   shapes: ReadonlyArray<Draw.Shape>,
 ): ReadonlyArray<Draw.Shape> => {
@@ -799,11 +710,6 @@ const clipRun = (run: PixelRun, box: Box): Option.Option<PixelRun> => {
     : Option.none()
 }
 
-// NOTE: bakes only the part of the rectangles inside box. Each pixel inside
-// is painted by the same rectangles in the same order as in bakeShapes, so
-// images baked from one list for boxes that do not overlap paint exactly the
-// pixels of the whole list's image within them. A list that is not whole
-// rectangles keeps its shapes, uncut.
 export const bakeShapesWithin: {
   (box: Box): (shapes: ReadonlyArray<Draw.Shape>) => ReadonlyArray<Draw.Shape>
   (shapes: ReadonlyArray<Draw.Shape>, box: Box): ReadonlyArray<Draw.Shape>
@@ -821,9 +727,6 @@ export const bakeShapesWithin: {
     }),
 )
 
-// NOTE: draws a sprite at a whole pixel offset. A one image sprite moves the
-// image itself, which saves the painter a Group's save, restore, and
-// translate for every sprite in the scene.
 export const placeAt: {
   (y: number, sprite: ReadonlyArray<Draw.Shape>): (x: number) => Draw.Shape
   (x: number, y: number, sprite: ReadonlyArray<Draw.Shape>): Draw.Shape
@@ -848,9 +751,6 @@ export const placeAt: {
   },
 )
 
-// NOTE: draws a sprite stretched by `scaleX` and `scaleY` about its anchor,
-// for a squash and stretch pop. A one image sprite stretches the image
-// itself, so the pop costs no Group.
 export const placeScaled: {
   (
     y: number,
@@ -912,8 +812,6 @@ export const padRow: {
     `${String.repeat(left)(TRANSPARENT)}${row}${String.repeat(right)(TRANSPARENT)}`,
 )
 
-// SPRITES
-
 export type Facing = 'Left' | 'Right'
 export type Tone = 'Normal' | 'Flash'
 
@@ -923,10 +821,6 @@ export type SpriteFrames = Array.NonEmptyReadonlyArray<SpriteSet>
 
 type GroupFields = Omit<Draw.Group, '_tag'>
 
-// NOTE: Draw.Group re-parses every nested shape through Schema on each call,
-// because its shapes field is recursive. The scene builds hundreds of Groups a
-// frame around shapes the Canvas constructors already made, so this builds the
-// same Group value without parsing the whole subtree again.
 export const group = (fields: GroupFields): Draw.Group => ({
   _tag: 'Group',
   shapes: fields.shapes,

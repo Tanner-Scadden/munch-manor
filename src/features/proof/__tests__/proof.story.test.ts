@@ -32,10 +32,6 @@ import {
 } from '../../end/__tests__/rank.fixture'
 import { type ShelfThing, hasNewProof, maybeStampAt, shelveRun } from '../proof'
 
-// The Proof Shelf's root side (src/features/proof/proof.ts): what a run puts
-// on the shelf as it ends, the first stamp a slot keeps, the crew it names,
-// and the PROOF card's NEW pip.
-
 const TODAY = '2026-11-13'
 
 const SPOON: DareThing = {
@@ -50,7 +46,6 @@ const HIDDEN_BOX: DareThing = {
   state: DareThingState.Hidden({ x: 40, y: 40, workedMs: 0 }),
 }
 
-// NOTE: a Normal run about to die on wave 7 with the spoon in hand.
 const munchedWithSpoon = knowingDay(
   withDareThings(diesOnWave7, [SPOON, HIDDEN_BOX]),
   TODAY,
@@ -101,7 +96,6 @@ describe('a run that ends', () => {
   it.effect('keeps the first stamp when a later run finds it again', () =>
     Effect.gen(function* () {
       const first = yield* modelAfter(munchedWithSpoon, steps(frame, writeSave))
-      // NOTE: the next day, a run that escapes with the spoon.
       const again = knowingDay(
         UiStruct.evolve(lastWave, { proof: () => first.proof }),
         '2026-11-14',

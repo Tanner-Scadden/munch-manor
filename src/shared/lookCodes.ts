@@ -15,16 +15,7 @@ import {
   SkinTone,
 } from './playerData'
 
-// NOTE: a look as the save writes it, whose newest parts may be missing
-// (read as their defaults), which the older shapes encode from.
 type EncodedLook = typeof Appearance.Encoded
-
-// The look's older shapes, read as the current one, and the look as the
-// co-op lobby carries it (its code), apart from the save's Schemas in
-// src/shared/playerData.ts so each file holds one job. Shared with the sync
-// Worker, so it imports only `effect` and its own folder.
-
-// OLDER LOOKS
 
 const oneOf = <A extends string>(
   options: ReadonlyArray<A>,
@@ -36,10 +27,6 @@ const oneOf = <A extends string>(
     () => fallback,
   )
 
-// NOTE: the first look, until 2026-10-30 (save versions 1 to 9, the player
-// scope's rows, ChangedAppearance version 1, and five word co-op codes): a
-// Female or Male body and five parts. Both bodies drew the same width, so
-// both read as Broad in a tee, the closest new look.
 const LEGACY_HAIR_STYLES = ['Crop', 'Long', 'Ponytail', 'Curls'] as const
 const LEGACY_HAIR_COLORS = [
   'Black',
@@ -95,12 +82,6 @@ const legacyOfAppearance = (look: EncodedLook): LegacyAppearance => ({
   shirtColor: look.shirtColor,
 })
 
-// NOTE: the many-part look that shipped for a few hours on 2026-10-30
-// (save version 10, ChangedAppearance version 2, six word co-op codes with
-// five letters), before the owner chose this simpler set. Each part reads
-// as its closest simple option: the Slim body stays Slim and the others
-// are Broad, a pride flag is the Rainbow print, and a beard, goatee, or
-// mustache is a beard.
 const V10_BODIES = ['Slim', 'Medium', 'Broad', 'Round'] as const
 const V10_HAIR_STYLES = [
   'Crop',
@@ -230,8 +211,6 @@ const HAIR_COLOR_OF_V10: Readonly<
   Rainbow: 'Pink',
 }
 
-// NOTE: by lightness: Bronze sat beside Tan, and Umber was the first
-// look's Deep.
 const SKIN_TONE_OF_V10: Readonly<
   Record<(typeof V10_SKIN_TONES)[number], SkinTone>
 > = {
@@ -308,8 +287,6 @@ const manyPartsOfAppearance = (look: EncodedLook): ManyPartAppearance => ({
   extra: look.glasses ? 'Glasses' : 'None',
 })
 
-// NOTE: the encodings only let the older shapes sit in a union: a union
-// encodes through its first member that fits, which is always Appearance.
 const preHatOfAppearance = (look: EncodedLook): PreHatAppearance => ({
   body: look.body,
   hairStyle: look.hairStyle,
@@ -364,9 +341,6 @@ const ManyPartsToAppearance = ManyPartAppearance.pipe(
   }),
 )
 
-// NOTE: a look as it is stored: the current shape, or an older one read as
-// its closest current look. Rows and saves written before keep the old
-// shape until the look next changes; writing always gives the current one.
 export const StoredAppearance = Schema.Union([
   Appearance,
   PreSkinToAppearance,
@@ -375,24 +349,6 @@ export const StoredAppearance = Schema.Union([
   LegacyToAppearance,
 ])
 
-// LOOK CODES
-
-// NOTE: a look as the co-op lobby carries it (packages/netcode, Lobby.ts,
-// LookInput): the first five parts as words, then one word with a letter
-// per newer part, the letter of its place in its list (A for the first;
-// for beard and glasses, A without and B with), joined by dots, such as
-// `Slim.Mohawk.Pink.Tan.Teal.CCBA`. A hat adds one more word, the letter of
-// its place in `Hat`, and only when there is one, so a bare headed look has
-// the code it always had and a code without the word reads as no hat. A gun
-// skin adds an eighth, the letter of its place in `GunSkin`, only when it is
-// not Stock (the seventh is then the hat's, A for none). A hero's prop
-// style (mastery) adds a ninth, the letter of its place in `PropStyle`,
-// only when it is not Stock (the seventh and eighth are then there, A for
-// none and Stock). That keeps it inside the lobby's nine words and 64
-// characters, and every older code reads as it did. Older codes,
-// five words from the first look or six with five letters from the
-// many-part look, read as their closest current look. Anything else is
-// none.
 const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
 const letterOf = (options: ReadonlyArray<string>, value: string): string =>

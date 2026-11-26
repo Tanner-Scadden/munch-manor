@@ -37,14 +37,6 @@ import type { RoomAccess } from '../../platform/roomReplica'
 import { PlayerStore } from '../../platform/store'
 import type { Calling } from '../../shared/playerData'
 
-// SERVICE
-
-// NOTE: everything co-op does on the network, as one Effect service: the
-// room requests, the QUICK PLAY queue, the lobby, and the game socket. The
-// streams are what the Subscriptions run, and each keeps its live handle
-// here while it runs, so a Command can answer an offer, write to the
-// lobby, or send inputs on the socket the Subscription opened. Tests swap
-// in a fake (src/features/coop/testing.ts).
 export class CoopNet extends Context.Service<
   CoopNet,
   {
@@ -74,12 +66,9 @@ export class CoopNet extends Context.Service<
       frames: ReadonlyArray<ClientFrame>,
     ) => Effect.Effect<ReadonlyArray<number>>
     readonly leaveRoom: Effect.Effect<void>
-    // NOTE: a new socket for the run, whose link brings a fresh Snapshot.
     readonly resyncRoom: Effect.Effect<void>
   }
 >()('munch-manor/features/coop/net/CoopNet') {}
-
-// LIVE
 
 const PROBLEM_OF_REFUSAL: {
   readonly [Tag in RoomRefusal['_tag']]: CoopProblem
@@ -109,9 +98,6 @@ type Handles = Readonly<{
 const offline = <A>(): Effect.Effect<A, CoopProblem> =>
   Effect.fail<CoopProblem>('Offline')
 
-// NOTE: the lobby follows the room's scope with the player database's own
-// Replica in the leader tab. A follower tab, which runs no sync, follows it
-// over a socket of its own, as the dev page does.
 const lobbyStream = (
   access: RoomAccess,
   code: string,

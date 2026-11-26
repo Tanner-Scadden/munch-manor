@@ -36,8 +36,6 @@ import {
 import { type FridgeSpare, gunsOfBot, panOf } from './guns'
 import { type BotState, type FridgePlan, GUN_PLAN, type Zombie } from './state'
 
-// FIGHTING WITH A FRIDGE WEAPON
-
 const visibleZombies = (model: Model) =>
   Array.filter(walking(model), zombie =>
     hasLineOfSight(levelOf(model), focusOf(model).player, zombie),
@@ -46,19 +44,11 @@ const visibleZombies = (model: Model) =>
 const nearestOf = (from: Vector, zombies: ReadonlyArray<Zombie>) =>
   [...zombies].sort((a, b) => distance(from, a) - distance(from, b))[0]
 
-// The gap from the player's edge to a zombie's body, the way the Pan's and
-// Brain Freeze's reach are measured.
 const edgeGap = (model: Model, zombie: Zombie) =>
   distance(focusOf(model).player, zombie) - bodyRadiusOf(zombie) - PLAYER_RADIUS
 
 const gunPlan = (target?: Zombie): FridgePlan => ({ ...GUN_PLAN, target })
 
-// The Cooker lobs at a group at least LOB_MIN_PX away: the zombie with the
-// most others within LOB_GROUP_PX, the boss and Big Lugs counting double.
-// It holds the charge that throws the lid that far (the throw runs from
-// minThrowPx to maxThrowPx with the charge, from just past the player's
-// edge), so it lets go before the dial fills and never pops it. With
-// something closer than LOB_SAFE_PX, or no group, it uses the pistol.
 const LOB_MIN_PX = 40
 const LOB_GROUP_PX = 20
 const LOB_SAFE_PX = 22
@@ -78,9 +68,6 @@ const cookerPlan = (model: Model, spare: FridgeSpare): FridgePlan => {
   const { player } = focusOf(model)
   const seen = visibleZombies(model)
   const nearest = nearestOf(player, seen)
-  // NOTE: a Line Cook's first gun is the Cooker alone, so with no other gun
-  // to shoot it lobs at the nearest zombie, as a player with only a pot
-  // would, until the first purchase gives it a firearm.
   if (gunsOfBot(model).length === 1) {
     return nearest === undefined
       ? gunPlan()
@@ -125,10 +112,6 @@ const cookerPlan = (model: Model, spare: FridgeSpare): FridgePlan => {
   }
 }
 
-// The Pan swings at the nearest small zombie within PAN_ENGAGE_PX, which
-// the bot closes to PAN_NEAR_PX to PAN_FAR_PX of (panStance), fire held.
-// With a Big Lug, the boss, or an Exploder near, it backs off and uses the
-// pistol, and it shoots with the pistol what is still far off.
 const PAN_ENGAGE_PX = 40
 const PAN_THREAT_PX = 50
 
@@ -157,9 +140,6 @@ export const panPlan = (model: Model): FridgePlan => {
     : { useSpare: true, target, lobMs: 0, panTarget: target }
 }
 
-// Brain Freeze sprays at a small zombie close by, or at a group of two or
-// more in its reach, then the bot shoots the frozen ones with the pistol,
-// where any hit does four times the damage.
 const FREEZE_CLOSE_PX = 30
 const FREEZE_GROUP_PX = 20
 
@@ -209,9 +189,6 @@ const freezePlan = (model: Model): FridgePlan => {
 const planFor = (model: Model, spare: FridgeSpare): FridgePlan =>
   spare.kind === 'Cooker' ? cookerPlan(model, spare) : freezePlan(model)
 
-// The Pan swings as the knife stabs: F draws it, fire held swings at the
-// planned zombie, and handleKnife puts it away (Q) once the plan has no
-// target and a gun can shoot.
 export const swingPan: {
   (model: Model, frame: number): (state: BotState) => Model
   (state: BotState, model: Model, frame: number): Model
@@ -226,8 +203,6 @@ export const swingPan: {
   return aimAndShoot(state, drawn, target, frame)
 })
 
-// The Pan out with no target to swing at goes back to the last gun at
-// once, unless it cannot shoot yet.
 export const sheathPan = (model: Model): Model =>
   isWieldingMelee(focusOf(model).player) &&
   panOf(model) !== undefined &&
@@ -238,8 +213,6 @@ export const sheathPan = (model: Model): Model =>
 const isHoldingSpare = (model: Model) =>
   isFridgeWeapon(heldGun(focusOf(model).player.arsenal).kind)
 
-// The Cooker's trigger, every frame: let go once the charge reaches the
-// planned hold, and never hold past full.
 const workCooker = (
   state: BotState,
   model: Model,
@@ -253,8 +226,6 @@ const workCooker = (
   return charge._tag === 'Spent' ? holdFire(model) : model
 }
 
-// Every few frames the bot picks its plan and swaps to the weapon it wants
-// (the swap is free); in between it only times the Cooker's release.
 export const fightWithFridge: {
   (model: Model, frame: number, spare: FridgeSpare): (state: BotState) => Model
   (state: BotState, model: Model, frame: number, spare: FridgeSpare): Model

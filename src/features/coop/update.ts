@@ -75,13 +75,6 @@ import {
   togglePicker,
 } from './steps'
 
-// Co-op's rules, pure over its own Model (the root's `coop` field): each
-// takes co-op's Model and returns a `CoopResult`, the next Model, the
-// Commands to run, and a notice for the root. The root runs them as its own
-// Steps (src/app/update/coop.ts, `coopHandlers`).
-
-// COMMANDS
-
 export class RequestRoom extends Command.Service<RequestRoom>()(
   'coop/RequestRoom',
   {
@@ -166,8 +159,6 @@ export class LeaveRoom extends Command.Service<LeaveRoom>()('coop/LeaveRoom', {
   )
 }
 
-// NOTE: the session could not apply a message from the room, so it asks
-// for a new socket, whose link brings a fresh Snapshot.
 export class ResyncRoom extends Command.Service<ResyncRoom>()(
   'coop/ResyncRoom',
   { args: {}, success: Component.Noop },
@@ -180,9 +171,6 @@ export class ResyncRoom extends Command.Service<ResyncRoom>()(
   )
 }
 
-// NOTE: the room link arrives as a dare (LORE.md, "PLAY is the dare"): the
-// phone's own share sheet where there is one, else the line and the link on
-// the clipboard. Either way the button shows what happened with an icon.
 const DARE_LINE = 'I dare you.'
 
 export const ShareRoomLink = Command.make(
@@ -211,8 +199,6 @@ export const ShareRoomLink = Command.make(
     ),
 )
 
-// NOTE: a tap on the lobby's room code puts the code on the clipboard, to
-// paste in a chat. A browser with no clipboard (an insecure page) fails.
 export const CopyRoomCode = Command.make(
   'CopyRoomCode',
   { args: { code: Schema.String } },
@@ -228,8 +214,6 @@ export const CopyRoomCode = Command.make(
     ),
 )
 
-// NOTE: the room's code rides in the address, so a reload rejoins the same
-// seat and the address bar is itself the invite.
 export const RememberRoom = Command.make(
   'RememberRoom',
   { args: { maybeCode: Schema.Option(Schema.String) } },
@@ -244,10 +228,6 @@ export const RememberRoom = Command.make(
     }).pipe(Effect.ignore, Effect.as(Component.noop)),
 )
 
-// RESULT
-
-// NOTE: the Command services co-op's Commands need. Each `.layer` joins the
-// root's CommandsLayer, which supplies CoopNet (src/app/services.ts).
 type CoopServices =
   | RequestRoom
   | AnswerOffer
@@ -263,7 +243,6 @@ export type CoopCommand =
 
 export type CoopResult = CoopResultOf<CoopCommand>
 
-// NOTE: a rule's result with nothing to run or say.
 const kept = (model: Model): CoopResult => ({ model })
 
 const enterRoom = (model: Model, code: string, slot: number): CoopResult => ({
@@ -310,8 +289,6 @@ const lobbyUpdated = (model: Model, room: Room, lobby: Lobby): CoopResult => {
   }
 }
 
-// NOTE: a Kicked frame leaves and a version refusal asks for a newer build;
-// every other frame, other refusals too, goes to the Session.
 const receiveServerFrame = (
   model: Model,
   room: Room,
@@ -326,13 +303,6 @@ const receiveServerFrame = (
       Welcome: welcome =>
         receiveSessionFrame(
           model,
-          // NOTE: a Welcome at tick 0 is a new run in the same room. The
-          // old run's presses count input ticks of the old session, so a
-          // press queued behind its heldFrom would wait until the new run
-          // outlasted the old (READY in the second run's break never went
-          // out). The new run starts with none, as the room's own memory
-          // of presses does.
-          // The run's network numbers start then too.
           welcome.tick === 0
             ? {
                 ...room,
@@ -414,12 +384,6 @@ const receiveFrame = (
       ),
   })
 
-// NOTE: the time a link went down is on the frame's clock, noted by the
-// first frame that finds it down; a frame from the room clears it.
-// A link down this long is Lost: the arena says so and offers the way
-// out, while the tries go on. Past the room's rejoin window (the server
-// frees an Away seat after 2 minutes, packages/netcode Room.ts) there is
-// nothing to rejoin, so the room is left with a LOST message.
 const LOST_AFTER_MS = 20_000
 const GIVE_UP_AFTER_MS = 135_000
 
@@ -435,13 +399,6 @@ const isLost = (room: Room, nowMs: number): boolean =>
 const hasGivenUp = (room: Room, nowMs: number): boolean =>
   room.link !== 'Online' && downForMs(room, nowMs) >= GIVE_UP_AFTER_MS
 
-// NOTE: one frame of the room: the parent's controls go in as this frame's
-// input with the held press, the session sends what it owes, and the World
-// to draw and the events it reached come out. The parent reads `maybeWorld`
-// and `frameEvents` after it (src/app/update/coopPlay.ts). While the parent holds its
-// picture still for hit-stop, the events wait in the session for it.
-// NOTE: this client's controls for one room frame, the time on the frame's
-// clock, and whether the root holds its picture still for hit-stop.
 export type RoomFrame = Readonly<{
   controls: PlayerInput
   nowMs: number
@@ -670,20 +627,11 @@ const heardInQueue = (
       }),
   })
 
-// KEYS
-
-// NOTE: the parent hands co-op every key while it is open, so the home
-// menu's keys stay out of the way.
 const pressKey =
   (code: string) =>
   (model: Model): CoopResult =>
     keyOnScreen(model, code)
 
-// OPEN
-
-// NOTE: opening co-op lands on the hub, or straight in a room's join when a
-// `?room=` link brought the player here.
-// NOTE: who joins from this device, handed by the root as co-op opens.
 export type Joiner = Readonly<{
   name: string
   maybeCode: Option.Option<string>
@@ -721,8 +669,6 @@ export const open =
 export const isOpen = (model: Model): boolean =>
   !Screen.isAnyOf(['Closed'])(model.screen)
 
-// UPDATE
-
 const inRoom = (
   model: Model,
   toReturn: (room: Room) => CoopResult,
@@ -732,8 +678,6 @@ const inRoom = (
     onSome: toReturn,
   })
 
-// NOTE: READY and LEAVE by button here, or by the root's end card
-// (src/app/update/coop.ts, toggleCoopReady and leaveCoopRoom).
 export const toggleReadyInRoom = (model: Model): CoopResult =>
   inRoom(model, room => toggleReady(model, room))
 
@@ -780,8 +724,6 @@ const failedRequest = (model: Model, problem: CoopProblem): CoopResult =>
     () => ({ model }),
   )
 
-// NOTE: the Messages co-op's rules handle, every one but the room's frame
-// clock (the root's TickedRoomFrame, src/app/update/coop.ts).
 const updateMessage = (model: Model, message: CoopMessage): CoopResult =>
   CoopMessage.match(message, {
     ClickedCoopQuickPlayButton: () => ({
@@ -907,7 +849,6 @@ const updateMessage = (model: Model, message: CoopMessage): CoopResult =>
     ClickedCoopDareMarkPick: ({ mark }) =>
       inRoom(model, room => edits.pickDareMark(model, room, mark)),
 
-    // NOTE: the pill opens the hero picker, and closes it again.
     ClickedCoopCallingPill: () => togglePicker(model),
 
     ClickedCoopPickNudge: ({ reason }) =>
@@ -962,8 +903,6 @@ const updateMessage = (model: Model, message: CoopMessage): CoopResult =>
             : model,
       })),
 
-    // NOTE: the hero picker's events (src/features/heroes/block.ts): a card,
-    // BUY, and its close button or keys.
     PickedCoopHero: ({ calling }) => pickHero(calling)(model),
 
     RequestedBuyCoopHero: ({ calling }) => buyHero(calling)(model),
@@ -971,9 +910,6 @@ const updateMessage = (model: Model, message: CoopMessage): CoopResult =>
     RequestedCloseCoopHeroPicker: () => closePicker(model),
   })
 
-// NOTE: a rule that drops the room tells the root, unless it already says
-// something (NeededNewerBuild drops the room too), and an open hero picker
-// closes once the room leaves its lobby (closeStrayPicker).
 const settled =
   (rule: (model: Model) => CoopResult) =>
   (model: Model): CoopResult => {
@@ -991,20 +927,11 @@ const settled =
     }
   }
 
-// NOTE: one of co-op's Messages, as the root's handler runs it.
 export const updateCoop =
   (message: CoopMessage) =>
   (model: Model): CoopResult =>
     settled(current => updateMessage(current, message))(model)
 
-// THE ROOT'S REQUESTS
-
-// NOTE: what the rest of the root asks of co-op (src/app/update/coop.ts):
-// a key, the room's frame, a press, the frame's tracers, READY, LEAVE, and
-// a hero bought. A request runs as it is: one that drops the room says
-// nothing more, as the root asked for it (only a Message's rule tells of a
-// dropped room, `settled`), and an open hero picker closes once the room
-// leaves its lobby.
 export const asRequest =
   (rule: (model: Model) => CoopResult) =>
   (model: Model): CoopResult => {
@@ -1015,10 +942,6 @@ export const asRequest =
 const isNaming = (model: Model): boolean =>
   Option.exists(maybeRoomOf(model), room => Option.isSome(room.maybeNameDraft))
 
-// NOTE: in the room's lobby, with no name being typed, the hero picker takes
-// the keys while it is open (its own Subscription closes it on Escape and
-// Y, and the rest wait: Enter belongs to the card in focus), and Y opens it.
-// Every other key is the screen's.
 export const pressKeyWithPicker =
   (code: string) =>
   (model: Model): CoopResult => {

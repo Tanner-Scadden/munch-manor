@@ -131,10 +131,6 @@ const afterGrace = (phase: Phase): Model =>
 const onTouch = (model: Model): Model =>
   UiStruct.evolve(model, { lastDevice: () => 'Touch' })
 
-// NOTE: a press on the game surface reaches the root through the Mounts on
-// the surface (WatchGameSurface) and on the pause screen's help card
-// (PressGameSurface), each listening for its element's own pointerdown. A
-// button outside both has no path to them.
 const expectOffSurface =
   (found: Locator.Locator): SceneStep =>
   s =>
@@ -146,9 +142,6 @@ const expectOffSurface =
       .expect(Locator.inside(byClass('pause-help'), found))
       .toBeAbsent()
 
-// NOTE: ui-kit's Dialog once its exit has played, for a root dialog closed
-// by a button inside it (Stay, Leave, a card): a Scene runs no Mount, so
-// the Dialog's own Model is given as the Mount would leave it.
 const hideDialog =
   (id: string): SceneStep =>
   s =>
@@ -164,14 +157,11 @@ const focusCard =
   s =>
     s.resolve(FocusHandCard.make({ card }), Component.noop)
 
-// NOTE: the lobby's event as the root hears it, through the Lobby's onEmit
-// (src/app/lobbyView.ts).
 const fromLobby =
   (event: LobbyEvents): SceneStep =>
   s =>
     s.childEmit(Lobby, 'lobby', event)
 
-// NOTE: whether the lobby is up (its card open, not folding back).
 const expectLobbyShown =
   (isShown: boolean): SceneStep =>
   s =>
@@ -634,9 +624,6 @@ describe('Home menu', () => {
           .toExist()
           .expect(hand)
           .toBeAbsent()
-        // NOTE: the Profile is a child, a leaf in the root's Scene, so its
-        // tabs are read in a Scene of its own, with the props the root
-        // hands it.
         const opened = yield* modelAfter(
           home,
           send(Message.PressedKey({ code: 'KeyC' })),
@@ -707,10 +694,6 @@ describe('Home menu', () => {
     }),
   )
 
-  // NOTE: every menu dialog closes with the one shared button: the red X on
-  // a small face inside a 48 px see-through button, on the Escape key. A
-  // Scene can't press the Dialog's close part, so its close is asked for as
-  // the press would ask (requestDialogClose).
   const closesWithX = (dialog: string): SceneStep => {
     const close = Locator.inside(dialogNamed(dialog), closeButton)
     return steps(
@@ -797,9 +780,6 @@ describe('Home menu', () => {
         .givenChild(Dialog, HERO_DIALOG_ID, dialogModel(true))
         .expect(heroDialog)
         .toExist()
-      // NOTE: the close X is the hero picker's own (a leaf in the lobby's
-      // Scene), so it is read in a Scene of the picker with the props the
-      // lobby hands it.
       const props = yield* Effect.fromOption(lobbyPropsIn(s))
       const picker = yield* HtmlScene.make(HeroPicker, {
         look: props.look,
@@ -892,8 +872,6 @@ describe('Home menu', () => {
         )
           .expect(dialogNamed('Profile'))
           .toExist()
-        // NOTE: the Profile's tiles, in a Scene of its own beside the
-        // root's Story (src/features/profile/__tests__/profile.fixture.ts).
         const onSettings = yield* modelAfter(
           home,
           send(Message.ClickedSettingsButton()),

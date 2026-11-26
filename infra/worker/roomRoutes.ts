@@ -34,12 +34,6 @@ import {
   tryCall,
 } from './syncCore.ts'
 
-// The /room paths of the API Worker: creating and joining a room by code,
-// QUICK PLAY's socket, and a room's game socket, each handed to its Durable
-// Object (the GameRoom in gameRoom.ts, the Matchmaker).
-
-// ROUTES
-
 const isWithinRate = (env: GameRoomBindings, request: Request) => {
   const address = request.headers.get('cf-connecting-ip') ?? 'unknown'
   return tryCall('check the rate limit', () =>
@@ -186,7 +180,6 @@ const routeRoomPath = (request: Request, env: GameRoomBindings, url: URL) =>
     return json(404, '{}')
   })
 
-// NOTE: the /room paths. Every failure is answered here.
 export const routeRoom: {
   (
     env: GameRoomBindings,

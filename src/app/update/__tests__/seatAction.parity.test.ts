@@ -35,21 +35,10 @@ import { SeatAction, applySeatAction } from '../../../world/step/stepWorld'
 import { Message } from '../../message'
 import { BreakClock, Life, type Model, Phase } from '../../model'
 
-// One rule set for player actions (AGENTS.md "Code shape"): every seat
-// action, pressed through single player's own Messages, leaves the World
-// exactly as the co-op room's seat action does from the same World. The
-// room's side reads the press back from its wire code, as a room does. The
-// table is keyed by the SeatAction union's tags, so a new action without a
-// row fails to typecheck, and the first test fails too.
-
-// NOTE: World fields that are single player's cues around an action, not
-// its rule: the intent is read again from the input after a press, and
-// the lessons and the new zombie card are the tutorial's.
 const CUE_KEYS: ReadonlySet<keyof World> = new Set(['lessons', 'debutCard'])
 
 const RULE_KEYS = Array.filter(WORLD_KEYS, key => !CUE_KEYS.has(key))
 
-// NOTE: every seat's intent is a cue too.
 const ruleFieldsOf = (world: World) => ({
   ...Struct.pick(world, RULE_KEYS),
   seats: Array.map(world.seats, state =>
@@ -57,8 +46,6 @@ const ruleFieldsOf = (world: World) => ({
   ),
 })
 
-// NOTE: a row's presses are the Story steps single player takes, as one
-// group: the root's own Messages, with the Commands they leave resolved.
 type Row = Readonly<{
   from: Model
   action: SeatAction
@@ -67,7 +54,6 @@ type Row = Readonly<{
 
 const inWave = quietWave(3)
 
-// NOTE: by the north door, where a Plank Pile goes.
 const withTraps = (base: Model, barricades: number, turrets: number): Model =>
   modifyFocus(base, {
     trapStock: () => ({ Barricade: barricades, Turret: turrets }),
@@ -90,7 +76,6 @@ const inBreak = UiStruct.evolve(readyModel, {
     }),
 })
 
-// NOTE: a crew in a fight with the lead down, their last shout cooled.
 const downedLead = withSeatLife(
   0,
   Life.Downed({
@@ -152,8 +137,6 @@ const ROWS: { readonly [Tag in SeatAction['_tag']]: Row } = {
 
 const TAGS = Struct.keys(ROWS)
 
-// NOTE: the number keys press the same actions as the HUD's slots
-// (src/input/keyActions.ts).
 const KEY_ROWS: ReadonlyArray<readonly [string, Row]> = [
   [
     'Digit2',
@@ -181,9 +164,6 @@ const KEY_ROWS: ReadonlyArray<readonly [string, Row]> = [
   ],
 ]
 
-// NOTE: a controller's buttons press the same actions through the same
-// table (PAD_ACTION_KEYS in src/input/keyActions.ts): a pad at rest, then
-// the button down, as the gamepad Subscription sends them.
 const padPress = (button: number) =>
   steps(
     ...Array.map([[], [button]], held =>
@@ -219,12 +199,9 @@ const PAD_ROWS: ReadonlyArray<readonly [string, Row]> = Array.map(
     ] as const,
 )
 
-// NOTE: single player's side: its presses through the root's update.
 const inSinglePlayer = (from: Model, presses: RootSteps) =>
   modelAfter(from, steps(presses, settleRunCommands))
 
-// NOTE: the room's side: the press read back from its wire code, on the
-// seat that pressed it.
 const inRoom = (world: World, action: SeatAction): World => {
   const read = Option.getOrThrow(
     seatActionOf(world, heldAction(actionCodeOf(action), 1)),

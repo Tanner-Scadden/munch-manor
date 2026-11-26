@@ -66,18 +66,12 @@ const BOSS_KIND = 'Boss'
 export const hasBoss = (wave: number): boolean =>
   wave % BOSS_RULES.everyWaves === 0
 
-// PLANNING
-
 const pickDoor = (doors: ReadonlyArray<DoorId>, roll: number): DoorId =>
   Option.getOrElse(
     Array.get(doors, Math.floor(roll * doors.length)),
     () => 'North',
   )
 
-// NOTE: the largest health scale among the wave's spawns, which carries the
-// level's and co-op's crowd, so a level below ×1 (Easy, Normal) lowers him
-// too. A wave with no spawns keeps him at full health. The guests he belches
-// and calls in take it too (`guestHpScale`).
 export const wavePlanHpScale = (spawns: ReadonlyArray<PlannedSpawn>): number =>
   Array.match(spawns, {
     onEmpty: () => 1,
@@ -87,7 +81,6 @@ export const wavePlanHpScale = (spawns: ReadonlyArray<PlannedSpawn>): number =>
       ),
   })
 
-// His health: the wave's scale times the level's own boss scale.
 export const bossHp: {
   (spawns: ReadonlyArray<PlannedSpawn>): (difficulty: Difficulty) => number
   (difficulty: Difficulty, spawns: ReadonlyArray<PlannedSpawn>): number
@@ -156,8 +149,6 @@ export const isBossOutside = (boss: Boss): boolean =>
 export const bossRattleDoors = (boss: Boss): ReadonlyArray<DoorId> =>
   Boss.isAnyOf(['Arriving'])(boss) ? [boss.door] : []
 
-// ENTRANCE
-
 const findBoss = (model: World, id: number): Option.Option<Zombie> =>
   Array.findFirst(model.zombies, zombie => zombie.id === id)
 
@@ -206,8 +197,6 @@ export const freshFight: {
   }),
 )
 
-// NOTE: he walks in through a spawn door from outside; the front door
-// stays shut to walkers, so at the finale he steps in just inside it.
 const entryPoint = (model: World, door: DoorId): Vector => {
   const level = levelOf(model)
   if (door !== 'Front') {
@@ -287,12 +276,6 @@ export const isWaveHeldByBoss = (boss: Boss): boolean =>
     Fighting: ({ standingMs }) => standingMs < BOSS_RULES.holdMs,
   })
 
-// MOOD
-
-// NOTE: his second phase. At half health he roars (BossEnraged, the tell)
-// and party crashers pour in through the house's doors, more for a bigger
-// crew, up to the alive cap; from then on he is faster, rests less, belly
-// slams up close, throws plates three at a time, and belches a crowd.
 const crasherCount = (model: World): number =>
   Math.min(
     BOSS_RULES.crashers +
@@ -300,7 +283,6 @@ const crasherCount = (model: World): number =>
     Math.max(0, ZOMBIE_ALIVE_MAX - aliveCount(model.zombies)),
   )
 
-// NOTE: Groaners and Hotfoots, turn and turn about.
 const crasherKindOf = (index: number): 'Shambler' | 'Runner' =>
   index % 2 === 0 ? 'Shambler' : 'Runner'
 
@@ -372,8 +354,6 @@ const tickBelch = (
   )
 }
 
-// CHOOSING
-
 const windUp = (model: World, boss: Zombie, attack: PlantedAttack): World =>
   pipe(
     setMove(
@@ -414,8 +394,6 @@ const canCharge = (model: World, slot: PlayerSlot, boss: Zombie): boolean =>
     BOSS_RULES.chargeLaneHalfWidth,
   )
 
-// NOTE: a glob in the air is still a telegraph on the floor, so he waits for
-// it to land before he winds up anything else. That keeps one tell at a time.
 const chooseAttack = (
   model: World,
   slot: PlayerSlot,
@@ -443,8 +421,6 @@ const chooseAttack = (
     return windUp(model, boss, 'Spit')
   }
 }
-
-// STOMP
 
 const shoveFrom =
   (boss: Zombie) =>
@@ -519,11 +495,6 @@ const stomp = (
     'Stomp',
   )
 
-// SLAM
-
-// NOTE: his second phase's belly slam: a long wind-up with a wide red ring
-// on the floor, then a shockwave over all of it that hits hard and throws
-// far. Out of the ring when it lands is safe.
 const isPlayerInSlam = (
   model: World,
   slot: PlayerSlot,
@@ -583,8 +554,6 @@ const slam = (
   )
 }
 
-// BELCH
-
 const belchCountOf = (fight: Fight): number =>
   fight.mood === 'Enraged' ? BOSS_RULES.ragedBelchCount : BOSS_RULES.belchCount
 
@@ -610,7 +579,6 @@ const belchPoint = (
   return isSolidAt(levelOf(model), point) ? { x: boss.x, y: boss.y } : point
 }
 
-// NOTE: his Groaners take the wave's scale, never his own health's.
 const belchOne =
   (fight: Fight, boss: Zombie, toward: Vector, count: number) =>
   (model: World, index: number): World => {
@@ -668,11 +636,6 @@ const belch = (
   )
 }
 
-// SPIT
-
-// NOTE: one glob at the player; in his second phase a volley of three, the
-// middle at the player and one either side across his line, each with its
-// own mark on the floor, so a step along the line clears them all.
 const spitTargets = (
   model: World,
   slot: PlayerSlot,
@@ -725,8 +688,6 @@ const spit = (
     fight,
     'Spit',
   )
-
-// CHARGE
 
 const rush = (model: World, boss: Zombie, target: Vector): World => {
   const direction = awayFrom(boss, target)
@@ -873,8 +834,6 @@ const stepRush = (
   }
 }
 
-// MOVES
-
 const UNLEASHERS: Readonly<
   Record<
     PlantedAttack,
@@ -989,8 +948,6 @@ export const advanceBossMoves: {
       ),
   }),
 )
-
-// BAR
 
 export type BossBar = Readonly<{
   name: string

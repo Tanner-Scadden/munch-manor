@@ -1,13 +1,5 @@
 import { Function, Result, Schema } from 'effect'
 
-// NOTE: the bytes under the room protocol, after the spike's estimate
-// (MULTIPLAYER.md, "The wire at 20 Hz"): unsigned integers as LEB128
-// varints, signed ones zigzagged first, positions and other fractions as
-// int16 fixed point, strings and byte runs prefixed with their length, and
-// any other number as a little-endian float64. A Reader that runs off the
-// end, or meets a malformed varint, throws a WireError, and `readAll`
-// turns that into a failed Result, so callers never see an exception.
-
 export class WireError extends Schema.TaggedError<
   WireError,
   { readonly brand: unique symbol }
@@ -15,12 +7,8 @@ export class WireError extends Schema.TaggedError<
   reason: Schema.String,
 }) {}
 
-// NOTE: 2^49, so a varint fits in 7 bytes and every value is an exact
-// JavaScript integer.
 export const MAX_VARINT = 2 ** 49
 
-// NOTE: positions are int16 with 3 fraction bits: an eighth of a pixel, up
-// to 4,095 pixels either way.
 export const POSITION_SCALE = 8
 
 const INT16_MIN = -32768
@@ -33,8 +21,6 @@ export const fixedOf: {
   Math.max(INT16_MIN, Math.min(INT16_MAX, Math.round(value * scale))),
 )
 
-// NOTE: what a value reads back as after a trip through `fixed`. The room
-// compares quantized values, so a client's copy equals the room's exactly.
 export const quantize: {
   (scale: number): (value: number) => number
   (value: number, scale: number): number
@@ -45,8 +31,6 @@ export const quantize: {
 
 export const quantizePosition = (value: number): number =>
   quantize(value, POSITION_SCALE)
-
-// WRITER
 
 export interface Writer {
   readonly u8: (value: number) => void
@@ -140,8 +124,6 @@ export const makeWriter = (capacity = 64): Writer => {
     finish: () => state.buffer.slice(0, state.length),
   }
 }
-
-// READER
 
 export interface Reader {
   readonly u8: () => number
@@ -240,8 +222,6 @@ export const makeReader = (bytes: Uint8Array): Reader => {
   }
 }
 
-// NOTE: reads `count` items in order. `Array.makeBy` makes at least one
-// item, and a count read off the wire may be zero.
 export const repeat: {
   <A>(make: () => A): (count: number) => ReadonlyArray<A>
   <A>(count: number, make: () => A): ReadonlyArray<A>
@@ -249,7 +229,6 @@ export const repeat: {
   globalThis.Array.from({ length: count }, make),
 )
 
-// NOTE: writes a value and returns its bytes.
 export const writeAll = (write: (writer: Writer) => void): Uint8Array => {
   const writer = makeWriter()
   write(writer)
@@ -261,7 +240,6 @@ const isWireError = Schema.is(WireError)
 const asWireError = (error: unknown): WireError =>
   isWireError(error) ? error : WireError.make({ reason: String(error) })
 
-// NOTE: reads one value that must use every byte.
 export const readAll: {
   <A>(
     read: (reader: Reader) => A,
@@ -290,8 +268,6 @@ export const readAll: {
   },
 )
 
-// NOTE: for a writer callback that may throw, such as a varint out of
-// range: the bytes, or the reason.
 export const tryWrite = (
   write: (writer: Writer) => void,
 ): Result.Result<Uint8Array, WireError> => {

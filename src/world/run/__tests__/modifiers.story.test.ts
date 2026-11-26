@@ -77,14 +77,8 @@ import {
   toggledModifier,
 } from '../modifiers'
 
-// Run modifiers (src/world/run/modifiers.ts): the four opt-in rules, each played
-// through the World the single player update and the co-op room both run,
-// and the bonus they add to the pay.
-
 const FRAME_MS = 50
 const TICK_MS = FIXED_STEP_MS
-// NOTE: the open floor between the dining room's table and the start spot,
-// which runs the whole width of the room.
 const ROW_Y = 130
 
 const only = (change: Partial<Modifiers>): Modifiers => ({
@@ -466,9 +460,6 @@ describe('Glass', () => {
     )
   }
 
-  // NOTE: the first seed among these that drops a heart with no Glass,
-  // so the sweep with Glass is known to have had the chance. One Story a
-  // seed, stopping at the first heart.
   const firstHeartSeed = (
     seeds: ReadonlyArray<number>,
   ): Effect.Effect<Option.Option<number>> =>

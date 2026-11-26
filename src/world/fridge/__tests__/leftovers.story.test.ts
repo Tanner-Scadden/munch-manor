@@ -56,9 +56,6 @@ import {
 } from '../leftovers'
 import { isFridgeOffered } from './leftovers.fixture'
 
-// Mystery Leftovers (src/world/fridge/leftovers.ts): the fridge in the kitchen, bought
-// with the hold to buy, and what comes out of it.
-
 const FRAME_MS = FIXED_STEP_MS
 
 const isPrizeOffered = (current: Model): boolean =>
@@ -317,8 +314,6 @@ describe('pulling from Mystery Leftovers', () => {
 })
 
 describe('the fridge slams shut', () => {
-  // NOTE: pulls until the door slams, and its rest, are in
-  // leftovers.sim.test.ts.
   it.effect('the slam is heard and felt', () => {
     const slamming = UiStruct.evolve(atFridge(10), {
       fridge: () => ({

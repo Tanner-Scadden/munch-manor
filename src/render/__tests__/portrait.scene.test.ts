@@ -85,16 +85,11 @@ const gunSlotFills = (model: Model): ReadonlyArray<Box> =>
   )
 
 const root = byClass('game-root')
-// NOTE: the surface measured, and the HUD's gun slots acknowledged where a
-// round shows them.
 const measure =
   (surface: typeof PHONE_PORTRAIT): SceneStep =>
   s =>
     s.pipe(measureSurfaceAs(surface), ackHudSlots)
 
-// NOTE: the surface's MeasureGameSurface Mount reports once per Scene, so a
-// phone turning mid-scene is a new Scene on the Model the earlier
-// measurements left, whose Mount then reports the new size.
 const remeasured = (
   model: Model,
   surfaces: ReadonlyArray<typeof PHONE_PORTRAIT>,
@@ -142,8 +137,6 @@ describe('the portrait HUD and thumb area', () => {
     ),
   )
 
-  // NOTE: a 360 px phone held upright is the narrowest, at 2 CSS pixels to a
-  // HUD pixel, so a 48 px target is 24 HUD pixels there.
   test('the guns, the melee slot, and a square reload button fit one row, each a thumb wide', () => {
     const screen = screenOf(inPortrait(fighting))
     const thumb = 48 / 2

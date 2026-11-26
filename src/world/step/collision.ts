@@ -8,9 +8,6 @@ import { tileCoordinate } from '../level/tileQueries'
 import type { Vector } from '../schema/entitySchema'
 import { clamp, vectorLength } from './geometry'
 
-// Circles against the level: a walker pushed out of the solid tiles and
-// boxes it overlaps, and moved in small steps so it never tunnels through.
-
 const pushOutOfBox = (position: Vector, radius: number, box: Box): Vector => {
   const { left, top, right, bottom } = box
   const deltaX = position.x - clamp(position.x, left, right)
@@ -40,18 +37,11 @@ const pushOutOfBox = (position: Vector, radius: number, box: Box): Vector => {
   }
 }
 
-// NOTE: who is moving decides what is solid. A zombie walks the yard on its
-// way to a door, and the player never leaves the house.
 type Walker = 'Zombie' | 'Player'
 
 const solidFlagFor = (walker: Walker): number =>
   walker === 'Player' ? TILE_PLAYER_SOLID : TILE_SOLID
 
-// NOTE: the solid tiles in the circle's square, row by row and left to right
-// in each row, each pushing the circle out in turn, then the blockers.
-// NOTE: the steps themselves, called directly in the hot loop; the exports
-// below are their dual forms. Data-first has a number (the radius) where
-// data-last has the blockers or nothing.
 const resolveCircleIn = (
   level: Level,
   position: Vector,
@@ -63,8 +53,6 @@ const resolveCircleIn = (
   const firstColumn = tileCoordinate(position.x - radius)
   const lastColumn = tileCoordinate(position.x + radius)
   const lastRow = tileCoordinate(position.y + radius)
-  // NOTE: isInsideRoom and hasTileFlag written out on the map's own
-  // numbers, since every walker runs this a few times a tick.
   const { leftColumn, topRow, columns, rows, tileFlags } = level
   let resolved = position
   for (let row = tileCoordinate(position.y - radius); row <= lastRow; row++) {

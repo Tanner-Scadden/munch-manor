@@ -1,13 +1,3 @@
-// Two thumbs on the HUD: with one finger held on the move stick and moving,
-// a second finger taps the other gun's slot, the melee slot, the held gun's
-// slot, and the reload button, on an 844x390 phone on its side and a 390x844 phone held
-// upright, with real multi-touch (CDP Input.dispatchTouchEvent, two touch
-// points at once). It checks that each tap does what a lone tap does (the
-// gun swaps, the melee weapon comes out, the reload starts) while the stick
-// stays held, and shoots `tt-<TAG>-<viewport>-<scene>.png` with both fingers down.
-// Exits with 1 on any miss.
-//   TAG=after bun run heavy -- --shared bun tools/audit/twoThumbs.ts
-// VIEWPORTS picks screens, such as `VIEWPORTS=l844`.
 import { Array, Console, Effect, Schema, String } from 'effect'
 import type { CDPSession, Page } from 'playwright-core'
 
@@ -34,9 +24,6 @@ const VIEWPORTS = [
   { ...UPRIGHT_390, name: 'p390' },
 ]
 
-// NOTE: a live wave (no `tick`), so the subscriptions and the frames run
-// as on a phone. The SMG's magazine is part spent, so a reload has rounds
-// to take.
 const FIGHTING = `wave=4&seen=all&start=wave&elapsed=9000&god&gun=smg&loaded=4&${LEARNED}&device=touch`
 
 type Point = Readonly<{ x: number; y: number }>
@@ -64,8 +51,6 @@ const touch = (
     }),
   )
 
-// NOTE: where the left thumb lands: low on the left of the world, clear of
-// the HUD's buttons.
 const stickPoint = (page: Page) =>
   attempt((): Promise<Point> =>
     page.evaluate(() => {
@@ -97,7 +82,6 @@ const centerOf = (page: Page, selector: string) =>
 
 const Tagged = Schema.Struct({ _tag: Schema.String })
 
-// NOTE: as much of the Model as the checks read.
 const ThumbView = Schema.Struct({
   input: Schema.Struct({ moveStick: Tagged }),
   player: Schema.Struct({
@@ -111,8 +95,6 @@ type ThumbView = typeof ThumbView.Type
 type Check = Readonly<{
   name: string
   selector: string
-  // NOTE: what the tap should have done, read from the Model before and
-  // after; a miss names what went wrong.
   verdict: (before: ThumbView, after: ThumbView) => string | undefined
 }>
 
@@ -151,9 +133,6 @@ const CHECKS: ReadonlyArray<Check> = [
   },
 ]
 
-// NOTE: the run's guns are spent down a little so a reload has rounds to
-// take, then the left thumb goes down, walks, and stays; the right thumb
-// taps the target; then both lift.
 const twoThumbTap = (
   page: Page,
   session: CDPSession,
@@ -189,8 +168,6 @@ const twoThumbTap = (
     ])
     yield* wait(STEP_MS)
     yield* shot(page, `tt-${shotTag}-${String.replace(' ', '-')(label)}`)
-    // NOTE: Chrome's touch emulation lifts the fingers a touchEnd lists, and
-    // a touchStart lists every finger still down.
     yield* touch(session, 'touchEnd', [{ id: TAP_ID, at: target }])
     yield* wait(STEP_MS * 3)
     const after = yield* modelAs(page, ThumbView)

@@ -1,18 +1,7 @@
-// The portrait pass: a wave, a break with the door preview, the shop, the
-// home menu and its MANOR hand, the boss fight, pause, Game Over, and the
-// menu panels, on three
-// portrait phones (390x844, 430x932, 360x800, 375x667) and a landscape one (844x390),
-// all with touch, as `s34-<TAG>-<viewport>-<scene>.png`. For every visible
-// button it checks that it is at least 48 px and that its center hits it, and
-// it checks that the page and the open dialog do not scroll. Exits with 1 on
-// any problem.
-//   TAG=after bun shots34.ts
-// ONLY picks scenes, such as `ONLY=wave,break`, and VIEWPORTS picks phones,
-// such as `VIEWPORTS=p390,l844`. SHOTS_PARALLEL sets how many scenes run at
-// once, each in its own browser context (3 by default).
 import { Array, Config, Effect } from 'effect'
 
 import { runHarnessAudit } from './harnessServer'
+import { readPortrait } from './inPage/shots34'
 import {
   ANDROID_800,
   type Act,
@@ -64,8 +53,6 @@ const clickButton =
       ),
     )
 
-// NOTE: PLAY opens the single player lobby for a player who has learned to
-// move and fire (a screen, not a dialog).
 const LOBBY_QUERY = 'learned=move,fire&rank=300&calling=Handyman'
 
 const toLobby: Act = page =>
@@ -84,7 +71,6 @@ const fromHand =
   page =>
     Effect.andThen(clickButton(/^more/i)(page), clickButton(name)(page))
 
-// NOTE: a tap, not a click, so the game stays on its touch layout.
 const tapTab =
   (name: RegExp): Act =>
   page =>
@@ -138,7 +124,6 @@ const SCENES: ReadonlyArray<Scene> = [
     query: '',
     act: page =>
       Effect.gen(function* () {
-        // NOTE: the hint is drawn only upright, so landscape has none to tap.
         const hint = page.getByRole('button', { name: /turn sideways/i })
         if ((yield* attempt(() => hint.count())) > 0) {
           yield* attempt(() => hint.click())
@@ -199,93 +184,6 @@ const SCENES: ReadonlyArray<Scene> = [
 
 const MIN_SIDE = 48
 
-// NOTE: runs in the page, which has no Effect: plain loops, so no native
-// Array method is left for the Effect rules to flag.
-const readPortrait = () => {
-  const isShown = (element: Element) => {
-    const box = element.getBoundingClientRect()
-    const style = getComputedStyle(element)
-    return (
-      box.width > 0 && style.visibility !== 'hidden' && style.display !== 'none'
-    )
-  }
-  const isInScroller = (element: Element): boolean => {
-    const parent = element.parentElement
-    if (parent === null) {
-      return false
-    }
-    const overflow = getComputedStyle(parent).overflowY
-    return (
-      ((overflow === 'auto' || overflow === 'scroll') &&
-        parent.scrollHeight > parent.clientHeight) ||
-      isInScroller(parent)
-    )
-  }
-  const openDialog = document.querySelector('dialog[open]')
-  const buttons: Array<{
-    name: string
-    width: number
-    height: number
-    isHit: boolean
-    isOnScreen: boolean
-  }> = []
-  for (const button of document.querySelectorAll<HTMLElement>(
-    'button, a.home-support',
-  )) {
-    if (
-      !isShown(button) ||
-      (openDialog === null
-        ? button.closest('dialog') !== null
-        : !openDialog.contains(button))
-    ) {
-      continue
-    }
-    const box = button.getBoundingClientRect()
-    const hit = document.elementFromPoint(
-      box.x + box.width / 2,
-      box.y + box.height / 2,
-    )
-    buttons.push({
-      name: (button.getAttribute('aria-label') ?? button.innerText)
-        // NOTE: runs in the page, where effect's String is not loaded.
-        // @effect-diagnostics-next-line preferEffectString:off
-        .replace(/\s+/g, ' ')
-        // NOTE: runs in the page, where effect's String is not loaded.
-        // @effect-diagnostics-next-line preferEffectString:off
-        .slice(0, 40),
-      width: Math.round(box.width),
-      height: Math.round(box.height),
-      isHit:
-        (hit !== null && button.contains(hit)) ||
-        (isInScroller(button) && (box.bottom > innerHeight || box.y < 0)),
-      isOnScreen:
-        isInScroller(button) ||
-        (box.x >= -1 &&
-          box.y >= -1 &&
-          box.right <= innerWidth + 1 &&
-          box.bottom <= innerHeight + 1),
-    })
-  }
-  const scroller = document.scrollingElement ?? document.documentElement
-  const pageScrolls = scroller.scrollHeight > innerHeight + 1
-  let offScreen = 0
-  for (const element of document.querySelectorAll(
-    'dialog[open], dialog[open] > *',
-  )) {
-    const box = element.getBoundingClientRect()
-    if (box.bottom > innerHeight + 1 || box.right > innerWidth + 1) {
-      offScreen++
-    }
-  }
-  return {
-    buttons,
-    pageScrolls,
-    offScreen,
-    layout:
-      document.querySelector('.game-root')?.getAttribute('data-layout') ?? '',
-  }
-}
-
 const checkScene = (
   pages: ScenePages,
   tag: string,
@@ -340,11 +238,6 @@ runHarnessAudit(
       Array.map(scenes, scene => ({ viewport, scene })),
     )
     const browser = yield* openBrowser
-    // NOTE: every scene plays 72 frames (1.2 s) at once and holds there, so
-    // the pictures are the same on every run, and a page per screen and
-    // worker switches scenes in place.
-    // NOTE: `QUALITY=scaled` (or `light`, `floor`) shoots the 3D world at
-    // that tier (src/render/iso/quality.ts); automation draws at Full.
     const quality = yield* Config.String('QUALITY').pipe(Config.withDefault(''))
     const pages = scenePages(browser, [
       'device=touch',

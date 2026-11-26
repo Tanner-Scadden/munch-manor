@@ -124,8 +124,6 @@ describe('the room', () => {
     expect(dotX(next.room, 0)).toBeCloseTo(before + 150 / 60, 6)
   })
 
-  // NOTE: a click held up behind a resend: pressed and let go on ticks the
-  // room already ran. The press still lands, one tick late.
   test('a button pressed only in late samples is pressed on the next tick', () => {
     const fire: PlayerInput = { ...NEUTRAL_INPUT, buttons: 1 }
     const ran = Room.advance(StandIn, start().room, T0 + 200)
@@ -326,9 +324,6 @@ describe('the room', () => {
     const ran = Room.advance(StandIn, started.room, T0 + 51)
     expect(Room.nextWakeMs(ran.room)).toBeCloseTo(T0 + 100, 6)
   })
-  // NOTE: a restart of the object loses the room's memory; the room is put
-  // back from a checkpoint with every seat Away, and a player who links is
-  // welcomed with the checkpoint's World and back in play.
   test('a restored room waits Away and welcomes each returning player', () => {
     const ran = Room.advance(StandIn, start().room, T0 + 1000)
     const later = T0 + 90_000

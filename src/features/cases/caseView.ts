@@ -22,13 +22,6 @@ import { levelOf } from '../../world/level/arena'
 import { focusOf } from '../../world/party/party'
 import { CaseState, type DisplayCase } from '../../world/schema/worldSchema'
 
-// The display cases (src/world/feats/cases.ts) in the world, sorted by the
-// floor they stand on: a locked case shows its prize behind glass, lit from
-// behind so it reads, and a padlock, with its feat's lock hung over it on a
-// notch, filling with your own progress and always showing its count; an
-// opened one has lost its glass and its prize bobs, glinting, until its
-// opener takes it; an emptied one stands bare.
-
 const LOCK_LIFT_PX = 11
 const NOTCH_LIFT_PX = 2
 const BOB_MS = 260

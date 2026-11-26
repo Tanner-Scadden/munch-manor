@@ -1,7 +1,3 @@
-// The Rooms tab's rooms: the manor with the kitchen shut or open, and the
-// escape's drafted rooms (./draftRooms.ts) with their twist either way; each
-// one's baked image and the box it covers, shared by the view and the note's
-// picture.
 import { Array, Option, Schema, String } from 'effect'
 
 import { boundsOf } from '../../src/art/sprite'
@@ -30,8 +26,6 @@ export type StudioRoom = typeof StudioRoom.Type
 
 const ROOM_PREFIX = 'room/'
 
-// NOTE: a room note's target names its room, so the inbox and the notes
-// find the room again.
 export const roomTargetOf = (room: StudioRoom): string =>
   `${ROOM_PREFIX}${room}`
 
@@ -55,8 +49,6 @@ export const roomSourceOf = (room: StudioRoom): string =>
       ? 'the map: src/world/level/arena.ts; the art: src/render/room/'
       : DRAFT_ROOM_SOURCE
 
-// NOTE: the toggle a room shows in the sidebar: the manor's kitchen, or a
-// drafted room's twist; none for a room without one.
 export type RoomToggle = Readonly<{ label: string; off: string; on: string }>
 
 export const roomToggleOf = (room: StudioRoom): Option.Option<RoomToggle> =>
@@ -66,8 +58,6 @@ export const roomToggleOf = (room: StudioRoom): Option.Option<RoomToggle> =>
       ? Option.some({ label: 'Kitchen', off: 'Boarded', on: 'Open' })
       : DRAFT_ROOMS[room].maybeTwist
 
-// NOTE: the manor in one of its rolled arrangements, its kitchen shut or
-// open. Notes read the map letters off the first, the default house.
 const manorOf = (house: number, isKitchenOpen: boolean): Level =>
   levelOfSpec(
     manorSpecFor(
@@ -82,8 +72,6 @@ const OPEN_MANOR = manorOf(0, true)
 
 const initialOf = (room: string): string => String.slice(0, 1)(room)
 
-// NOTE: the House picker's choices: the slot rooms west, east, and far by
-// their first letters.
 export const HOUSES: ReadonlyArray<Readonly<{ house: number; label: string }>> =
   Array.map(ARRANGEMENTS, ({ West, East, Far }, house) => ({
     house,
@@ -102,7 +90,6 @@ const wholeBounds = (bounds: Bounds): Bounds => ({
   bottom: Math.ceil(bounds.bottom),
 })
 
-// NOTE: what the Rooms tab shows: which room, and its toggle.
 export type RoomView = Readonly<{
   room: StudioRoom
   isKitchenOpen: boolean
@@ -128,7 +115,6 @@ export const tileOfPin = (pin: Pin): Tile => ({
   row: Math.floor(pin.y / TILE_SIZE),
 })
 
-// NOTE: the tiles between where a drag began and where it is now.
 export const areaBetween =
   (from: Tile) =>
   (to: Tile): TileArea => ({
@@ -156,9 +142,6 @@ const mapLetterAt =
           () => ' ',
         )
 
-// NOTE: the map's letters under an area, a row of text for each row of
-// tiles: the manor's read with the kitchen open (boards or not, the map
-// letters are the same), a drafted room's as drafted.
 export const mapRowsOf =
   (room: StudioRoom) =>
   (area: TileArea): ReadonlyArray<string> =>
@@ -171,8 +154,6 @@ export const mapRowsOf =
       ),
     )
 
-// NOTE: the room's picture for a note: the area and this many world pixels
-// around it, in the canvas's own pixels; the whole room with no area.
 const CROP_MARGIN = 40
 
 export type Crop = Readonly<{

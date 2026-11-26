@@ -12,10 +12,6 @@ import type { Model } from '../model'
 import { isSoundAudible } from './sound'
 import type { UpdateStep } from './step'
 
-// COMMAND
-
-// NOTE: a tune cued changes nothing on screen, so a failure is logged and
-// nothing is reported.
 export class CueMusic extends Command.Service<CueMusic>()('app/CueMusic', {
   args: { mood: MusicMood, level: MusicLevel, stinger: MusicStinger },
   success: Component.Noop,
@@ -39,9 +35,6 @@ type MusicPlan = Readonly<{ mood: MusicMood; level: MusicLevel }>
 
 const SILENT_PLAN: MusicPlan = { mood: 'Silence', level: 'Full' }
 
-// NOTE: a wave stampedes once the house is hungrier, the list done: Uncle
-// Chunk's wave and the hold-out at the front door. Endless has no list, so
-// its waves stampede from wave 10 on, as they always have.
 const isStampede = (model: Model, wave: number): boolean =>
   isEndless(model) ? wave >= FINAL_WAVE : isHouseHungry(model)
 
@@ -56,9 +49,6 @@ const phasePlan = (model: Model): MusicPlan => {
   const moodOf = (round: Round): MusicMood => roundMood(model, round)
   return Phase.match(model.phase, {
     Ready: (): MusicPlan => ({ mood: 'Creep', level: 'Full' }),
-    // NOTE: the intro has no tune: the car's radio, the house's creaks, and
-    // silence on HELLO? are its own sounds (src/features/intro/introBeat.ts),
-    // and the run's music comes in on the slam.
     Arriving: () => SILENT_PLAN,
     Preparation: (round): MusicPlan => ({ mood: moodOf(round), level: 'Full' }),
     Wave: (round): MusicPlan => ({ mood: moodOf(round), level: 'Full' }),

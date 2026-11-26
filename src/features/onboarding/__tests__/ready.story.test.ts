@@ -255,7 +255,6 @@ const shootingGallery: Model = modifyFocus(
 
 const SHOOTING_TICKS = 110
 
-// NOTE: the run's stats after the shooting gallery is shot out.
 const shootOut = modelAfter(
   shootingGallery,
   steps(holdFire, ticks(SHOOTING_TICKS, FRAME_MS), releaseFire),

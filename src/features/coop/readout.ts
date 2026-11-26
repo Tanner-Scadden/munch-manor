@@ -1,12 +1,5 @@
 import { Schema } from 'effect'
 
-// READOUT
-
-// NOTE: what the room's World holds, as one line of JSON on the arena's
-// hidden link element, for the audit harness (tools/audit/coop.ts): the
-// phase, the zombies, Rattles' trunk, the crew's keys, and each player. The page writes it and
-// the audit reads it through this one Schema. It imports only effect, so
-// the audit can load it without the game.
 const ReadoutSeat = Schema.Struct({
   slot: Schema.Finite,
   x: Schema.Finite,
@@ -15,13 +8,9 @@ const ReadoutSeat = Schema.Struct({
   life: Schema.String,
   ready: Schema.String,
   kills: Schema.Finite,
-  // NOTE: the calling the room seated, as its word, so the audit can check it.
   calling: Schema.String,
 })
 
-// NOTE: the link param that asks the page for the readout. Encoding the
-// whole World to JSON every frame is for the audit only, so a page writes
-// it only when its address carries this param when the page loads.
 export const AUDIT_PARAM = 'audit'
 
 export const Readout = Schema.Struct({

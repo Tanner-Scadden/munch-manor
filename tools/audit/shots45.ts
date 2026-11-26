@@ -1,14 +1,3 @@
-// The Clang Pan in the melee slot pass: mid-wave with the Pan in hand (the
-// HUD's melee slot showing its icon and dent meter, both guns kept), and
-// the fridge's TAKE preview for a Pan on offer with both gun slots full
-// (the knife crossed out under the tag), on a 1280x720 desktop, an 844x390
-// phone on its side, and a 390x844 phone held upright, as
-// `s45-<TAG>-<viewport>-<scene>.png`. The queries run on older builds too,
-// where the Pan took a gun slot, so TAG=before shots compare. With
-// CHECK=1 it checks that the Pan sits in the melee slot, in hand, with
-// both guns kept, and exits with 1 on a miss.
-//   TAG=after CHECK=1 bun run heavy -- --shared bun tools/audit/shots45.ts
-// ONLY picks scenes, such as `ONLY=take`, and VIEWPORTS picks screens.
 import { Config, Console, Effect } from 'effect'
 import type { Page } from 'playwright-core'
 

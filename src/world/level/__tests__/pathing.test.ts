@@ -24,13 +24,9 @@ import {
   isWalkableTile,
 } from '../tileQueries'
 
-// NOTE: the manor in both states a run sees it, boarded and open, with the
-// spots the player can stand in each: the parlour always, the kitchen once
-// it is open.
 const KITCHEN_SPOT: Vector = { x: 100, y: -80 }
 const FRIDGE_SPOT: Vector = { x: 180, y: -104 }
 const PARLOUR_SPOT: Vector = { x: -160, y: 130 }
-// NOTE: the library's top aisle, past its stacks.
 const LIBRARY_SPOT: Vector = { x: 600, y: 25 }
 
 type Case = Readonly<{
@@ -73,8 +69,6 @@ const everyTile = (level: Level): ReadonlyArray<Tile> =>
     ),
   )
 
-// NOTE: where a zombie of each clearance can stand: any walkable tile for a
-// narrow one, and a tile in some open two by two block for a wide one.
 const canStandOn = (
   level: Level,
   clearance: Clearance,
@@ -87,15 +81,12 @@ const canStandOn = (
       isOpenBlock(level, column, row - 1) ||
       isOpenBlock(level, column - 1, row - 1)
 
-// NOTE: the widest a spawn strays from its door's middle: the door's half
-// width less the smallest zombie's radius, as spawnAt in waves.ts clamps it.
 const SPAWN_ROOM_PX =
   DOOR_HALF_WIDTH_PX -
   Math.min(...Array.map(Record.values(ZOMBIE_KINDS), ({ radius }) => radius))
 
 const SPAWN_OFFSETS = [-SPAWN_ROOM_PX, 0, SPAWN_ROOM_PX]
 
-// NOTE: the yard's commas start east of the kitchen's east wall.
 const YARD_FIRST_COLUMN = 20
 
 const isYard = ({ row, column }: Tile): boolean =>
@@ -144,9 +135,6 @@ describe('the flow field reaches every zombie', () => {
   )
 })
 
-// NOTE: a zombie walked by steering alone, no other zombies, until it is in
-// the house. The yard spots are where seed 31677's wave 10 boss and its crowd
-// paced forever, between the yard's top right and the space past it.
 const STEPS = 3000
 const STEP_PX = 0.6
 
@@ -235,10 +223,6 @@ describe('a zombie in the yard', () => {
   )
 })
 
-// NOTE: past the map's edge, where a big knockback (the Clang Pan's) can
-// throw a zombie: below the parlour's bottom right corner and above the
-// kitchen's top left. With nothing boarded, steering once walked it straight
-// at the nearest door, into the house's corner, where it stuck.
 const PAST_THE_EDGE: ReadonlyArray<Vector> = [
   { x: 315, y: 185 },
   { x: 325, y: 192 },

@@ -1,22 +1,12 @@
-// How long the 3D world's frames take, for the quality governor
-// (quality.ts): the GPU's own time for each draw where the context can time
-// it (EXT_disjoint_timer_query_webgl2), and always the draw's time on the
-// main thread and the page's clock at its start. Render state only: what it
-// reads never reaches the Model.
+import { Array, Clock, Option } from 'effect'
 
-import { Array, Option } from 'effect'
-
-// NOTE: the most timer queries in flight at once; a frame that finds them
-// all waiting is not timed. A result comes back a frame or two late.
 const MOST_IN_FLIGHT = 4
 const NS_PER_MS = 1_000_000
 
-// NOTE: the page's clock, read for the renderer's own frame times, never by
-// update or the World (src/app/subscriptions.ts reads the game's).
+const PAGE_CLOCK = Clock.Clock.defaultValue()
+
 const pageNowMs = (): number =>
-  // NOTE: the renderer times its own draws; no game state reads this.
-  // oxlint-disable-next-line no-restricted-properties
-  performance.now()
+  Number(PAGE_CLOCK.monotonicTimeNanosUnsafe()) / NS_PER_MS
 
 type Timer = Readonly<{
   gl: WebGL2RenderingContext
@@ -51,11 +41,9 @@ const timerOf = (
 export type ProbedFrame = Readonly<{
   atMs: number
   drawMs: number
-  // NOTE: the newest GPU time to come back, for some frame just before.
   gpuMs: Option.Option<number>
 }>
 
-// NOTE: mutable on purpose: it holds the GL queries in flight.
 export class FrameProbe {
   private readonly timer: Option.Option<Timer>
   private readonly pending: Array<WebGLQuery> = []
@@ -70,7 +58,6 @@ export class FrameProbe {
     return Option.isSome(this.timer)
   }
 
-  // NOTE: the draw begins; the page's clock at its start.
   begin(): number {
     this.startMs = pageNowMs()
     Option.map(this.timer, ({ gl, timeElapsed }) => {
@@ -97,8 +84,6 @@ export class FrameProbe {
     return { atMs: this.startMs, drawMs, gpuMs }
   }
 
-  // NOTE: the queries come back in order; a disjoint GPU (its clock reset,
-  // the page put away) spoils every one in flight.
   private collect(timer: Timer): Option.Option<number> {
     const { gl } = timer
     const isDisjoint = gl.getParameter(timer.disjoint) === true

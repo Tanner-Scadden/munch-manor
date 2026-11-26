@@ -19,10 +19,6 @@ import { modifyFocus } from '../../../world/party/party'
 import { settledLessons } from '../../../world/run/lessons'
 import { Lesson } from '../../../world/schema/worldSchema'
 
-// The gun level hint (src/features/onboarding/onboarding.ts): halfway to a
-// gun's first level, a skull, the gun, and an up arrow say kills level it.
-// The first level up learns it for good, saved with the other lessons.
-
 const hintPending = (arsenal: Arsenal): Model =>
   UiStruct.evolve(killShot(arsenal, 'Smg'), {
     lessons: () => ({ ...settledLessons, gunLevel: Lesson.Pending() }),

@@ -1,11 +1,3 @@
-// The dare card pass: the card from the pocket after the slam
-// (src/features/dare/pocketCard.ts) on a first run, with its things written
-// on, then waiting for a key or a tap, then folding into the HUD's pocket,
-// and a returning player's card. On a 1280x720 desktop, an 844x390 phone on
-// its side, and a 390x844 phone held upright, as
-// `dare-<TAG>-<viewport>-<scene>.png`.
-//   TAG=after bun run heavy -- --shared bun tools/audit/shotsDareCard.ts
-// ONLY picks scenes, and VIEWPORTS picks screens.
 import { Effect } from 'effect'
 
 import { runHarnessAudit } from './harnessServer'

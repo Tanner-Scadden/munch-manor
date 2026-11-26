@@ -32,12 +32,6 @@ import { withWorld } from '../../schema/world'
 import { EXIT_RULES } from '../exits'
 import { WAKE_RULES, isWakePack, wakeRoom } from '../wakeUp'
 
-// Opening a room wakes it (src/world/level/wakeUp.ts): a rush of about
-// 10 s from the opened room's own doors. Opened mid-wave, it comes as soon
-// as its doors have rattled; opened in a break, it comes as the next wave
-// starts. The rush is the round's own planned spawns, drawn from the run's
-// seeded generator.
-
 const KEYS = EXIT_RULES.kitchenKeys + 2
 
 const isKitchenDoor = ({ door }: PlannedSpawn): boolean =>

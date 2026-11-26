@@ -1,14 +1,3 @@
-// The beat my run pass: a friend's dare on the home menu's card (BEAT MY
-// RUN!, their stamp, hero, skull, mark, wave, things, and the napkin ring
-// this player has not opened), the solo lobby it opens with its picks held,
-// and the end card of a run against it, NOT YET from a Game Over and BEAT
-// IT! from an escape, on a 1280x720 desktop, an 844x390 phone on its side,
-// and a 390x844 phone held upright, as `beat-my-run-<viewport>-<scene>.png`
-// in BEAT_SHOTS (default /tmp/beat-my-run-shots). It exits with 1 when the
-// home shows no card, the lobby's picks are not held, or the card sits over
-// another home button.
-//   bun run heavy -- --shared bun tools/audit/shotsBeatMyRun.ts
-// ONLY picks scenes, and VIEWPORTS picks screens.
 import { Config, Console, Effect } from 'effect'
 import type { Page } from 'playwright-core'
 
@@ -33,7 +22,6 @@ const LEARNED =
 const HOME = `${LEARNED}&rank=4200&calling=Handyman&difficulty=Normal&beat=offered`
 const END = `${LEARNED}&rank=1900&rankgain=420&difficulty=Hard&mods=4&dmark=2&beat=taken&stats&tick=400`
 
-// NOTE: what a scene must show: the home card, or the lobby held.
 type Expect = Readonly<{ card?: boolean; held?: boolean }>
 
 type Scene = Readonly<{
@@ -55,8 +43,6 @@ const SCENES: ReadonlyArray<Scene> = [
 
 type Found = Readonly<{ card: boolean; held: boolean; overlaps: number }>
 
-// NOTE: runs in the page, which has no Effect: plain DOM reads. An overlap
-// is a home button whose box crosses the card's.
 const readBeat = (page: Page) =>
   attempt((): Promise<Found> =>
     page.evaluate(() => {

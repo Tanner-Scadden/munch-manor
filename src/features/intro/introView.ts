@@ -52,16 +52,8 @@ import {
   maybeIntroFrameOf,
 } from './introBeat'
 
-// The intro drawn (its beats are src/features/intro/introBeat.ts): each
-// beat's picture, 160 by 90, scaled up by whole pixels and centered on
-// the screen, landscape or portrait, over the night's own color. Nothing
-// here reads the World but the arrival clock.
-
-// NOTE: the night's own black, around the picture and behind the slam.
 const NIGHT_BLACK = '#0d0816'
 
-// NOTE: the biggest whole scale the picture fits: 2 on a landscape screen,
-// 1 on a portrait one.
 const scaleFor = (screen: Screen): number =>
   Math.max(
     1,
@@ -86,19 +78,12 @@ const nonEmpty = <A>(
 ): Array.NonEmptyReadonlyArray<A> | undefined =>
   Array.isReadonlyArrayNonEmpty(items) ? items : undefined
 
-// YOUR FRIENDS' LINE
-
-// NOTE: the line your friends in the car say (src/features/intro/carLine.ts),
-// in a speech bubble: over the car in the drive, and in the short cut from
-// the car behind you, at the picture's bottom left over the knock. Every
-// line's bubbles are baked once, here.
 const BUBBLE_PAD = 4
 const EDGE = 2
 
 const CAR_X = 58
 const CAR_Y = 64
 
-// NOTE: the tail points down at the car's middle window.
 const CAR_WINDOW_X = CAR_X + 13
 const DRIVE_BUBBLE_TOP = CAR_Y - BUBBLE_HEIGHT - BUBBLE_TAIL - 1
 
@@ -138,7 +123,6 @@ const FRIEND_BUBBLES: Readonly<Record<string, FriendBubble>> =
     ]),
   )
 
-// NOTE: the widest bubble any line needs, for the test that each fits.
 export const widestFriendBubble = (): number =>
   Array.reduce(Record.values(FRIEND_BUBBLES), 0, (widest, { text }) =>
     Math.max(widest, bubbleWidthOf(text)),
@@ -157,7 +141,6 @@ const bubbleShapes = (
   placeBaked(text, { x: left + BUBBLE_PAD, y: top + 3, align: 'Left' }),
 ]
 
-// NOTE: in the drive the radio crackles first, then the friends talk over it.
 const DRIVE_LINE_FROM = 0.35
 
 const isDriveLineUp = (maybeLine: MaybeLine, progress: number): boolean =>
@@ -176,8 +159,6 @@ const driveLineShapes = (
       })
     : []
 
-// NOTE: the short cut's line, called from the car at the curb as you
-// knock, gone before the house knocks back.
 const KNOCK_LINE_FROM_MS = 100
 const KNOCK_LINE_UNTIL_MS = 1_400
 
@@ -195,8 +176,6 @@ const knockLineShapes = (
       })
     : []
 
-// THE DRIVE
-
 const DASH_GAP = 24
 const ANTENNA_X = CAR_X + 4
 const ANTENNA_RISE = 4
@@ -204,8 +183,6 @@ const STATIC_X = ANTENNA_X - 3
 const STATIC_WIDTH = 6
 const SIGN_WIDTH = 26
 
-// NOTE: the radio crackles off the antenna, and keeps quiet while the sign
-// goes by behind it, so the crackle never reads as part of the sign.
 const isSignBehindStatic = (signX: number): boolean =>
   signX < STATIC_X + STATIC_WIDTH + 2 && signX + SIGN_WIDTH > STATIC_X - 2
 
@@ -240,8 +217,6 @@ const driveShapes = (
   ]
 }
 
-// THE DRIVEWAY
-
 const drivewayShapes = ({ progress }: IntroFrame) => [
   at(0, 0, DRIVEWAY_BACKDROP),
   at(8, 66, COUPE),
@@ -249,8 +224,6 @@ const drivewayShapes = ({ progress }: IntroFrame) => [
   at(140, 66, BIKE),
   at(lerp(-30, 96, Math.min(1, progress / 0.7)), 62, FRIENDS_CAR),
 ]
-
-// THE STEPS
 
 const FOOTPRINTS: ReadonlyArray<readonly [number, number]> = [
   [78, 82],
@@ -271,8 +244,6 @@ const stepsShapes = ({ beatMs }: IntroFrame) => {
     ...(isFlickerOff ? [] : [at(120, 58, BEAM)]),
   ]
 }
-
-// THE DOOR
 
 const DOOR_TOP = 10
 const DOOR_LEFT_X = 38
@@ -331,8 +302,6 @@ const knockShapes = (frame: IntroFrame, maybeLine: MaybeLine) => {
   ]
 }
 
-// THE COAT CHECK
-
 const coatsShapes = ({ beatMs, progress }: IntroFrame) => {
   const hand = nonEmpty(BONY_HAND)
   const isWaving = progress > 0.4
@@ -345,19 +314,14 @@ const coatsShapes = ({ beatMs, progress }: IntroFrame) => {
   ]
 }
 
-// THE DINING ROOM
-
 const HELLO = bakeText('HELLO?', 'Ink')
 const BUBBLE: Sprite = speechBubble({
   width: bubbleWidthOf(HELLO),
   tailX: 6,
 })
 
-// NOTE: your place card stands on the table at its gap, by the empty
-// chair at the left half's end.
 const PLACE_CARD_AT = { x: 58, y: 45 }
 
-// NOTE: the chandelier's three candles, over the table's gap.
 const CANDLES_X: ReadonlyArray<number> = [70, 79, 88]
 
 const helloShapes = ({ beatMs, progress }: IntroFrame) => {
@@ -383,8 +347,6 @@ const helloShapes = ({ beatMs, progress }: IntroFrame) => {
   ]
 }
 
-// THE SLAM
-
 const SLAM_SHUT_MS = 160
 const SLAM_SHAKE_MS = 320
 const SLAM_FLASH_MS = 70
@@ -401,8 +363,6 @@ const fullRect = (fill: string): Draw.Shape =>
     fill,
   })
 
-// NOTE: the doors swing shut from both sides, the picture jumps and
-// flashes as they meet, and the bolt slides across.
 const slamShapes = ({ beatMs }: IntroFrame) => {
   const shut = Math.min(1, beatMs / SLAM_SHUT_MS)
   const width = Math.round((PICTURE_WIDTH / 2) * shut)
@@ -447,8 +407,6 @@ const slamShapes = ({ beatMs }: IntroFrame) => {
   ]
 }
 
-// THE PICTURE
-
 const BEAT_SHAPES: Readonly<
   Record<
     IntroBeat,
@@ -464,7 +422,6 @@ const BEAT_SHAPES: Readonly<
   Slam: slamShapes,
 }
 
-// NOTE: the last moment of the slam fades the whole intro out onto the room.
 const FADE_MS = 300
 
 const fadeOf = ({ cut, ms }: IntroFrame): number =>
@@ -475,9 +432,6 @@ const pictureOrigin = (screen: Screen, scale: number): Vector => ({
   y: Math.floor((screen.height - PICTURE_HEIGHT * scale) / 2),
 })
 
-// NOTE: the night's black over everything round the picture, so nothing
-// that rolls or shakes past its edge (the road's dashes, the slam) shows
-// in the bars.
 const letterboxShapes = (
   screen: Screen,
   scale: number,
@@ -509,8 +463,6 @@ const letterboxShapes = (
   )
 }
 
-// NOTE: the intro over the whole screen while the crew arrives; nothing
-// else of the run shows under it.
 export const introShapes: {
   (screen: Screen): (model: Model) => ReadonlyArray<Draw.Shape>
   (model: Model, screen: Screen): ReadonlyArray<Draw.Shape>

@@ -1,11 +1,3 @@
-// The end report (END_REPORT=1 bun run balance): a line for each run on
-// where it stopped (the wave, the list's progress, things still behind
-// boards or hidden in open rooms, keys left on the ring, cases opened for
-// the bot and not taken), a line for each Uncle Chunk fight (the bot's
-// hearts and distance to him each second, the time in his slam's reach and
-// crowded, and what took its hearts), then the batch's tally of both.
-// bot/runEnd.ts records it.
-
 import { Array, Console, Effect, Number, Option, Record, String } from 'effect'
 
 import type { BossFight, RunResult, RunStop } from './bot/results'
@@ -56,7 +48,6 @@ const blameLine = (fights: ReadonlyArray<BossFight>): string => {
   return `${Array.join(attacks, ', ')}; the crowd: ${crowdText || 'none'}`
 }
 
-// NOTE: every other second, so a long fight fits a line.
 const everyOther = (values: ReadonlyArray<number>) =>
   Array.join(
     Array.map(
@@ -69,8 +60,6 @@ const everyOther = (values: ReadonlyArray<number>) =>
 const fightLine = (fight: BossFight): string =>
   `    Chunk w${fight.wave} ${(fight.fightMs / 1000).toFixed(0)} s${fight.felled ? ' felled' : ''}${fight.diedToIt ? ' died' : ''}: hearts ${everyOther(fight.hpBySecond)} | px ${everyOther(fight.distanceBySecond)} | in slam reach ${percent(fight.nearMs, fight.fightMs)}, crowded ${percent(fight.crowdedMs, fight.fightMs)}, aimed at him ${percent(fight.aimedMs, fight.fightMs)} | ${blameLine([fight])}`
 
-// NOTE: how many runs ended on each of the plan's steps, a Save by the
-// median keys short.
 const planTally = (ends: ReadonlyArray<RunResult['end']>): string => {
   const steps: Record<string, Array<number>> = {}
   Array.forEach(ends, ({ plan }) => {
@@ -142,8 +131,6 @@ const chunkTally = (results: ReadonlyArray<RunResult>) =>
     yield* Console.log(`  what took them: ${blameLine(fights)}`)
   })
 
-// NOTE: the prizes left in cases opened for the bot, against the guns it
-// ended with.
 const caseTally = (results: ReadonlyArray<RunResult>) =>
   Effect.gen(function* () {
     const left: Record<string, number> = {}
@@ -168,8 +155,6 @@ const mean = (values: ReadonlyArray<number>) =>
 
 const tenths = (value: number) => value.toFixed(1)
 
-// Where the keys came from and went, a run's mean, and the ring as each
-// break began (median over the runs that reached it).
 const keyTally = (results: ReadonlyArray<RunResult>) =>
   Effect.gen(function* () {
     const ledgers = Array.map(results, ({ ledger }) => ledger)
@@ -217,9 +202,6 @@ const ranked = (counts: Record<string, number>) =>
     ', ',
   )
 
-// NOTE: the crowd's hearts outside his fight, on some waves: by kind, by
-// what the bot was doing (with its share of the time and hearts a
-// minute), and the crowd near it as it was hit.
 const crowdTally = (
   results: ReadonlyArray<RunResult>,
   label: string,

@@ -32,32 +32,6 @@ import {
 import { withWorld } from '../../world/schema/world'
 import { FINAL_WAVE } from '../../world/waves/wavePlans'
 
-// Phase 1's exit check (MULTIPLAYER.md): two players at one keyboard play
-// the ten tuned waves of an escape run together. Player 1 walks a pattern
-// on WASD and aims the mouse at the nearest zombie; player 2 walks a
-// pattern on IJKL holding U. Both press READY through every break and walk
-// off from the stall. Their hearts refill each frame, so the run always
-// gets through. A run has no last wave now (the escape ends at the front
-// door, which fixed patterns never hunt for), so the check stops at the
-// break after the tenth.
-// NOTE: the bots walk fixed patterns, so on some seeds they fall into a
-// loop with zombies neither ever hits: player 2's square outwalks the pack,
-// which trails round inside it while player 2 fires along the square, and
-// player 1 cannot reach it. Of seeds 1 to 7, 1 and 4 did before zombies came
-// in promptly after their warning, and 2, 3, 5, and 7 did after. Since the
-// dining room's ferns and cleat (November 2026), player 1's shot at the
-// nearest zombie through the table's gap drops the chandelier on some
-// seeds, and the table then walls player 1's square, north of it, off from
-// the pack south of it for the rest of the wave: seeds 2, 6, 7, 8, and 9
-// stall that way, and 5 in the loop alone, while 1, 3, 4, 10, and 11 play
-// through. The seed is one whose run plays through; a change that moves the
-// run may need another.
-// NOTE: the run is played as Block-aware Stories: a break one frame to a
-// Story, since the players act on the frame's first Model, and a wave in
-// stretches of WAVE_STRETCH frames, each player's choice made by
-// `messageIfAny` on the Model it finds. A stretch the wave ends in is cut
-// at the frame it ended on, and the run goes on from there.
-
 const SURFACE = { left: 0, top: 0, width: 320, height: 180 }
 const MAX_FRAMES = 120_000
 const FRAMES_PER_MOVE = 75
@@ -112,9 +86,6 @@ const nearestZombie = (current: Model): Option.Option<Target> =>
     },
   )
 
-// NOTE: the open break before wave 2 has no clock, so a player the READY
-// key finds at a purchasable (held there to buy) would hold it forever. The
-// walking pattern carries on through the break, so both come off it.
 const walking = (frame: number): ReadonlyArray<string> => {
   const step = Math.floor(frame / FRAMES_PER_MOVE)
   return [
@@ -123,8 +94,6 @@ const walking = (frame: number): ReadonlyArray<string> => {
   ]
 }
 
-// NOTE: the move keys let go and pressed to walk the pattern at `frame`, from
-// the keys the Model holds.
 const holdFor = (current: Model, frame: number): ReadonlyArray<Message> => {
   const wanted = walking(frame)
   return [
@@ -142,8 +111,6 @@ const holdFor = (current: Model, frame: number): ReadonlyArray<Message> => {
   ]
 }
 
-// NOTE: a frame of a break, from its first Model: walk, press both
-// players' READY and the lead's, then the frame.
 const breakFrame = (current: Model, frame: number): ReadonlyArray<Message> => [
   ...holdFor(current, frame),
   ...tap('KeyO'),
@@ -161,9 +128,6 @@ const refillHearts = (current: Model): Model =>
     ),
   )
 
-// NOTE: a frame of a wave, each choice made on the Model it finds: walk the
-// pattern, hold U, every fourth frame aim at the nearest zombie and hold the
-// mouse button down, then the frame, and the hearts refilled.
 const waveFrame = (frame: number) => [
   ...Array.map(MOVE_KEYS, code =>
     messageIfAny(current =>
@@ -209,8 +173,6 @@ const waveFrame = (frame: number) => [
   changeModel(refillHearts),
 ]
 
-// NOTE: up to `length` frames of a wave from `start`, and the Model each
-// frame left, gathered in an array the Story alone fills.
 const waveStretch = (
   start: Model,
   first: number,
@@ -277,18 +239,6 @@ describe('two keyboards on one desktop', () => {
       Effect.gen(function* () {
         const ready = yield* playedThrough(
           UiStruct.evolve(asVeteran(initialModel), {
-            // NOTE: seed 4 played until the library's layer opened the
-            // dining room's east door onto the yard inside the map; from
-            // then on its wave 2 ended in four zombies circling the two
-            // players' walking pattern out of both guns' reach, forever.
-            // Seed 5 stalled the same way once the cases and crates moved
-            // with the rooms, seed 6 once Normal's health went to x0.68, and
-            // seed 7 once the dining room's ferns and cleat came in, with the
-            // chandelier shot down (see the NOTE at the top). Seed 1 ended
-            // its tenth wave still fighting once the Runners slowed on Easy
-            // and Normal (2026-11-11), so the run played seed 3, until the
-            // lens's turn (2026-11-15) bent the keys' walk a hair off the
-            // map's axes: seeds 3, 1, and 4 then stalled, so it plays 10.
             rngState: () => 10,
             localPlayers: () => 2,
             difficulty: () => ({ chosen: 'Normal', nightmare: 'Unlocked' }),

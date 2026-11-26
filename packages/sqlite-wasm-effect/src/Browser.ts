@@ -1,7 +1,8 @@
 import type { Duration, Layer } from 'effect'
 import {
+  Deferred,
   Effect,
-  MutableRef,
+  Exit,
   Option,
   Predicate,
   Queue,
@@ -12,6 +13,7 @@ import {
   String,
   pipe,
 } from 'effect'
+import { SecureRandom } from 'effect/crypto'
 import type { SqlClient } from 'effect/sql'
 
 import {
@@ -39,15 +41,8 @@ import {
 } from './SqliteClient'
 import { describeError } from './describeError'
 
-// OPTIONS
-
 export interface BrowserOptions extends ClientOptions {
   readonly worker: () => Worker
-  // NOTE: the answer to a request for the `<name>:leader` lock that the app
-  // made itself before building the layer, such as from a small script that
-  // runs ahead of the rest, holding the lock for the life of the page.
-  // Returning undefined, or leaving this out, has the layer ask as it is
-  // built.
   readonly leaderLock?: (() => Promise<LockResult> | undefined) | undefined
   readonly name?: string | undefined
   readonly file?: string | undefined
@@ -58,8 +53,6 @@ const DEFAULT_NAME = 'sqlite-wasm-effect'
 const DEFAULT_FILE = '/main.sqlite3'
 const FOLLOWER_ASK_INTERVAL: Duration.Input = '1 second'
 
-// LOCKS
-
 export type LockResult = 'Granted' | 'Held'
 
 type LockMode = 'IfAvailable' | 'Wait'
@@ -68,18 +61,15 @@ const hasLocks = (): boolean =>
   Predicate.hasProperty(globalThis, 'navigator') &&
   Predicate.hasProperty(globalThis.navigator, 'locks')
 
-// NOTE: the lock is held by a promise that settles when the scope closes, so
-// it lasts as long as the layer, and the browser frees it when the tab goes.
-// Waiting is aborted if the scope closes first.
 const acquireLock = (
   name: string,
   mode: LockMode,
 ): Effect.Effect<LockResult, never, Scope.Scope> =>
   Effect.gen(function* () {
-    const release = MutableRef.make<() => void>(() => {})
-    yield* Effect.addFinalizer(() =>
-      Effect.sync(() => MutableRef.get(release)()),
-    )
+    const released = yield* Deferred.make<void>()
+    yield* Effect.addFinalizer(() => Deferred.done(released, Exit.void))
+    const context = yield* Effect.context()
+    const holdUntilReleased = Effect.runPromiseWith(context)
     return yield* Effect.callback<LockResult>((resume, signal) => {
       const hold = (lock: Lock | null): Promise<void> | undefined => {
         if (lock === null) {
@@ -87,12 +77,7 @@ const acquireLock = (
           return undefined
         }
         resume(Effect.succeed('Granted'))
-        // NOTE: Web Locks holds the lock until this promise settles, so the
-        // callback must hand it a plain promise.
-        // @effect-diagnostics-next-line newPromise:off
-        return new Promise<void>(settle => {
-          MutableRef.set(release, settle)
-        })
+        return holdUntilReleased(Deferred.await(released))
       }
       const request =
         mode === 'IfAvailable'
@@ -102,12 +87,6 @@ const acquireLock = (
     })
   })
 
-// MESSAGES
-
-// NOTE: the listener goes on at once, in the caller's scope, and the stream
-// reads what it has queued. A listener added later, when a forked fiber got
-// around to running the stream, missed any message that came first, such as
-// the open reply of a worker that was started early and already warm.
 const listen = <A>(
   target: Pick<Worker, 'addEventListener' | 'removeEventListener'>,
   type: 'message' | 'error',
@@ -151,8 +130,6 @@ const post =
   (message: unknown): Effect.Effect<void> =>
     pipe(
       Effect.try({
-        // NOTE: a Worker's postMessage takes no targetOrigin.
-        // oxlint-disable-next-line unicorn/require-post-message-target-origin
         try: () => target.postMessage(message),
         catch: cause => connectionError(describeError(cause), 'post'),
       }),
@@ -179,8 +156,6 @@ const isOwn = (session: string, response: Response): boolean =>
     Predicate.isString(response.id) &&
     String.startsWith(`${session}:`)(response.id))
 
-// STATUS
-
 const leading = (persistence: Persistence): Status => ({
   role: 'Leader',
   persistence,
@@ -191,11 +166,6 @@ const following = (persistence: Persistence): Status => ({
   persistence,
 })
 
-// LEADER
-
-// NOTE: the leader runs the worker. Its own responses go to its Remote;
-// anyone else's go back over the channel as Answers. Changed goes to both, so
-// every tab hears every commit.
 const lead = (
   remote: Remote,
   worker: Ref.Ref<Option.Option<Worker>>,
@@ -249,16 +219,6 @@ const lead = (
     return sender
   })
 
-// LAYER
-
-// NOTE: one tab leads at a time, chosen with the Web Locks API. The leader
-// runs the worker and the database. Every other tab follows: it sends its
-// statements to the leader over a BroadcastChannel, and waits in line for
-// the lock. When the leader tab closes, the next tab in line takes the lock,
-// starts its own worker, opens the same file, and says LeaderChanged, so the
-// other followers drop what they were waiting on. A browser without Web
-// Locks leads on its own, with no guard between tabs.
-/** @stability unstable */
 export const layer = (
   options: BrowserOptions,
 ): Layer.Layer<SqliteClient | SqlClient.SqlClient, SqliteOpenError> =>
@@ -270,10 +230,7 @@ export const layer = (
         directory: `.${name}`,
       }
       const openTimeout = options.openTimeout ?? DEFAULT_OPEN_TIMEOUT
-      // NOTE: Effect's Crypto service moves between 4.0 and 4.1, and the app
-      // is moving between them, so the session id comes from Web Crypto.
-      // @effect-diagnostics-next-line cryptoRandomUUIDInEffect:off
-      const session = yield* Effect.sync(() => crypto.randomUUID())
+      const session = yield* Effect.sync(() => SecureRandom.uuidV4Unsafe())
       const channel = yield* pipe(
         Effect.acquireRelease(
           Effect.try({

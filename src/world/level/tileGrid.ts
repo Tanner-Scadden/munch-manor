@@ -7,8 +7,6 @@ import type { DoorId, Vector } from '../schema/entitySchema'
 import { clamp } from '../step/geometry'
 import { SLOT_DOOR_SYMBOLS } from './plan'
 
-// SYMBOLS
-
 export type CoverKind =
   | 'Piano'
   | 'Hearth'
@@ -36,9 +34,6 @@ export type CoverKind =
   | 'Barrels'
 
 export const WALL_SYMBOL = '#'
-// NOTE: Rattles' spot in the start room (docs/ESCAPE_PLAN.md, layer 7): his
-// stall went with the shop, and he sits on an old trunk by the front door,
-// solid, and hollers his hints from it.
 export const RATTLES_SYMBOL = '$'
 export const OUTSIDE_SYMBOL = ','
 export const SOUP_SYMBOL = '~'
@@ -97,12 +92,6 @@ export const DOOR_OUTWARD: Readonly<Record<DoorId, Vector>> = {
   Front: { x: 0, y: 1 },
 }
 
-// NOTE: every door zombies may come through. A level's own spawn doors are
-// its `doorIds`, the ones on its map that no closed exit still holds shut.
-// The start room's four come first, so a level with every exit shut lists
-// them in the same order it always did. The slots' two each (`n` and `s` on
-// a slot room's map) come last, west, east, then far. The front door is not here: it is the way
-// out of the house, and no zombie ever spawns at it.
 export const DOOR_IDS: ReadonlyArray<DoorId> = [
   'North',
   'West',
@@ -136,15 +125,8 @@ export const byDoor = <A>(
   Front: make('Front'),
 })
 
-// GRID
-
 export type Tile = Readonly<{ column: number; row: number }>
 
-// NOTE: tile columns and rows are world columns and rows. A level's map is
-// the block of the plan its rooms cover, so a room above the parlour, like
-// the manor's kitchen, gives it a negative topRow, and one west of it a
-// negative leftColumn. The parlour keeps the same world coordinates in every
-// level it is part of.
 export type Grid = Readonly<{
   tiles: ReadonlyArray<string>
   columns: number
@@ -197,10 +179,6 @@ export const isInsideRoom: {
     row < grid.topRow + grid.rows,
 )
 
-// NOTE: one pass over a map's rows sorts every tile by its symbol, kept per
-// rows (a map's rows are shared by every level built from it, and never
-// change), so asking for a symbol's tiles is a lookup, never a scan of the
-// map. Tiles come in reading order, row by row.
 const tilesBySymbolKept = new WeakMap<
   ReadonlyArray<string>,
   Map<string, ReadonlyMap<string, ReadonlyArray<Tile>>>

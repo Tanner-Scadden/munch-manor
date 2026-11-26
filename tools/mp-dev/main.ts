@@ -1,16 +1,3 @@
-// The co-op dev page: a room end to end with the game's World drawn as
-// dots, and none of the game's screens. Open it in 2 to 4 tabs (or phones):
-// one creates a room and the others join from its link, or everyone presses
-// QUICK PLAY; the run starts when everyone is READY, and each tab moves its
-// dot with WASD, the arrow keys, or by holding a finger or the mouse on the
-// arena. `?bot=1` walks in circles on its own and presses READY in the
-// breaks, and with `?quick=1` it presses QUICK PLAY and accepts
-// any offer. `?name=` sets the display name. Each tab keeps its own device
-// key in sessionStorage, so it is its own player, and a reload rejoins the
-// same seat.
-//
-// It is not part of the game's bundle: tools/mp-dev/build.ts builds it on
-// its own, and preview stages deploy it as a separate site.
 import {
   Array,
   Clock,
@@ -75,9 +62,6 @@ import { SeatAction } from '../../src/world/step/stepWorld'
 
 declare const __MP_API_ORIGIN__: string
 
-// NOTE: the game's own World (ROOM_WORLD), as the GameRoom runs it, drawn as
-// dots: the manor's whole floor, players in their seat's color, zombies
-// green, and bullets as specks. The game itself draws it with its sprites.
 const ARENA_WIDTH = MANOR.width
 const ARENA_HEIGHT = MANOR.height
 const ARENA_TOP = MANOR.top
@@ -92,8 +76,6 @@ const IDENTITY_KEY = 'munch-mp-dev:identity'
 const NAME_KEY = 'munch-mp-dev:name'
 const RENEW_BEFORE_MS = 60_000
 
-// DOM
-
 const byId = <T extends HTMLElement>(id: string, type: new () => T): T => {
   const found = document.getElementById(id)
   if (!(found instanceof type)) {
@@ -102,8 +84,6 @@ const byId = <T extends HTMLElement>(id: string, type: new () => T): T => {
   return found
 }
 
-// NOTE: the room's picture is an SVG over the arena's own units, stretched
-// to its box as the page's CSS sizes it.
 const worldSvg = (): SVGSVGElement => {
   const found = document.getElementById('world')
   if (!(found instanceof SVGSVGElement)) {
@@ -146,14 +126,10 @@ const params = new URLSearchParams(location.search)
 const apiOrigin = (): string =>
   params.get('api') ?? (__MP_API_ORIGIN__ || location.origin)
 
-// IDENTITY
-
 const Identity = Schema.Struct({ key: StoredKeyJson, playerId: Schema.String })
 const IdentityJson = Schema.fromJsonString(Identity)
 type Identity = typeof Identity.Type
 
-// NOTE: sessionStorage is per tab and survives a reload, so each tab is its
-// own player and a reload is a rejoin.
 const loadIdentity: Effect.Effect<
   Identity,
   IdentityError | Schema.SchemaError
@@ -171,8 +147,6 @@ const loadIdentity: Effect.Effect<
   return identity
 })
 
-// NOTE: a fresh session token for each socket, signed in again a minute
-// before the old one runs out.
 const makeToken = (
   origin: string,
   identity: Identity,
@@ -201,8 +175,6 @@ const makeToken = (
       return session.token
     }),
   )
-
-// ENTRY
 
 const rememberRoom = (code: string) =>
   Effect.sync(() => {
@@ -242,7 +214,6 @@ const describeError = (error: EntryError): string =>
     TokenUnavailable: ({ reason }) => `could not sign in (${reason})`,
   })
 
-// NOTE: the name the player typed, kept for the tab. The room cleans it.
 const nameNow = (): string => {
   sessionStorage.setItem(NAME_KEY, ui.name.value)
   return ui.name.value
@@ -257,8 +228,6 @@ const queueLine = (waiting: Matchmaking.QuickServer): string =>
       : `Waiting for players: ${waiting.waiting} of ${waiting.groupSize} (you are number ${waiting.position}). ${Array.join(waiting.names, ', ')}`
     : ''
 
-// NOTE: QUICK PLAY: the queue screen until the Matchmaker seats us. With
-// `?quick=1` any offer to start with fewer is accepted at once.
 const quickPlay = (
   origin: string,
   token: Effect.Effect<string, TokenUnavailable>,
@@ -355,9 +324,6 @@ const enter = (
 
 const autoQuick = params.get('quick') === '1'
 
-// NOTE: a link joins at once, `?quick=1` presses QUICK PLAY at once;
-// otherwise, or if that fails, the buttons do. Each try waits for a click,
-// so a refusal never spins.
 const pickRoom = (
   origin: string,
   token: Effect.Effect<string, TokenUnavailable>,
@@ -382,8 +348,6 @@ const pickRoom = (
       ? enter(origin, token, 'Quick', '').pipe(Effect.catch(() => viaButtons))
       : viaButtons
 }
-
-// INPUT
 
 interface Controls {
   readonly keys: Set<string>
@@ -436,7 +400,6 @@ const toward = (dx: number, dy: number): PlayerInput => {
 
 const isBot = params.get('bot') === '1'
 
-// NOTE: READY held through every break, a new press each wave.
 const readyIn = (world: Option.Option<RoomWorld>): number =>
   Option.match(world, {
     onNone: () => 0,
@@ -473,8 +436,6 @@ const inputNow = (
   })
 }
 
-// DRAWING
-
 const nameOfSlot = (lobby: Option.Option<Lobby>, slot: number): string =>
   Option.match(
     Option.flatMap(lobby, held =>
@@ -485,7 +446,6 @@ const nameOfSlot = (lobby: Option.Option<Lobby>, slot: number): string =>
 
 const SVG_NS = 'http://www.w3.org/2000/svg'
 
-// NOTE: one SVG element with its attributes, and its text if any.
 const svgOf = (
   tag: string,
   attributes: Readonly<Record<string, string | number>>,
@@ -704,8 +664,6 @@ const renderLobby = (
   )
 }
 
-// STATS
-
 interface Sample {
   readonly atMs: number
   readonly stats: Session.Stats
@@ -726,8 +684,6 @@ const ratesOf = (samples: ReadonlyArray<Sample>) =>
       }
     },
   })
-
-// ROOM
 
 const playRoom = (
   origin: string,
@@ -956,8 +912,6 @@ const playRoom = (
 
     return yield* Effect.forever(frame)
   })
-
-// MAIN
 
 const main = Effect.gen(function* () {
   const origin = apiOrigin()

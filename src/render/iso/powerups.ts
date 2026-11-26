@@ -1,13 +1,3 @@
-// The power-ups in 3D: a goodie on the floor spins like a coin over a ring of
-// its own light, and a boost's aura rings the player for real, its gears,
-// silver, sparkles, and hat pins standing on the floor round the feet (those
-// behind go behind the body, those in front in front of it) and its notes
-// and twinkles hanging in the air. Read off the same frames the game draws
-// (the aura's sprite says which frame), so the timing, the blink as a boost
-// runs out, and which boost shows all stay the game's own.
-//
-// Plain data, no pixi.
-
 import { Array, Option, Record, String } from 'effect'
 
 import { cropSetOf, makeCropTable } from '../../art/sprite'
@@ -22,7 +12,6 @@ import type { BoostKind } from '../../world/schema/entitySchema'
 import type * as Draw from '../draw'
 import type { Affine } from './flatten'
 
-// NOTE: each aura frame's image, by where it is cut from.
 const AURA_FRAMES =
   makeCropTable<Readonly<{ kind: BoostKind; frame: number }>>()
 Array.forEach(Record.toEntries(AURA_SPRITES), ([kind, sprites]) => {
@@ -31,7 +20,6 @@ Array.forEach(Record.toEntries(AURA_SPRITES), ([kind, sprites]) => {
   })
 })
 
-// NOTE: which boost's frame an image is, if it is one.
 export const auraFrameOf = (
   image: Draw.Image,
 ): Option.Option<Readonly<{ kind: BoostKind; frame: number }>> =>
@@ -39,8 +27,6 @@ export const auraFrameOf = (
 
 export const isPowerupImage = cropSetOf(Record.values(PICKUP_SPRITES))
 
-// NOTE: one little block: its spot on the floor, how high it hangs, in
-// whole game pixels, its color, and how bright it glows.
 export type PowerupCube = Readonly<{
   x: number
   footY: number
@@ -49,8 +35,6 @@ export type PowerupCube = Readonly<{
   glow: number
 }>
 
-// NOTE: an aura's white gleams catch the bloom; the rest glow softly, so
-// the ring shows in the cellar's dark as it did drawn flat.
 const GLEAM_GLOW = 3
 const AURA_GLOW = 1.2
 const GLEAM = 'W'
@@ -58,8 +42,6 @@ const GLEAM = 'W'
 const hexOf = (css: string): number =>
   Number.parseInt(String.slice(1, 7)(css), 16)
 
-// NOTE: the image's own spot in the world: the aura's middle (the player's
-// feet) through the shapes' matrix.
 export const auraFeetOf = ({
   image,
   matrix,
@@ -75,9 +57,6 @@ export const auraFeetOf = ({
   }
 }
 
-// NOTE: a frame's blocks round the feet: a stamp that rings them stands on
-// the floor at its own spot on the ring, its bottom row on the boards; one
-// aloft hangs over the feet where the flat frame showed it.
 export const auraCubesOf = (
   input: Readonly<{
     kind: BoostKind
@@ -114,24 +93,18 @@ export const auraCubesOf = (
   })
 }
 
-// NOTE: one turn of a goodie's spin, and of its ring of light.
 const SPIN_MS = 2400
 const RING_MS = 3600
 const RING_LIGHTS = 10
 const RING_GLOW = 1.6
-// NOTE: the ring sits flatter than wide, as the floor reads under the lens.
 const RING_DEPTH = 0.5
 
-// NOTE: how far round a goodie has spun, from the game's clock and its spot,
-// so two side by side never turn as one.
 export const pickupSpinOf = ({
   elapsedMs,
   x,
 }: Readonly<{ elapsedMs: number; x: number }>): number =>
   ((elapsedMs / SPIN_MS + x / 97) % 1) * Math.PI * 2
 
-// NOTE: a goodie's glow as a ring of little lights in its tint on the floor
-// under it, turning slowly the other way, as wide as the glow it drew flat.
 export const pickupRingOf = (
   input: Readonly<{
     x: number

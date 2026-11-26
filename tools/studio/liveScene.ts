@@ -1,7 +1,3 @@
-// The Rooms tab's live room: the manor drawn by the game's own 3D renderer,
-// through the audit harness in a frame (./worldStage.ts). What it shows
-// (the room, the mood, the bodies, a lightning strike, the chandelier) is
-// the harness's query string, built here from the Studio's picks.
 import { Array, Option, Schema } from 'effect'
 
 import { strikeClockOf } from '../../src/render/iso/mood'
@@ -14,8 +10,6 @@ import {
 } from '../../src/world/level/plan'
 import { CrateRoom } from '../../src/world/schema/entitySchema'
 
-// NOTE: the room the live scene stands in: every room of the manor, as the
-// World names them.
 export const LiveSpot = CrateRoom
 export type LiveSpot = typeof LiveSpot.Type
 
@@ -31,8 +25,6 @@ export type LiveMood = typeof LiveMood.Type
 export const LiveBodies = Schema.Literals(['None', 'Crowd', 'Lineup'])
 export type LiveBodies = typeof LiveBodies.Type
 
-// NOTE: what a press on the live room does: pins tiles for a note, or holds
-// the pixel loupe over it.
 export const LiveTool = Schema.Literals(['Pin', 'Loupe'])
 export type LiveTool = typeof LiveTool.Type
 
@@ -59,8 +51,6 @@ export const DEFAULT_LIVE: LiveScene = {
 
 const WAVE = 3
 
-// NOTE: the frames a still scene plays before it holds, enough for the
-// lights and the bodies to settle.
 const STILL_FRAMES = 4
 
 const CROWD = 10
@@ -79,8 +69,6 @@ const boxOfRoom = (room: RoomSpec): Box => ({
   bottom: (room.origin.row + room.tiles.length) * TILE_SIZE,
 })
 
-// NOTE: a spot's room box in a house, in world pixels; the dining room's when
-// the house has no such room.
 const spotBoxOf = (house: number, spot: LiveSpot): Box => {
   const spec = manorSpecFor(
     Option.getOrElse(Array.get(ARRANGEMENTS, house), () =>
@@ -110,8 +98,6 @@ const bodyKeys = (bodies: LiveBodies, box: Box): ReadonlyArray<string> =>
     Lineup: ['lineup=sizes'],
   })[bodies]
 
-// NOTE: the harness's query for a live scene: every room open and seen, the
-// player (who the camera follows) in the middle of the picked room, unhurt.
 export const harnessQueryOf = ({
   scene,
   house,

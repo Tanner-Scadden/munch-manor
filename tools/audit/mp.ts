@@ -1,15 +1,3 @@
-// Checks co-op rooms on a deployed copy, in headless Chrome: two to four
-// pages of the co-op dev page (tools/mp-dev) as separate players. The first
-// creates a room; the rest join from its link; the run starts when every
-// page has pressed READY, and each page walks in circles (`?bot=1`). Then it
-// checks that every page sees every other page's dot move, measures the
-// round trip and the bandwidth each page reports, reloads one page to
-// rejoin its seat, and has the host end the run, which every page must
-// hear. Last, as many fresh pages press QUICK PLAY (`?quick=1`, which also
-// accepts an offer to start with fewer, so 2 or 3 players wait about 45 s)
-// and must land in one public room together.
-// Run it through the heavy guard, as a Shared job (one context per page):
-//   bun run heavy -- --shared bun tools/audit/mp.ts https://munch-manor-mp-dev-pr-12.tanner-scadden.workers.dev/ [players]
 import {
   Array,
   Config,
@@ -37,7 +25,6 @@ import { attempt, failWith } from './page'
 const PLAY_SECONDS = 12
 const INTRO_TIMEOUT_MS = 25_000
 
-// NOTE: the dev page's `#debug` readout, the fields this audit reads.
 const Debug = Schema.Struct({
   code: Schema.String,
   visibility: Schema.NullOr(Schema.String),
@@ -212,8 +199,6 @@ const program = Effect.gen(function* () {
     debug => debug.phase === 'Playing' && debug.tick !== null,
     DEFAULT_TIMEOUT_MS,
   )
-  // NOTE: the room's first run opens on the whole intro
-  // (src/world/run/arrival.ts), and its slam starts the first break.
   yield* until(
     "the room's slam starts the first break on every page",
     pages,
@@ -234,8 +219,6 @@ const program = Effect.gen(function* () {
       })
     })
   })
-  // NOTE: the play is timed from the first readout to the last, so the rates
-  // below are over the whole play.
   const [played, [firstStats, lastStats]] = yield* Effect.timed(
     Effect.all([
       statsOfAll,

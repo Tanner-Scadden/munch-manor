@@ -26,10 +26,6 @@ import { SOLO_SLOT } from '../../../world/schema/worldSchema'
 import { earnRank } from '../../end/rankRun'
 import { isHeroPickerUp } from '../../lobby/model'
 
-// Teammate bots in the single player lobby (src/domain/bots.ts, src/features/lobby/update.ts):
-// + BOT seats one, the x sends it home, its hero card picks its hero, START
-// runs with them seated, and RETRY keeps them.
-
 const ranked = UiStruct.evolve(readyModel, {
   rank: rank => ({ ...rank, earnedPoints: pointsForRank(15) }),
   boughtCosmetics: () => heroesBoughtBy(15),
@@ -365,7 +361,6 @@ describe('START with bots', () => {
 })
 
 describe('rank for a run with bots', () => {
-  // NOTE: a run started with three bots seated.
   const botted = startedRun(
     UiStruct.evolve(readyModel, {
       home: home =>

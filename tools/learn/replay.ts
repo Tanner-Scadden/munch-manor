@@ -19,24 +19,6 @@ import { RunEnd, RunRecordingJson } from '../../src/platform/recording'
 import { bundle } from '../determinism/bundle'
 import { commandOutput } from '../determinism/process'
 
-// Plays a recorded run (RECORD MY RUNS, src/platform/recording.ts) back
-// through the plain step and checks that it ends as the recording says: the
-// same tick count, outcome, wave, and World hash. Run it through the guard:
-//
-//   bun run learn:replay -- <file or URL>
-//
-// The file is the recording's JSON, gzipped (as the Worker stores it, the
-// key ending .json.gz) or plain. Pull one from R2 with wrangler (see
-// TANNER_TODO.md).
-//
-// Engines round Math.sin and Math.cos apart in the last bit, and the step
-// (a spread shot) and the bots' brain (their aim and their runs) use them,
-// so a run is exact only in the engine family that played it. The replay
-// runs in both families here (engine.ts): Bun for JavaScriptCore (Safari,
-// every iPhone browser) and Node for V8 (Chrome, Android, Edge). It passes
-// when either ends as the recording did. Firefox's engine has no local
-// stand-in, so its runs may come out DIFFERENT.
-
 const USAGE = 'Usage: bun run learn:replay -- <recording file or URL>'
 
 class ReplayError extends Schema.TaggedError<

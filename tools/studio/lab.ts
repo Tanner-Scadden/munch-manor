@@ -1,13 +1,3 @@
-// The light and color lab: every value of the 3D look (src/render/iso/
-// lookSpecs.ts), the flames' light (src/render/iso/lightSpecs.ts), and the
-// moods' ambient (src/render/iso/mood.ts) as a slider or a color, and the
-// tables the renderer reads built from what was slid. The lab keeps only its
-// edits, by each value's name in code, so the values it shows are always the
-// shipped ones but for what was slid, and a value slid back to the shipped
-// one is no edit. Its edits reach the renderer only through the tables'
-// Tunables, in the Studio's own page and the harness's frame
-// (./bridge.ts): nothing the lab does changes the shipped game until an
-// agent lands its note (`proposalOf`).
 import {
   Array,
   Function,
@@ -32,15 +22,12 @@ import {
 } from '../../src/render/iso/lookSpecs'
 import { MOOD_AMBIENT, type MoodAmbients } from '../../src/render/iso/mood'
 
-// NOTE: the lab's edits: each slid value by its name in code (`LOOK.steps`,
-// `FLAME_LOOKS.Candle.intensity`), colors as 0xRRGGBB numbers.
 const ValuePath = Schema.String.check(
   Schema.isPattern(/^(LOOK|FLAME_LOOKS|MOOD_AMBIENT)\./),
 )
 export const LabEdits = Schema.Record(ValuePath, Schema.Finite)
 export type LabEdits = typeof LabEdits.Type
 
-// NOTE: every table the lab slides, as the renderer reads them.
 export type LabTables = Readonly<{
   look: LookSpecs
   flames: FlameLooks
@@ -53,21 +40,16 @@ export const SHIPPED_TABLES: LabTables = {
   moods: MOOD_AMBIENT.shipped,
 }
 
-// NOTE: the tables in this page's renderer: the Studio's 3D stage. The live
-// room's frame tunes its own through the bridge.
 export const tuneTables = (tables: LabTables): void => {
   LOOK_TUNING.tune(tables.look)
   FLAME_TUNING.tune(tables.flames)
   MOOD_AMBIENT.tune(tables.moods)
 }
 
-// THE CONTROLS
-
 export const ControlKind = Schema.Literals(['Number', 'Color'])
 export type ControlKind = typeof ControlKind.Type
 
 export type Control = Readonly<{
-  // NOTE: the value's name in code, and the file it lives in.
   id: string
   file: string
   group: string
@@ -189,8 +171,6 @@ const roomControls = (roomId: string): ReadonlyArray<Control> => [
       withRoom(tables, roomId, room => ({ ...room, accentShare: value })),
   },
   {
-    // NOTE: a room with no fill of its own wears LOOK.roomFill; sliding it
-    // gives the room its own.
     id: `LOOK.rooms.${roomId}.fill`,
     file: LOOK_FILE,
     group: roomId,
@@ -280,7 +260,6 @@ export const CONTROLS: ReadonlyArray<Control> = [
   ...Array.map(MOOD_NUMBERS, moodControl),
 ]
 
-// NOTE: the controls' groups, in their order.
 export const GROUPS: ReadonlyArray<string> = Array.dedupe(
   Array.map(CONTROLS, ({ group }) => group),
 )
@@ -288,9 +267,6 @@ export const GROUPS: ReadonlyArray<string> = Array.dedupe(
 export const controlById = (id: string): Option.Option<Control> =>
   Array.findFirst(CONTROLS, control => control.id === id)
 
-// THE EDITS
-
-// NOTE: a value as its control takes it: within its range, on its step.
 const fitted = (control: Control, value: number): number => {
   const clamped = Number.clamp(value, {
     minimum: control.min,
@@ -308,7 +284,6 @@ const decimalsOf = (step: number): number =>
     Option.match({ onNone: () => 0, onSome: part => part.length }),
   )
 
-// NOTE: a number with no more decimals than a step's, so 0.55 stays 0.55.
 const roundTo = (value: number, step: number): number => {
   const scale = 10 ** decimalsOf(step)
   return Math.round(value * scale) / scale
@@ -316,8 +291,6 @@ const roundTo = (value: number, step: number): number => {
 
 const isSame = (a: number, b: number): boolean => Math.abs(a - b) < 1e-9
 
-// NOTE: the edits with one value slid; one slid back to its shipped value
-// is no edit. An id no control has is left out.
 export const withEdit: {
   (id: string, value: number): (edits: LabEdits) => LabEdits
   (edits: LabEdits, id: string, value: number): LabEdits
@@ -333,8 +306,6 @@ export const withEdit: {
   }),
 )
 
-// NOTE: the tables the edits make, in the controls' order, so a room's own
-// fill reads the edited roomFill.
 export const tablesOf = (edits: LabEdits): LabTables =>
   Array.reduce(CONTROLS, SHIPPED_TABLES, (tables, control) =>
     Option.match(Record.get(edits, control.id), {
@@ -343,7 +314,6 @@ export const tablesOf = (edits: LabEdits): LabTables =>
     }),
   )
 
-// NOTE: what a control shows: its edit, or its shipped value.
 export const valueOf: {
   (control: Control): (edits: LabEdits) => number
   (edits: LabEdits, control: Control): number
@@ -353,8 +323,6 @@ export const valueOf: {
   ),
 )
 
-// NOTE: what an input hands back as its control's value: a color input's
-// `#rrggbb`, or a slider's number; none for anything else.
 export const inputValueOf: {
   (text: string): (control: Control) => Option.Option<number>
   (control: Control, text: string): Option.Option<number>
@@ -370,7 +338,6 @@ export const inputValueOf: {
     : Number.parse(String.trim(text)),
 )
 
-// NOTE: a control's value as its input takes it: a color as `#rrggbb`.
 export const inputTextOf: {
   (control: Control): (value: number) => string
   (value: number, control: Control): string
@@ -380,10 +347,6 @@ export const inputTextOf: {
     : formatValue(value, control),
 )
 
-// THE PROPOSAL
-
-// NOTE: a value as code writes it: a color as 0xrrggbb, a number with no
-// more decimals than its step.
 export const formatValue: {
   (control: Control): (value: number) => string
   (value: number, control: Control): string
@@ -399,7 +362,6 @@ export type Change = Readonly<{
   after: number
 }>
 
-// NOTE: every slid value with its shipped one, in the controls' order.
 export const changesOf = (edits: LabEdits): ReadonlyArray<Change> =>
   Array.filterMap(CONTROLS, control =>
     Option.match(Record.get(edits, control.id), {
@@ -413,8 +375,6 @@ export const changesOf = (edits: LabEdits): ReadonlyArray<Change> =>
     }),
   )
 
-// NOTE: one change as the note reads it: `LOOK.steps: 5 -> 6`. A room's
-// fill it never had says so.
 const changeLine = ({ control, before, after }: Change): string => {
   const isOwnFill =
     String.endsWith('.fill')(control.id) &&
@@ -429,9 +389,6 @@ const changeLine = ({ control, before, after }: Change): string => {
   return `  ${control.id}: ${formatValue(before, control)}${isUnset ? ' (unset, LOOK.roomFill)' : ''} -> ${formatValue(after, control)}`
 }
 
-// NOTE: the note the lab sends, for an agent to land in code: the person's
-// own words, where the values were tried, then each changed value with its
-// shipped one, by file.
 export const proposalOf = (
   input: Readonly<{ edits: LabEdits; words: string; where: string }>,
 ): string => {

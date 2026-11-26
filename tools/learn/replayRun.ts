@@ -18,13 +18,6 @@ import { idleIntent } from '../../src/world/schema/worldSchema'
 import { applySeatAction, stepWorld } from '../../src/world/step/stepWorld'
 import { roundWave } from '../../src/world/waves/waves'
 
-// A recorded run played back through the plain step, tick by tick, as the
-// client played it (runTicks in src/app/frame.ts): the edits the client
-// made before the tick (presses by their rule, then the other changes as
-// they were), the human's intent on the first seat, the bots' presses and
-// intents from their brain, then stepWorld with every seat's intent. The run
-// it ends on is compared with the one the recording kept.
-
 const applyEdit = (world: World, edit: TickEdit): World =>
   TickEdit.match(edit, {
     Pressed: ({ slot, action }) => applySeatAction(world, slot, action),
@@ -86,7 +79,6 @@ const editsByTick = (
       byTick.set(tick, [...(byTick.get(tick) ?? []), edit]),
   )
 
-// NOTE: the run played back, or why it could not be: its ticks unreadable.
 export const replayRecording = (
   recording: RunRecording,
 ): Result.Result<ReplayResult, string> =>

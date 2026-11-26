@@ -10,11 +10,6 @@ import {
   simulateRoom,
 } from '../../../test/roomTesting'
 
-// NOTE: four scripted players in a room over a 60 ms round trip, every
-// message through the real codecs, into the crowded waves (MULTIPLAYER.md,
-// "The wire at 20 Hz"). The players get 500 hearts so they last that long.
-// The numbers it logs are the ones "What Phase 2 built" reports.
-
 const PLAYERS = 4
 const SECONDS = 100
 
@@ -30,7 +25,6 @@ const kilobytesPerSecond = (bytesPerMessage: number): number =>
 
 const perPlayerKbps = run.bytesDown / PLAYERS / run.seconds / 1024
 
-// NOTE: this sim test reports the wire's bandwidth for MULTIPLAYER.md.
 const report = Array.join(
   [
     `co-op wire, ${PLAYERS} players, ${run.seconds} s to wave ${run.room.world.world.phase._tag === 'Wave' || run.room.world.world.phase._tag === 'Preparation' ? run.room.world.world.phase.wave : '?'}:`,
@@ -47,8 +41,6 @@ const report = Array.join(
 )
 
 describe('four players in a crowded room', () => {
-  // NOTE: the report goes to the real console; `it.effect`'s TestConsole
-  // would keep it.
   it.live('reports the wire for MULTIPLAYER.md', () => Console.log(report))
 
   test('the waves get crowded', () => {

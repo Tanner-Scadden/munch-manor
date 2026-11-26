@@ -21,17 +21,6 @@ import { TOOL_RULES, isToolActive } from '../stations/toolRules'
 import { ZERO_VECTOR, isInsideBox } from '../step/geometry'
 import { bodyRadiusOf, isGrounded } from '../zombies/zombies'
 
-// The library's leaning stacks (docs/ROOM_RESEARCH.md, "The library:
-// TOPPLE"), two room tools. Worked (a still player at the stack's end,
-// src/world/stations/stations.ts), a stack's leaning top topples: a heap of
-// books lands across the aisle next to it (the north stack across the
-// north door's aisle, the south one across the corridor), crushing every
-// zombie under it, and lies there as a wall while its tool is active, then
-// the house shelves the books again. The heap is the level's drop
-// (LevelState.dropped), as the chandelier is, so its tiles are solid for
-// every walker, bullet, and path with no rule of their own. It never hurts
-// a player: one under it is stepped out to its nearer side.
-
 export type StackId = keyof typeof STACK_DROPS
 
 export const STACK_IDS: ReadonlyArray<StackId> = ['NorthStack', 'SouthStack']
@@ -44,8 +33,6 @@ const heapBoxes = new WeakMap<
 const heapBoxIn = (level: Level, id: StackId): Option.Option<Box> =>
   boxAround(Array.map(tilesWithSymbol(level, STACK_DROPS[id].symbol), tileBox))
 
-// NOTE: where a stack's heap lands: the box of its drop's tiles. A spec
-// keeps its boxes.
 export const heapBoxOf: {
   (id: StackId): (level: Level) => Option.Option<Box>
   (level: Level, id: StackId): Option.Option<Box>
@@ -69,8 +56,6 @@ export const isHeapDown: {
   Array.contains(world.level.dropped, STACK_DROPS[id].id),
 )
 
-// NOTE: a body in the heap is set down at its nearer side, across the
-// heap's short way.
 const outOfHeap = (heap: Box, radius: number, body: Vector): Vector => {
   if (!isInsideBox(body, heap)) {
     return body
@@ -87,8 +72,6 @@ const outOfHeap = (heap: Box, radius: number, body: Vector): Vector => {
       }
 }
 
-// NOTE: a worked stack topples: its heap drops, crushing the zombies
-// under it, and steps any player there out.
 export const toppleStack: {
   (id: StackId): (world: World) => World
   (world: World, id: StackId): World
@@ -136,8 +119,6 @@ export const toppleStack: {
   }),
 )
 
-// NOTE: once a stack's tool is no longer active, the house shelves its
-// heap again and the aisle is clear.
 export const shelveHeaps = (world: World): World => {
   const raised = Array.filter(
     STACK_IDS,

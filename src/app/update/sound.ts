@@ -40,11 +40,6 @@ import { ZOMBIE_KINDS, isArmorShedAt } from '../../world/zombies/zombies'
 import { AudioState, GameEvent, type Model, Phase, type Player } from '../model'
 import { type UpdateStep, defineHandlers, modelStep } from './step'
 
-// AUDIO
-
-// NOTE: the engine is the AudioEngine service (src/audio/audio.ts), built
-// once the first tap unlocks audio; each sound, tune, and resume is a
-// Command over it, so a test fakes the Command and never the engine.
 export class AcquireAudioEngine extends Command.Service<AcquireAudioEngine>()(
   'app/AcquireAudioEngine',
   { args: {}, success: SoundMessage },
@@ -85,9 +80,6 @@ export class ResumeAudio extends Command.Service<ResumeAudio>()(
   )
 }
 
-// NOTE: a sound played reports only when it was dropped under a suspended
-// engine, the one outcome that changes the Model (`notePlayOutcome`); a
-// failure changes nothing, so it is logged and nothing is reported.
 const reportPlayed = (
   sound: SoundEffect,
   outcome: PlayOutcome,
@@ -120,8 +112,6 @@ export class PlaySound extends Command.Service<PlaySound>()('app/PlaySound', {
   )
 }
 
-// NOTE: a sound from a spot in the house, louder the nearer it is to the
-// player and panned to its side: the music box's tune, a roof leak's drip.
 export class PlayPlaced extends Command.Service<PlayPlaced>()(
   'app/PlayPlaced',
   {
@@ -225,7 +215,6 @@ const maybeEventSound = (event: GameEvent): Option.Option<SoundEffect> =>
     PrizeLeft: () => Option.some<SoundEffect>('Thud'),
     DudBurped: () => Option.none<SoundEffect>(),
     PantryTaken: ({ goodie }) => Option.some(PANTRY_SOUNDS[goodie]),
-    // NOTE: a key's ching as it flies to the ring (src/world/keys/keys.ts).
     KeysFound: () => Option.some<SoundEffect>('Purchase'),
     CrateTaken: () => Option.some<SoundEffect>('Swap'),
     TrapMended: () => Option.some<SoundEffect>('Tink'),
@@ -252,7 +241,6 @@ const maybeEventSound = (event: GameEvent): Option.Option<SoundEffect> =>
     GunLeveled: () => Option.some<SoundEffect>('RankUp'),
     DareFound: () => Option.some<SoundEffect>('PrizeJackpot'),
     DareListDone: () => Option.some<SoundEffect>('RankUp'),
-    // NOTE: Uncle Chunk's big key bursts out of him: the jackpot's chime.
     BigKeyBurst: () => Option.some<SoundEffect>('PrizeJackpot'),
     FrontDoorOpened: () => Option.some<SoundEffect>('Crash'),
     SteppedOut: () => Option.some<SoundEffect>('RankUp'),
@@ -264,8 +252,6 @@ const maybeEventSoundCue = (event: GameEvent): Option.Option<SoundCue> =>
     variation: positionVariation(event.x, event.y),
   }))
 
-// NOTE: a co-op client predicts its own shots and sounds them at once
-// (src/app/update/coopPlay.ts), so the room's own copy of each, later, stays quiet.
 export const isOwnShot: {
   (ownSlot: number): (event: GameEvent) => boolean
   (event: GameEvent, ownSlot: number): boolean
@@ -276,15 +262,11 @@ export const isOwnShot: {
     Option.exists(event.maybeShooter, shooter => shooter === ownSlot),
 )
 
-// NOTE: the shot sound of the gun a player holds, where they stand.
 export const shotSoundCue = (player: Player): SoundCue => ({
   sound: WEAPONS[heldWeapon(player.arsenal)].sound,
   variation: positionVariation(player.x, player.y),
 })
 
-// NOTE: the fridge's spin landing between two frames plays its prize's
-// sting there (src/features/fridge/fridgeReveal.ts). It is read from the door, not from an
-// event, so the room's World needs nothing new for it.
 export const fridgeLandCues: {
   (after: Model): (before: Model) => ReadonlyArray<SoundCue>
   (before: Model, after: Model): ReadonlyArray<SoundCue>
@@ -303,8 +285,6 @@ export const fridgeLandCues: {
       ),
 )
 
-// NOTE: a trap mended between two frames rings its tink there, read from the
-// traps' health (src/render/heroTells.ts), so the room's World needs nothing new.
 export const mendCues: {
   (after: Model): (before: Model) => ReadonlyArray<SoundCue>
   (before: Model, after: Model): ReadonlyArray<SoundCue>
@@ -319,9 +299,6 @@ export const mendCues: {
   ),
 )
 
-// NOTE: a CPR push lands a soft thump, and a hammer on a board its knock,
-// read from the hands-on actions' watch (src/render/actionPose.ts), one a
-// frame at most, so the room's World needs nothing new.
 const STRIKE_SOUNDS: Readonly<
   Record<Motion, Option.Option<SoundCue['sound']>>
 > = {
@@ -356,8 +333,6 @@ export const strikeCues: {
   ),
 )
 
-// NOTE: the dare card from the pocket scratches each thing on in pencil
-// (src/features/dare/pocketCard.ts), read from its age.
 export const pocketScratchCues: {
   (after: Model): (before: Model) => ReadonlyArray<SoundCue>
   (before: Model, after: Model): ReadonlyArray<SoundCue>
@@ -367,8 +342,6 @@ export const pocketScratchCues: {
     : [],
 )
 
-// NOTE: the kitchen behind its boards rattles or simmers now and then when
-// the player is near (src/features/kitchen/kitchenCall.ts), read from the elapsed time.
 export const kitchenCues: {
   (after: Model): (before: Model) => ReadonlyArray<SoundCue>
   (before: Model, after: Model): ReadonlyArray<SoundCue>
@@ -386,9 +359,6 @@ export const kitchenCues: {
   ),
 )
 
-// NOTE: thunder as the storm's lightning strikes between two frames
-// (src/render/iso/mood.ts), read off the World's clock, so co-op hears it
-// together, each roll pitched by when it strikes.
 export const thunderCues: {
   (after: Model): (before: Model) => ReadonlyArray<SoundCue>
   (before: Model, after: Model): ReadonlyArray<SoundCue>
@@ -413,7 +383,6 @@ export const frameSoundCues = (
     Array.dedupeWith((first, second) => first.sound === second.sound),
   )
 
-// NOTE: a low tick on each of the last few shots of a magazine.
 export const ammoTickCues = (model: Model): ReadonlyArray<SoundCue> =>
   isTickingShot(focusOf(model).player, model.frameEvents)
     ? [
@@ -434,8 +403,6 @@ export const playSounds =
       ? $.run(...Array.map(cues, cue => PlaySound.make(cue)))
       : $.model
 
-// NOTE: a roof leak's drop landing between two frames near the focused
-// player (src/render/iso/leaks.ts), in a round, read off the World's clock.
 const maybeDripCue = (before: Model, after: Model) =>
   isRoundActive(after.phase)
     ? maybeDripHeard({
@@ -446,9 +413,6 @@ const maybeDripCue = (before: Model, after: Model) =>
       })
     : Option.none()
 
-// NOTE: the focused player's feet sloshing through a roof leak's puddle
-// (src/world/level/leaks.ts): the first step in, then a stride each this
-// long of the World's clock while they walk on in it, soft and centered.
 const WADE_STRIDE_MS = 320
 const WADE_VOLUME = 0.7
 
@@ -464,10 +428,6 @@ const isWadeDue = (before: Model, after: Model): boolean =>
     Math.floor(after.elapsedMs / WADE_STRIDE_MS) !==
       Math.floor(before.elapsedMs / WADE_STRIDE_MS))
 
-// NOTE: the placed sounds between two frames, when they are due and heard:
-// the music box's tune, the nearest drip, and a stride through a puddle.
-// NOTE: `before` is the frame's start and `after` the frame drawn, which an
-// online run reads off the room's World rather than the Step's Model.
 export const playPlaced: {
   (after: Model): (before: Model) => UpdateStep
   (before: Model, after: Model): UpdateStep
@@ -502,7 +462,6 @@ export const playPlaced: {
 
 export const uiCue = (sound: SoundEffect): SoundCue => ({ sound, variation: 0 })
 
-// NOTE: a soft pop on the home menu's own buttons, so a tap feels pressed.
 export const tapSound: UpdateStep = playSounds([uiCue('Pop')])
 
 export const playStartSoundWhen = (isRoundStart: boolean): UpdateStep =>
@@ -511,8 +470,6 @@ export const playStartSoundWhen = (isRoundStart: boolean): UpdateStep =>
 export const playSwapSoundWhen = (isSwap: boolean): UpdateStep =>
   playSounds(isSwap ? [uiCue('Swap')] : [])
 
-// NOTE: a sound dropped while the engine is suspended means the browser
-// suspended it under a Ready engine: the next tap resumes it.
 const notePlayOutcome =
   (outcome: PlayOutcome): UpdateStep =>
   $ =>
@@ -521,8 +478,6 @@ const notePlayOutcome =
       ? $.evolve({ audio: AudioState.Suspended() })
       : $.model
 
-// NOTE: the first tap asks for the engine (AcquireAudioEngine); it is
-// resumed once it is built, and again by any tap while it is suspended.
 export const unlockAudio: UpdateStep = $ =>
   AudioState.match($.model.audio, {
     Locked: () =>
@@ -564,8 +519,6 @@ export const toggleAudioFromKey: {
 
 const START_SOUND_GRACE_MS = 1000
 
-// NOTE: a run is fresh in its intro's first moment, or its first break's
-// when it had none.
 const isFreshRun = (model: Model): boolean =>
   Phase.matchOrElse(
     model.phase,
@@ -576,8 +529,6 @@ const isFreshRun = (model: Model): boolean =>
     () => false,
   )
 
-// NOTE: the mute and music buttons, the audio engine, and each sound and
-// tune (src/audio/message.ts).
 export const soundHandlers = defineHandlers({
   ClickedMuteButton: $ => $.combine(modelStep(toggleSound), unlockAudio),
 

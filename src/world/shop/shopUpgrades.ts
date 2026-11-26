@@ -4,19 +4,12 @@ import { WEAPONS, statsAt } from '../gear/weapons'
 import type { WeaponKind } from '../schema/worldSchema'
 import { hundredths } from '../step/geometry'
 
-// What a gun's new tier changes, in a few words for the level-up callout
-// (src/world/gear/gunLevels.ts): a gun's numbers before and after, and the
-// fridge weapons' tier words.
-
 const changeText = (
   before: number,
   after: number,
   describe: (from: number, to: number) => string,
 ): ReadonlyArray<string> => (before === after ? [] : [describe(before, after)])
 
-// NOTE: the fridge weapons' tiers change what their own table holds
-// (src/world/fridge/fridgeWeapons.ts), so each says it in a few words, by
-// the tier it reaches.
 const FRIDGE_TIER_WORDS: Readonly<
   Partial<Record<WeaponKind, ReadonlyArray<string>>>
 > = {
@@ -24,7 +17,6 @@ const FRIDGE_TIER_WORDS: Readonly<
   Pan: ['Wider swing', 'Dents slower', 'Hold to smash'],
 }
 
-// NOTE: `tier` is the tier just reached, from 1.
 export const levelUpChange: {
   (tier: number): (weapon: WeaponKind) => string
   (weapon: WeaponKind, tier: number): string

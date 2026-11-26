@@ -1,13 +1,5 @@
 import { Function, Schema } from 'effect'
 
-// The dare ladder's saved data (docs/PROGRESSION_PLAN.md, pillar E): the
-// best mark opened on each difficulty, 0 before its first escape. An escape
-// at mark N opens N + 1 (src/domain/dareMarks.ts), up to the ladder's top
-// (MAX_MARK in src/world/run/dareLadder.ts, repeated here so the sync
-// Worker never pulls in the World). Each count only climbs, so two devices
-// merge to the larger. Shared with the sync Worker, like the player scope
-// (src/platform/playerScope.ts), so it imports only `effect`.
-
 export const TOP_MARK = 8
 
 export const Mark = Schema.Int.check(
@@ -29,7 +21,6 @@ export const noDareMarks: SavedDareMarks = {
   Nightmare: 0,
 }
 
-// NOTE: two players' ladders merged: the higher mark on each difficulty.
 export const mergeDareMarks: {
   (reached: SavedDareMarks): (kept: SavedDareMarks) => SavedDareMarks
   (kept: SavedDareMarks, reached: SavedDareMarks): SavedDareMarks

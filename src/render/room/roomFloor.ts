@@ -29,12 +29,6 @@ import {
   roll,
 } from './roomPalette'
 
-// FLOOR
-
-// NOTE: the parlour's plank floor covers the parlour's own block of the
-// map, which is the whole map when the level is the parlour alone. x and y
-// are where that block starts in the world; the floor's own shapes are drawn
-// from 0 and moved there.
 export type Floor = Readonly<{
   x: number
   y: number
@@ -133,17 +127,11 @@ const planksOf = (
   ),
 ]
 
-// NOTE: a room alone on its level reaches past its edges by the shake.
 export const boardShapes = (level: Floor): ReadonlyArray<Draw.Shape> =>
   planksOf(level, SHAKE_MAX_PX)
 
-// NOTE: a slot room's planks stop at its own block, so nothing of it shows
-// in a neighbour's picture and a neighbour's image is the same whichever
-// room rolls in beside it.
 export const slotBoardShapes = (level: Floor): ReadonlyArray<Draw.Shape> =>
   planksOf(level, 0)
-
-// RUG
 
 const RUG_EDGE_COLOR = '#4a1622'
 const RUG_FIELD_COLOR = '#7d2532'
@@ -276,7 +264,6 @@ export const rugShapes = (rug: Box): ReadonlyArray<Draw.Shape> => {
     rect(centerX + 24, centerY + 14, 6, 3, RUG_STAIN_COLOR),
     rect(centerX + 23, centerY + 15, 9, 2, RUG_STAIN_COLOR),
     rect(centerX + 31, centerY + 17, 2, 1, RUG_STAIN_COLOR),
-    // NOTE: something took a bite out of the rug's corner and its edge.
     rect(right - 7, y, 7, 2, FLOOR_COLOR),
     rect(right - 5, y + 2, 5, 2, FLOOR_COLOR),
     rect(right - 2, y + 4, 2, 2, FLOOR_COLOR),
@@ -293,8 +280,6 @@ export const rugShapes = (rug: Box): ReadonlyArray<Draw.Shape> => {
 const GLOW_ROWS = 26
 const GLOW_RINGS = 3
 
-// NOTE: the hearth's warm light: a row of nested strips for each pixel row
-// out from the fire, fainter and narrower the farther they are.
 export const fireGlow = (hearth: Box): ReadonlyArray<Draw.Shape> => {
   const centerX = Math.floor(hearth.x + hearth.width / 2)
   const top = hearth.y + hearth.height
@@ -348,7 +333,6 @@ export const bloodTrail = (
     rect(x, y, width, height, BLOOD_COLOR),
   )
 
-// NOTE: slimy footprints walk in from the south door and wander off.
 const SLIME_STEPS = 9
 
 export const slimePrints = (door: Box): ReadonlyArray<Draw.Shape> =>

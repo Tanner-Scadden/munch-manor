@@ -44,8 +44,6 @@ import {
   wearOf,
 } from './zombies'
 
-// RULES
-
 type ChuckerRules = {
   grabReachPx: number
   hangPx: number
@@ -102,13 +100,10 @@ const LIMP_ARM_STAGE = ZOMBIE_KINDS.Thrower.wear.length
 
 const isChucker = (zombie: Zombie): boolean => zombie.kind === THROWER_KIND
 
-// NOTE: he throws Groaners and Hotfoots, whichever is nearer.
 const THROWABLE_KINDS: ReadonlyArray<ZombieKind> = ['Shambler', 'Runner']
 
 const isThrowable = (zombie: Zombie): boolean =>
   Array.contains(THROWABLE_KINDS, zombie.kind) && isFree(zombie)
-
-// STEERING
 
 const byDistanceFrom = (from: Vector) =>
   Order.mapInput(Order.Number, (zombie: Zombie) =>
@@ -126,12 +121,6 @@ const nearestThrowable = (
     Array.head,
   )
 
-// NOTE: a Big Leaguer always wants a zombie in hand. Rested, he runs to the
-// nearest Groaner or Hotfoot he can see, however far, and sticks with it
-// until the player is in range to throw. With none in sight he hangs back
-// once close enough to throw, and walks in to bite when there is none left
-// at all. None means it follows the flow field like the rest; Some is its own
-// heading, which is still while it holds its ground.
 export const maybeChuckerHeading: {
   (
     chucker: Zombie,
@@ -167,8 +156,6 @@ export const maybeChuckerHeading: {
     }),
 )
 
-// GRABBING
-
 const isInThrowRange = (
   level: Level,
   chucker: Zombie,
@@ -193,8 +180,6 @@ const setAction =
       ? UiStruct.evolve(zombie, { action: () => action })
       : zombie
 
-// NOTE: once his throwing arm hangs limp (his last wear stage), he winds up
-// one-handed and slower.
 const heftMsOf = (chucker: Zombie): number =>
   wearOf(chucker) >= LIMP_ARM_STAGE
     ? CHUCKER_RULES.heftMs * CHUCKER_RULES.limpHeftScale
@@ -246,8 +231,6 @@ const tryGrab = (model: World, slot: PlayerSlot, chucker: Zombie): World => {
     },
   )
 }
-
-// HEAVING
 
 const findZombie = (
   zombies: ReadonlyArray<Zombie>,
@@ -329,8 +312,6 @@ const stepHeft = (
   )
 }
 
-// CARRYING AND FLIGHT
-
 const isHolding = (zombies: ReadonlyArray<Zombie>, victim: Zombie) =>
   Option.exists(
     Option.flatMap(
@@ -394,8 +375,6 @@ const holdUp = (zombies: ReadonlyArray<Zombie>, victim: Zombie): Zombie => {
   )
 }
 
-// NOTE: a Groaner whose Big Leaguer is shot down mid-heave drops where it is,
-// dazed, as if it had landed there.
 const carry = (zombies: ReadonlyArray<Zombie>) => (zombie: Zombie) => {
   if (ZombieAction.isAnyOf(['Shielded'])(zombie.action)) {
     return isWalking(zombie) ? holdUp(zombies, zombie) : zombie
@@ -419,8 +398,6 @@ const carry = (zombies: ReadonlyArray<Zombie>) => (zombie: Zombie) => {
 
 type Landing = Readonly<{ id: number; at: Vector }>
 
-// NOTE: a zombie that lands gets up riled and runs faster for the rest of
-// its life. Thrown again, it speeds up again, up to a cap.
 const landedSpeed = (speed: number): number =>
   Math.max(
     speed,
@@ -467,8 +444,6 @@ const landings = (
       : Result.failVoid,
   )
 
-// NOTE: a thrown zombie lands on whoever stands under it: every standing
-// player in co-op.
 const land = (model: World, landing: Landing): World =>
   forEachSeatWhere(
     UiStruct.evolve(model, {
@@ -513,8 +488,6 @@ const landOn = (landed: World, slot: PlayerSlot, landing: Landing): World => {
   })
 }
 
-// SHIELDING
-
 const SHIELD_KINDS: ReadonlyArray<ZombieKind> = [
   'Shambler',
   'Runner',
@@ -539,10 +512,6 @@ const isUnderThreat = (chucker: Zombie, player: Player): boolean =>
   distanceBetween(chucker, player) <= CHUCKER_RULES.shieldTriggerPx ||
   chucker.hitRemainingMs > 0
 
-// NOTE: a Big Leaguer the player crowds, or one taking hits, yanks the
-// nearest small zombie in front of him as a shield: a Groaner if one is in
-// reach, otherwise a Hotfoot or an Ankle Biter, never a Kaboomer, a Big Lug,
-// or the boss.
 const tryShield = (model: World, slot: PlayerSlot, chucker: Zombie): World => {
   if (
     !ZombieAction.isAnyOf(['Roaming'])(chucker.action) ||
@@ -635,8 +604,6 @@ const turnToward = (aim: number, target: number, maxTurn: number): number => {
   return aim + Math.max(-maxTurn, Math.min(maxTurn, gap))
 }
 
-// NOTE: he turns slowly to keep the shield toward the player, so a player
-// who circles around him can shoot him from the side.
 const stepShield = (
   model: World,
   slot: PlayerSlot,
@@ -679,9 +646,6 @@ export const shieldAim = (zombie: Zombie): Option.Option<number> =>
     ? Option.some(zombie.action.aim)
     : Option.none()
 
-// NOTE: a shot that comes at a shielding Big Leaguer from inside his front
-// arc hits the zombie he holds instead. Shots from the side or behind reach
-// him, and piercing shots and bursts are never blocked.
 export const maybeShieldFor: {
   (direction: Vector): (zombie: Zombie) => Option.Option<number>
   (zombie: Zombie, direction: Vector): Option.Option<number>
@@ -695,8 +659,6 @@ export const maybeShieldFor: {
       ? Option.some(zombie.action.victimId)
       : Option.none(),
 )
-
-// FRAME
 
 const isBusy = (zombie: Zombie): boolean =>
   ZombieAction.isAnyOf([

@@ -36,10 +36,6 @@ import { focusOf, modifyFocus } from '../../party/party'
 import { crateSpotOf } from '../crates'
 import { MEND_RULES, TRAPS } from '../traps'
 
-// Traps found in the house (docs/ESCAPE_PLAN.md, layer 6): the trap crates
-// (src/world/gear/crates.ts) and free mending in a break
-// (src/world/gear/traps.ts).
-
 const FRAME_MS = FIXED_STEP_MS
 
 const readyModel: Model = trapReady
@@ -60,8 +56,6 @@ const diningCrate = (trap: TrapKind): Crate => ({
   stock: CrateStock.Stocked({ trap }),
 })
 
-// NOTE: a break before `wave` whose crates were already stocked for it, so
-// the tick takes from them and never rolls them again.
 const stockedBreak = (
   wave: number,
   crates: ReadonlyArray<Crate>,
@@ -267,8 +261,6 @@ describe('trap crates', () => {
   )
 })
 
-// NOTE: a roll of the dining room's crate for the break before wave 4, from
-// a crate stocked for wave 3 and the crates' stream at `seed`.
 const restockedFrom = (
   seed: number,
   last: CrateStock,
@@ -335,8 +327,6 @@ describe('a heart in a crate', () => {
       modifiers: modifiers => UiStruct.evolve(modifiers, { glass: () => true }),
     })
 
-  // NOTE: the break before wave 3, its crates not yet rolled, from each of
-  // `seeds` as the crates' stream.
   const rolledFrom = (start: Model, seeds: ReadonlyArray<number>) =>
     Effect.forEach(seeds, seed =>
       modelAfter(
@@ -416,8 +406,6 @@ describe('a heart in a crate', () => {
 })
 
 describe('mending traps', () => {
-  // NOTE: a Plank Pile across the north door, chewed down to `hp`, and the
-  // player standing still just below it.
   const chewedPlank = (hp: number, phase: Phase = breakBefore(3)): Model =>
     UiStruct.evolve(standingAt(readyModel, BELOW_NORTH_DOOR), {
       phase: () => phase,

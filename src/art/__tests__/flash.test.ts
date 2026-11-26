@@ -8,9 +8,6 @@ import {
   spriteShapes,
 } from '../sprite'
 
-// A hit flash is known by its palette (src/art/sprite.ts), so the 3D
-// renderer can draw it white in any light.
-
 const PALETTE: Palette = { R: '#e8333a', K: '#2a1418' }
 
 const PIXELS: ReadonlyArray<string> = ['.KK.', 'KRRK', '.KK.']

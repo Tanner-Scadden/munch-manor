@@ -113,12 +113,9 @@ import {
 } from './particleBursts'
 import { stepParticles } from './particlePhysics'
 
-// NOTE: keys found (src/world/keys/keys.ts) throw a few gold glints and
-// sparks where they came from, on their way to the ring.
 const KEY_GLINTS = 3
 const KEY_SPARKS = 2
 
-// NOTE: a display case springing open: a burst of sparks and glints.
 const CASE_SPARKS = 10
 const CASE_GLINTS = 4
 
@@ -355,8 +352,6 @@ const eventParticles = (
       generateMany(state, CONFETTI_PER_SAVE, confettiBit({ x, y })),
     DareListDone: ({ x, y }) =>
       generateMany(state, CONFETTI_PER_CLUTCH, confettiBit(playerGround(x, y))),
-    // NOTE: Uncle Chunk's big key bursts out of him in a shower of coins
-    // and confetti.
     BigKeyBurst: ({ x, y }) =>
       chain(state, [
         drawState => generateMany(drawState, WIPE_COINS, coin({ x, y })),
@@ -368,8 +363,6 @@ const eventParticles = (
       generateMany(state, CONFETTI_PER_SAVE, confettiBit(playerGround(x, y))),
   })
 
-// NOTE: each step through a roof leak's puddle kicks up this many drops,
-// low and slow beside a burst of goo.
 const WADE_SPLASH = 3
 
 type Spawn = Readonly<{
@@ -395,7 +388,6 @@ const walkingDust = (
 
   const heading = angleOf(intent.move) + Math.PI
   const ground = playerGround(player.x, player.y)
-  // NOTE: feet in a roof leak's puddle kick up water, not dust.
   const [nextState, particles] = isWadingAt(levelOf(model), player)
     ? generateMany(rngState, WADE_SPLASH, wadeSplash({ ground, heading }))
     : generateMany(
@@ -429,8 +421,6 @@ const scorchDecals = (event: GameEvent): ReadonlyArray<Decal> =>
         },
       ]
     : []
-
-// FRAME
 
 export const keepNewest: {
   <A>(max: number): (items: ReadonlyArray<A>) => ReadonlyArray<A>
@@ -490,9 +480,6 @@ export const advanceParticles: {
     })
   },
 )
-
-// NOTE: the boards over an exit the player buys open burst into splinters
-// and planks with a cloud of dust.
 
 export const puffDust: {
   (x: number, y: number): (model: Model) => Model

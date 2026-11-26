@@ -33,18 +33,11 @@ import { rollCases } from '../../feats/cases'
 import { focusOf, modifyFocus } from '../../party/party'
 import { WEAPONS, freshGun, gunPierce, isCarrying } from '../weapons'
 
-// The display cases' two guns (src/world/gear/weapons.ts): Old Thunder, the
-// hunting rifle, runs each shot through a line of zombies; the Big Blunder
-// sprays a wide, short fan of pellets that shoves hard.
-
 const FRAME_MS = FIXED_STEP_MS
 const PLAYER_X = 150
-// NOTE: the dining room's open floor above the table, clear wall to wall.
 const PLAYER_Y = 45
 const TOUGH_HP = 40
 
-// NOTE: the player at a fixed spot facing east, holding `kind` in the
-// second slot, with `zombies` about.
 const holding = (
   kind: WeaponKind,
   zombies: ReadonlyArray<Zombie>,
@@ -86,7 +79,6 @@ const xOf = (current: Model, id: number): number =>
 const spareOf = (current: Model) =>
   Option.getOrThrow(maybeSpareGun(focusOf(current).player.arsenal))
 
-// NOTE: one shot, then frames enough for it to fly its whole way.
 const oneShot = steps(
   holdFire,
   tick(FRAME_MS),

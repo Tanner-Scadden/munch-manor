@@ -21,7 +21,6 @@ import { atClock } from '../../../test/model.fixture'
 import { rollSpawns } from '../../../world/waves/endlessWaves'
 import { wavePreviewShapes } from '../wavePreview'
 
-// NOTE: Uncle Chunk waiting at his door, the one marker the preview draws.
 const CHUNK_WAITING = Boss.Waiting({
   door: 'South',
   waitBelow: 20,

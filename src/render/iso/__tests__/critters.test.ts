@@ -9,9 +9,6 @@ import { levelOf } from '../../../world/level/arena'
 import { CHANDELIER_DROP } from '../../../world/level/plan'
 import { crittersOf } from '../critters'
 
-// The manor's small lives (src/render/iso/critters.ts): moths circling the
-// lit flames, read off the World's clock alone.
-
 const mothsAt = (model: Model, ms: number) => {
   const world = atClock(model, ms)
   return crittersOf({ world, level: levelOf(world) })

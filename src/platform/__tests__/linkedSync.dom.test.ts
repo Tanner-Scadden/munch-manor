@@ -1,0 +1,195 @@
+import { Array, Effect, Option } from 'effect'
+
+import { Component, UiStruct } from '@effect/ui'
+import { describe, expect, it } from '@effect/vitest'
+
+import { Message } from '../../app/message'
+import { AudioState, type Model } from '../../app/model'
+import { CueMusic } from '../../app/update/music'
+import { WriteSave } from '../../app/update/save'
+import { readyAfterRead } from '../../test/model.fixture'
+import {
+  linkedPair,
+  muted,
+  synced,
+  until,
+  write,
+} from '../../test/store.fixture'
+import {
+  type StoryStep,
+  checkModel,
+  checkPendingArgs,
+  closeProfile,
+  exactStoryOf,
+  resolveAll,
+  send,
+  steps,
+} from '../../test/testing'
+import { PlayerChange } from '../playerSync'
+import { type PlayerSave, restoreSave } from '../save'
+import type { PlayerDatabase } from '../storeSqlite'
+
+const loaded = (database: PlayerDatabase) =>
+  Effect.map(database.load, Option.getOrThrow)
+
+const seesOn = (
+  database: PlayerDatabase,
+  isThere: (save: PlayerSave) => boolean,
+) =>
+  Effect.map(
+    until(database.load, maybeSave => Option.exists(maybeSave, isThere)),
+    Option.getOrThrow,
+  )
+
+const laptopModel = (save: PlayerSave): Model =>
+  UiStruct.evolve(restoreSave(readyAfterRead, save), {
+    audio: () => AudioState.Ready(),
+    profile: profile =>
+      UiStruct.evolve(profile, {
+        tab: () => 'Account',
+        nameDraft: () => save.name,
+      }),
+    profileDialog: dialog => UiStruct.evolve(dialog, { isOpen: () => true }),
+  })
+
+const writtenBack = (written: Array<ReadonlyArray<PlayerChange>>): StoryStep =>
+  steps(
+    checkPendingArgs(WriteSave)(writes => {
+      Array.forEach(writes, ({ changes }) => {
+        written.push(Array.fromIterable(changes))
+      })
+    }),
+    resolveAll(WriteSave)(Message.CompletedWriteSave()),
+  )
+
+const laptopAfter = (start: Model, step: StoryStep) =>
+  Effect.scoped(Effect.map(exactStoryOf(start), s => step(s).model))
+
+const phoneKeeps = (
+  change: (save: PlayerSave) => PlayerSave,
+  isThere: (save: PlayerSave) => boolean,
+) =>
+  Effect.gen(function* () {
+    const { phone, laptop } = yield* linkedPair
+    const first = yield* loaded(phone)
+    const before = muted(first)
+    yield* write(phone, first, before)
+    const laptopSave = yield* seesOn(
+      laptop,
+      save => save.settings.sound === 'On',
+    )
+    const start = laptopModel(laptopSave)
+    yield* write(phone, before, change(before))
+    const arrived = yield* seesOn(laptop, isThere)
+    return { phone, laptop, start, arrived }
+  })
+
+const named = (name: string) => ({
+  change: (save: PlayerSave): PlayerSave => ({ ...save, name }),
+  isThere: (save: PlayerSave): boolean => save.name === name,
+})
+
+describe('the name on two linked devices', () => {
+  it.effect(
+    'set on the phone, shows on the laptop, and closing its Profile keeps it',
+    () =>
+      Effect.gen(function* () {
+        const { phone, laptop, start, arrived } = yield* phoneKeeps(
+          named('Zed').change,
+          named('Zed').isThere,
+        )
+        const written: Array<ReadonlyArray<PlayerChange>> = []
+        const model = yield* laptopAfter(
+          start,
+          steps(
+            send(Message.UpdatedSyncedSave({ save: arrived })),
+            checkModel(current => {
+              expect(current.playerName).toBe('Zed')
+              expect(current.profile.nameDraft).toBe('Zed')
+            }),
+            closeProfile,
+            writtenBack(written),
+          ),
+        )
+        expect(model.playerName).toBe('Zed')
+        expect(written).toEqual([])
+
+        const onPhone = yield* seesOn(phone, save => save.name === 'Zed')
+        expect(onPhone.name).toBe('Zed')
+        const onLaptop = yield* loaded(laptop)
+        expect(onLaptop.name).toBe('Zed')
+      }).pipe(synced),
+  )
+
+  it.effect(
+    'a name the laptop is typing stays, and closing keeps it as the newest',
+    () =>
+      Effect.gen(function* () {
+        const { phone, laptop, start, arrived } = yield* phoneKeeps(
+          named('Zed').change,
+          named('Zed').isThere,
+        )
+        const written: Array<ReadonlyArray<PlayerChange>> = []
+        const model = yield* laptopAfter(
+          start,
+          steps(
+            send(Message.UpdatedProfileNameDraft({ value: 'Mo' })),
+            send(Message.UpdatedSyncedSave({ save: arrived })),
+            checkModel(current => {
+              expect(current.playerName).toBe('Zed')
+              expect(current.profile.nameDraft).toBe('Mo')
+            }),
+            closeProfile,
+            writtenBack(written),
+          ),
+        )
+        expect(model.playerName).toBe('Mo')
+        expect(written).toEqual([[PlayerChange.ChangedName({ name: 'Mo' })]])
+        yield* Effect.forEach(written, changes =>
+          laptop.write(arrived, changes),
+        )
+        const onPhone = yield* seesOn(phone, save => save.name === 'Mo')
+        expect(onPhone.name).toBe('Mo')
+      }).pipe(synced),
+  )
+})
+
+describe('a setting on two linked devices', () => {
+  it.effect('music turned off on the phone goes quiet on the laptop', () =>
+    Effect.gen(function* () {
+      const { start, arrived } = yield* phoneKeeps(
+        save => ({ ...save, settings: { ...save.settings, music: 'Off' } }),
+        save => save.settings.music === 'Off',
+      )
+      expect(start.settings.musicSetting).toBe('On')
+      const written: Array<ReadonlyArray<PlayerChange>> = []
+      const model = yield* laptopAfter(start, s =>
+        s
+          .send(Message.UpdatedSyncedSave({ save: arrived }))
+          .expectExact(
+            CueMusic.make({ mood: 'Silence', level: 'Full', stinger: 'None' }),
+          )
+          .resolve(CueMusic, Component.noop)
+          .pipe(writtenBack(written)),
+      )
+      expect(model.settings.musicSetting).toBe('Off')
+      expect(written).toEqual([])
+    }).pipe(synced),
+  )
+})
+
+describe('RECORD MY RUNS on two linked devices', () => {
+  it.effect('unlocked on the phone shows on the laptop', () =>
+    Effect.gen(function* () {
+      const { start, arrived } = yield* phoneKeeps(
+        save => ({ ...save, recordUnlock: 'Unlocked' }),
+        save => save.recordUnlock === 'Unlocked',
+      )
+      expect(start.recordUnlock).toBe('Locked')
+      const model = yield* laptopAfter(start, s =>
+        s.send(Message.UpdatedSyncedSave({ save: arrived })).expectNone(),
+      )
+      expect(model.recordUnlock).toBe('Unlocked')
+    }).pipe(synced),
+  )
+})

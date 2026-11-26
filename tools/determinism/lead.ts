@@ -1,9 +1,3 @@
-// The seat a scripted run is about, read off a Model of either shape: the
-// player fields at the Model's root (before seats by slot) or the first of
-// its `seats`. before and after (beforeAfter.ts) copies this harness over the
-// base commit, which has the old shape, so it imports nothing from `src` at
-// run time and tells the two apart by what the Model holds.
-
 import { Function, Schema } from 'effect'
 
 import type { Model } from '../../src/app/model'
@@ -17,8 +11,6 @@ const isRootLead = (model: object): model is Lead =>
 export const leadOf = (model: Model): Lead =>
   isRootLead(model) ? model : model.seats[0]
 
-// NOTE: the lead at Rattles' counter, in a base commit from before the shop
-// went (docs/ESCAPE_PLAN.md, layer 7); never, after it.
 const AtCounter = Schema.Struct({
   shop: Schema.TaggedStruct('Browsing', {}),
 })
@@ -26,7 +18,6 @@ const AtCounter = Schema.Struct({
 export const isLeadAtCounter = (model: Model): boolean =>
   Schema.is(AtCounter)(leadOf(model))
 
-// NOTE: the Model with its lead player changed.
 export const withLeadPlayer: {
   (change: (player: Player) => Player): (model: Model) => Model
   (model: Model, change: (player: Player) => Player): Model

@@ -4,13 +4,8 @@ import { Mount } from '@effect/ui'
 
 import { copyToClipboard, readClipboard } from '../../platform/clipboard'
 
-// NOTE: the link code button carries its code here, read at the tap.
 export const LINK_CODE_DATA = 'link-code'
 
-// NOTE: listens on the link code button until the returned function is
-// called, and copies its code on each click: a tap (src/input/touchTaps.ts
-// makes it a click), a mouse click, or Enter. `onCopied` runs once the code
-// is on the clipboard; a copy the browser refuses says nothing.
 export const listenForCopyClicks: {
   (onCopied: () => void): (element: Element) => () => void
   (element: Element, onCopied: () => void): () => void
@@ -29,12 +24,6 @@ export const listenForCopyClicks: {
   }
 })
 
-// NOTE: listens on the link code field until the returned function is
-// called. A finger's tap reads the clipboard when the field is empty or the
-// tap focuses it afresh, never while the player is typing in it, and hands
-// `onRead` what it holds with what the field held at the tap. The update
-// judges the paste. A mouse click leaves the clipboard alone: a desktop has
-// its own paste, and Chrome would ask for permission.
 export const listenForPasteTaps: {
   (
     onRead: (text: string, typed: string) => void,
@@ -82,8 +71,6 @@ export const listenForPasteTaps: {
   },
 )
 
-// NOTE: a value for each copy the link code button makes, for as long as
-// the button is drawn; the listener goes with the Mount's Scope.
 export const CopyLinkCodeOnClick = Mount.makeStream(
   'CopyLinkCodeOnClick',
   { args: {} },
@@ -100,8 +87,6 @@ export const CopyLinkCodeOnClick = Mount.makeStream(
     ),
 )
 
-// NOTE: the clipboard's text for each tap on the link code field that reads
-// it, with what the field held at the tap.
 export const PasteLinkCodeOnTap = Mount.makeStream(
   'PasteLinkCodeOnTap',
   { args: {} },

@@ -1,12 +1,3 @@
-// Bundles the harness for the engines Bun cannot run directly, into
-// tools/determinism/out (gitignored):
-// - out/cli.js for Node,
-// - out/page.html, a page with the harness inlined as a classic script, for
-//   headless Chrome from a file URL (a module script would not load there),
-// - out/worker.js for workerd.
-// bundle.ts makes the game's Vite-only imports plain.
-//   bun tools/determinism/build.ts
-
 import { Console, Effect, FileSystem, Path, String } from 'effect'
 
 import * as NodeRuntime from '@effect/platform-node/NodeRuntime'

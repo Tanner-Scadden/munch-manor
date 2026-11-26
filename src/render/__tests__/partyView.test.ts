@@ -12,9 +12,6 @@ import {
   mateModelsOf,
 } from '../partyView'
 
-// A player who stepped out through the front door (src/world/dare/finale.ts)
-// is gone from the house: no body to draw, theirs or a teammate's.
-
 describe('a player who stepped out', () => {
   it('is not drawn as a teammate', () => {
     const crew = withSeatLife(crewInWave(3), 1, Life.Out())

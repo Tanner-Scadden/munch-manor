@@ -12,11 +12,6 @@ import {
 import { ZOMBIE_BLAST_TARGET } from '../step/combat'
 import { isWalking } from '../zombies/zombies'
 
-// What the room tools that knock zombies over share: a strike that hurts
-// (or only shoves, at no damage), knocks the zombie along, and leaves a
-// survivor dazed on the floor a moment. Its kills raise ZombieKilled like a
-// blast's, so they drop keys (src/world/keys/keys.ts).
-
 export type Knock = Readonly<{
   damage: number
   direction: Vector
@@ -52,7 +47,6 @@ const knock = (
   }
 }
 
-// NOTE: every zombie the test picks out knocked down, each its own way.
 export const knockDownWhere: {
   (knockOf: (zombie: Zombie) => Option.Option<Knock>): (world: World) => World
   (world: World, knockOf: (zombie: Zombie) => Option.Option<Knock>): World

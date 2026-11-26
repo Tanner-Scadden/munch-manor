@@ -1,14 +1,3 @@
-// The kitchen pass: the parlour break with the boarded kitchen door's
-// price tag, the in-world prompt once the player is in reach, the hold's
-// ring filling, a press short of the price, the boards smashing open after
-// a hold, the same hold mid-wave, the kitchen mid-wave with an oven
-// belching and zombies slipping in soup, and a view up the kitchen with the
-// parlour below, on a 1280x720 desktop, an 844x390 phone on its side, and a
-// 390x844 phone held upright, as `s36-<TAG>-<viewport>-<scene>.png`. It
-// checks that a hold opens the kitchen and a hold short of the price does
-// not, and exits with 1 on any miss.
-//   TAG=after bun run heavy -- bun tools/audit/shots36.ts
-// ONLY picks scenes, such as `ONLY=prompt,ring`, and VIEWPORTS picks screens.
 import { Console, Effect } from 'effect'
 import type { Page } from 'playwright-core'
 
@@ -37,14 +26,8 @@ type Scene = Readonly<{
   ) => Effect.Effect<void, AuditFailed>
 }>
 
-// NOTE: every scene but the smash plays its frames at once with `tick=N`
-// (N frames of 1/60 s) and holds there, so each picture is the same on every
-// run.
 const BREAK = 'wave=3&seen=all&money=85&gun=smg'
 
-// NOTE: the smash plays on live frames, since a held frame would hide the
-// boards flying and the wallet counting down, and the shot waits for that
-// much game time, not wall time: the hold, then a moment of debris.
 const HOLD_MS = 500
 const SMASH_MS = 120
 const WAIT_TIMEOUT_MS = 5000

@@ -16,19 +16,8 @@ import { SHOWN_THING_TOP, isThingShownOn } from './dareView'
 import { isPocketCardOut } from './pocketCard'
 import { maybeHintCall } from './rattlesHint'
 
-// NOTE: the gold arrow that shows the way to a thing on the dare's list, a
-// client cosmetic read off the World (src/render/pointerArrow.ts draws it):
-// right over the thing while it is in sight, at the window's edge pointing
-// toward it while it is not. It shows while Rattles' hint about a thing (or
-// the room it lies in) is up, and on Dare (Easy) for the whole of a break,
-// toward the nearest thing still lying in an open room. The owner read
-// "SOMETHING'S THAT WAY" and could not tell what or where (playtest,
-// 2026-11-10). It never points at a zombie.
-
 const FLOOR_LIFT = 6
 
-// NOTE: how far over the thing's spot the arrow's tip goes: over the thing
-// floating in plain sight, else just over its spot.
 const liftOf = (model: Model, spot: Vector): number =>
   isThingShownOn(runDifficultyOf(model)) && isInOpenRoom(levelOf(model), spot)
     ? SHOWN_THING_TOP
@@ -42,7 +31,6 @@ const lyingSpot = (model: Model, thing: DareThing): Option.Option<Vector> =>
 const byDistanceFrom = (from: Vector): Order.Order<Vector> =>
   Order.mapInput(Order.Number, (spot: Vector) => distanceBetween(from, spot))
 
-// NOTE: Array.min asks for a non-empty list.
 const minOf = (
   spots: ReadonlyArray<Vector>,
   order: Order.Order<Vector>,
@@ -51,8 +39,6 @@ const minOf = (
     ? Option.some(Array.min(spots, order))
     : Option.none()
 
-// NOTE: on Dare, through a break, the nearest thing still lying in an open
-// room.
 const maybeNearestThing = (model: Model): Option.Option<Vector> =>
   runDifficultyOf(model) === 'Easy' &&
   Phase.isAnyOf(['Preparation'])(model.phase)
@@ -64,7 +50,6 @@ const maybeNearestThing = (model: Model): Option.Option<Vector> =>
       )
     : Option.none()
 
-// NOTE: the floor spot the arrow points at, while it shows.
 export const maybeDarePointer = (model: Model): Option.Option<Vector> =>
   isPocketCardOut(model)
     ? Option.none()
@@ -73,7 +58,6 @@ export const maybeDarePointer = (model: Model): Option.Option<Vector> =>
         () => maybeNearestThing(model),
       )
 
-// NOTE: in the overlay canvas's pixels, from the screen camera.
 export const darePointerShapes: {
   (screen: Screen, camera: Camera): (model: Model) => ReadonlyArray<Draw.Shape>
   (model: Model, screen: Screen, camera: Camera): ReadonlyArray<Draw.Shape>

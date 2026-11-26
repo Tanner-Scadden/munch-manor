@@ -13,13 +13,6 @@ import {
   type Player,
 } from '../../world/schema/worldSchema'
 
-// NOTE: no gun runs out (docs/ESCAPE_PLAN.md, "Endless ammo"), but a
-// magazine still does, and the reload is the risky moment. The last few
-// shots of a magazine tick and blink red, so the ear and the eye hear the
-// reload coming before the click: up to five shots, or a quarter of the
-// magazine the player's own calling gives the gun (the Track Star's are
-// smaller), whichever is fewer. The Clang Pan's dents are never reloaded,
-// so it never ticks.
 const TICK_ROUNDS = 5
 
 const lastShotsOf = (gun: CarriedGun, calling: Calling): number =>
@@ -36,8 +29,6 @@ export const isOnLastShots: {
     gun.loaded < lastShotsOf(gun, calling),
 )
 
-// NOTE: a shot that leaves the magazine on its last few rounds, or empty,
-// ticks.
 export const isTickingShot: {
   (events: ReadonlyArray<GameEvent>): (player: Player) => boolean
   (player: Player, events: ReadonlyArray<GameEvent>): boolean

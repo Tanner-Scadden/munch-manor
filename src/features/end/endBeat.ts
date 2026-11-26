@@ -36,16 +36,6 @@ import { awardsOf, crewOf, hasAwards, mvpOf } from './crewAwards'
 import type { SharedRun } from './share'
 import type { TallyIcon } from './tallyIcons'
 
-// The end of a run as a short beat, read from the end screen's own clock
-// (`screenMs`, from 0 when the round ends), so it is a pure function of the
-// Model and never touches the World. A loss: a red flash, the player
-// topples, the camera punches in as the color drains, MUNCHED! stamps down,
-// and the card tallies the run row by row. A win: the camera eases in,
-// confetti falls, YOU ESCAPED! stamps, the trophy drops with the skulls of
-// the difficulty, and the same tally. Left early by the kitchen's back
-// door: no flash of red, a chicken flaps beside CHICKEN! with a cluck, and
-// the same tally. Any press skips to the finished card.
-
 export type EndKind = 'Munched' | 'Chicken' | 'Won'
 
 export const endKindOf = (model: Model): Option.Option<EndKind> =>
@@ -59,8 +49,6 @@ export const endKindOf = (model: Model): Option.Option<EndKind> =>
     LeftEarly: () => Option.some<EndKind>('Chicken'),
     GameOver: () => Option.some<EndKind>('Munched'),
   })
-
-// TIMELINE
 
 export const FLASH_MS = 220
 export const FALL_START_MS = 100
@@ -117,20 +105,16 @@ export const easeOut = (t: number): number => {
   return 1 - left * left * left
 }
 
-// NOTE: overshoots a little and settles, for the stamp and the trophy.
 export const easeOutBack = (t: number): number => {
   const overshoot = 1.7
   const past = t - 1
   return 1 + (overshoot + 1) * past * past * past + overshoot * past * past
 }
 
-// TALLY
-
 export type TallyRow = Readonly<{
   icon: TallyIcon
   label: string
   value: number
-  // NOTE: the shown value, from the counted-up number.
   format: (shown: number) => string
   isBest: boolean
 }>
@@ -221,8 +205,6 @@ export const rowLandMs: {
   (kind: EndKind, index: number): number => rowStartMs(kind, index) + ROW_MS,
 )
 
-// NOTE: a row counts up from 0 to its value over ROW_MS once its turn
-// comes, eased so the last digits tick slower.
 export const countedUp: {
   (kind: EndKind, index: number, screenMs: number): (value: number) => number
   (value: number, kind: EndKind, index: number, screenMs: number): number
@@ -245,14 +227,9 @@ export const shownValue: {
 
 const ROWS = 5
 
-// NOTE: the beat is done once the last row has landed and a NEW BEST has
-// burst. A press before then skips to here.
 export const doneMs = (kind: EndKind): number =>
   rowLandMs(kind, ROWS - 1) + BEST_POP_MS
 
-// NOTE: a crew's card (src/features/end/crewBoardView.ts) counts up the run's line and
-// then each of the crew board's stat rows, every player's column at once,
-// and then stamps the awards.
 const CREW_ROWS = 6
 const AWARD_GAP_MS = 120
 export const AWARD_STAMP_MS = 260
@@ -263,12 +240,6 @@ export const awardsAtMs = (kind: EndKind): number =>
 export const crewDoneMs = (kind: EndKind): number =>
   awardsAtMs(kind) + AWARD_STAMP_MS
 
-// RANK STRIP
-
-// NOTE: after the tally (or, for a crew, the awards) the rank strip fills
-// its bar from the points before the run to the points after, counts the
-// Bones, and, on a rank up, pops the badge with a fanfare. A run that paid
-// no rank (the practice gate) has no strip.
 const RANK_GAP_MS = 140
 export const RANK_FILL_MS = 800
 export const RANK_POP_MS = 360
@@ -290,13 +261,6 @@ export const isRankedUp = (model: Model): boolean =>
     isRankUp(pointsBefore, gained),
   )
 
-// NOTE: a rank up that opens a calling or a gift look flips a card for each
-// after the badge pops: the callings first, then the gifts by rank, the
-// Bones purses by rank (src/shared/rankCurve.ts), then
-// each milestone the run reached (src/domain/journal.ts), a new thing for
-// the list or a story page, then each mastery level the run's payout
-// reached (src/domain/mastery.ts), a hero's or a gun's, one card at a time, each held a moment before
-// the next flips over it. The last stays.
 export const CALLING_FLIP_MS = 420
 export const UNLOCK_HOLD_MS = 500
 
@@ -344,12 +308,9 @@ export const unlocksOf = (model: Model): ReadonlyArray<EndUnlock> =>
     },
   })
 
-// NOTE: how long after the badge pops card number `index` starts to flip.
 export const unlockStartMs = (index: number): number =>
   index * (CALLING_FLIP_MS + UNLOCK_HOLD_MS)
 
-// NOTE: when the first unlock card starts to flip: once the bar is full and
-// the badge has popped.
 export const unlockFlipAtMs: {
   (kind: EndKind): (model: Model) => number
   (model: Model, kind: EndKind): number
@@ -373,8 +334,6 @@ export const rankDoneMs: {
     unlockFlipAtMs(model, kind) + unlockDurationMs(unlocksOf(model).length),
 )
 
-// NOTE: the last unlock card stays a few seconds after it flips, its timer
-// draining along its foot, then fades away; a tap puts it away sooner.
 export const UNLOCK_LINGER_MS = 4000
 export const UNLOCK_FADE_MS = 300
 
@@ -391,8 +350,6 @@ const isUnlockCardUp = (model: Model, kind: EndKind): boolean =>
   Array.isReadonlyArrayNonEmpty(unlocksOf(model)) &&
   model.screenMs < unlockGoneMs(model, kind)
 
-// NOTE: a tap once the beat is over puts away an unlock card still up, by
-// moving the end clock past its time, so nothing new needs to be stored.
 export const dismissUnlock = (model: Model): Model =>
   Option.match(endKindOf(model), {
     onNone: () => model,
@@ -426,14 +383,9 @@ export const skipBeat = (model: Model): Model =>
     },
   })
 
-// SOUNDS
-
 const crossed = (fromMs: number, toMs: number, atMs: number): boolean =>
   fromMs < atMs && toMs >= atMs
 
-// NOTE: the beat's sounds, for the frame that moves the clock from `fromMs`
-// to `toMs`: the stamp, the trophy, each skull, each row as it lands, and a
-// NEW BEST once its row lands.
 export const beatSounds: {
   (fromMs: number, toMs: number): (model: Model) => ReadonlyArray<SoundEffect>
   (model: Model, fromMs: number, toMs: number): ReadonlyArray<SoundEffect>
@@ -506,8 +458,6 @@ const soundWhen = (
   sound: SoundEffect,
 ): ReadonlyArray<SoundEffect> => (isOn ? [sound] : [])
 
-// SKULLS
-
 const SKULLS: Readonly<Record<Difficulty, number>> = {
   Easy: 1,
   Normal: 2,
@@ -521,11 +471,6 @@ export const skullCountOf = (difficulty: Difficulty): number =>
 export const skullAtMs = (index: number): number =>
   TIMELINES.Won.trophyAtMs + TROPHY_DROP_MS + index * SKULL_GAP_MS
 
-// RECORDS
-
-// NOTE: the records a run just broke, read on the frame it ends: the bests
-// before it (`before`) against the run. Only a record that stood falls; a
-// first win or a first endless run sets one without a NEW BEST.
 const recordsBroken = (
   before: Model,
   after: Model,
@@ -592,8 +537,6 @@ const higher = (maybeBest: Option.Option<number>, reached: number) =>
     }),
   )
 
-// NOTE: the run as the end card's ghost draws it: the wave it reached and
-// the things it found, in the list's order.
 export const bestRunOf = (model: Model): BestRun => ({
   wave: roundWave(model.phase),
   things: Array.flatMap(dareCardOf(model), ({ kind, isFound }) =>
@@ -609,10 +552,6 @@ const better = (maybeBest: Option.Option<BestRun>, reached: BestRun) =>
     }),
   )
 
-// NOTE: the run records a finished run sets, on the frame it ends: the
-// most kills in a run, and in the campaign the furthest wave reached (a win
-// reaches the last wave) and the best run (the most things found, then the
-// furthest wave). Endless keeps its own deepest wave in the bests.
 export const reachRecords: {
   (after: Model, played?: Difficulty): (before: Model) => Model
   (before: Model, after: Model, played?: Difficulty): Model
@@ -661,15 +600,9 @@ export const noteRecords: {
       : after,
 )
 
-// SHARING
-
-// NOTE: a browser with a share sheet shares through it, on any device; one
-// without copies the post (ShareFromClick in src/app/mount.ts decides the same
-// way at the tap).
 export const sharePathOf = (model: Model): SharePath =>
   model.endCard.shareSheet === 'Available' ? 'Sheet' : 'Copy'
 
-// NOTE: how long SHARE says COPIED! after the post goes to the clipboard.
 export const SHARE_COPIED_MS = 1500
 
 export const isShareCopied = (model: Model): boolean =>
@@ -679,8 +612,6 @@ export const isShareCopied = (model: Model): boolean =>
       model.screenMs >= atMs && model.screenMs - atMs < SHARE_COPIED_MS,
   })
 
-// NOTE: `played` is the run's difficulty: the player's own, or in an online
-// co-op run the room's.
 export const sharedRunOf: {
   (played?: Difficulty): (model: Model) => SharedRun
   (model: Model, played?: Difficulty): SharedRun
@@ -693,8 +624,6 @@ export const sharedRunOf: {
     things: bestRunOf(model).things,
     difficulty: played,
     kills: totalKills(model.stats),
-    // NOTE: bots are not a crew to boast of: a run with them posts as one
-    // player's run.
     crew: isBotCrew(model) ? 1 : Math.max(1, crewOf(model).length),
     ...(isBotCrew(model)
       ? { maybeMvp: Option.none(), maybeOwnAward: Option.none() }
@@ -702,8 +631,6 @@ export const sharedRunOf: {
   }),
 )
 
-// NOTE: the MVP, and the sharer's own first award but MVP, which the MVP's
-// line already names.
 const crewBragsOf = (
   model: Model,
 ): Pick<SharedRun, 'maybeMvp' | 'maybeOwnAward'> => {
@@ -722,14 +649,10 @@ const crewBragsOf = (
   }
 }
 
-// THE LENS
-
 export type Lens = Readonly<{ zoom: number; saturation: number }>
 
 const SATURATION_MS = 800
 
-// NOTE: the camera punches in toward the player as the round ends, and on
-// a loss the color drains from the world. The card and HUD stay sharp.
 export const lensOf = (model: Model): Option.Option<Lens> =>
   Option.map(endKindOf(model), kind => {
     const timeline = TIMELINES[kind]
@@ -744,17 +667,9 @@ export const lensOf = (model: Model): Option.Option<Lens> =>
     }
   })
 
-// AN ONLINE ROOM
-
-// NOTE: in an online co-op run the room is back in its lobby as soon as the
-// run ends, so the lobby waits behind the end card until the player picks:
-// PLAY AGAIN readies them from the card, LOBBY lets the lobby in, and
-// LEAVE leaves the room. The card holds until then, so its buttons never
-// vanish under a finger; a next run started from it ends it too.
 export const isRunCardHeld = (model: Model): boolean =>
   Option.isSome(endKindOf(model)) && !model.endCard.isRunCardDropped
 
-// NOTE: LOBBY lets the lobby in, beat or no beat.
 export const dropRunCard = (model: Model): Model =>
   UiStruct.evolve(model, {
     endCard: UiStruct.evolve({ isRunCardDropped: () => true }),

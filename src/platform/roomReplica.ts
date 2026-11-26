@@ -24,14 +24,6 @@ import {
 import type { CoopProblem, LobbyChange } from '../domain/coopRoom'
 import { writeLobbyChange } from './lobbyWrite'
 
-// NOTE: co-op's side of the player database, built in the store's own chunk
-// (src/platform/storeSqlite.ts) and handed to the game through PlayerStore. The room
-// lobby is the `room:<code>` sync scope (packages/netcode/src/Lobby.ts),
-// followed here by a real Replica in the same SQLite file as the save: one
-// `room` replica, switched to each room the player enters. Only the leader
-// tab runs sync, so a follower tab follows the lobby over its own socket
-// instead (see src/features/coop/net.ts).
-
 class RoomAccessError extends Schema.TaggedError<
   RoomAccessError,
   { readonly brand: unique symbol }
@@ -59,7 +51,6 @@ type RoomAccessOptions = Readonly<{
 const toAccessError = (error: { readonly message: string }) =>
   RoomAccessError.make({ reason: error.message })
 
-/** @stability unstable */
 export const makeRoomAccess = ({
   database,
   identity,

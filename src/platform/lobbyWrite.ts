@@ -17,17 +17,11 @@ import type { Mutation } from '@munch/sync-engine'
 
 import { type CoopProblem, LobbyChange } from '../domain/coopRoom'
 
-// NOTE: a lobby change as the room scope's mutation, written through either
-// way to the lobby: the leader tab's own Replica (src/platform/roomReplica.ts) or
-// a follower tab's socket (src/features/coop/net.ts).
-
-/** @stability unstable */
 export type LobbyWriter<E> = <A, I>(
   mutation: Mutation<string, A, I>,
   args: NoInfer<A>,
 ) => Effect.Effect<string, E>
 
-/** @stability unstable */
 export const writeLobbyChange: {
   (
     by: string,
@@ -63,13 +57,11 @@ export const writeLobbyChange: {
               write(ChangedPicks, { by, mode, difficulty }),
             ChangedModifiers: ({ modifiers }) =>
               write(ChangedModifiers, { by, modifiers }),
-            // NOTE: a clock the room does not offer is never sent.
             ChangedEasyBreak: ({ seconds }) =>
               Effect.flatMap(
                 Schema.decodeUnknownEffect(EasyBreakSeconds)(seconds),
                 valid => write(ChangedEasyBreak, { by, seconds: valid }),
               ),
-            // NOTE: a mark off the ladder is never sent.
             ChangedDareMark: ({ mark }) =>
               Effect.flatMap(Schema.decodeEffect(DareMark)(mark), valid =>
                 write(ChangedDareMark, { by, mark: valid }),

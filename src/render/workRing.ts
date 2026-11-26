@@ -3,11 +3,6 @@ import { Array, Function, Option } from 'effect'
 import { type Sprite, bakeShapes } from '../art/sprite'
 import { type RingPixel, rect, ringPixels } from './drawing'
 
-// The work ring every set-up shares: a room tool's station
-// (src/features/stations/stationView.ts) and a room's find
-// (src/features/dare/findView.ts). A gold ring fills as a player works it,
-// a grey one refills over a cooldown, baked once in twelve steps.
-
 export const WORK_RING_RADIUS = 9
 const RING_STEPS = 12
 const SET_UP_FILLED = '#ffd23f'
@@ -48,7 +43,6 @@ export const COOLDOWN_RINGS = ringSteps({
   empty: COOLDOWN_EMPTY,
 })
 
-// NOTE: the ring for a share of the work done, 0 to 1.
 export const ringStepOf: {
   (share: number): (rings: Array.NonEmptyReadonlyArray<Sprite>) => Sprite
   (rings: Array.NonEmptyReadonlyArray<Sprite>, share: number): Sprite

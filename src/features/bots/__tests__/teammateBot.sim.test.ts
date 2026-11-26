@@ -22,20 +22,10 @@ import {
 import { asVeteran } from '../../../test/veteran'
 import { modifyFocus, playersOf } from '../../../world/party/party'
 
-// Whole waves with three teammate bots (src/features/bots/teammateBot.ts): the human
-// stands at the spawn pressing READY through every break, and the bots do
-// the rest. They fight, buy, and ready up, and the same seed plays the same
-// run twice.
-
 const FRAMES = 60 * 90
 
-// NOTE: how often the human looks for a break to press READY in, and how
-// often the sounds, cues, and save writes the frames raise are completed,
-// so the pending list stays short.
 const READY_EVERY = 60
 
-// NOTE: each bot starts with a little cash, so the first breaks that open
-// the stall have something to spend.
 const withThreeBots = Effect.map(
   startedRun(
     addBot(
@@ -58,8 +48,6 @@ const withThreeBots = Effect.map(
     ),
 )
 
-// NOTE: one frame of the human: in a break, every READY_EVERY frames, READY
-// pressed and let go; then the frame, while the run is still on.
 const humanFrame = (frame: number): StoryStep =>
   steps(
     ...(frame % READY_EVERY === 0
@@ -93,8 +81,6 @@ const play = (start: Model): Effect.Effect<Model> =>
 const waveOf = (current: Model): number =>
   'wave' in current.phase ? current.phase.wave : 0
 
-// NOTE: the run played once, from the same start, shared by the file's
-// tests as the run they read.
 class PlayedRun extends Context.Service<
   PlayedRun,
   Readonly<{ start: Model; end: Model }>

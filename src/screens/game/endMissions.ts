@@ -16,11 +16,6 @@ import {
 import type * as Draw from '../../render/draw'
 import { type Screen, landscapeFrameOffset } from '../../render/screen'
 
-// The day's missions on the end card (src/features/missions/missionEndView.ts),
-// placed by the screen: beside the card at its right on a screen held on its
-// side, where the unlock card takes the left, and under it upright, once
-// any unlock card there has gone.
-
 const GAP_PX = 3
 const BEAT_GAP_MS = 160
 
@@ -46,8 +41,6 @@ const spotOf = (
     }
   })
 
-// NOTE: after the rank strip's beat; upright, after an unlock card under
-// the card has gone too, as the two share that spot.
 const startMsOf = (model: Model, isUpright: boolean): Option.Option<number> =>
   Option.map(endKindOf(model), kind =>
     isUpright && Array.isReadonlyArrayNonEmpty(unlocksOf(model))

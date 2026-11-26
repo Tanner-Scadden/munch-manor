@@ -16,35 +16,6 @@ import {
   noPractice,
 } from '../schema/worldSchema'
 
-// The World on the wire, in binary (MULTIPLAYER.md, "The binary codec"):
-// what a co-op room sends its players. The codec is read off the World's
-// own Schemas, so a new field travels without a line here:
-//
-// - Numbers by the `wire` annotation on their Schema (src/world/schema/wireNumber.ts):
-//   positions as int16 in eighths of a pixel, velocities in eighths of a
-//   pixel a second, directions and scales in 4096ths, timers as whole
-//   milliseconds. A number with no annotation goes exactly: a small
-//   integer as a varint, anything else as a float64.
-// - Literals and union tags as their index, options as a flag, strings and
-//   lists with their length.
-// - The entity lists (zombies, bullets, lids, pickups, traps, and the
-//   seats, by slot) are keyed by id, so a diff names only what came, went, or
-//   changed.
-// - A diff is a mask of the fields that changed, nested: a zombie that
-//   only walked writes its id, a mask byte, and its new x and y.
-//
-// What a client never needs stays home: the seeded state, the id counter,
-// the flow fields (a client interpolates zombies, it never steers them),
-// the tick's events (they ride beside the diff, by tick), hit-stop, run
-// stats, and single player's gates. A client's copy holds fixed values
-// there. Values are compared as a client reads them back, so a client that
-// applies every diff holds exactly what a snapshot gives.
-//
-// The Writer and Reader are the netcode package's, named by type only, so
-// a room's bundle carries nothing more of the package than the room does.
-
-// NOTE: the entity lists, by the field that holds them, and what keys
-// each item.
 type KeyOf = (item: unknown) => number
 
 const numberOrMissing = (value: unknown): number =>
@@ -68,7 +39,6 @@ const KEYED_LISTS: ReadonlyMap<string, KeyOf> = new Map([
   ['seats', seatSlotOf],
 ])
 
-// NOTE: World fields that never go on the wire.
 const HOME_FIELDS: ReadonlySet<string> = new Set([
   'rngState',
   'loot',
@@ -80,8 +50,6 @@ const HOME_FIELDS: ReadonlySet<string> = new Set([
   'debutCard',
   'stats',
 ])
-
-// VALUES
 
 type Fields = Readonly<Record<string, unknown>>
 
@@ -98,8 +66,6 @@ const recordOf = (value: unknown): Fields =>
 const listOf = (value: unknown): ReadonlyArray<unknown> =>
   Array.isArray(value) ? value : fail('The World codec expected a list')
 
-// NOTE: a list read off the wire is never longer than this, so a bad
-// message cannot ask for a huge allocation.
 const MAX_LIST = 8192
 const MAX_TEXT = 1024
 
@@ -119,10 +85,6 @@ export const readMany: {
   return items
 })
 
-// CODECS
-
-// NOTE: a struct's diff also hands out its mask of changed fields, so a
-// keyed list that has found which items changed need not find it again.
 type Diff = Readonly<{
   write: (writer: Writer, prev: unknown, next: unknown, mask?: number) => void
   read: (reader: Reader, prev: unknown) => unknown
@@ -154,8 +116,6 @@ const writeChange = (
 
 const readChange = (codec: Codec, reader: Reader, prev: unknown): unknown =>
   codec.diff === undefined ? codec.read(reader) : codec.diff.read(reader, prev)
-
-// NUMBERS
 
 const SMALL_INTEGER = 2 ** 46
 const FLOAT_MARK = 1
@@ -220,8 +180,6 @@ const NUMBER_CODECS: Readonly<Record<WireHint, Codec>> = {
   Millis: millisNumber,
 }
 
-// TEXT AND FLAGS
-
 const textCodec = plain(
   (writer, value) =>
     writer.text(typeof value === 'string' ? value : fail('Expected a string')),
@@ -241,8 +199,6 @@ const constantCodec = (value: unknown): Codec =>
     () => value,
     () => true,
   )
-
-// OPTIONS AND LISTS
 
 const optionOf = (value: unknown): Option.Option<unknown> =>
   Option.isOption(value) ? value : fail('Expected an Option')
@@ -288,8 +244,6 @@ const sameLists = (
   return true
 }
 
-// NOTE: the indexes of `prev` to drop to get `next`, when `next` is `prev`
-// with some items taken out and nothing else changed.
 const removedIndexes = (
   item: Codec,
   prev: ReadonlyArray<unknown>,
@@ -311,7 +265,6 @@ const SPLICED = 0
 const THINNED = 1
 const RETOUCHED = 2
 
-// NOTE: index gaps, so a run of nearby indexes is a byte each.
 const writeIndexes = (writer: Writer, indexes: ReadonlyArray<number>) => {
   writer.varint(indexes.length)
   let previous = -1
@@ -332,13 +285,6 @@ const readIndexes = (reader: Reader): ReadonlyArray<number> => {
   return indexes
 }
 
-// NOTE: a list's diff is one of three shapes. When items only left it, such
-// as a wave's planned spawns as they come in, it names the indexes that
-// left. When it kept its length, it names the items that changed, each with
-// its own diff, as the spawns held back by the alive cap move their times.
-// Otherwise it keeps the items it starts and ends with that did not change
-// and writes the run between them, so a hold added at the end is a few
-// bytes.
 const listCodec = (item: Codec): Codec => {
   const write = (writer: Writer, value: unknown) => {
     const list = listOf(value)
@@ -457,11 +403,6 @@ const listCodec = (item: Codec): Codec => {
   }
 }
 
-// NOTE: a keyed list's diff: the ids gone, each kept item that changed with
-// its own diff, the new items whole, and a flag for the order. The order is
-// almost always the kept items as they were and the new ones after them;
-// when it is not, the ids go in their new order. Each list is indexed by id
-// once, so a diff costs time in the list's length, not its square.
 const keyedListCodec = (item: Codec, keyOf: KeyOf): Codec => {
   const whole = listCodec(item)
 
@@ -586,16 +527,12 @@ const keyedListCodec = (item: Codec, keyOf: KeyOf): Codec => {
   return { ...whole, diff: { write, read } }
 }
 
-// STRUCTS
-
 type Property = Readonly<{
   name: string
   codec: Codec
   isOptional: boolean
 }>
 
-// NOTE: a mask of up to 48 fields, as a varint built with arithmetic, since
-// JavaScript's bitwise operators stop at 32 bits.
 const MAX_MASK_FIELDS = 48
 
 const BIT_VALUES: ReadonlyArray<number> = globalThis.Array.from(
@@ -629,7 +566,6 @@ const structCodec = (
   }
   const optional = Array.filter(properties, property => property.isOptional)
   const hasOptional = optional.length > 0
-  // NOTE: where each property sits among the optional ones, or -1.
   const optionalIndexes = Array.map(properties, property =>
     property.isOptional ? optional.indexOf(property) : -1,
   )
@@ -747,7 +683,6 @@ const structCodec = (
       }
       const has = property.isOptional ? reader.bool() : true
       if (!has) {
-        // NOTE: a removed optional field, which is rare.
         delete fields[property.name]
       } else {
         fields[property.name] =
@@ -766,8 +701,6 @@ const structCodec = (
     diff: { write: writeDiff, read: readDiff, maskOf },
   }
 }
-
-// UNIONS
 
 type Member = Readonly<{
   isMember: (value: unknown) => boolean
@@ -854,8 +787,6 @@ const literalCodec = (literals: ReadonlyArray<SchemaAST.LiteralValue>): Codec =>
     (a, b) => a === b,
   )
 
-// FROM THE SCHEMA
-
 const flattenUnion = (ast: SchemaAST.AST): ReadonlyArray<SchemaAST.AST> =>
   ast._tag === 'Union' ? Array.flatMap(ast.types, flattenUnion) : [ast]
 
@@ -873,8 +804,6 @@ const tagOf = (ast: SchemaAST.AST): Option.Option<SchemaAST.LiteralValue> =>
       )
     : Option.none()
 
-// NOTE: the member test is chosen once per Schema node, not per value: the
-// codec runs on every tick the room sends.
 const isMemberOf = (ast: SchemaAST.AST): ((value: unknown) => boolean) =>
   Match.value(ast).pipe(
     Match.tag(
@@ -988,10 +917,6 @@ const codecOf = (ast: SchemaAST.AST): Codec =>
     Match.orElse(({ _tag }) => fail(`No wire form for a ${_tag}`)),
   )
 
-// THE WORLD
-
-// NOTE: what a client's World holds in the fields that stay home. The
-// lessons are settled, as a room plays them.
 const HOME_VALUES: Fields = {
   rngState: 0,
   loot: freshLoot(0),
@@ -1054,8 +979,6 @@ export const readWorldDiff: {
   worldOf(readChange(worldCodec, reader, prev)),
 )
 
-// NOTE: the codec for any Schema, as the World's fields get theirs, for
-// tests.
 export const valueCodecOf = (
   ast: SchemaAST.AST,
 ): Readonly<{
@@ -1066,7 +989,6 @@ export const valueCodecOf = (
   return { write: codec.write, read: codec.read }
 }
 
-// NOTE: whether two Worlds read back the same on a client.
 export const isSameOnWire: {
   (b: World): (a: World) => boolean
   (a: World, b: World): boolean

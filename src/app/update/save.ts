@@ -35,10 +35,6 @@ import {
 } from './step'
 import { registerServiceWorkerAfterSplash } from './version'
 
-// COMMAND
-
-// NOTE: the splash's bar changes nothing in the Model, so its failure is
-// ignored and nothing is reported.
 export const ShowLoadProgress = Command.make(
   'ShowLoadProgress',
   { args: { loaded: Schema.Finite, total: Schema.Finite } },
@@ -54,9 +50,6 @@ export const HideSplash = Command.make('HideSplash', { args: {} }, () =>
   pipe(hideSplash, Effect.ignore, Effect.as(LoadMessage.CompletedHideSplash())),
 )
 
-// NOTE: the whole save goes along with what changed in it: the store runs
-// the changes as player scope mutations, and keeps the whole save only
-// where it still writes the localStorage copy. Writes go in order.
 export class WriteSave extends Command.Service<WriteSave>()('app/WriteSave', {
   args: { save: PlayerSave, changes: Schema.Array(PlayerChange) },
   success: SaveMessage,
@@ -82,8 +75,6 @@ export class WriteSave extends Command.Service<WriteSave>()('app/WriteSave', {
   )
 }
 
-// NOTE: waits for the server to confirm or reject a recorded run. Offline,
-// it waits until the device is back and the run goes out.
 export class AwaitRunSettled extends Command.Service<AwaitRunSettled>()(
   'app/AwaitRunSettled',
   { args: { runId: Schema.String }, success: SaveMessage },
@@ -127,8 +118,6 @@ export class ReloadSyncedSave extends Command.Service<ReloadSyncedSave>()(
   )
 }
 
-// LOADING
-
 const finishLoading =
   (step: LoadStep): UpdateStep =>
   $ =>
@@ -152,8 +141,6 @@ const finishLoading =
       },
     })
 
-// SAVE
-
 const loadSave =
   (maybeSave: Option.Option<PlayerSave>): UpdateStep =>
   $ => {
@@ -165,23 +152,14 @@ const loadSave =
       saving: UiStruct.evolve({ saveStatus: () => 'Read' }),
     })
     const loaded = $.combine(toModel(granted), finishLoading('Save'))
-    // NOTE: a player with no save has nothing to write yet: their first write
-    // seeds the store with the whole save, the grant in it. A save from before
-    // rank writes the grant it was just given, as the change it is. A row from
-    // before NEW badges writes the unlocks its baseline mark stood for.
     const isBaseline = Option.exists(maybeSave, save =>
       Array.contains(save.seenUnlocks, SEEN_BASELINE),
     )
-    // NOTE: RECORD MY RUNS unlocked on this device before the save was read
-    // (a `?record=1` link, or a mark from before it synced) goes into the
-    // save, and so to every linked device.
     const isRecordUnlockNew = Option.exists(
       maybeSave,
       save =>
         save.recordUnlock === 'Locked' && granted.recordUnlock === 'Unlocked',
     )
-    // NOTE: the purses the save's rank reached unpaid (a save from before
-    // the purses, or the front-loaded curve's new ranks) write as paid.
     const isPursePaid = granted.bonuses.purses !== restored.bonuses.purses
     return Option.isSome(maybeSave) &&
       (!restored.rank.isVeteranGranted ||
@@ -209,9 +187,6 @@ const loadSave =
       : loaded
   }
 
-// NOTE: a save that arrived from sync is already in the store, so taking
-// it into the Model writes nothing back. Every other change to the save is
-// written with the mutations that describe it.
 export const writeSaveFrom: {
   (saveWrite: 'Write' | 'Synced'): (before: Model) => UpdateStep
   (before: Model, saveWrite: 'Write' | 'Synced'): UpdateStep
@@ -251,10 +226,6 @@ export const writeSaveFrom: {
     },
 )
 
-// NOTE: a save from another device, or from the server, replaces what this
-// device shows: its look, settings, difficulty, and bests. Lessons and
-// unlocks only ever move forward, as on load. The Profile's name draft
-// follows the new name unless the player typed their own over it.
 const takeSyncedSave =
   (save: PlayerSave): UpdateStep =>
   $ =>
@@ -262,8 +233,6 @@ const takeSyncedSave =
       ? $.evolve({ saving: UiStruct.evolve({ syncedSave: 'Stale' }) })
       : takeSyncedName(restoreSave($.model, save), $.model.playerName)
 
-// NOTE: once this device's own writes have landed, a save from sync that
-// was held back is read again from the store, which by then has both.
 const finishWrite: UpdateStep = $ => {
   const next: Model = UiStruct.evolve($.model, {
     saving: UiStruct.evolve({
@@ -279,8 +248,6 @@ const finishWrite: UpdateStep = $ => {
     : next
 }
 
-// NOTE: a write that recorded a run, on a build with a sync server, waits
-// for the server to settle it, so the Model knows the run reached it.
 const finishWriteWithRun =
   (runId: string): UpdateStep =>
   $ =>
@@ -312,7 +279,6 @@ const settleRun =
         })
       : $.model
 
-// NOTE: the store could not tell, so the Model stops claiming to know.
 const forgetRunWait =
   (runId: string): UpdateStep =>
   $ =>
@@ -322,9 +288,6 @@ const forgetRunWait =
         })
       : $.model
 
-// NOTE: the store logged why. The changes it could not write wait in the
-// Model and go out again with the next change to the save, so a run that
-// finished during a failed write still counts once.
 const failWrite = (changes: ReadonlyArray<PlayerChange>): UpdateStep =>
   combine([
     modelStep(model =>
@@ -337,8 +300,6 @@ const failWrite = (changes: ReadonlyArray<PlayerChange>): UpdateStep =>
     finishWrite,
   ])
 
-// NOTE: the splash's load steps, the save and sync, and the visit id
-// (src/platform/message.ts).
 export const saveHandlers = defineHandlers({
   CompletedLoadStyles: finishLoading('Styles'),
 

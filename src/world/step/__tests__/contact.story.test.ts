@@ -32,8 +32,6 @@ import { ZOMBIE_KINDS, bodyRadiusOf } from '../../zombies/zombies'
 
 const FRAME_MS = FIXED_STEP_MS
 const LONG_FRAME_MS = 50
-// NOTE: on the open floor between the dining room's table and the start
-// spot, clear of the table and the candelabras on every side.
 const PLAYER_X = 180
 const PLAYER_Y = 130
 const EPSILON = 1e-6
@@ -70,9 +68,6 @@ const gapOf = (current: Model, zombie: Zombie): number =>
     zombie.y - focusOf(current).player.y,
   ) - contactOf(zombie)
 
-// NOTE: the smallest gap any free zombie left to its contact distance over
-// every frame. Below zero means a zombie stood deeper inside the player than
-// the allowance.
 const closestGap = (frames: ReadonlyArray<Model>): number =>
   Array.reduce(frames, Infinity, (closest, frame) =>
     Array.reduce(frame.zombies, closest, (inner, zombie) =>

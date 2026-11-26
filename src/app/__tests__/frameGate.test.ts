@@ -8,8 +8,6 @@ import { home, playingModel, readyModel } from '../../test/model.fixture'
 import { Phase } from '../../world/schema/worldSchema'
 import { OPEN_GATE, framePaceOf, gateFrame, gateMenuFrame } from '../frameGate'
 
-// NOTE: the frames a display of `hz` sends over one second, and the time
-// each carries.
 const sentOver = (
   hz: number,
   gateOf: typeof gateFrame = gateFrame,

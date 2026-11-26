@@ -23,25 +23,12 @@ import { type Model, Phase, Round, type RunMode } from './model'
 import { freshRun } from './runReset'
 import { actAsLead } from './update/action'
 
-// Starting, resuming, and starting a wave from the player's side: each
-// resets or reads client state (the run's fields, the lessons settled from
-// the save, the new zombie card) around the World's own step.
-
-// NOTE: a run opens on the intro (src/world/run/arrival.ts): the whole
-// drive up the first time on this device, the knock and the slam after.
-// The first break begins on the slam.
 const introCutOf = (model: Model): IntroCut =>
   model.introSeen === 'Seen' ? 'Short' : 'Full'
 
-// NOTE: a `?local=N` link seats N players at this keyboard, and the
-// lobby's bots sit after them, all before the first wave is rolled, so the
-// wave already counts them. Each bot plays its own hero, as a co-op seat
-// does (src/world/net/roomWorld.ts).
 const startRun = (model: Model, mode: RunMode): Model =>
   recordedFromStart(startedRun(model, mode))
 
-// NOTE: a run starts its recording (src/platform/recording.ts) from the
-// World it starts with, when this device shows RECORD MY RUNS and it is on.
 const recordedFromStart = (model: Model): Model =>
   UiStruct.evolve(model, {
     recorder: () =>
@@ -58,10 +45,6 @@ const recordedFromStart = (model: Model): Model =>
         : RunRecorder.Idle(),
   })
 
-// NOTE: a friend's dare taken (src/domain/beatMyRun.ts) starts from its
-// link: its seed, its picks, and the things its list rolls from, so the
-// house, the list, and every roll are the friend's. Otherwise the run rolls
-// its list from the things this player's milestones opened.
 const fromDare = (model: Model): Model =>
   Option.match(maybeTakenDareOf(model), {
     onNone: () => model,
@@ -133,9 +116,6 @@ export const startOrResume: {
   }),
 )
 
-// NOTE: START WAVE from the player, as their seat's READY
-// (src/world/step/stepWorld.ts): alone the wave starts, and a new kind in it raises
-// its card; in co-op it waits for everyone (decided 7).
 export const startWave = (model: Model): Model => {
   const readied = actAsLead(model, SeatAction.Ready())
   return Phase.isAnyOf(['Preparation'])(model.phase) &&

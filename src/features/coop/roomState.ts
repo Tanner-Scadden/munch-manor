@@ -1,7 +1,3 @@
-// The co-op Model's room, read and changed without a Command: element ids,
-// room links and codes, members and the host, presses and tracers, and the
-// lobby's picks. src/features/coop/update.ts wraps them in its rules and Commands.
-
 import { Array, Function, Option, String, pipe } from 'effect'
 
 import { UiStruct } from '@effect/ui'
@@ -31,8 +27,6 @@ import type { Bullet } from '../../world/schema/worldSchema'
 import type { SeatAction } from '../../world/step/stepWorld'
 import { type Model } from './model'
 
-// IDS
-
 export const QUICK_PLAY_BUTTON_ID = 'coop-quick'
 export const CODE_INPUT_ID = 'coop-code'
 export const READY_BUTTON_ID = 'coop-ready'
@@ -41,9 +35,6 @@ export const NAME_BUTTON_ID = 'coop-name-button'
 export const NAME_INPUT_ID = 'coop-name-input'
 export const ROOM_CODE_LENGTH = 5
 
-// NOTE: the elements co-op moves focus to, each worn by the element with its
-// id above (`.ref(...)`), so `HtmlCommand.focus` finds it once the render
-// that draws it is committed.
 export const QUICK_PLAY_BUTTON = Html.ref(QUICK_PLAY_BUTTON_ID, 'button')
 export const CODE_INPUT = Html.ref(CODE_INPUT_ID, 'input')
 export const READY_BUTTON = Html.ref(READY_BUTTON_ID, 'button')
@@ -51,8 +42,6 @@ export const CALLING_PILL = Html.ref(CALLING_PILL_ID, 'button')
 export const NAME_BUTTON = Html.ref(NAME_BUTTON_ID, 'button')
 export const NAME_INPUT = Html.ref(NAME_INPUT_ID, 'input')
 
-// NOTE: those elements by name, so a rule names its target and never a
-// ref's element type (src/features/coop/steps.ts, focusCoop).
 export type CoopFocus =
   | 'QuickPlay'
   | 'Code'
@@ -63,10 +52,6 @@ export type CoopFocus =
 
 export const ROOM_PARAM = 'room'
 
-// NOTE: where a shared room link points. A build hosted inside another
-// site's frame (itch.io, tools/itch/build.sh) sets VITE_ROOM_LINK_BASE to the
-// game's own address, as its frame's address is the host's file server and
-// the host's page passes no `?room=` in; the rest use their own address.
 export const linkOf = (code: string): string => {
   const url = new URL(import.meta.env.VITE_ROOM_LINK_BASE ?? location.href)
   url.search = ''
@@ -75,7 +60,6 @@ export const linkOf = (code: string): string => {
   return url.toString()
 }
 
-// NOTE: the code a `?room=` link carries, read once as the game boots.
 export const readRoomLink = (search: string): Option.Option<string> =>
   Option.flatMap(
     Option.fromNullishOr(new URLSearchParams(search).get(ROOM_PARAM)),
@@ -127,8 +111,6 @@ export const freshRoom: {
 const isCodeSymbol = (symbol: string): boolean =>
   String.includes(symbol)(CODE_ALPHABET)
 
-// NOTE: what a player types or pastes, kept to the pairing alphabet: any
-// case, a pasted link or spaces and dashes dropped, five symbols at most.
 export const cleanCode = (typed: string): string => {
   const fromLink = Option.getOrElse(readRoomLinkOf(typed), () => typed)
   return pipe(
@@ -188,8 +170,6 @@ export const isKickedFrom: {
   ),
 )
 
-// NOTE: the next queued press takes over the held value once the one held
-// now has gone out on at least one input tick.
 export const pressFor: {
   (inputTick: number): (presses: Presses) => Presses
   (presses: Presses, inputTick: number): Presses
@@ -208,8 +188,6 @@ export const pressFor: {
   }),
 )
 
-// NOTE: events are counted from the tick the last frame reached. A room that
-// started its ticks again, a new run, counts from what it holds.
 export const startOfEvents: {
   (frames: Room['session']['frames']): (room: Room) => number
   (room: Room, frames: Room['session']['frames']): number
@@ -226,8 +204,6 @@ export const startOfEvents: {
   }),
 )
 
-// NOTE: a shot resets the recoil to its full length, and no gun fires
-// twice in one frame's ticks, so a recoil higher than before is a shot.
 export const shotsBetween: {
   (
     maybeAfter: Option.Option<OwnPlayer>,
@@ -251,8 +227,6 @@ export const shotsBetween: {
       : 0,
 )
 
-// NOTE: this frame's own tracers, kept for the next, and how many were ever
-// fired, so each has its own id.
 export const keepTracers: {
   (
     tracers: ReadonlyArray<Bullet>,
@@ -291,8 +265,6 @@ export const keepTracers: {
     }),
 )
 
-// NOTE: a press for the room: a swap, a buy, READY, and the rest
-// (src/world/step/stepWorld.ts, SeatAction). It goes out with the next inputs.
 export const pressAction: {
   (action: SeatAction): (model: Model) => Model
   (model: Model, action: SeatAction): Model
@@ -310,8 +282,6 @@ export const pressAction: {
   }),
 )
 
-// PICKS
-
 export const MODE_PICKS: Array.NonEmptyReadonlyArray<PickedMode> = [
   'Campaign',
   'Endless',
@@ -321,9 +291,6 @@ export const MODE_PICKS: Array.NonEmptyReadonlyArray<PickedMode> = [
 export const pickedModeOf = (lobby: Lobby): PickedMode =>
   lobby.mode === 'StandIn' ? 'Campaign' : lobby.mode
 
-// NOTE: KeepGoing is there only while the room keeps a won run, and
-// Nightmare only for a host the room found it unlocked for, on the server
-// (packages/netcode, Lobby.ts, canHostPickNightmare).
 export const canPickMode: {
   (mode: PickedMode): (lobby: Lobby) => boolean
   (lobby: Lobby, mode: PickedMode): boolean

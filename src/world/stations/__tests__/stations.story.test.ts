@@ -30,23 +30,15 @@ import { stationBoxOf } from '../stationSpots'
 import { isWorkingStation } from '../stations'
 import { TOOL_RULES } from '../toolRules'
 
-// Work stations (src/world/stations/stations.ts), with the dining room's
-// chandelier cleat: a still player beside it in a wave, with the
-// chandelier down, works it and holds their fire; about 3 s of work winches
-// the chandelier back up, then it cools down. A step away drains it, and
-// two players set it up twice as fast.
-
 const FRAME_MS = FIXED_STEP_MS
 const CLEAT = TOOL_RULES.Cleat
 const SET_UP_TICKS = Math.ceil(CLEAT.setUpMs / FRAME_MS)
 
 const CLEAT_BOX = Option.getOrThrow(stationBoxOf(MANOR, 'Cleat'))
-// NOTE: the floor just east of the cleat's tile, by the west wall.
 const AT_CLEAT = {
   x: CLEAT_BOX.right + PLAYER_RADIUS + 1,
   y: (CLEAT_BOX.top + CLEAT_BOX.bottom) / 2,
 }
-// NOTE: six tiles out from the wall, out of reach.
 const AWAY = { x: AT_CLEAT.x + 60, y: AT_CLEAT.y }
 
 const withChandelierDown = (model: Model): Model =>
@@ -225,7 +217,6 @@ describe('the chandelier cleat', () => {
 })
 
 describe('the cleat in co-op', () => {
-  // NOTE: two seats side by side at the cleat, both still.
   const pair = (count: number): Model =>
     withChandelierDown(
       count === 2

@@ -16,8 +16,6 @@ import {
 import { markedBreakClock } from './dareLadder'
 import { BIG_CROWD_SCALE, type Modifiers, noModifiers } from './modifiers'
 
-// TABLE
-
 type DifficultyStats = Readonly<{
   name: string
   blurb: string
@@ -34,34 +32,6 @@ type DifficultyStats = Readonly<{
   lullScale: number
 }>
 
-// NOTE: the scales multiply every zombie's base health and speed, the boss
-// and his belched Groaners too, on top of the wave's own scales. A bite is
-// whole hearts, so it rounds and never drops below one. Normal is 1: the
-// Plank Pile's price, not Normal's scales, pays for how strong boarded doors
-// are. Below Hard a gun also reloads by itself once the trigger rests
-// (src/world/step/firing.ts); Hard and Nightmare leave it to R. biteGraceScale
-// stretches the blink after a bite (1 s, 1.5 s on the last heart), so a
-// crowd's bites come further apart below Hard. bossHealthScale is Uncle
-// Chunk's own, on top of healthScale (src/world/zombies/boss.ts): a finale on Hard and
-// Nightmare, where a late loadout melted him, without a tougher crowd.
-// breakMs is how long the break between waves counts down, READY or the
-// crew's READY starting the wave sooner. Every difficulty has one since the
-// shop went (owner, 2026-11-10, reversing 2026-11-01's "no wave timers on
-// easy/medium"): 30 s on Dare and Double Dare, 20 s on the two above. The
-// open break before wave 2 still waits for READY (src/world/waves/waves.ts).
-// Dare's own clock is the lobby's pick instead (owner, 2026-11-12: "allow
-// the lobby owner to set the wave timer they want, and it can default to
-// infinite"): the World's easyBreakSeconds, EASY_BREAK_CHOICES below, so
-// Dare's breakMs is only what the tools read.
-// tempo and lullScale are the wave's rhythm (owner, 2026-11-10, the pacing
-// report's pick 8): tempo scales when each spawn and hold of a wave comes,
-// so below 1 the peaks come sooner and closer together, and lullScale
-// stretches the rest after each hold. The same count comes on every level.
-// Double Dare keeps the rhythm as planned; Dare gets longer lulls, and the
-// two above it peaks more often. runnerSpeedScale slows the Runners alone,
-// on top of speedScale (owner, 2026-11-11: "They are tough"): Dare and
-// Double Dare ease them, the two above keep them as they were. Uncle
-// Chunk's party crashers keep the plain speedScale.
 export const DIFFICULTIES: Readonly<Record<Difficulty, DifficultyStats>> = {
   Easy: {
     name: 'Dare',
@@ -143,8 +113,6 @@ export const isLocked: {
     difficulty === 'Nightmare' && setting.nightmare === 'Locked',
 )
 
-// SCALES
-
 export const toughenSpawns: {
   (
     spawns: ReadonlyArray<PlannedSpawn>,
@@ -171,10 +139,6 @@ export const toughenSpawns: {
   },
 )
 
-// NOTE: the difficulty's rhythm on a rolled wave (see DIFFICULTIES above):
-// every spawn and hold comes at tempo times its planned time, and each
-// hold's rest lasts lullScale times as long. Applied once as the break rolls
-// the wave, so the preview and the wire carry the paced times.
 export const paceSpawns: {
   (
     spawns: ReadonlyArray<PlannedSpawn>,
@@ -216,10 +180,6 @@ export const paceHolds: {
   },
 )
 
-// NOTE: co-op's crowd (decided 3): every planned zombie comes with copies
-// spread evenly through the wave, so the count scales by the player count's
-// waveCountScale, each a little after the one it copies, and every one is
-// tougher by its healthScale. One player keeps the wave exactly as rolled.
 const CROWD_GAP_MS = 450
 const CROWD_OFFSET_PX = 5
 
@@ -229,8 +189,6 @@ const scaleAt = (scales: ReadonlyArray<number>, players: number): number =>
     () => 1,
   )
 
-// NOTE: the Big Crowd modifier multiplies the count again, alone or in a
-// crew, the same way: the extra copies are not tougher on their own.
 export const crowdSpawns: {
   (
     spawns: ReadonlyArray<PlannedSpawn>,
@@ -242,7 +200,6 @@ export const crowdSpawns: {
     modifiers?: Modifiers,
   ): ReadonlyArray<PlannedSpawn>
 } = Function.dual(
-  // NOTE: data-first starts with the player count; data-last with the spawns.
   (args: IArguments): boolean => typeof args[0] === 'number',
   (
     players: number,
@@ -263,9 +220,6 @@ export const crowdSpawns: {
   },
 )
 
-// NOTE: each spawn copied so the wave holds countScale times as many, each
-// copy a little after the one it copies, every one tougher by healthScale.
-// The crowd above and the hungrier house (src/world/dare/finale.ts) share it.
 export const spreadSpawns = ({
   spawns,
   countScale,
@@ -298,16 +252,10 @@ export const reloadsWhenIdle = (difficulty: Difficulty): boolean =>
 export const breakMsOf = (difficulty: Difficulty): number =>
   DIFFICULTIES[difficulty].breakMs
 
-// NOTE: Dare's break clocks the lobby offers, in seconds: none (the break
-// waits for READY), then a relaxed minute, then the clocks the difficulties
-// above use. The first is the default.
 export const EASY_BREAK_CHOICES: Array.NonEmptyReadonlyArray<number> = [
   0, 60, 30, 20,
 ]
 
-// NOTE: how long a World's next break counts down, or none when it waits
-// for READY: on Dare the lobby's pick, above it the difficulty's breakMs.
-// The dare ladder's mark 7 shortens it (src/world/run/dareLadder.ts).
 export const breakClockMsOf = (world: World): Option.Option<number> =>
   markedBreakClock(
     world.dareMark,
@@ -318,7 +266,6 @@ export const breakClockMsOf = (world: World): Option.Option<number> =>
       : Option.some(breakMsOf(world.difficulty.chosen)),
   )
 
-// NOTE: the pick after this one, round again, for a key that steps it.
 export const nextEasyBreakOf = (seconds: number): number => {
   const index = Option.getOrElse(
     Array.findFirstIndex(EASY_BREAK_CHOICES, choice => choice === seconds),
@@ -336,8 +283,6 @@ export const difficultySpeedScale = (difficulty: Difficulty): number =>
 export const bossHealthScale = (difficulty: Difficulty): number =>
   DIFFICULTIES[difficulty].bossHealthScale
 
-// NOTE: the gap before his next attack and his belch timer are multiplied by
-// this, so below 1 he attacks more often. Wind-ups and recoveries stay.
 export const bossAttackPace = (difficulty: Difficulty): number =>
   DIFFICULTIES[difficulty].bossAttackPace
 
@@ -350,8 +295,6 @@ export const biteDamage: {
 } = Function.dual(2, (difficulty: Difficulty, damage: number): number =>
   Math.max(1, Math.round(damage * DIFFICULTIES[difficulty].biteScale)),
 )
-
-// CHOOSING
 
 export const chooseDifficulty: {
   <M extends World>(difficulty: Difficulty): (model: M) => M
@@ -373,8 +316,6 @@ export const settleNightmare = <M extends World>(model: M): M =>
       })
     : model
 
-// UNLOCKING
-
 export const hasJustWon: {
   (after: World): (before: World) => boolean
   (before: World, after: World): boolean
@@ -385,8 +326,6 @@ export const hasJustWon: {
     Phase.isAnyOf(['Escaped'])(after.phase),
 )
 
-// NOTE: `played` is the run's difficulty: the player's own pick, or in an
-// online co-op run the one the room's host picked.
 export const isNightmareUnlockedBy: {
   (after: World, played?: Difficulty): (before: World) => boolean
   (before: World, after: World, played?: Difficulty): boolean

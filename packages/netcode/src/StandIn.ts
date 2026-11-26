@@ -10,14 +10,6 @@ import {
 } from './Wire'
 import type { PlayerTick, Score, World } from './World'
 
-// NOTE: a small world that stands in for the game until the World/Model
-// split lands: a dot per player, moved by its input, and a few walkers
-// that bounce around the arena. A dot that touches a walker tags it for a
-// point, and the walker comes back somewhere else as a new one. It is
-// enough to exercise everything the room does with a world: steps by
-// input, presence, randomness in state, removals and spawns in diffs, and
-// own-player prediction.
-
 export const ARENA_WIDTH = 640
 export const ARENA_HEIGHT = 360
 export const DOT_RADIUS = 8
@@ -30,8 +22,6 @@ export const TAG_DISTANCE = DOT_RADIUS + WALKER_RADIUS
 export const ROUND_TICKS = 60 * 60 * 3
 const STEP_SECONDS = 1 / 60
 
-// NOTE: a walker moved further than this between two messages respawned,
-// so the client shows it where it is instead of sliding it there.
 const TELEPORT_DISTANCE = 60
 
 export interface Dot {
@@ -50,9 +40,6 @@ export interface Walker {
   readonly vy: number
 }
 
-// NOTE: `rng` and `nextId` only mean something in the room. A client's
-// copy, read from the wire, has zeros there and walkers without velocity:
-// it never steps them, it interpolates.
 export interface StandInWorld {
   readonly tick: number
   readonly dots: ReadonlyArray<Dot>
@@ -61,10 +48,6 @@ export interface StandInWorld {
   readonly nextId: number
 }
 
-// RANDOM
-
-// NOTE: mulberry32, as in src/shared/prng.ts: integer math only, so exact in
-// every engine.
 const nextRandom = (state: number): readonly [number, number] => {
   const t = (state + 0x6d2b79f5) | 0
   const a = Math.imul(t ^ (t >>> 15), t | 1)
@@ -107,8 +90,6 @@ const spawnWalker = (id: number, rng: number): readonly [Walker, number] => {
 const clamp = (value: number, low: number, high: number): number =>
   Math.max(low, Math.min(high, value))
 
-// START
-
 export const startDot = (slot: number): Dot => ({
   slot,
   x: ARENA_WIDTH / 2 + (slot - 1.5) * 120,
@@ -144,8 +125,6 @@ const start = (slots: ReadonlyArray<number>, seed: number): StandInWorld => {
 
 const numberOrder = (a: number, b: number): -1 | 0 | 1 =>
   a < b ? -1 : a > b ? 1 : 0
-
-// STEP
 
 export const moveDot: {
   (input: PlayerInput): (dot: Dot) => Dot
@@ -199,9 +178,6 @@ const touches = (dot: Dot, walker: Walker): boolean => {
   return dx * dx + dy * dy < TAG_DISTANCE * TAG_DISTANCE
 }
 
-// NOTE: each walker is tagged by the first present dot touching it, in
-// slot order. Tagged walkers leave and new ones join at the end, so a
-// client's list keeps the same order as the room's.
 const tagWalkers = (world: StandInWorld): StandInWorld => {
   const tagged = Array.getSomes(
     Array.map(world.walkers, walker =>
@@ -254,8 +230,6 @@ const step = (
     dots: Array.map(world.dots, dot => stepDot(dot, players)),
     walkers: Array.map(world.walkers, moveWalker),
   })
-
-// WIRE
 
 const AWAY_FLAG = 1
 
@@ -486,8 +460,6 @@ const applyDiff = (reader: Reader, prev: StandInWorld): StandInWorld => {
   return { tick, dots, walkers, rng: prev.rng, nextId: prev.nextId }
 }
 
-// INTERPOLATION
-
 const lerp = (from: number, to: number, t: number): number =>
   from + (to - from) * t
 
@@ -526,8 +498,6 @@ const interpolate = (
     ),
   ),
 })
-
-// WORLD
 
 export const StandIn: World<StandInWorld, Dot> = {
   name: 'StandIn',

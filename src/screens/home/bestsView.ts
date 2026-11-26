@@ -19,11 +19,6 @@ import { durationLabel } from '../../world/run/stats'
 import { bestsFor } from './home'
 import { homeButton, keyBadgeView } from './homeAttributes'
 
-// The home menu's top left: the bests badge, and the day's mission card
-// under it (src/features/missions/missionCard.ts).
-
-// BESTS
-
 type Best = Readonly<{ label: string; icon: string; value: string }>
 
 const shownBests = (model: Model): ReadonlyArray<Best> => [
@@ -63,8 +58,6 @@ const bestView = (best: Best, h: ApplicationViewBuilder): ApplicationHtml =>
       h.span.class('home-best-value').children(best.value),
     )
 
-// NOTE: a button of icons and big numbers, in the chosen level's color, that
-// opens the Munchopedia, and nothing at all until the player has a best.
 const bestsView = (
   model: Model,
   h: ApplicationViewBuilder,
@@ -92,10 +85,6 @@ const bestsView = (
         ),
   })
 
-// TOP LEFT
-
-// NOTE: the bests badge over the mission card, in one column, so the card
-// takes the badge's place while a new player has no best.
 export const topLeftView: {
   (h: ApplicationViewBuilder): (model: Model) => ApplicationHtml
   (model: Model, h: ApplicationViewBuilder): ApplicationHtml

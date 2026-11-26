@@ -1,11 +1,3 @@
-// The 2D leftovers redrawn for 3D: the kitchen's spilled soup and the soup
-// pot's puddle, the traps (the planks at a door, the Grumpy Gnome, the
-// placement ghost), the trap crates and a mend's ring, the display cases,
-// the dare finds, the pantry, Rattles' trunk, and the library's books, as
-// `goop-<TAG>-<viewport>-<scene>.png`. Set beside an earlier TAG for a
-// before and after, and zoom in on each to look for flat cutouts, specks,
-// and seams.
-//   TAG=try bun run heavy -- --shared bun tools/audit/shotsGoop.ts
 import { Effect } from 'effect'
 
 import { runHarnessAudit } from './harnessServer'

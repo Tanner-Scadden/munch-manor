@@ -1,8 +1,3 @@
-// The big view of the picked sprite: it plays large, steps frame by frame,
-// shows the frame before as a ghost, stands beside the crew for scale, and
-// takes a tap as a pin for a note. In Blocks it stands carved on the 3D
-// stage instead (./stage3d.ts), lit by a preset, the light and color lab
-// under it.
 import { Array, Function, Option } from 'effect'
 
 import { Component } from '@effect/ui'
@@ -38,7 +33,6 @@ import { pinAt, pinMarksOf, stagePinsOf } from './pins'
 import { studioStage } from './stage3d'
 import { PRESET_LABELS, StagePreset } from './stagePresets'
 
-// NOTE: the big view aims for a picture about this tall, in screen pixels.
 const STAGE_HEIGHT = 260
 const MIN_STAGE_ZOOM = 3
 const MAX_STAGE_ZOOM = 16
@@ -55,35 +49,29 @@ const joinBounds = (a: Bounds, b: Bounds): Bounds => ({
 
 type Placed = Readonly<{ shapes: ReadonlyArray<Draw.Shape>; bounds: Bounds }>
 
-// NOTE: the crew stand to the left of the sprite, feet on the same line,
-// each a little apart.
 const crewPlaced = (
   model: Model,
   index: number,
   subject: Bounds,
-): ReadonlyArray<Placed> =>
-  Array.reduce(
-    crewOf(lookOf(model), index),
-    { rightEdge: subject.left - CREW_GAP, placed: Array.empty<Placed>() },
-    (state, sprite) => {
-      const own = spritesBounds([sprite])
-      const shift = state.rightEdge - own.right
-      return {
-        rightEdge: own.left + shift - CREW_GAP,
-        // NOTE: a crew of at most 3 beside the subject.
-        // oxlint-disable-next-line munch/no-append-in-reduce
-        placed: Array.append(state.placed, {
-          shapes: [group({ translate: { x: shift, y: 0 }, shapes: sprite })],
-          bounds: {
-            left: own.left + shift,
-            top: own.top,
-            right: own.right + shift,
-            bottom: own.bottom,
-          },
-        }),
-      }
-    },
-  ).placed
+): ReadonlyArray<Placed> => {
+  const placed: Array<Placed> = []
+  let rightEdge = subject.left - CREW_GAP
+  for (const sprite of crewOf(lookOf(model), index)) {
+    const own = spritesBounds([sprite])
+    const shift = rightEdge - own.right
+    rightEdge = own.left + shift - CREW_GAP
+    placed.push({
+      shapes: [group({ translate: { x: shift, y: 0 }, shapes: sprite })],
+      bounds: {
+        left: own.left + shift,
+        top: own.top,
+        right: own.right + shift,
+        bottom: own.bottom,
+      },
+    })
+  }
+  return placed
+}
 
 const toolButton = (
   h: StudioH,
@@ -116,8 +104,6 @@ const toggle = (
 const divider = (h: StudioH): StudioHtml =>
   h.span.class('tool-divider').attr('aria-hidden', 'true')
 
-// NOTE: how many blocks deep the stage carves a tab's sprites, as the game
-// carves bodies (16) and its smaller things (src/render/iso/scene.ts).
 const MOST_BY_TAB: Readonly<Record<Tab, number>> = {
   Zombies: 16,
   Heroes: 16,
@@ -156,8 +142,6 @@ const MODE_LABELS: Readonly<Record<StageMode, string>> = {
   Blocks: '🧊 Blocks',
 }
 
-// NOTE: the stage's own controls: flat or blocks, and in blocks the light,
-// the spin, and the game's camera.
 const stageBarView = (h: StudioH, model: Model): StudioHtml =>
   h.div
     .class('toolbar')
@@ -200,7 +184,6 @@ const stageBarView = (h: StudioH, model: Model): StudioHtml =>
         : []),
     )
 
-// NOTE: the picked sprite carved on the 3D stage.
 const blocksView = (h: StudioH, model: Model, entry: Entry): StudioHtml =>
   studioStage(h)
     .key('studio-stage')
@@ -272,12 +255,9 @@ const toolbarView = (
       ),
     )
 
-// NOTE: what the flat picture shows, as one key: a render that changes
-// none of it paints nothing.
 const stageKeyOf = (model: Model, entry: Entry, index: number, zoom: number) =>
   `${entry.id}|${index}|${entry.isClockDriven === true ? model.clockMs : 0}|${model.facing}|${model.tone}|${model.isOnion}|${model.isCrew}|${zoom}|${model.backdrop}`
 
-// NOTE: the picked sprite big, and its controls.
 export const stageView: {
   (model: Model, entry: Entry): (h: StudioH) => StudioHtml
   (h: StudioH, model: Model, entry: Entry): StudioHtml

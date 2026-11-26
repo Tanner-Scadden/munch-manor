@@ -35,14 +35,6 @@ import {
 import { ProofEntry, shelvedSince } from '../shared/proofData'
 import { purseBonesAt } from '../shared/rankCurve'
 
-// NOTE: what changed in the player's save, as the player scope's mutations
-// (src/platform/playerScope.ts) will record it. `update` computes these from the
-// save before and after a Message, so it stays pure; the store runs them
-// through the sync engine. A finished run is an increment, not the new
-// totals, so runs recorded on two devices both count. The power-ups seen
-// are added, never written whole, so a kind seen on any device stays seen;
-// only the tutorial reset forgets them.
-
 export const PlayerChange = UiSchema.TaggedEnum({
   ChangedSettings: { settings: SavedSettings },
   ChangedRotation: { rotation: RotationSetting },
@@ -133,11 +125,6 @@ const changeWhen = (
   change: () => PlayerChange,
 ): ReadonlyArray<PlayerChange> => (isChanged ? [change()] : [])
 
-// NOTE: a run's Bones bonuses ride apart from its earned Bones, so the
-// player scope can pay each once across devices (src/platform/playerScope.ts):
-// a new difficulty escaped on pays FIRST_ESCAPE_BONES, and a new doubled day
-// pays the run's Bones a second time, half of what is left of the Bones
-// earned (src/world/heroes/rank.ts, bonesForRun).
 type BonusChanges = Readonly<{
   changes: ReadonlyArray<PlayerChange>
   bonusBones: number
@@ -176,11 +163,6 @@ const bonusChanges = (
   }
 }
 
-// NOTE: the daily missions' changes (src/shared/missionData.ts), each an
-// increment or a once-only mark the player scope merges, so two devices on
-// the same day add up. The progress goes first, so a claim it meets finds
-// it. The Bones a claim and the day's stamp pay are the scope's own, read
-// there, so they come out of the run's earned Bones (`missionBones`).
 type MissionChanges = Readonly<{
   changes: ReadonlyArray<PlayerChange>
   missionBones: number
@@ -238,9 +220,6 @@ const missionChanges = (
   }
 }
 
-// NOTE: a rank's Bones purse is the scope's own to pay, read from
-// src/shared/rankCurve.ts, once a rank (PaidRankPurse), so its Bones come
-// out of the run's earned Bones (`purseBones`).
 const newPursesOf = (
   before: PlayerSave,
   after: PlayerSave,
@@ -408,8 +387,6 @@ export const changesBetween: {
               bones: after.rank.veteranBones,
             }),
         ),
-        // NOTE: last, so the points that reach a purse's rank are in the
-        // scope when it is paid.
         Array.map(purses, rank => PlayerChange.PaidRankPurse({ rank })),
       ],
       Array.flatten,
@@ -417,10 +394,6 @@ export const changesBetween: {
   },
 )
 
-// NOTE: a write the store could not make is sent again with the next one.
-// A change that sets a field is resent with what the field holds now, so a
-// retry never puts back an older value. A finished run is an increment, so
-// it is resent as it was, once. One change per field is enough.
 const refreshed = (change: PlayerChange, save: PlayerSave): PlayerChange =>
   PlayerChange.match(change, {
     ChangedSettings: () =>
@@ -477,11 +450,6 @@ const refreshed = (change: PlayerChange, save: PlayerSave): PlayerChange =>
       }),
   })
 
-// NOTE: a finished run counts each time it is sent, and the power-ups seen
-// and forgotten must keep their order, so those are all kept, as are the
-// missions' increments and marks, each find shelved, what each run
-// added to the journal, each mastery gained, and each purse paid. Every other
-// change sets its field to what it holds now, so one of each is enough.
 const isSetOnce = (change: PlayerChange): boolean =>
   !PlayerChange.isAnyOf([
     'RecordedRun',
@@ -503,8 +471,6 @@ const isSetOnce = (change: PlayerChange): boolean =>
     'PaidRankPurse',
   ])(change)
 
-// NOTE: the unsaved changes, refreshed, then the new ones, with only the
-// first of each set-once kind kept.
 const keepFirstSets = (
   unsaved: ReadonlyArray<PlayerChange>,
   changes: ReadonlyArray<PlayerChange>,
@@ -548,11 +514,6 @@ export const withUnsavedChanges: {
       : keepFirstSets(unsaved, changes, save),
 )
 
-// STATUS
-
-// NOTE: what SETTINGS says about sync. LocalOnly is a build with no sync
-// server, such as `bun dev` or the itch.io zip. Devices counts this player's
-// linked devices, this one included.
 export const SyncState = UiSchema.TaggedEnum({
   LocalOnly: {},
   Connecting: {},
@@ -570,11 +531,6 @@ export const syncStateText = (state: SyncState): string =>
     Offline: () => 'Offline, will sync',
   })
 
-// NOTE: how far this device has got with the player scope, as the sync
-// engine's ScopeStatus says it (the engine loads lazily, so the game keeps
-// its own copy of the shape). SyncState is the connection; this is the
-// data. Ready and not fresh is progress cached from an earlier session,
-// shown while the device connects or stays offline.
 export const PlayerScopeStatus = UiSchema.TaggedEnum({
   Idle: {},
   Loading: {},
@@ -583,9 +539,6 @@ export const PlayerScopeStatus = UiSchema.TaggedEnum({
 })
 export type PlayerScopeStatus = typeof PlayerScopeStatus.Type
 
-// NOTE: what the store hears from the sync engine: a save that changed
-// because of another device or the server, the sync status line, and how
-// far the player scope has loaded.
 export const StoreEvent = UiSchema.TaggedEnum({
   SyncedSave: { save: PlayerSave },
   SyncStatus: { state: SyncState },
@@ -593,7 +546,6 @@ export const StoreEvent = UiSchema.TaggedEnum({
 })
 export type StoreEvent = typeof StoreEvent.Type
 
-// NOTE: SETTINGS' Devices line, from the connection and the scope together.
 export const devicesStatusText: {
   (scope: PlayerScopeStatus): (state: SyncState) => string
   (state: SyncState, scope: PlayerScopeStatus): string
@@ -613,9 +565,6 @@ export const devicesStatusText: {
   }
 })
 
-// NOTE: whether the last run this device finished has reached the server.
-// Waiting holds the RecordedRun's mutation id, so a settlement for an older
-// run never overwrites a newer one.
 export const RunSettled = UiSchema.TaggedEnum({
   Confirmed: { seq: Schema.Finite },
   Rejected: { reason: Schema.String },
@@ -630,8 +579,6 @@ export const LastRunSync = UiSchema.TaggedEnum({
 })
 export type LastRunSync = typeof LastRunSync.Type
 
-// LINKING
-
 export const LinkProblem = Schema.Literals([
   'WrongCode',
   'TooManyTries',
@@ -640,8 +587,6 @@ export const LinkProblem = Schema.Literals([
 ])
 export type LinkProblem = typeof LinkProblem.Type
 
-// NOTE: SETTINGS' "Link another device" (this device shows a code) and
-// "Use a code" (this device types one in and joins that player).
 export const LinkFlow = UiSchema.TaggedEnum({
   Idle: {},
   Requesting: {},

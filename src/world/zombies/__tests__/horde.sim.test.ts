@@ -1,7 +1,3 @@
-// The horde sim tests: whole fights and waves replayed frame by frame. They
-// take seconds, so they run in `bun run test:full` and CI, not in
-// `bun run test`. The kind table, exploders, and spawn tables are in
-// horde.story.test.ts.
 import { Array, Effect, Option, Order, Result, pipe } from 'effect'
 
 import { UiStruct } from '@effect/ui'
@@ -77,8 +73,6 @@ describe('exploders', () => {
           ),
           zombieOf('Runner', 20, 250, 60, { speed: 45 }),
         ]
-        // NOTE: every frame's Model, gathered in an array only this Story
-        // fills (`recordTicks`).
         const play = (seed: number) =>
           Effect.suspend(() => {
             const frames: Array<Model> = []
@@ -211,10 +205,6 @@ describe('spawn tables', () => {
 describe('tank pathing', () => {
   const TANK_TEST_SPEED = 40
   const TANK_REACH = ZOMBIE_KINDS.Tank.radius + PLAYER_RADIUS + 1
-  // NOTE: each room a run can be in, with a tight corner and its middle:
-  // the parlour on its own level (under the piano), and the dining room a
-  // run starts in (the north-west corner by the china cabinet, and the start
-  // spot).
   const ROOMS: ReadonlyArray<
     Readonly<{
       state: LevelState

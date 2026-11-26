@@ -8,12 +8,6 @@ import type { DoorId } from '../schema/entitySchema'
 import type { PackDoor, PlannedSpawn, Trap } from '../schema/worldSchema'
 import { isFloorKind } from '../zombies/zombies'
 
-// ORDER
-
-// NOTE: the doors in order around the manor, starting at the top of the
-// kitchen. A level that has only some of them goes around the ones it has.
-// The front door is never a spawn door, so no pack is ever routed to it: it
-// sits after the south door only so the order names every door.
 const CLOCKWISE: Array.NonEmptyReadonlyArray<DoorId> = [
   'Back',
   'North',
@@ -48,7 +42,7 @@ export const OPPOSITE_DOOR: Readonly<Record<DoorId, DoorId>> = {
 
 const clockwiseAfter = (
   door: DoorId,
-  doors: ReadonlyArray<DoorId>,
+  doors: ReadonlySet<DoorId>,
 ): ReadonlyArray<DoorId> => {
   const index = Option.getOrElse(
     Array.findFirstIndex(CLOCKWISE, each => each === door),
@@ -59,53 +53,39 @@ const clockwiseAfter = (
       CLOCKWISE.length - 1,
       step => CLOCKWISE[(index + step + 1) % CLOCKWISE.length] ?? door,
     ),
-    // NOTE: at most 13 doors around against the level's 13.
-    // oxlint-disable-next-line munch/no-nested-scan
-    each => Array.contains(doors, each),
+    each => doors.has(each),
   )
 }
 
-// NOTE: a doorway with a standing Plank Pile is no spawn point. A pack due
-// there comes through the next open door clockwise, skipping the doors in
-// avoid when it can. Two piles at most leave two doors open.
 const openDoorFrom = (
   door: DoorId,
-  doors: ReadonlyArray<DoorId>,
-  boarded: ReadonlyArray<DoorId>,
-  avoid: ReadonlyArray<DoorId>,
+  doors: ReadonlySet<DoorId>,
+  boarded: ReadonlySet<DoorId>,
+  avoid: ReadonlySet<DoorId>,
 ): DoorId => {
-  if (!Array.contains(boarded, door)) {
+  if (!boarded.has(door)) {
     return door
   }
 
   const open = Array.filter(
     clockwiseAfter(door, doors),
-    // NOTE: at most 13 doors against the few a barricade boards.
-    // oxlint-disable-next-line munch/no-nested-scan
-    each => !Array.contains(boarded, each),
+    each => !boarded.has(each),
   )
   return pipe(
     open,
-    // NOTE: at most 13 doors against the few a pack's mates keep.
-    // oxlint-disable-next-line munch/no-nested-scan
-    Array.findFirst(each => !Array.contains(avoid, each)),
+    Array.findFirst(each => !avoid.has(each)),
     Option.orElse(() => Array.head(open)),
     Option.getOrElse(() => door),
   )
 }
 
-// PACKS
+const NO_DOORS: ReadonlySet<DoorId> = new Set()
 
 const PACKS_PER_VOLLEY_STRIDE = 10
 
 const volleyOf = (pack: number): number =>
   Math.floor(pack / PACKS_PER_VOLLEY_STRIDE)
 
-// NOTE: the door each warned pack took, by its pack and planned door, the
-// first entry winning as a scan would. It is read for every planned spawn,
-// so each list gets its index once; the list is replaced, never changed.
-// It is keyed by the pack's number and then its door, so a lookup builds no
-// string.
 type EnteredIndex = ReadonlyMap<number, ReadonlyMap<DoorId, DoorId>>
 
 const enteredIndexes = new WeakMap<ReadonlyArray<PackDoor>, EnteredIndex>()
@@ -145,15 +125,11 @@ const isVolleyMate =
   (pack: number): boolean =>
     pack !== spawn.pack && volleyOf(pack) === volleyOf(spawn.pack)
 
-// NOTE: a pincer's two packs keep to two different open doors. The earlier
-// pack picks first and the later one avoids it, and a pack never takes the
-// door its mate keeps. Once a pack has been warned its door is kept, so the
-// rattle and the arrival agree.
 const mateDoors = (
   spawn: PlannedSpawn,
   spawns: ReadonlyArray<PlannedSpawn>,
-  doors: ReadonlyArray<DoorId>,
-  boarded: ReadonlyArray<DoorId>,
+  doors: ReadonlySet<DoorId>,
+  boarded: ReadonlySet<DoorId>,
   packDoors: ReadonlyArray<PackDoor>,
 ): ReadonlyArray<DoorId> => {
   const entered = Array.filter(packDoors, ({ pack }) =>
@@ -176,9 +152,7 @@ const mateDoors = (
         return Result.succeed(
           routedDoor(mate, spawns, doors, boarded, packDoors),
         )
-        // NOTE: one mate's door against the few a barricade boards.
-        // oxlint-disable-next-line munch/no-nested-scan
-      } else if (!Array.contains(boarded, mate.door)) {
+      } else if (!boarded.has(mate.door)) {
         return Result.succeed(mate.door)
       } else {
         return Result.failVoid
@@ -190,15 +164,15 @@ const mateDoors = (
 const routedDoor = (
   spawn: PlannedSpawn,
   spawns: ReadonlyArray<PlannedSpawn>,
-  doors: ReadonlyArray<DoorId>,
-  boarded: ReadonlyArray<DoorId>,
+  doors: ReadonlySet<DoorId>,
+  boarded: ReadonlySet<DoorId>,
   packDoors: ReadonlyArray<PackDoor>,
 ): DoorId =>
   Option.getOrElse(maybeEnteredDoor(packDoors, spawn), () => {
-    if (isFloorKind(spawn.kind) || !Array.contains(boarded, spawn.door)) {
+    if (isFloorKind(spawn.kind) || !boarded.has(spawn.door)) {
       return spawn.door
     } else if (spawn.formation !== 'Pincer') {
-      return openDoorFrom(spawn.door, doors, boarded, [])
+      return openDoorFrom(spawn.door, doors, boarded, NO_DOORS)
     }
 
     const avoid = mateDoors(spawn, spawns, doors, boarded, packDoors)
@@ -206,14 +180,14 @@ const routedDoor = (
       spawn.door,
       doors,
       boarded,
-      Array.isReadonlyArrayEmpty(avoid)
-        ? [openDoorFrom(OPPOSITE_DOOR[spawn.door], doors, boarded, [])]
-        : avoid,
+      new Set(
+        Array.isReadonlyArrayEmpty(avoid)
+          ? [openDoorFrom(OPPOSITE_DOOR[spawn.door], doors, boarded, NO_DOORS)]
+          : avoid,
+      ),
     )
   })
 
-// NOTE: doors are the level's spawn doors, so a pack rerouted from a boarded
-// doorway only ever goes to a door that is open on the map.
 export const routeSpawns: {
   (
     traps: ReadonlyArray<Trap>,
@@ -248,10 +222,6 @@ export const routeSpawns: {
   },
 )
 
-// NOTE: a route is pure in its inputs and costs a pass over the plan (more
-// with a Pincer behind a barricade), and the wave's tick and the break's
-// door markers ask again with the same lists, which are replaced, never
-// changed. So the last route of each spawn list is kept with its inputs.
 const routesKept = new WeakMap<
   ReadonlyArray<PlannedSpawn>,
   Readonly<{
@@ -269,16 +239,14 @@ const routeEach = (
   doors: ReadonlyArray<DoorId>,
 ): ReadonlyArray<PlannedSpawn> => {
   countWork('SpawnRoute')
-  const boarded = barricadedDoors(traps)
-  if (
-    Array.isReadonlyArrayEmpty(boarded) &&
-    Array.isReadonlyArrayEmpty(packDoors)
-  ) {
+  const boarded: ReadonlySet<DoorId> = new Set(barricadedDoors(traps))
+  if (boarded.size === 0 && Array.isReadonlyArrayEmpty(packDoors)) {
     return spawns
   }
 
+  const doorSet: ReadonlySet<DoorId> = new Set(doors)
   return Array.map(spawns, spawn => {
-    const door = routedDoor(spawn, spawns, doors, boarded, packDoors)
+    const door = routedDoor(spawn, spawns, doorSet, boarded, packDoors)
     return door === spawn.door
       ? spawn
       : UiStruct.evolve(spawn, { door: () => door })

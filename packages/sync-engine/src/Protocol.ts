@@ -1,20 +1,12 @@
 import { Schema } from 'effect'
 
-// NOTE: the wire protocol between a client and a scope's authority. Every
-// message is JSON, decoded with these Schemas on both ends. The same
-// messages travel over a WebSocket or, batched, over HTTP. A client that
-// speaks another PROTOCOL_VERSION is refused with Failed { VersionMismatch }.
 export const PROTOCOL_VERSION = 1
-
-// VALUES
 
 export const MutationId = Schema.String.check(
   Schema.isPattern(/^[A-Za-z0-9_-]{8,64}$/),
 )
 export type MutationId = typeof MutationId.Type
 
-// NOTE: snapshot rows carry SQLite values that JSON can hold. Blobs and
-// bigints are not synced.
 export const RowValue = Schema.Union([
   Schema.Null,
   Schema.Finite,
@@ -25,9 +17,6 @@ export type RowValue = typeof RowValue.Type
 export const Row = Schema.Record(Schema.String, RowValue)
 export type Row = typeof Row.Type
 
-// NOTE: a mutation on its way to the server. `args` is the JSON encoding of
-// the mutation's args Schema, kept as a string so the outbox and the log
-// store it as is.
 export const Envelope = Schema.Struct({
   id: MutationId,
   name: Schema.String,
@@ -39,8 +28,6 @@ export type Envelope = typeof Envelope.Type
 export const Origin = Schema.Literals(['Client', 'Server'])
 export type Origin = typeof Origin.Type
 
-// NOTE: a mutation the server applied, at its place in the scope's log,
-// with the server's timestamp. Clients apply it to their confirmed tables.
 export const Delta = Schema.Struct({
   seq: Schema.Finite,
   id: MutationId,
@@ -72,13 +59,8 @@ export const FailCode = Schema.Literals([
 ])
 export type FailCode = typeof FailCode.Type
 
-// NOTE: Catchup asks for the deltas after lastSeq, or a snapshot when the
-// log no longer reaches back that far. Snapshot always asks for one, as a
-// client does when its confirmed state can no longer follow the deltas.
 export const HelloMode = Schema.Literals(['Catchup', 'Snapshot'])
 export type HelloMode = typeof HelloMode.Type
-
-// CLIENT TO SERVER
 
 export const ClientMessage = Schema.TaggedUnion({
   Hello: {
@@ -95,8 +77,6 @@ export const ClientMessage = Schema.TaggedUnion({
 })
 export type ClientMessage = typeof ClientMessage.Type
 export type HelloMessage = typeof ClientMessage.cases.Hello.Type
-
-// SERVER TO CLIENT
 
 export const ServerMessage = Schema.TaggedUnion({
   Snapshot: {
@@ -120,15 +100,11 @@ export type DeltasMessage = typeof ServerMessage.cases.Deltas.Type
 export type AckedMessage = typeof ServerMessage.cases.Acked.Type
 export type RejectedMessage = typeof ServerMessage.cases.Rejected.Type
 
-// NOTE: the HTTP fallback sends a batch of client messages, the first one a
-// Hello, and gets back everything the server would have sent on a socket.
 export const Exchange = Schema.Array(ClientMessage)
 export type Exchange = typeof Exchange.Type
 
 export const ExchangeReply = Schema.Array(ServerMessage)
 export type ExchangeReply = typeof ExchangeReply.Type
-
-// CODECS
 
 export const ClientMessageJson = Schema.fromJsonString(ClientMessage)
 export const ServerMessageJson = Schema.fromJsonString(ServerMessage)
@@ -158,7 +134,5 @@ const encodeExchangeReplyWith = Schema.encodeEffect(ExchangeReplyJson)
 export const encodeExchangeReply = (input: ExchangeReply) =>
   encodeExchangeReplyWith(input)
 
-// NOTE: the exact strings the Durable Object's WebSocket auto-response
-// matches, so a heartbeat never wakes a hibernating object.
 export const PING_JSON = '{"_tag":"Ping"}'
 export const PONG_JSON = '{"_tag":"Pong"}'

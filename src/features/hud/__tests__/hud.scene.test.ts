@@ -119,8 +119,6 @@ describe('the top HUD strip', () => {
       [],
     )
     expect(hudStripShapes(initialModel, LANDSCAPE_SCREEN, camera)).toEqual([])
-    // NOTE: the strip leaves a gap over the boarded kitchen door, so it is
-    // two pieces that reach the screen's two edges and leave the door out.
     expect(rest).toHaveLength(1)
     const [door] = rest
     expect(door).toMatchObject({ _tag: 'Rect' })
@@ -130,8 +128,6 @@ describe('the top HUD strip', () => {
   })
 })
 
-// NOTE: a gun's kills toward its next tier (src/world/gear/gunLevels.ts),
-// a two-pixel bar the slot's width just under it, in both layouts.
 describe("a gun slot's level bar", () => {
   const withSmg = (tier: number, kills: number): Model =>
     modifyFocus(twoBoosts, {

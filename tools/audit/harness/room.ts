@@ -1,7 +1,3 @@
-// NOTE: the harness's room: the run a scene starts in, built from the
-// query (the wave, the phase, guns, money, a crowd, a lineup, the boss,
-// staged zombies, the HUD's extras, and a staged end screen).
-
 import { Array, Option } from 'effect'
 
 import { UiStruct } from '@effect/ui'
@@ -100,8 +96,6 @@ const makeDecals = (count: number): Array<Decal> => {
   return out
 }
 
-// NOTE: the fridge's guns and the display cases' two (Old Thunder and the
-// Big Blunder), each held fresh at the scene's tier.
 const FRIDGE_GUNS: Readonly<
   Record<'cooker' | 'pan' | 'freeze' | 'rifle' | 'blunderbuss', WeaponKind>
 > = {
@@ -143,8 +137,6 @@ export const roomModel = (settings: SceneSettings): Model => {
           : { ...freshGun(FRIDGE_GUNS[firstGun]), tier: config.tier }
   let model: Model = modifyFocus(
     UiStruct.evolve(started, {
-      // NOTE: `money` is the keys on the crew's ring since the keys took
-      // money's place (docs/ESCAPE_PLAN.md, layer 7).
       keys: keys => ({ ...keys, held: config.money, found: config.money }),
       rngState: () => rngState,
       phase: () =>
@@ -749,9 +741,6 @@ export const roomModel = (settings: SceneSettings): Model => {
       }),
     })
   }
-  // NOTE: `stick=dx,dy` holds the trigger aimed that way from the player:
-  // on touch with the aim stick, thumbed down at the lower right, and with
-  // a keyboard and mouse with the mouse button over that spot.
   const stick = config.stick
   if (stick !== undefined) {
     const [dx, dy] = stick
@@ -970,8 +959,6 @@ export const roomModel = (settings: SceneSettings): Model => {
       ),
     )
   }
-  // NOTE: `bots` seats that many teammate bots, as the lobby's + BOT does,
-  // each with kills of their own.
   const { bots } = config
   if (bots !== undefined) {
     const rostered = Array.reduce(Array.range(1, bots), model, seated =>
@@ -1055,7 +1042,5 @@ export const roomModel = (settings: SceneSettings): Model => {
       }),
     })
   }
-  // NOTE: a staged end screen breaks the records the run would have, so
-  // `best` below the wave shows its NEW BEST.
   return noteRecords(beforeEnd, model)
 }

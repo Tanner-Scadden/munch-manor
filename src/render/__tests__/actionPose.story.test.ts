@@ -45,11 +45,6 @@ import {
 } from '../actionPose'
 import { noActionWatch } from '../renderSchema'
 
-// The hands-on actions (src/render/actionPose.ts): a player at work loops
-// a motion that fits the work and quickens as it fills, and a payoff plays
-// once it is done. Every pose is read off the World and the client's own
-// watch, so the room's World and its wire never change.
-
 const FRAME_MS = FIXED_STEP_MS
 const LEFT_X = 60
 const ROW_Y = 104

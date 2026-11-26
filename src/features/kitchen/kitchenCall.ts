@@ -23,13 +23,6 @@ import {
 import { distanceBetween } from '../../world/step/geometry'
 import { isRoundActive } from '../../world/waves/waves'
 
-// NOTE: from the owner (2026-11-01), players were not finding the kitchen.
-// Rattles hollers about the boarded door once in each break from the one
-// where it first goes on sale, until it is open. It is a client cue read
-// off the World's phase and level, so the World's rules never change, and
-// it runs for every player's own view, solo and co-op. The boards also
-// leak a smell: now and then a pot rattles or simmers when the player is
-// near (never in a boss fight), a sound read from the elapsed time.
 export const CALL_MS = 6000
 
 const OPENED_CAP_MS = 60_000
@@ -38,8 +31,6 @@ const isBoardsUp = (model: Model): boolean =>
   !isKitchenOpen(levelOf(model)) &&
   Option.isSome(exitBoxOf(levelOf(model), KITCHEN_EXIT))
 
-// NOTE: the kitchen tour (src/features/onboarding/kitchenTour.ts) points at the same boards
-// with its own gift bubble, so Rattles keeps quiet while it runs.
 const isCallDue = (model: Model, wave: number): boolean =>
   Phase.isAnyOf(['Preparation'])(model.phase) &&
   isExitOfferOpenFor(model.phase) &&
@@ -54,8 +45,6 @@ const isCallDue = (model: Model, wave: number): boolean =>
 const quietAt = (wave: number): KitchenCall =>
   KitchenCall.Quiet({ calledWave: wave })
 
-// NOTE: only the kitchen's boards coming down quiet the holler: the
-// parlour's are another exit.
 const isOpenedThisFrame = (model: Model): boolean =>
   Array.some(model.frameEvents, GameEvent.isAnyOf(['ExitOpened'])) &&
   isKitchenOpen(levelOf(model)) &&
@@ -105,7 +94,6 @@ export const advanceKitchenCall: {
   })
 })
 
-// NOTE: where the bubble's tail points: the top of the boards.
 export const maybeCallTarget = (model: Model): Option.Option<Vector> =>
   KitchenCall.isAnyOf(['Calling'])(model.kitchenCall)
     ? Option.map(exitBoxOf(levelOf(model), KITCHEN_EXIT), box => ({
@@ -114,7 +102,6 @@ export const maybeCallTarget = (model: Model): Option.Option<Vector> =>
       }))
     : Option.none()
 
-// NOTE: Rattles' goofy lines, one for each break by its wave.
 export const CALL_LINES: Array.NonEmptyReadonlyArray<string> = [
   'SMELLS LIKE SOUP!',
   'SOUP! I SMELL SOUP!',
@@ -124,14 +111,9 @@ export const CALL_LINES: Array.NonEmptyReadonlyArray<string> = [
 export const callLineIndex = (model: Model): number =>
   roundWaveOf(model.phase) % CALL_LINES.length
 
-// SMELL
-
 const SMELL_REACH_PX = 80
 const SMELL_BEAT_MS = 7000
 
-// NOTE: every seventh second is a beat; two beats in three make a sound,
-// alternating a rattle and a simmer, so the kitchen is heard now and then,
-// never in a pattern.
 const beatOf = (elapsedMs: number): number =>
   Math.floor(elapsedMs / SMELL_BEAT_MS)
 

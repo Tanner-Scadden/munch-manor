@@ -4,6 +4,7 @@ import * as Effect from 'effect/Effect'
 import * as Option from 'effect/Option'
 import * as Result from 'effect/Result'
 import * as Schema from 'effect/Schema'
+import * as SecureRandom from 'effect/crypto/SecureRandom'
 
 import type {
   DurableObjectState,
@@ -35,14 +36,6 @@ import {
 import type { SyncBindings } from './sync.ts'
 import { json, tryCall } from './syncCore.ts'
 
-// NOTE: QUICK PLAY's one Durable Object (named `matchmaker`). A player
-// opens a WebSocket here and says Hello with the sync session token; the
-// Matchmaker seats them in an open public room, or queues them until four
-// are waiting or the smaller group accepts an offer (Matchmaking.ts). It
-// keeps its state in storage and its queue in hibernating sockets, so it
-// bills nothing while nobody waits; an alarm wakes it when an offer is due.
-// Public rooms tell it how they stand at LISTING_PATH.
-
 const QUICK_TAG = 'quick'
 const STATE_KEY = 'state'
 
@@ -65,8 +58,6 @@ const decodeAttachment = Schema.decodeUnknownOption(Attachment)
 const decodeState = Schema.decodeUnknownOption(Matchmaking.MatchmakerJson)
 const decodeClient = Schema.decodeUnknownOption(Matchmaking.QuickClientJson)
 
-// NOTE: what is encoded here is built from its own Schema, so an encode
-// cannot fail; if one did, it would be a defect.
 const encodeAttachment = (attachment: Attachment) =>
   Effect.orDie(Schema.encodeEffect(Attachment)(attachment))
 const encodeState = Schema.encodeEffect(Matchmaking.MatchmakerJson)
@@ -245,9 +236,7 @@ export class Matchmaker {
     if (url.pathname === ROOM_PATHS.quick) {
       const opened: Attachment = {
         _tag: 'Opened',
-        // NOTE: a socket's id needs no Effect service.
-        // @effect-diagnostics-next-line cryptoRandomUUID:off
-        socket: crypto.randomUUID(),
+        socket: SecureRandom.uuidV4Unsafe(),
         region: request.headers.get(REGION_HEADER) ?? '',
       }
       const { ctx } = this
@@ -314,7 +303,6 @@ export class Matchmaker {
     )
   }
 
-  // NOTE: a player says Hello once: a socket already queued ignores another.
   private hello(
     socket: WorkersWebSocket,
     attachment: Attachment,

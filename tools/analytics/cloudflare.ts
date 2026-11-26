@@ -11,11 +11,6 @@ import {
 import { HttpClient, HttpClientRequest, HttpClientResponse } from 'effect/http'
 import { ChildProcess, ChildProcessSpawner } from 'effect/process'
 
-// NOTE: the report reads D1 through the Cloudflare REST API with the same
-// credentials as a local deploy: CLOUDFLARE_API_TOKEN, or else the token in
-// the macOS keychain under cloudflare-api-token, and CLOUDFLARE_ACCOUNT_ID,
-// or else the token's only account. The token is never printed.
-
 const API = 'https://api.cloudflare.com/client/v4'
 const KEYCHAIN_SERVICE = 'cloudflare-api-token'
 const PRODUCTION_STAGE = 'prod'
@@ -32,8 +27,6 @@ export const databaseName = (stage: string): string =>
   stage === PRODUCTION_STAGE
     ? 'munch-manor-analytics'
     : `munch-manor-analytics-${stage}`
-
-// CREDENTIALS
 
 const keychainToken = Effect.gen(function* () {
   const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
@@ -60,7 +53,6 @@ const keychainToken = Effect.gen(function* () {
     )
 })
 
-/** @stability unstable */
 export const apiToken = pipe(
   Config.option(Config.Redacted('CLOUDFLARE_API_TOKEN')),
   Effect.mapError(error => CloudflareError.make({ message: describe(error) })),
@@ -72,8 +64,6 @@ export const apiToken = pipe(
   ),
 )
 
-// REQUESTS
-
 const Envelope = <S extends Schema.Top>(result: S) =>
   Schema.Struct({
     success: Schema.Boolean,
@@ -81,7 +71,6 @@ const Envelope = <S extends Schema.Top>(result: S) =>
     result: Schema.NullOr(result),
   })
 
-// NOTE: a D1 query goes as a POST with its SQL as the JSON body.
 const SqlBody = Schema.Struct({ sql: Schema.String })
 
 const request = <S extends Schema.Top>(
@@ -119,7 +108,6 @@ const request = <S extends Schema.Top>(
 
 const Account = Schema.Struct({ id: Schema.String, name: Schema.String })
 
-/** @stability unstable */
 export const accountId = (token: Redacted.Redacted) =>
   pipe(
     Config.option(Config.String('CLOUDFLARE_ACCOUNT_ID')),
@@ -149,7 +137,6 @@ const DatabaseInfo = Schema.Struct({
   name: Schema.String,
 })
 
-/** @stability unstable */
 export const databaseId = ({
   token,
   account,
@@ -182,7 +169,6 @@ const QueryResult = Schema.Array(
   }),
 )
 
-/** @stability unstable */
 export const query = <S extends Schema.Top>({
   token,
   account,

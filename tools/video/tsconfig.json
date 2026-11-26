@@ -1,9 +1,9 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "types": ["bun"],
+    "types": ["bun", "vite/client"],
     // NOTE: Bun's types and Playwright come from tools/audit's install.
-    "typeRoots": ["../audit/node_modules/@types"],
+    "typeRoots": ["../audit/node_modules/@types", "../../node_modules"],
     "allowImportingTsExtensions": true,
     "paths": {
       "@game/*": ["../../src/*"],

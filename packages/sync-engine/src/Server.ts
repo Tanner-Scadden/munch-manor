@@ -47,17 +47,10 @@ import {
   runScopeMigrations,
 } from './Scope'
 
-// OPTIONS
-
-// NOTE: the log keeps the last LOG_TAIL deltas; a client further behind
-// than that, or more than SNAPSHOT_AFTER deltas behind, joins with a
-// snapshot instead. Applied mutation ids are kept longer than the log, so a
-// mutation retried after a long time offline is still recognized as done.
 export const DEFAULT_LOG_TAIL = 500
 export const DEFAULT_SNAPSHOT_AFTER = 200
 export const DEFAULT_APPLIED_IDS_KEPT = 20_000
 
-/** @stability unstable */
 export interface ScopeServerOptions {
   readonly definition: ScopeDefinition
   readonly scope: string
@@ -72,8 +65,6 @@ export class ScopeServerError extends Schema.TaggedError<
 >()('ScopeServerError', {
   reason: Schema.String,
 }) {}
-
-// OUTCOMES
 
 export const Outcome = Schema.TaggedUnion({
   Applied: { delta: Delta },
@@ -92,7 +83,6 @@ export interface Hello {
   readonly mode: HelloMode
 }
 
-/** @stability unstable */
 export interface ScopeServer {
   readonly scope: string
   readonly address: ScopeAddress
@@ -121,8 +111,6 @@ export interface ScopeServer {
   ) => Effect.Effect<Permission, SqlError.SqlError>
   readonly snapshot: Effect.Effect<ServerMessage, SqlError.SqlError>
 }
-
-// TABLES
 
 const createEngineTables = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient
@@ -193,9 +181,6 @@ const refused = (id: string, code: RejectCode, reason: string): Outcome =>
 
 const emptyHead: HeadRow = { seq: 0, trimmed_through: 0 }
 
-// SERVER
-
-/** @stability unstable */
 export const makeScopeServer = (
   options: ScopeServerOptions,
 ): Effect.Effect<
@@ -279,10 +264,6 @@ export const makeScopeServer = (
         rows => Effect.map(decodeRows(LogRow, rows), Array.map(deltaOfRow)),
       )
 
-    // NOTE: a client joins with the deltas after its lastSeq while the log
-    // still holds them all and they are few. Otherwise, or when it asks, or
-    // when it claims a seq past the head (the scope was reset), it gets a
-    // snapshot of every table at the head.
     const join = (
       hello: Hello,
     ): Effect.Effect<ServerMessage, SqlError.SqlError> =>
@@ -396,11 +377,6 @@ export const makeScopeServer = (
         }),
       )
 
-    // NOTE: one mutation, in its own transaction: the apply, its log entry,
-    // its applied id, and the new head commit together or not at all. A
-    // rejection by the apply rolls all of it back and is remembered, so a
-    // retry gets the same answer. Refusals for permission or version are not
-    // remembered: they may succeed after an upgrade or a link.
     const applyOne = (
       actor: Actor,
       envelope: Envelope,
@@ -493,11 +469,6 @@ export const makeScopeServer = (
         }),
       )
 
-    // NOTE: a mutation the server makes itself, in this scope, such as the
-    // count of linked devices. `id` is its idempotency key: running it again
-    // with the same id does nothing. Mutations for another scope go through
-    // that scope's own server; there is no cross-scope outbox yet, so the
-    // caller retries until it is applied.
     const runServer = <A, I>(
       mutation: Mutation<string, A, I>,
       args: A,
@@ -533,10 +504,6 @@ export const makeScopeServer = (
     }
   })
 
-// HOST
-
-// NOTE: one connection's state, small enough to keep in a hibernating
-// WebSocket's attachment: Opened until a Hello is accepted, then Joined.
 export const Connection = Schema.TaggedUnion({
   Opened: {},
   Joined: {
@@ -649,13 +616,6 @@ const pushed = (
     )
   })
 
-// NOTE: the protocol's server side, independent of the transport. A host (a
-// Durable Object, or the in-process server in tests) keeps one Connection
-// per socket, feeds each message through here, sends `broadcast` to every
-// joined socket of the scope (this one included) and then `reply` to this
-// one. Deltas go out before acks, so a client sees its own mutation
-// confirmed before it hears it was accepted.
-/** @stability unstable */
 export const handleMessage: {
   (
     authenticate: Authenticate,
@@ -697,7 +657,6 @@ export const handleMessage: {
   },
 )
 
-/** @stability unstable */
 export const handleRaw: {
   (
     authenticate: Authenticate,

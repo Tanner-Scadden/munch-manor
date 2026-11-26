@@ -1,16 +1,3 @@
-// The dining room's chandelier carved from its views (src/art/carve.ts), hung
-// and fallen, the first of the house's carved showpieces. Hung, its front is
-// the 2D art itself, read off its shapes, and its tops and sides are drafted
-// here part by part: the chain, the hub and its stem, the ring of eight
-// candles in their cups, the ring, the spokes, the bowl, the crystals, and
-// the party streamer. Fallen, the 2D art is its top, as it lies in the
-// table's gap: the ring bent flat, the hub, the heaped chain, the snapped
-// candles and the one still burning, crystals, and the hand under it all;
-// its front is drafted as the lens sees the heap.
-//
-// Each part's colors are the 2D art's own, flat fills with no shades in
-// between: the drafted views add depth, never new colors.
-
 import type { Array } from 'effect'
 
 import {
@@ -39,8 +26,6 @@ import {
   ZOMBIE_SKIN_COLOR,
 } from './roomPalette'
 
-// NOTE: the shade on the hand under the fallen chandelier, as diningArt.ts
-// draws it.
 const HAND_SHADE_COLOR = '#5a8a3a'
 
 const PALETTE = {
@@ -64,11 +49,6 @@ const view = (rows: ReadonlyArray<string>): PixelView => ({
   palette: PALETTE,
 })
 
-// NOTE: a carved piece and where it stands from its anchor (the middle of
-// the table's gap: its top edge hung, its middle fallen): its grid's first
-// column `left` pixels across, its foot `foot` pixels down, and its grid's
-// first row's top `rise` pixels over the floor at its front, along the
-// lens's up.
 export type CarvedShowpiece = Readonly<{
   model: CarvedModel
   left: number
@@ -76,18 +56,8 @@ export type CarvedShowpiece = Readonly<{
   rise: number
 }>
 
-// HUNG
-
-// NOTE: the hung art's box about the gap's top edge (diningArt.ts: the
-// sprite hangs HUNG_RISE over it, its chain up out of sight).
 const HUNG_BOX = { left: -13, top: -54, width: 27, height: 54 }
 
-// NOTE: the chain hangs at the ring's middle depth, three deep; the ring
-// leans back as the 2D art draws its oval, its far candles seven deep. The
-// round parts are drafted round: the hub, the stem, and the bowl a disk of
-// blocks in each row, the bowl's foot narrower, and each cup and crystal
-// swelling a block either way at its middle, each its own part so no two
-// fill in between them.
 const HUNG_PARTS: Array.NonEmptyReadonlyArray<CarvePart> = [
   {
     name: 'chain',
@@ -356,11 +326,6 @@ const HUNG_PARTS: Array.NonEmptyReadonlyArray<CarvePart> = [
   },
 ]
 
-// FALLEN
-
-// NOTE: the heap as the lens sees it, lying in the gap: the floor's art one
-// row up for each pixel north, and the raised ring, hub, chain, and the
-// candle still standing over it.
 const FALLEN_FRONT = view([
   '..............CWccc................',
   '...............kkkkcckk...CW.......',
@@ -386,9 +351,6 @@ const FALLEN_FRONT = view([
   '..................CW...............',
 ])
 
-// NOTE: each part's top is the 2D art's own pixels of it; its side, how
-// high it stands: the bent ring and the chain two, the hub three, the
-// candle still standing five, the rest flat on the floor.
 const FALLEN_PARTS: Array.NonEmptyReadonlyArray<CarvePart> = [
   {
     name: 'ring',
@@ -494,9 +456,6 @@ const carvedOf = (state: ChandelierState): CarvedShowpiece =>
           lean: 1,
         }),
         left: HUNG_BOX.left,
-        // NOTE: where the billboard stood, its foot two under the art and
-        // hovering six (scene.ts's OVERHEAD_HOVER): the art's bottom eight
-        // over the floor.
         foot: 2,
         rise: HUNG_BOX.height + 8,
       }
@@ -507,13 +466,11 @@ const carvedOf = (state: ChandelierState): CarvedShowpiece =>
         }),
         left: -17,
         foot: 14,
-        // NOTE: the floor under its grid's row 21, the heap's lowest.
         rise: 22,
       }
 
 const carved = new Map<ChandelierState, CarvedShowpiece>()
 
-// NOTE: carved once, on first use.
 export const carvedChandelierOf = (state: ChandelierState): CarvedShowpiece => {
   const known = carved.get(state)
   if (known !== undefined) {

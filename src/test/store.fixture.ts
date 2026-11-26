@@ -49,10 +49,6 @@ import { noBonuses, noSavedRunRecords } from '../shared/playerData'
 import { noProof } from '../shared/proofData'
 import { noRank } from '../world/heroes/rank'
 
-// NOTE: what the store tests (src/platform/__tests__/store.test.ts) start from: a save, a fake
-// localStorage, one device's database on a hub, and a server in this
-// process for linking devices.
-
 export const legacySave: PlayerSave = {
   version: SAVE_VERSION,
   onboarding: {
@@ -147,9 +143,6 @@ type OpenedDatabase = Effect.Effect<
   Scope.Scope
 >
 
-// NOTE: one hub is one device's database. Each open is a page load on it,
-// syncing through `maybeSetup` when it holds one.
-/** @stability unstable */
 export const openSyncingOn: {
   (
     legacy: LegacySave,
@@ -177,8 +170,6 @@ export const openSyncingOn: {
     }),
 )
 
-// NOTE: a device with no sync set up.
-/** @stability unstable */
 export const openOn: {
   (legacy: LegacySave): (hub: Hub) => OpenedDatabase
   (hub: Hub, legacy: LegacySave): OpenedDatabase
@@ -186,17 +177,11 @@ export const openOn: {
   openSyncingOn(hub, legacy, Option.none()),
 )
 
-/** @stability unstable */
 export const sqlOn = (hub: Hub) =>
   Effect.map(Layer.build(hub.layer()), context =>
     Context.get(context, SqlClient.SqlClient),
   )
 
-// NOTE: syncing tests run on `it.effect`'s TestClock, so the sync's backoff,
-// heartbeat, and resend timer, the server's token times, and the waits in
-// `until` all move only as `settle` moves them. A loaded machine changes how
-// long a test takes, never what it sees. `synced` starts the clock at a real
-// date, since the server's tokens are stamped with it.
 const SYNC_EPOCH_MS = Date.UTC(2026, 9, 30)
 
 export const synced = <A, E, R>(
@@ -225,8 +210,6 @@ export const muted = (save: PlayerSave): PlayerSave => ({
   settings: { ...save.settings, sound: 'On' },
 })
 
-// SYNC
-
 const SECRET = 'store-test-secret'
 
 const openServerDatabase = () =>
@@ -235,10 +218,6 @@ const openServerDatabase = () =>
     return yield* Effect.orDie(sqlOn(hub))
   })
 
-// NOTE: the server side in this process: a Directory for identity and
-// linking, and the scope host for the player scopes, wired the way
-// infra/worker/sync.ts wires them on Cloudflare.
-/** @stability unstable */
 export const makeServer = Effect.gen(function* () {
   const directorySql = yield* openServerDatabase()
   const directory = yield* Effect.provideService(
@@ -304,7 +283,6 @@ export const makeServer = Effect.gen(function* () {
   return { host, api }
 })
 
-// NOTE: polls on the TestClock, which settle moves.
 export const until: {
   <A>(
     done: (value: A) => boolean,
@@ -327,8 +305,6 @@ export const until: {
     ),
 )
 
-// NOTE: a phone with the legacy save, and a laptop linked to its player.
-/** @stability unstable */
 export const linkedPair = Effect.gen(function* () {
   const server = yield* makeServer
   const network = yield* server.host.network()

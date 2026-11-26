@@ -29,7 +29,6 @@ import { TRAPS } from '../traps'
 const FRAME_MS = 50
 const SPEED = 20
 
-// NOTE: in line with the dining room's West door, at its top left.
 const WEST_Y = MANOR.doors.West.center.y
 const NEAR_WEST_PLANK: Vector = { x: 45, y: WEST_Y }
 const FAR_FROM_PLANKS: Vector = { x: 95, y: WEST_Y }

@@ -4,21 +4,6 @@ import { Base64Url } from 'effect/encoding'
 import { base64Url, randomBytes } from './Rows'
 import { Unauthorized } from './Server'
 
-// NOTE: identity without accounts. Each device makes an ECDSA P-256 key
-// pair on first launch and a random player id. To sync, it asks the server
-// for a challenge (a nonce the server MACs, so it keeps no state), signs it
-// with its private key, and trades the signature for a session token: an
-// HMAC-signed claim of its device id and player id that lasts a day. The
-// WebSocket Hello and every identity request carry that token. The server
-// maps a device id (a hash of its public key) to one player id; linking a
-// device moves that mapping to another device's player.
-//
-// Why a token after a challenge, and not a signature on every request: a
-// Durable Object then checks a cheap HMAC instead of an ECDSA signature per
-// message, and the private key signs only once a day.
-
-// ERRORS
-
 export class IdentityError extends Schema.TaggedError<
   IdentityError,
   { readonly brand: unique symbol }
@@ -28,8 +13,6 @@ export class IdentityError extends Schema.TaggedError<
 
 const cryptoError = (error: unknown) =>
   IdentityError.make({ reason: `WebCrypto: ${globalThis.String(error)}` })
-
-// KEYS
 
 export const PublicKey = Schema.Struct({
   kty: Schema.Literal('EC'),
@@ -66,7 +49,6 @@ export const sha256 = (
     digest => new Uint8Array(digest),
   )
 
-// NOTE: 128 bits of the SHA-256 of the public key's coordinates.
 export const deviceIdOf = (
   publicKey: PublicKey,
 ): Effect.Effect<string, IdentityError> =>
@@ -84,11 +66,6 @@ export const makePlayerId: Effect.Effect<string> = Effect.map(
   base64Url,
 )
 
-// NOTE: the private key is exported once, as a JWK, so the app can keep it
-// in its own database; it is imported back as non-extractable, so code in
-// the page can sign with it but never read it out again. A key in IndexedDB
-// could stay non-extractable at rest; this engine keeps all of its state in
-// SQLite instead (see the README's limits).
 export interface StoredKey {
   readonly privateJwk: string
   readonly publicKey: PublicKey
@@ -104,7 +81,6 @@ export interface DeviceKey {
   readonly sign: (message: string) => Effect.Effect<string, IdentityError>
 }
 
-// NOTE: the whole private JWK is stored as Web Crypto exports it.
 const UnknownJson = Schema.fromJsonString(Schema.Unknown)
 
 export const generateKey: Effect.Effect<StoredKey, IdentityError> = Effect.gen(
@@ -242,8 +218,6 @@ export const sessionMessage: {
     `munch-sync-session:v1:${nonce}:${playerId}`,
 )
 
-// MACS
-
 const hmacKey = (secret: string) =>
   Effect.tryPromise({
     try: () =>
@@ -273,7 +247,6 @@ export const mac: {
     }),
 )
 
-// NOTE: crypto.subtle.verify compares in constant time.
 const checkMac = (
   secret: string,
   message: string,
@@ -291,8 +264,6 @@ const checkMac = (
       catch: cryptoError,
     })
   })
-
-// CHALLENGES
 
 export const CHALLENGE_TTL_MS = 2 * 60 * 1000
 
@@ -346,8 +317,6 @@ export const checkChallenge: {
       }
     }),
 )
-
-// TOKENS
 
 export const SESSION_TTL_MS = 24 * 60 * 60 * 1000
 
@@ -428,10 +397,6 @@ export const verifyToken: {
     ),
 )
 
-// API
-
-// NOTE: the identity endpoints' bodies, shared by the browser client and
-// the Worker. Paths are relative to the sync origin.
 export const IDENTITY_PATHS = {
   challenge: '/sync/challenge',
   session: '/sync/session',
@@ -481,8 +446,6 @@ export const IdentityFailure = Schema.TaggedUnion({
 })
 export type IdentityFailure = typeof IdentityFailure.Type
 
-// NOTE: a refusal with its reason, from the directory on the server or
-// decoded from an identity response on the client.
 export class IdentityRefused extends Schema.TaggedError<
   IdentityRefused,
   { readonly brand: unique symbol }

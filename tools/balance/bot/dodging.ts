@@ -1,6 +1,3 @@
-// Where the balance bot walks in a fight: over a safe pickup, out of the
-// boss's and the floor's tells, around the boss when it kites or engages.
-
 import { Array, Function, Option } from 'effect'
 
 import { chunkDodge } from '../../../src/features/bots/escape'
@@ -17,14 +14,8 @@ import {
 } from './basics'
 import { isKnobSet, knobNumber } from './knobs'
 
-// Keeps its distance from the nearest zombie only once it is inside the
-// comfort radius, the way a player plants their feet to shoot until
-// something gets close, and drifts back toward the middle otherwise.
 export const FLEE_PX = knobNumber('FLEE_PX', 36)
 
-// It walks over a pickup when nothing is inside its comfort radius, the
-// pickup is close, and no zombie stands near the pickup. NO_PICKUPS=1 keeps
-// it from ever going for one.
 const IGNORES_PICKUPS = isKnobSet('NO_PICKUPS')
 const PICKUP_SEEK_PX = knobNumber('PICKUP_SEEK_PX', 90)
 const PICKUP_SAFE_PX = 28
@@ -45,11 +36,6 @@ export const safePickup = (model: Model): Vector | undefined => {
   )[0]
 }
 
-// It dodges the boss the way a player who has seen his tells does: out of a
-// stomp or slam ring once it winds up, sideways off a charge lane, and out of a glob
-// marker or a puddle. It keeps a wider berth from the boss than from the
-// horde, since the boss is wider. KITE=1 is the player who never learns the
-// tells: it only runs to the far side of the room from the boss and shoots.
 const NO_DODGE = isKnobSet('NO_DODGE')
 export const KITES = isKnobSet('KITE')
 const PLAYER_BODY_PX = 4
@@ -63,8 +49,6 @@ export const bossOf = (model: Model) => {
     : undefined
 }
 
-// Standing on a glob's mark, it steps across the boss's line of fire, to the
-// side with more room from the nearest other zombie.
 const clearSide = (model: Model, boss: Vector): Vector => {
   const toward = steerToward(boss, focusOf(model).player)
   const across = { x: -toward.y, y: toward.x }
@@ -91,8 +75,6 @@ const clearSide = (model: Model, boss: Vector): Vector => {
     : { x: -across.x, y: -across.y }
 }
 
-// It steps off a thrown Groaner's landing mark the way it steps off a glob's,
-// and keeps clear of the cracks where an Ankle Biter is about to come up.
 const LANDING_MARGIN_PX = knobNumber('LANDING_MARGIN', 6)
 const CRACK_BERTH_PX = knobNumber('CRACK_BERTH', 8)
 
@@ -133,8 +115,6 @@ const crackDodge = (model: Model): Vector | undefined => {
 const floorDodge = (model: Model): Vector | undefined =>
   NO_DODGE ? undefined : (landingDodge(model) ?? crackDodge(model))
 
-// NOTE: his own tells are read the way the teammate bots read them
-// (src/features/bots/escape.ts).
 export const telegraphDodge = (model: Model): Vector | undefined => {
   const floor = floorDodge(model)
   if (floor !== undefined) {
@@ -147,13 +127,9 @@ export const telegraphDodge = (model: Model): Vector | undefined => {
 
 export const BOSS_BERTH_PX = knobNumber('BOSS_BERTH', 16)
 
-// A frenzied zombie closes the gap faster, so the bot backs off from it
-// sooner, in proportion to the frenzy's extra speed.
 export const frenzyBerthPx = () =>
   Math.round(FLEE_PX * (FRENZY_RULES.paceScale - 1))
 
-// The spots a kiting player runs between: the four corners and the middle
-// of each wall, a little in from the walls.
 const KITE_SPOTS: Array<Vector> = [
   { x: 40, y: 40 },
   { x: 180, y: 40 },
@@ -177,9 +153,6 @@ export const kiteAway: {
     : { x: 0, y: 0 }
 })
 
-// ENGAGE=1 holds the middle distance from the boss: outside his stomp
-// trigger, inside his charge range. It walks into the horde to get there,
-// so it does worse than the default, which holds the middle of the room.
 export const ENGAGES = isKnobSet('ENGAGE')
 const ENGAGE_PX = knobNumber('ENGAGE_PX', 58)
 

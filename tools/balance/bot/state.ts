@@ -1,20 +1,8 @@
-// The state one run of the balance bot carries from frame to frame, beside
-// the game's Model: the bot's plans, its hand's random stream, and its logs.
-// play makes a fresh one for every run and hands it to whatever reads or
-// writes it, so nothing of one run leaks into the next.
-
 import { Function } from 'effect'
 
 import type { BotOptions, Model, Vector } from './basics'
 import { type FridgeLog, type ShopVisitLog, emptyFridgeLog } from './logs'
 
-// THE FRIDGE WEAPONS' PLAN
-
-// How the bot fights while it carries a fridge weapon, chosen every few
-// frames: whether to hold the spare or the pistol, what to aim at, and how
-// long to hold a Cooker charge. The Pan is in the melee slot, so its plan
-// (panPlanNow) is its own: whether to swing, and the zombie it keeps its
-// distance to.
 export type Zombie = Model['zombies'][number]
 
 export type FridgePlan = {
@@ -31,10 +19,6 @@ export const GUN_PLAN: FridgePlan = {
   panTarget: undefined,
 }
 
-// THE HUMAN HAND
-
-// The target the human hand holds (bot/hand.ts): when it picked it, where
-// and when it last saw it, how fast it moves, and the first flick's miss.
 type HumanAim = {
   targetId: number
   sinceFrame: number
@@ -44,33 +28,22 @@ type HumanAim = {
   bias: number
 }
 
-// THE RUN'S STATE
-
 export type BotState = {
-  // The options of the run being played.
   options: BotOptions
   fridgePlan: FridgePlan
   panPlanNow: FridgePlan
-  // The hand's shake: a seeded stream, so a run replays exactly.
   botRandom: number
-  // Where the bot last pointed, which the touch aim assist bends.
   maybeRawAim: Vector | undefined
-  // The human hand's target, and the angle it last aimed at.
   maybeHumanAim: HumanAim | undefined
   maybeAimAngle: number | undefined
-  // The wave whose break the kitchen was bought in, or 0 when it never was.
   kitchenWave: number
   fridgeLog: FridgeLog
   gnomeTries: number
-  // NOTE: frames spent in this break, so a break the bot is stuck in ends.
   breakFrames: number
   gnomesPlaced: number
-  // Each break it found the shop open in, and what it bought there.
   shopVisits: Array<ShopVisitLog>
 }
 
-// A run's state before its first frame: the hand's stream starts at the
-// run's seed.
 export const freshState: {
   (options: BotOptions): (seed: number) => BotState
   (seed: number, options: BotOptions): BotState

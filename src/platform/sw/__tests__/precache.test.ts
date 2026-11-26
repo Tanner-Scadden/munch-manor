@@ -10,9 +10,6 @@ import {
   serviceWorkerSource,
 } from '../precache'
 
-// NOTE: the shape of a real build: what Vite emits (the shell, chunks, the
-// lazy SQLite chunk, the store worker and its SQLite worker files, the wasm,
-// the stylesheet, version.json) and what it copies from public/.
 const EMITTED = [
   'index.html',
   'version.json',

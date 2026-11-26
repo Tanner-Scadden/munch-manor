@@ -1,14 +1,3 @@
-// The menus' polish pass: the solo lobby and its hero picker, every co-op
-// screen, the end cards, pause and its leave question, the new zombie card,
-// the display case card, and the dare card with its satchel, on a 1280x720
-// desktop, an 852x393 phone on its side, a 393x852 phone held upright, a
-// small 360x740 Android, and a 1024x768 tablet, as
-// `polish-<TAG>-<viewport>-<scene>.png`. On each it lists the paper cuts a
-// page can find by itself: a touch target under 44 px on a touch screen, a
-// button or label whose text is cut off, a button off screen, and a page
-// that scrolls. It exits with 1 on any.
-//   TAG=after bun run heavy -- --shared bun tools/audit/shotsPolish.ts
-// ONLY picks scenes, and VIEWPORTS picks screens.
 import { Array, Effect, Schema } from 'effect'
 import type { Page } from 'playwright-core'
 
@@ -147,10 +136,6 @@ const Found = Schema.Struct({
   scrolls: Schema.Boolean,
 })
 
-// NOTE: what the page can find wrong with itself: small targets (touch
-// only), cut off text, buttons past the screen, and a page that scrolls.
-// It runs in the page, which has no effect module, so it keeps to loops
-// and the DOM's own reads.
 const findCuts = (page: Page, isTouch: boolean) =>
   decodedFrom(Found, () =>
     page.evaluate(isTouchScreen => {
@@ -176,7 +161,6 @@ const findCuts = (page: Page, isTouch: boolean) =>
           continue
         }
         const box = button.getBoundingClientRect()
-        // NOTE: a ::before that reaches past the button is its hit area.
         const reach = getComputedStyle(button, '::before')
         const isReaching =
           reach.content !== 'none' && reach.position === 'absolute'

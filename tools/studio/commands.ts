@@ -1,6 +1,3 @@
-// The art studio's Commands and Subscriptions: keeping the view and what has
-// been seen across reloads, taking a note's before picture and sending it,
-// and reading the notes back from the dev server as the agent answers them.
 import { Array, Effect, Layer, Option, Schema, Stream, pipe } from 'effect'
 import { FetchHttpClient, HttpClient, HttpClientRequest } from 'effect/http'
 
@@ -10,11 +7,6 @@ import { describeError } from '../../src/shared/describeError'
 import { Flags, Message, type Model, SavedView } from './block'
 import { NOTES_PATH, NoteDraft, NoteDraftJson, StoredNotesJson } from './notes'
 
-// STORAGE
-
-// NOTE: the studio is a dev page with no store of its own: the view lives in
-// sessionStorage (one tab's work), what has been seen in localStorage (it
-// should not come back as new tomorrow).
 const VIEW_KEY = 'munch-studio-view'
 const SEEN_KEY = 'munch-studio-seen'
 
@@ -55,8 +47,6 @@ export const flags = Effect.all({
   ),
 }).pipe(Effect.map(fields => Flags.make(fields)))
 
-// NOTE: a write that fails leaves nothing to report: the view and what has
-// been seen are only conveniences.
 export const SaveView = Command.make(
   'SaveView',
   { args: { view: SavedView } },
@@ -81,8 +71,6 @@ export const SaveSeen = Command.make(
     ),
 )
 
-// THE BEFORE PICTURE
-
 const Crop = Schema.Struct({
   x: Schema.Finite,
   y: Schema.Finite,
@@ -90,18 +78,14 @@ const Crop = Schema.Struct({
   height: Schema.Finite,
 })
 
-// NOTE: which canvas to picture for a note, and the part of it, if not all.
 export const Capture = Schema.Struct({
   selector: Schema.String,
   crop: Schema.NullOr(Crop),
 })
 export type Capture = typeof Capture.Type
 
-// NOTE: a picture wider than this is scaled down, so a whole room stays a
-// small file.
 const MAX_PICTURE = 480
 
-// NOTE: the canvas a note pictures, by its selector.
 const canvasOf = (selector: string): Option.Option<HTMLCanvasElement> => {
   const source = document.querySelector(selector)
   return source instanceof HTMLCanvasElement && source.width > 0
@@ -109,9 +93,6 @@ const canvasOf = (selector: string): Option.Option<HTMLCanvasElement> => {
     : Option.none()
 }
 
-// NOTE: the picture as a PNG data URL, with no 2D canvas: the crop is cut and
-// scaled by createImageBitmap (whole pixels kept), shown on a bitmaprenderer
-// canvas of its own size, and encoded from there.
 const encodePicture = (
   source: HTMLCanvasElement,
   capture: Capture,
@@ -164,8 +145,6 @@ const pictureOf = (capture: Capture): Effect.Effect<Option.Option<string>> =>
     onNone: () => Effect.succeed(Option.none<string>()),
     onSome: source => pipe(encodePicture(source, capture), Effect.option),
   })
-
-// THE NOTES
 
 class StudioUnreachable extends Schema.TaggedError<
   StudioUnreachable,
@@ -233,13 +212,8 @@ const fetchNotes = pipe(
   Effect.mapError(unreachable),
 )
 
-// SUBSCRIPTIONS
-
-// NOTE: the animation steps 20 times a second: every sprite's frames are
-// 100 ms or longer, and a page that redraws less runs smooth.
 const FRAME_STEP_MS = 50
 
-// NOTE: how often the page asks for the notes, to see the agent's answers.
 const INBOX_POLL = '2 seconds'
 
 const frames = Subscription.make(
@@ -262,7 +236,6 @@ const inbox = Subscription.make(
   ),
 )
 
-// NOTE: the clock runs while the animation plays; the inbox always.
 export const subscriptions = ({ model }: { readonly model: Model }) => [
   model.isPlaying && frames,
   inbox,

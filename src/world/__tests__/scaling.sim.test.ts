@@ -1,11 +1,3 @@
-// How the step's cost grows with the crowd: the zombies' share of a stretch
-// of a wave (its time less the same stretch with none) should grow about
-// four times for four times the zombies, never the sixteen a pass of every
-// zombie against every zombie would. The same holds for the wave's plan:
-// the packs held at the doors while the house is full are read on every
-// tick, and four times as many should cost about four times as much. The
-// sizes are timed in turn, several times, and their medians compared, so a
-// slow moment on a busy machine moves them alike.
 import { Array, Clock, Effect, Order, pipe } from 'effect'
 
 import { UiStruct } from '@effect/ui'
@@ -26,9 +18,6 @@ const SMALL = 20
 const LARGE = 80
 const FRAMES = 120
 const ROUNDS = 7
-// NOTE: linear is 4, quadratic 16. The step measured 4.6 to 5.2 (a crowd
-// four times as thick jostles a little more), and with one small pass of
-// every zombie against every zombie added, 9.2 to 9.5.
 const MOST_GROWTH = 7.5
 
 const timedFrom = (start: Model) =>
@@ -41,8 +30,6 @@ const timedFrom = (start: Model) =>
 
 const timed = (crowd: number) => timedFrom(crowdOf(quietWave(3), crowd))
 
-// NOTE: a full house (every place the alive cap allows taken) and `packs`
-// packs of one due now, so each waits at its door on every tick.
 const SMALL_PLAN = 100
 const LARGE_PLAN = 400
 
@@ -72,12 +59,10 @@ describe('the step as the crowd grows', () => {
     }),
   )
 
-  // NOTE: a real clock, since the test is about how long the step takes.
   it.live(
     'four times the zombies costs about four times the frame',
     () =>
       Effect.gen(function* () {
-        // NOTE: the first run builds what the level keeps, timed apart.
         yield* timed(SMALL)
         const rounds = yield* Effect.forEach(
           Array.makeBy(ROUNDS, () => undefined),
@@ -97,7 +82,6 @@ describe('the step as the crowd grows', () => {
     60_000,
   )
 
-  // NOTE: a real clock, since the test is about how long the step takes.
   it.live(
     'four times the packs held at the doors costs about four times the frame',
     () =>

@@ -1,7 +1,3 @@
-// The balance bot's basics: the Model it drives, what it plays (its
-// options), its keys, and how it sends a Message, presses keys, and sees
-// the zombies in its view.
-
 import { Array, Function, Option, Record, String } from 'effect'
 
 import { Message } from '../../../src/app/message'
@@ -45,9 +41,6 @@ export type Kind = ZombieKind
 
 type BotMode = 'Campaign' | 'Endless'
 
-// What the bot plays: the level, the mode, and how it shops and swaps.
-// swapsBack is SWAP=1: it re-arms the spare gun before each wave, the way a
-// player swaps back. The default bot never swaps.
 export type BotOptions = {
   difficulty: Difficulty
   mode: BotMode
@@ -56,8 +49,6 @@ export type BotOptions = {
   calling: Calling
   modifiers: Modifiers
   dareMark: number
-  // NOTE: called with the Models before and after each frame the bot ticks,
-  // for a script that reads the World over time (tools/balance/pacing.ts).
   onFrame?: (before: Model, after: Model) => void
 }
 
@@ -71,8 +62,6 @@ export const DEFAULT_OPTIONS: BotOptions = {
   dareMark: 0,
 }
 
-// CALLING=Handyman, TrackStar, PennyPincher, or LineCook (any case, spaces
-// allowed) plays that calling, with rank enough to start it.
 export const parseCalling = (raw: string | undefined): Calling => {
   const name = String.replaceAll(
     /[\s_-]/g,
@@ -87,11 +76,6 @@ export const parseCalling = (raw: string | undefined): Calling => {
   return found
 }
 
-// MODS=BigCrowd,Broke,Glass (any case, commas) plays the run with those
-// modifiers on, as the lobby sets them. FriendlyFire is refused: the bot
-// plays alone, and it bites only with teammates.
-// MARK=0 to 8 plays the run at that dare ladder mark (GAME_DESIGN.md, "The
-// dare ladder"), the bot given the mark opened; none plays at 0.
 export const parseDareMark = (raw: string | undefined): number => {
   const mark = Number(raw ?? '0')
   if (!Number.isInteger(mark) || mark < 0 || mark > MAX_MARK) {
@@ -143,8 +127,6 @@ export const parseDifficulty = (raw: string | undefined): Difficulty => {
 export const FRAME_MS = 1000 / 30
 export const maxRunMs = (options: BotOptions) =>
   (options.mode === 'Endless' ? 90 : 20) * 60 * 1000
-// NOTE: where the bot holds in the dining room: the open aisle between the
-// party table and the start spot, which runs wall to wall.
 export const ROOM_CENTER: Vector = { x: 180, y: 130 }
 export const KEYS = {
   up: 'KeyW',
@@ -163,17 +145,8 @@ export const send: {
   (model: Model, message: GameMessage): Model => update(model, message).model,
 )
 
-// The zombies standing in the room: alive, and not under the floor, held
-// overhead, or in the air, so the bot can see, shoot, and flee them.
 const OUT_OF_REACH = new Set(['Burrowed', 'Carried', 'Flying'])
 
-// VIEW=portrait plays as a phone held upright would: it sees only the
-// zombies inside the portrait camera's window, which follows it and leans
-// toward its aim like the game's. Zombies out of view are not shot or fled.
-// VIEW=touch plays as a 16:9 phone on its side would, through the landscape
-// phone's zoomed window, and VIEW=wide as a 19.5:9 or wider one, whose
-// screen widens to 388 and shows 291 columns of the room. All three get the
-// touch aim assist, as in the game.
 const VIEW_SCREENS: Readonly<Record<string, Screen>> = {
   portrait: DEFAULT_PORTRAIT_SCREEN,
   touch: LANDSCAPE_TOUCH_SCREEN,
@@ -206,7 +179,6 @@ export const isInView: {
   },
 )
 
-// The zombies standing in the room, in view or not.
 export const standing = (model: Model) =>
   Array.filter(
     model.zombies,
@@ -214,8 +186,6 @@ export const standing = (model: Model) =>
       zombie.state._tag === 'Walking' && !OUT_OF_REACH.has(zombie.action._tag),
   )
 
-// The zombies standing in the bot's view: the whole room, or the phone's
-// window under VIEW.
 export const walking = (model: Model) =>
   Array.filter(standing(model), zombie => isInView(model, zombie))
 
@@ -236,9 +206,6 @@ export const steerToward: {
     : { x: (to.x - from.x) / length, y: (to.y - from.y) / length }
 })
 
-// NOTE: the keys walk across the screen, which the lens shows turned
-// (src/render/lens.ts), so the bot picks them by the way it wants to go as
-// the screen shows it, as a player would.
 export const desiredKeys = (direction: Vector): Set<string> => {
   const keys = new Set<string>()
   const onScreen = floorToScreenDirection(direction)

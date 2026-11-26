@@ -1,6 +1,3 @@
-// The Ankle Biter sim test: a whole wave 7 played twice from one seed. It
-// takes about a second, so it runs in `bun run test:full` and CI, not in
-// `bun run test`. The Ankle Biter's rules are in crawler.story.test.ts.
 import { Array, Effect, Option } from 'effect'
 
 import { UiStruct } from '@effect/ui'

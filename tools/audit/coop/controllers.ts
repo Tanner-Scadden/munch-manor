@@ -1,6 +1,3 @@
-// Co-op audit (tools/audit/coop.ts): what a player does in the room: held keys,
-// walking routes, shooting, and the bot's roles.
-
 import { Array, Clock, Effect, Function, Option } from 'effect'
 import type { Page } from 'playwright-core'
 
@@ -12,8 +9,6 @@ import { isWalkableTile, tileCoordinate } from '@game/world/level/tileQueries'
 import { pollUntil } from '../lib'
 import { type AuditFailed, attempt, failWith } from '../page'
 import { type Seat, readoutOf, slotOf, toClient } from './readouts'
-
-// CONTROLLERS
 
 const MOVE_KEYS = { left: 'KeyA', right: 'KeyD', up: 'KeyW', down: 'KeyS' }
 
@@ -34,7 +29,6 @@ const holdKeys = (page: Page, held: Held, want: Set<string>) =>
     held.keys = want
   })
 
-// NOTE: lets go of the trigger if it is held.
 const release = (page: Page, held: Held) =>
   Effect.gen(function* () {
     if (held.firing) {
@@ -73,13 +67,6 @@ const keysToward = (
   return keys
 }
 
-// NOTE: a walk across the parlour goes round its furniture, tile by tile,
-// on the game's own map: a straight line from one side to the other can
-// run into a crate or a table and hold the key against it until the step
-// times out. Each tile's distance to the goal's tile comes from one
-// breadth-first pass over the walkable tiles, four ways, and the player
-// heads for the middle of the next tile down that slope. On the goal's tile
-// it heads for the goal itself.
 type Point = Readonly<{ x: number; y: number }>
 
 const STEPS: ReadonlyArray<Point> = [
@@ -154,8 +141,6 @@ const nearestOf = (
       : best,
   )
 
-// NOTE: aims the mouse at the nearest zombie in the parlour and holds the
-// trigger; with none in, lets go.
 const AIM_REACH_PX = 20
 
 const shootNearest = (
@@ -182,10 +167,6 @@ const shootNearest = (
       onNone: () => release(page, held),
       onSome: target =>
         Effect.gen(function* () {
-          // NOTE: the mouse points along the line to the zombie, a short way
-          // from the player, not at the zombie itself: a zombie down by the
-          // HUD would put the click on a slot (the knife's draws the knife),
-          // not the room.
           const gap = Math.max(
             1,
             Math.hypot(target.x - own.x, target.y - own.y),
@@ -212,13 +193,10 @@ type Role = 'Fight' | 'Feed' | 'Guard' | 'Revive' | 'Idle'
 const distance = (from: Point, to: Point) =>
   Math.hypot(to.x - from.x, to.y - from.y)
 
-// NOTE: how near a zombie comes before a guard or a reviver turns on it.
 const THREAT_PX = 28
 
-// NOTE: the open aisle between the party table and the start spot.
 const ROOM_MIDDLE = { x: START_LEVEL.start.x, y: START_LEVEL.start.y - 15 }
 
-// NOTE: one step of one page's player, from what its own page draws.
 const drive = (page: Page, held: Held, role: Role, partner: number) =>
   Effect.gen(function* () {
     const readout = yield* readoutOf(page)
@@ -234,9 +212,6 @@ const drive = (page: Page, held: Held, role: Role, partner: number) =>
     }
     if (role === 'Feed') {
       yield* release(page, held)
-      // NOTE: the feeder walks unarmed into the nearest zombie already in the
-      // room, never out into a doorway's crowd, so they go down where the
-      // others fight and the team stays close.
       const inside = Array.filter(
         readout.zombies,
         zombie =>
@@ -256,9 +231,6 @@ const drive = (page: Page, held: Held, role: Role, partner: number) =>
       Array.findFirst(readout.players, seat => seat.slot === partner),
     )
     if (role === 'Guard') {
-      // NOTE: while the feeder walks into the zombies, the others stand still
-      // and shoot only what comes at them, never a zombie by the feeder: a
-      // teammate who took bites here had too few hearts left to revive.
       yield* holdKeys(page, held, new Set())
       return yield* shootNearest(
         page,
@@ -271,10 +243,6 @@ const drive = (page: Page, held: Held, role: Role, partner: number) =>
       )
     }
     if (role === 'Revive') {
-      // NOTE: the reviver stands still and shoots while a zombie is near it
-      // or the downed player, and walks in only once that is clear: walking
-      // into the crowd that downed them got the reviver eaten too. Standing
-      // still in reach counts toward the revive either way.
       const isThreatened = Array.some(
         readout.zombies,
         zombie =>

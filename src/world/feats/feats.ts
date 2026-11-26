@@ -29,18 +29,6 @@ import {
   isHolding,
 } from '../schema/worldSchema'
 
-// Feats (owner, 2026-11-10, "No shop" in GAME_DESIGN.md): what a player does
-// this run that opens a display case (src/world/feats/cases.ts), the stove,
-// or the gas valve. Each player keeps their own tally on their seat, so in
-// co-op a case opens for whoever gets there first and the room and its
-// players agree on it. The tally is fed once a tick from what the tick did:
-// its kills (each ZombieKilled event names its killer and what it was made
-// with), the hearts each seat lost, the wave's end, a room bought open, and
-// the valve turned.
-
-// THE GOALS
-
-// NOTE: how far a feat asks a player to go.
 export const goalOf = (feat: Feat): number =>
   Feat.match(feat, {
     Kills: ({ count }) => count,
@@ -56,7 +44,6 @@ export const goalOf = (feat: Feat): number =>
     KitchenStandKills: ({ count }) => count,
   })
 
-// NOTE: how far a tally has gone toward a feat, never past its goal.
 export const progressOf: {
   (feat: Feat): (tally: FeatTally) => number
   (tally: FeatTally, feat: Feat): number
@@ -88,7 +75,6 @@ const isFeatDone: {
     progressOf(tally, feat) >= goalOf(feat),
 )
 
-// NOTE: whether the seat at `slot` has done `feat` this run.
 export const hasDone: {
   (slot: PlayerSlot, feat: Feat): (world: World) => boolean
   (world: World, slot: PlayerSlot, feat: Feat): boolean
@@ -96,11 +82,7 @@ export const hasDone: {
   isFeatDone(seatStateAt(world, slot).feats, feat),
 )
 
-// NOTE: something a feat opens for a player who has not done it yet, and
-// where its lock hangs.
 export type FeatLock = Readonly<{ feat: Feat; spot: Vector }>
-
-// THE TALLY
 
 const ARMAMENT_OF: Readonly<Record<KillSource, Option.Option<Armament>>> = {
   Pistol: Option.some('Pistol'),
@@ -120,8 +102,6 @@ const ARMAMENT_OF: Readonly<Record<KillSource, Option.Option<Armament>>> = {
 
 type Kill = typeof GameEvent.cases.ZombieKilled.Type
 
-// NOTE: who a kill is credited to. A kill no player made (a trap, a
-// shatter) is single player's own, as its keys are; in co-op it is nobody's.
 export const killerOf: {
   (kill: Kill): (world: World) => Option.Option<PlayerSlot>
   (world: World, kill: Kill): Option.Option<PlayerSlot>
@@ -150,7 +130,6 @@ const countKill =
       kitchenStandKills: count => (isStandingInKitchen ? count + 1 : count),
     })
 
-// NOTE: a seat bought a room open this tick: its hold at boards finished.
 const hasOpenedRoom = (before: SeatState, after: SeatState): boolean =>
   isHolding(before.purchase) &&
   Purchasable.isAnyOf(['Exit'])(before.purchase.target) &&
@@ -234,8 +213,6 @@ const tallySeat =
     return modifySeat(world, slot, { feats: () => tallied })
   }
 
-// NOTE: one tick of every seat's feats, from the World before the tick and
-// after it.
 export const tallyFeats: {
   (after: World): (before: World) => World
   (before: World, after: World): World

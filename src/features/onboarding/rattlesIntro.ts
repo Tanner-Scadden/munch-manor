@@ -9,21 +9,6 @@ import { isPending, learn } from '../../world/run/lessons'
 import { DARE_TOUR_WAVE } from '../../world/run/tutorialRules'
 import { Phase } from '../../world/schema/worldSchema'
 
-// Meeting Rattles (owner, 2026-11-10: "he seems to be randomly there"). He
-// sits on his trunk by the front door, and the first break after the
-// practice wave he says hello from there, in his bubble, a few lines, with
-// the bubble's arrow leading to him when he is off screen: the first
-// daredevil, who took the dare in 1924 and never got out. Then the guided
-// first break begins (src/features/onboarding/firstBreakQuest.ts), and his
-// hints after it (src/features/dare/rattlesHint.ts).
-//
-// It plays once per save: starting it learns the `rattles` lesson, saved,
-// so a returning player from before the escape meets him once too, SKIP IT
-// on the first-run card learns it (`skipTutorial`), and a tutorial reset
-// brings it back. Never in co-op, a run with bots too, where
-// nothing is learned, so he waits for a solo run. Nothing holds the game:
-// the break before wave 2 has no clock.
-
 export const RATTLES_INTRO_LINES: Array.NonEmptyReadonlyArray<string> = [
   'PSST! OVER HERE, BY THE DOOR!',
   "NAME'S RATTLES. DARED IN 1924.",
@@ -51,8 +36,6 @@ const learnRattles = (model: Model): Model =>
 export const isRattlesTalking = (model: Model): boolean =>
   RattlesIntro.isAnyOf(['Talking'])(model.rattlesIntro)
 
-// NOTE: one frame of his hello: it starts once its break comes, steps
-// through its lines, and stops early if the wave starts.
 export const advanceRattlesIntro: {
   (deltaMs: number): (model: Model) => Model
   (model: Model, deltaMs: number): Model
@@ -76,7 +59,6 @@ export const advanceRattlesIntro: {
   }),
 )
 
-// NOTE: the line he is saying now, if he is talking.
 export const maybeRattlesLine = (model: Model): Option.Option<string> =>
   RattlesIntro.match(model.rattlesIntro, {
     Waiting: () => Option.none(),

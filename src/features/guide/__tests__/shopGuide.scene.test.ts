@@ -16,12 +16,6 @@ import { munchopediaPropsOf } from '../../munchopedia/__tests__/munchopedia.fixt
 import { FocusGuideControl, Munchopedia } from '../../munchopedia/block'
 import { prizeUnlockId } from '../shopGuide'
 
-// The guide to the house's finds, on the Munchopedia's Finds page. Rattles'
-// shop, and the ? that opened the guide in it, went with the shop
-// (docs/ESCAPE_PLAN.md, layer 7). The root opens the Dare Journal from the
-// MANOR hand; the Journal holds the guide, so it is drawn here on its own,
-// with the props the root hands it.
-
 type GuideScene = HtmlScene.Steps<typeof Munchopedia>
 
 const guide = byClass('sg')
@@ -33,8 +27,6 @@ const entryOf = (id: string): Locator.Locator =>
 const knownAs = (known: 'Known' | 'Unknown'): Locator.Locator =>
   withAttrs({ 'data-known': known })(byClass('sg-entry'))
 
-// NOTE: the Dare Journal opened from the MANOR hand on the root, then
-// drawn with the props it was handed, on its Finds page.
 const openFinds = (model: Model) =>
   Effect.gen(function* () {
     const opened = yield* modelAfter(

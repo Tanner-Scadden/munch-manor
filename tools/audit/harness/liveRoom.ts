@@ -1,9 +1,3 @@
-// NOTE: the live co-op room the harness plays for `coop=live`: wave 8 under
-// way with a crowd that never thins, every seat with an SMG that never runs
-// dry and hearts to spare, so the page measures a moving World of a steady
-// size. The room runs in a Web Worker (liveRoom.worker.ts) and the page talks
-// to it through liveNet.ts.
-
 import { Array, Schema } from 'effect'
 
 import { UiStruct } from '@effect/ui'
@@ -27,7 +21,6 @@ import {
 } from '@game/world/schema/worldSchema'
 import { ZOMBIE_KINDS } from '@game/world/zombies/zombies'
 
-// NOTE: `coop=live`'s room without `seats` or `crowd`.
 export const LIVE_SEATS = 4
 export const LIVE_CROWD = 40
 
@@ -40,7 +33,6 @@ const CROWD_KINDS: ReadonlyArray<ZombieKind> = [
   'Runner',
 ]
 
-// NOTE: so many hit points no seat ever kills one in a measurement.
 const UNKILLABLE_HP = 1e7
 
 const crowdZombie = (id: number, index: number, count: number): Zombie => {
@@ -64,7 +56,6 @@ const crowdZombie = (id: number, index: number, count: number): Zombie => {
   }
 }
 
-// NOTE: one planned spawn far in the future, so the wave never ends.
 const NEVER_SPAWN: PlannedSpawn = {
   atMs: 1e9,
   kind: 'Shambler',
@@ -107,15 +98,12 @@ const crowdedRoom = (
   }
 }
 
-// NOTE: the room's World, started crowded with `zombies` zombies.
 export const crowdedWorld = (zombies: number) => ({
   ...ROOM_WORLD,
   start: (slots: ReadonlyArray<number>, seed: number): RoomWorld =>
     crowdedRoom(slots, zombies, seed),
 })
 
-// NOTE: what the page asks of the room's Worker: start the room, or take a
-// frame from the page's seat.
 export const LiveRoomRequest = Schema.TaggedUnion({
   Start: { seats: Schema.Finite, zombies: Schema.Finite },
   Send: { bytes: Schema.Uint8Array },

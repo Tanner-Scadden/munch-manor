@@ -47,11 +47,6 @@ import { freshTally } from '../../schema/worldSchema'
 import { offersOf } from '../../shop/purchase'
 import { VALVE_RULES, flameZoneOf, maybeValveLock } from '../gasValve'
 
-// The kitchen's gas valve (src/world/kitchen/gasValve.ts): freed by a feat
-// (kills made standing in the kitchen) and turned once with the hold to
-// buy, it lights the parlour's fireplace, which burns zombies on the floor
-// in front of it and never a player, and pays the player who turned it.
-
 const FRAME_MS = FIXED_STEP_MS
 
 const turn = holdEnter(HOLD_TICKS)
@@ -68,8 +63,6 @@ const isValveOffered = (current: Model): boolean =>
     ({ target }) => target._tag === 'Valve',
   )
 
-// NOTE: the fireplace is in the parlour, behind whichever boards the run's
-// house put it, so the fire burns once they are open.
 const parlourOpen = (arrangement: Arrangement = DEFAULT_ARRANGEMENT): Model =>
   UiStruct.evolve(freshRunModel(), {
     level: () => roomOpenIn(arrangement, PARLOUR_ROOM_ID),
@@ -80,9 +73,6 @@ const zoneIn = (arrangement: Arrangement): Box =>
 
 const zone = zoneIn(DEFAULT_ARRANGEMENT)
 
-// NOTE: a wave with the valve already turned by `owner`, the player
-// standing in the fire at its west end, and a Shambler with `hp` in the
-// fire and another out of it, neither walking.
 const litWith = (
   hp: number,
   owner = 0,
@@ -125,7 +115,6 @@ const hpOf = (world: World, id: number): number =>
 
 const BURN_TICKS = Math.ceil(VALVE_RULES.burnEveryMs / FRAME_MS)
 
-// NOTE: a spot in the kitchen a little west of the player at the valve.
 const AT_VALVE_SHOT = {
   x: focusOf(atValve(0, midWave)).player.x - 30,
   y: focusOf(atValve(0, midWave)).player.y,

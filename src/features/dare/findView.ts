@@ -16,24 +16,9 @@ import type { Vector } from '../../world/schema/worldSchema'
 import { distanceBetween } from '../../world/step/geometry'
 import { isThingShownOn } from './dareView'
 
-// Each room's find drawn (src/world/dare/finds.ts). Show, don't explain:
-// the thing sits in something of the room's own, and working it plays the
-// thing open in three stages while the gold work ring fills round it.
-//
-// - The parlour's trunk: its lid creeps up, then springs open on a glow.
-// - The library's hollow book: one red book sticks out of a short stack,
-//   slides out, then falls open, hollow.
-// - The kitchen's dumbwaiter: a hatch with its rope; the car's tray rises
-//   into view, then sits at the top with its bell.
-//
-// On Dare and Double Dare it is always drawn under the floating thing; on
-// Triple Dare and Triple Dog Dare it shows only to a player close by, as the
-// thing's glint does (src/features/dare/dareView.ts).
-
 const NEAR_PX = 34
 const JIGGLE_MS = 90
 
-// NOTE: the colours of the house's old wood and brass.
 const WOOD = '#6b3f1f'
 const WOOD_DARK = '#3e2210'
 const WOOD_LIGHT = '#8e5a2c'
@@ -43,8 +28,6 @@ const INSIDE = '#1a0f08'
 const GLOW = '#ffe680'
 
 type Stages = readonly [Sprite, Sprite, Sprite]
-
-// NOTE: every sprite's origin is the middle of its foot.
 
 const trunkBody = [
   rect(-5, -5, 11, 5, WOOD),
@@ -162,8 +145,6 @@ const isSeen = (model: Model, spot: Vector): boolean =>
   isThingShownOn(runDifficultyOf(model)) ||
   distanceBetween(focusOf(model).player, spot) <= NEAR_PX
 
-// NOTE: each hidden thing in an open room whose room finds it by work,
-// with its prop and how far its work has come.
 const findViewsOf = (model: Model): ReadonlyArray<FindView> => {
   const level = levelOf(model)
   return Array.filterMap(model.dareThings, thing => {
@@ -193,7 +174,6 @@ const findViewsOf = (model: Model): ReadonlyArray<FindView> => {
 const jiggleOf = (elapsedMs: number, share: number): number =>
   share > 0 && Math.floor(elapsedMs / JIGGLE_MS) % 2 === 0 ? 1 : 0
 
-// NOTE: a prop sorts just behind the thing floating over it.
 export const findDrawables = (model: Model): ReadonlyArray<Drawable> =>
   Array.map(findViewsOf(model), ({ spot, stages, share }): Drawable => ({
     footY: Math.round(spot.y) - 1,
@@ -207,7 +187,6 @@ export const findDrawables = (model: Model): ReadonlyArray<Drawable> =>
     ],
   }))
 
-// NOTE: over everything: the gold work ring while a find is worked.
 export const findOverheadShapes = (model: Model): ReadonlyArray<Draw.Shape> =>
   Array.filterMap(findViewsOf(model), ({ spot, share }) =>
     share > 0

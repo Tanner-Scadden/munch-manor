@@ -1,7 +1,3 @@
-// Canvas shapes painted flat into pixi: consecutive vector shapes share one
-// Graphics, and each image gets a pooled Sprite, in the shapes' own order.
-// A floor layer shows what it paints on a plane over the floor.
-
 import { Array, Match, Option } from 'effect'
 import {
   type Application,
@@ -91,8 +87,6 @@ type VectorShape = Exclude<Draw.Shape, Draw.Group | Draw.Image>
 
 type Draw = (graphics: Graphics, alpha: number) => void
 
-// NOTE: text never lies on the floor or stands in the world; the overlay
-// canvas draws it.
 const drawOf = Match.type<VectorShape>().pipe(
   Match.tagsExhaustive({
     Rect:
@@ -124,7 +118,6 @@ const drawVector = (
   drawOf(shape)(graphics, alpha)
 }
 
-// NOTE: mutable on purpose: it pools pixi's own mutable objects.
 export class FlatPainter {
   readonly container = new Container()
   private readonly textures: Textures
@@ -176,8 +169,6 @@ export class FlatPainter {
           current.clear()
           this.container.addChild(current)
         }
-        // NOTE: the transform of what the Graphics draws next, not of the
-        // Graphics itself, so shapes under different groups share one.
         current.setTransform(matrixOf(matrix))
         drawVector(current, shape, alpha)
       }
@@ -185,12 +176,6 @@ export class FlatPainter {
   }
 }
 
-// NOTE: a floor-sized picture painted from shapes in level pixels, one
-// texel a game pixel from the level's top left corner, with no plane of its
-// own. It is painted in coats, each its own shapes, over an optional base
-// picture, so a layer that changes every frame (what has landed) can share
-// one picture with one that seldom does (the decals) and one that never does
-// (the room's art).
 export class FloorPicture {
   readonly texture: ContainerTexture
   private readonly coats: ReadonlyArray<FlatPainter>
@@ -208,8 +193,6 @@ export class FloorPicture {
     this.coats = Array.makeBy(coats, () => new FlatPainter(textures))
     const frame = new Container()
     if (base !== undefined) {
-      // NOTE: a ContainerTexture is stored the other way up from an image,
-      // so its sprite is turned over in place to land upright.
       const under = new Sprite(base)
       under.position.set(level.left, level.top + level.height)
       under.scale.set(1, -1)
@@ -228,8 +211,6 @@ export class FloorPicture {
     this.texture.source.scaleMode = 'nearest'
   }
 
-  // NOTE: one coat painted, and the picture drawn again only by `render`, so
-  // a frame that paints several coats draws the picture once.
   paintCoat(coat: number, leaves: ReadonlyArray<Leaf>): void {
     Option.map(Array.get(this.coats, coat), painter => {
       painter.paintLeaves(leaves)
@@ -254,19 +235,10 @@ export class FloorPicture {
   }
 }
 
-// NOTE: a floor picture on a plane just above the floor. `lift` keeps the
-// layers from fighting. A lit layer takes the room's light (it sinks into the
-// cellar's dark); an unlit one glows of itself (the rings, the sights). Each
-// plane over the floor is shaded for every pixel it covers, so the lit
-// layers share one plane: a lit plane costs as much as every light reaching
-// the screen.
 export class FloorLayer {
   readonly mesh: Mesh3D
   readonly picture: FloorPicture
   private readonly textures: Textures
-  // NOTE: what the picture shows now, and how many sources had loaded when
-  // it was drawn: an image still loading draws nothing, so a source come in
-  // since draws the same leaves again.
   private shown: ReadonlyArray<Leaf> | undefined
   private shownLoaded = -1
 
@@ -312,10 +284,6 @@ export class FloorLayer {
     })
   }
 
-  // NOTE: the picture is the size of the whole level, so it is drawn again
-  // only when what it shows changes: a break where nothing on the ground
-  // moves draws it never, where drawing it each frame cleared and filled a
-  // level-sized texture for nothing.
   paintLeaves(leaves: ReadonlyArray<Leaf>): void {
     const loaded = this.textures.loaded
     if (
@@ -327,8 +295,6 @@ export class FloorLayer {
     }
     this.shown = leaves
     this.shownLoaded = loaded
-    // NOTE: an empty picture's plane is left out of the frame, where it
-    // was blended over every pixel of floor in view for nothing.
     this.mesh.visible = leaves.length > 0
     this.picture.paintLeaves(leaves)
   }

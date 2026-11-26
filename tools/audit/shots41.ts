@@ -1,12 +1,3 @@
-// The playtest clarity pass: the first break's trap hint and the trap slot
-// that sends players to Rattles, the place-it hint once a trap is owned,
-// How to play with a card's line open, the pause screen, the spare gun's
-// magazine and its last shots in red, the knife drawn, and the shop's gun
-// cards, on a
-// 1280x720 desktop, an 844x390 phone on its side, and a 390x844 phone held
-// upright, as `s41-<TAG>-<viewport>-<scene>.png`.
-//   TAG=after bun run heavy -- --shared bun tools/audit/shots41.ts
-// ONLY picks scenes, such as `ONLY=lastammo`, and VIEWPORTS picks screens.
 import { Console, Effect } from 'effect'
 import type { Page } from 'playwright-core'
 
@@ -39,7 +30,6 @@ type Scene = Readonly<{
   ) => Effect.Effect<void, AuditFailed>
 }>
 
-// NOTE: a card's line shows on focus with a keyboard and on a tap on touch.
 const openCardLine =
   (card: string) =>
   (page: Page, viewport: Viewport, problems: Array<string>, label: string) =>

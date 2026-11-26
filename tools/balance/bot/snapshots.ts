@@ -9,13 +9,6 @@ import { type BotOptions, type Model } from './basics'
 import { emptyWaveLog } from './logs'
 import type { WaveOutcome, WaveRun } from './results'
 
-// WAVE SNAPSHOTS
-
-// A wave snapshot is the model on the first frame of a wave's Preparation in
-// a campaign run the bot played from a seed: its money, guns, upgrades,
-// traps, and hearts are what a typical run brings to that wave. Snapshots
-// are derived by playing, never stored, so they always match the current
-// game, and they are cached for the life of the process.
 export type WaveSnapshot = { wave: number; seed: number; model: Model }
 
 type DerivedStarts = { untilWave: number; starts: ReadonlyMap<number, Model> }
@@ -25,8 +18,6 @@ const derivedStarts = new Map<string, DerivedStarts>()
 const startsKey = (seed: number, options: BotOptions) =>
   `${options.difficulty}:${options.swapsBack}:${options.noUpgrades}:${seed}`
 
-// The models at the start of every wave the run of seed reached, up to and
-// including untilWave.
 export const waveStarts: {
   (
     options: BotOptions,
@@ -65,15 +56,8 @@ export const waveStarts: {
   },
 )
 
-// How many campaign seeds a snapshot slot tries before it gives up on a
-// wave the bot rarely reaches.
 const SNAPSHOT_TRIES = 12
 
-// Slot k of slots takes its snapshot from the first of the seeds k,
-// k + slots, k + 2 slots, and so on whose run reached the wave. Every slot
-// is found on its own, so workers can split the slots between them.
-// untilWave is the last wave a found run plays to (the pass's last wave),
-// so one run serves every wave of the pass.
 export const snapshotFor: {
   (
     slot: number,
@@ -116,8 +100,6 @@ export const snapshotFor: {
     ),
 )
 
-// The same wave start with the wave rolled again from waveSeed: new packs,
-// doors, kinds, and boss door, the same money, gear, traps, and hearts.
 export const rerolled: {
   (waveSeed: number): (model: Model) => Model
   (model: Model, waveSeed: number): Model
@@ -179,13 +161,9 @@ export type WavePass = {
   runs: number
   slots: number
   firstSeed: number
-  // Runs to skip in the seed list, so a second batch rolls new waves.
   seedOffset: number
 }
 
-// Plays runs of every wave in the pass. Run i of a wave starts from slot
-// i % slots and rolls its wave from waveSeedAt(seedOffset + i). ownsSlot picks the slots
-// this process plays, so workers can split a pass by slot.
 export const playWavePass: {
   (
     options: BotOptions,

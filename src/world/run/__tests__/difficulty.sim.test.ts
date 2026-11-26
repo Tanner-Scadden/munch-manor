@@ -1,7 +1,3 @@
-// The difficulty sim test: 20 seconds of a wave on each difficulty, played
-// twice. It takes about a second, so it runs in `bun run test:full` and CI,
-// not in `bun run test`. The difficulty rules are in
-// difficulty.story.test.ts.
 import { Array, Effect, Option } from 'effect'
 
 import { UiStruct } from '@effect/ui'

@@ -98,12 +98,6 @@ import {
 import { stopForHits, thawTick } from './hitStop'
 import { resolveBulletHits, resolvePlayerContact } from './hits'
 
-// INTENT
-
-// NOTE: the player's intent is the step's input. A player at the stall's
-// counter does nothing else, whatever they hold.
-// PLAYER
-
 const tickInvulnerability = (
   invulnerability: Invulnerability,
   deltaMs: number,
@@ -148,8 +142,6 @@ const movePlayer = (
         decayKnockback(knockback, PLAYER_KNOCKBACK_DECAY_PER_SECOND, seconds),
         soupSkid(level, player, move, seconds),
       )
-      // NOTE: a player at rest keeps their knockback's reference, so the
-      // seat and the World are not copied for a vector that stayed put.
       return Object.is(next.x, knockback.x) && Object.is(next.y, knockback.y)
         ? knockback
         : next
@@ -175,8 +167,6 @@ const faceTowardIntent = (model: World, slot: PlayerSlot): World => {
   })
 }
 
-// WEAR
-
 const shedDirection = (zombie: Zombie, player: Player): Vector =>
   pipe(
     normalize(zombie.knockback),
@@ -184,10 +174,6 @@ const shedDirection = (zombie: Zombie, player: Player): Vector =>
     Option.getOrElse(() => OUTWARD),
   )
 
-// NOTE: the zombies keep their order from one frame to the next (the dead
-// leave, new ones join at the end), so each one's wear a frame ago is found by
-// walking `before` forward from the last match, not by searching all of it. A
-// zombie the walk misses (an order that changed) falls back to a full search.
 const wearBefore = (before: ReadonlyArray<Zombie>) => {
   let cursor = 0
   return (zombie: Zombie): Option.Option<number> => {
@@ -249,8 +235,6 @@ export const shedParts: {
       })
 })
 
-// INTENSITY
-
 const heartsLostBetween = (before: World, after: World): number =>
   Array.reduce(playersOf(after), 0, (total, { seat, player }) =>
     Option.match(maybePlayerAt(before, seat.slot), {
@@ -271,11 +255,6 @@ const feelIntensity = (before: World, after: World, deltaMs: number): World =>
       ),
   })
 
-// FRAME
-
-// NOTE: a downed player crawls (decided row 4), and one an Ankle Biter
-// clings to drags their feet. In single player any clinging Ankle Biter is
-// on the one player's ankles.
 const speedOf = (level: Level, model: World, slot: PlayerSlot): number => {
   const { boosts, player, seat } = seatStateAt(model, slot)
   return (
@@ -314,10 +293,6 @@ const moveSeat =
         })
   }
 
-// NOTE: one tick of the seat at `slot` walking and turning from its
-// intent, and nothing else: what a co-op client runs to predict its own
-// player before the room's answer comes (MULTIPLAYER.md, Phase 4). Hits,
-// money, and deaths stay the room's.
 const walkSeat = (model: World, slot: PlayerSlot, deltaMs: number): World => {
   const level = levelOf(model)
   return faceTowardIntent(
@@ -331,10 +306,6 @@ const walkSeat = (model: World, slot: PlayerSlot, deltaMs: number): World => {
   )
 }
 
-// NOTE: a co-op client's guess at its own seat's next tick from its own
-// input (src/world/net/roomWorld.ts, predictOwn): the walk, the reload, and the
-// trigger, so its shots' timing, muzzle flash, and ammo show at once. The
-// caller keeps only the player; bullets, hits, and money stay the room's.
 export const predictSeat: {
   (slot: PlayerSlot, deltaMs: number): (model: World) => World
   (model: World, slot: PlayerSlot, deltaMs: number): World
@@ -353,11 +324,6 @@ const withWield = (
         player: player => UiStruct.evolve(player, { wield: () => wield }),
       })
 
-// NOTE: a co-op player who is down, Downed or BledOut, cannot shoot, but
-// the trigger swings whatever is in their melee slot, the knife or the
-// Clang Pan (owner, 2026-11-02: "when you are knocked or dead you can use
-// your knife, will give the pan more value"). The gun they held stays
-// drawn for when they get up: the melee slot is in hand only for the swing.
 const swingWhileDown = (
   model: World,
   slot: PlayerSlot,
@@ -372,10 +338,6 @@ const swingWhileDown = (
   return withWield(swung, slot, player.wield)
 }
 
-// NOTE: only a standing player shops, reloads, and fires; one who is down
-// swings their melee slot (swingWhileDown). A player at work on a room
-// tool's station or a room's find holds their fire and their knife
-// (src/world/stations/, src/world/dare/finds.ts).
 const armSeat =
   (deltaMs: number) =>
   (model: World, slot: PlayerSlot): World =>
@@ -396,7 +358,6 @@ const armSeat =
           ? swingWhileDown(faceTowardIntent(model, slot), slot, deltaMs)
           : faceTowardIntent(model, slot)
 
-// NOTE: only a standing player holds to buy.
 const holdToBuy =
   (deltaMs: number) =>
   (model: World, slot: PlayerSlot): World =>
@@ -418,8 +379,6 @@ const bossAt = (model: World): Vector =>
     (): Vector => focusOf(model).player,
   )
 
-// NOTE: when a wave ends and its break begins, Rattles bangs every
-// player's Clang Pan flat.
 const flattenAtBreak = (before: World, after: World): World =>
   Phase.isAnyOf(['Wave'])(before.phase) &&
   Phase.isAnyOf(['Preparation'])(after.phase)
@@ -442,7 +401,6 @@ const advanceWorld = (model: World, deltaMs: number): World => {
 
   const armed = forEachSeat(advanceStations(routed, deltaMs), armSeat(deltaMs))
 
-  // NOTE: the bullets and the zombies in one copy of the World.
   const advanced = UiStruct.evolve(armed, {
     ...bulletFlightOf(armed, seconds, deltaMs),
     zombies: zombies =>
@@ -494,13 +452,8 @@ const advanceWorld = (model: World, deltaMs: number): World => {
   )
 }
 
-// NOTE: one 60 Hz tick of the world from the player's intent: hit-stop
-// decides whether the world steps, then the tick's events decide the next
-// hit-stop.
 export type Tick = Readonly<{ world: World; worldMs: number }>
 
-// NOTE: while the crew arrives (src/world/run/arrival.ts) nothing moves:
-// only the intro's clock runs, and the slam begins the first break.
 export const advanceTick = (world: World): Tick => {
   if (isArriving(world.phase)) {
     return {

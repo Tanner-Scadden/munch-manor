@@ -1,6 +1,3 @@
-// The right side of the studio: what is picked, the box to ask for a change,
-// the notes about it with Claude's answers and their before pictures, and
-// every other note, a tap away.
 import { Array, Function, Option, String } from 'effect'
 
 import {

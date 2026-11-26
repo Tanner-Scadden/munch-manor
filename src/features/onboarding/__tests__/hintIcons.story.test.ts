@@ -4,7 +4,6 @@ import { describe, expect, test } from 'vitest'
 import { ICON_PALETTE, keyPixels } from '../../../art/hintIcons'
 import { parseColor } from '../../../art/png'
 
-// NOTE: perceived lightness, 0 to 255.
 const lightnessOf = (symbol: string): number =>
   Option.match(
     Option.flatMap(Option.fromNullishOr(ICON_PALETTE[symbol]), parseColor),

@@ -4,10 +4,6 @@ import { Base64 } from 'effect/encoding'
 import { type Rgba, rasterOf } from '../art/png'
 import { spriteContentOf } from '../art/sprite'
 
-// NOTE: reads back the PNG data URLs that src/art/png.ts writes, and the
-// stand-ins tests draw instead, for tests. It only knows that writer's shape:
-// one IDAT chunk of stored deflate blocks and unfiltered RGBA scanlines.
-
 type DecodedPng = Readonly<{
   width: number
   height: number
@@ -48,8 +44,6 @@ const storedBlocks = (zlib: Uint8Array, at: number): ReadonlyArray<number> => {
   return isFinal ? block : [...block, ...storedBlocks(zlib, at + 5 + length)]
 }
 
-// NOTE: tests run in stand-in mode (src/test/vitest-setup.ts), where a sprite's
-// source names its key and its pixels are kept in src/art/sprite.ts.
 const standInPng = (src: string): Option.Option<DecodedPng> =>
   Option.map(spriteContentOf(src), ({ width, height, fills }) => {
     const raster = rasterOf(width, height, fills)

@@ -9,37 +9,13 @@ import {
   cleanName,
 } from './Lobby'
 
-// NOTE: QUICK PLAY (MULTIPLAYER.md, decision 15), as pure functions over
-// plain data, apart from the Matchmaker Durable Object that runs them
-// (infra/worker/matchmaker.ts). A player who presses QUICK PLAY:
-//
-// 1. goes into an open public lobby with a free seat, the fullest first, or
-// 2. waits in a first-come queue. When QUICK_PLAY_GROUP_SIZE players are
-//    waiting, they get a new public lobby together.
-// 3. After OFFER_AFTER_MS in the queue, if 2 or 3 are waiting, each is
-//    offered "Start with N players?". If every one of them accepts, they get
-//    a public lobby together, which still takes Quick Play players into its
-//    free seats until everyone presses READY. Anyone who keeps waiting stays
-//    queued, and so does everyone else, until the next offer. A lone player
-//    is never offered it, and a 4th player arriving during an offer makes a
-//    group of 4 instead.
-//
-// Every function returns the next matchmaker and what the Durable Object
-// must do: send a message, seat a player in a room, make a room, or wake
-// later.
-
 export const QUICK_PLAY_GROUP_SIZE = MAX_PLAYERS
 export const OFFER_AFTER_MS = 45 * 1000
 export const MIN_OFFER_GROUP = 2
 export const OFFER_ANSWER_MS = 20 * 1000
 export const ROOM_LISTING_MS = 10 * 60 * 1000
-// NOTE: a group of four forms first from players on one continent; a
-// player who has waited this long joins anyone's group.
 export const REGION_WIDEN_MS = 15 * 1000
 
-// MESSAGES
-
-// NOTE: the Quick Play socket speaks JSON: it is a few messages a minute.
 export const QuickClient = Schema.TaggedUnion({
   Hello: {
     token: Schema.String.check(Schema.isMaxLength(1024)),
@@ -55,8 +31,6 @@ export const QuickClient = Schema.TaggedUnion({
 export type QuickClient = typeof QuickClient.Type
 export type QuickHello = typeof QuickClient.cases.Hello.Type
 
-// NOTE: `offerPlayers` is 0 with no offer open, else the size of the group
-// offered to start now; `accepted` is how many of it said yes so far.
 export const QuickServer = Schema.TaggedUnion({
   Waiting: {
     names: Schema.Array(Schema.String),
@@ -74,10 +48,6 @@ export type QuickServer = typeof QuickServer.Type
 export const QuickClientJson = Schema.fromJsonString(QuickClient)
 export const QuickServerJson = Schema.fromJsonString(QuickServer)
 
-// STATE
-
-// NOTE: `name` is as the player sent it; the room cleans it when it seats
-// them, and the queue screen shows it cleaned.
 export interface Queued {
   readonly socket: string
   readonly playerId: string
@@ -86,8 +56,6 @@ export interface Queued {
   readonly rank?: number
   readonly calling?: string
   readonly introSeen?: boolean
-  // NOTE: the continent the player connected from, as Cloudflare names it
-  // (NA, EU, AS, ...); '' when unknown.
   readonly region?: string
   readonly queuedMs: number
 }
@@ -98,7 +66,6 @@ export interface Offer {
   readonly madeMs: number
 }
 
-// NOTE: a public lobby with `members` seated, as the room last said.
 export interface OpenRoom {
   readonly code: string
   readonly members: number
@@ -109,11 +76,9 @@ export interface Matchmaker {
   readonly queue: ReadonlyArray<Queued>
   readonly offer: Option.Option<Offer>
   readonly rooms: ReadonlyArray<OpenRoom>
-  // NOTE: no offer is made again before this, after one ended unanswered.
   readonly quietUntilMs: number
 }
 
-// NOTE: how the Matchmaker Durable Object keeps the state between wakes.
 const QueuedSchema = Schema.Struct({
   socket: Schema.String,
   playerId: Schema.String,
@@ -186,8 +151,6 @@ const send = (socket: string, message: QuickServer): Action => ({
   message,
 })
 
-// RULES
-
 const isFresh = (room: OpenRoom, nowMs: number): boolean =>
   nowMs - room.updatedMs < ROOM_LISTING_MS
 
@@ -207,7 +170,6 @@ const roomWithSeat = (
     Array.head,
   )
 
-// NOTE: the first queued players go to rooms with seats, FIFO.
 const seatInRooms = (matchmaker: Matchmaker, nowMs: number): Stepped =>
   Option.match(
     Option.all([
@@ -247,8 +209,6 @@ const fitsWith =
     isWidened(anchor, nowMs) ||
     isWidened(player, nowMs)
 
-// NOTE: the first group of four, the oldest player first: their own
-// continent's players, or anyone once either has waited REGION_WIDEN_MS.
 const groupOf = (
   queue: ReadonlyArray<Queued>,
   nowMs: number,
@@ -285,8 +245,6 @@ const formGroups = (matchmaker: Matchmaker, nowMs: number): Stepped =>
     },
   })
 
-// NOTE: four or more waiting but split by continent: wake when the oldest
-// of them may join anyone.
 const widenDueMs = (matchmaker: Matchmaker, nowMs: number) =>
   matchmaker.queue.length >= QUICK_PLAY_GROUP_SIZE
     ? Option.map(
@@ -300,7 +258,6 @@ const widenDueMs = (matchmaker: Matchmaker, nowMs: number) =>
 const queuedSockets = (matchmaker: Matchmaker) =>
   Array.map(matchmaker.queue, player => player.socket)
 
-// NOTE: an offer stands only while everyone it was made to still waits.
 const keepOffer = (matchmaker: Matchmaker, nowMs: number): Matchmaker =>
   Option.match(matchmaker.offer, {
     onNone: () => matchmaker,
@@ -334,7 +291,6 @@ const makeOffer = (matchmaker: Matchmaker, nowMs: number): Matchmaker =>
       }
     : matchmaker
 
-// NOTE: an offer nobody finished answering lapses, as if declined.
 const lapseOffer = (matchmaker: Matchmaker, nowMs: number): Matchmaker =>
   Option.exists(
     matchmaker.offer,
@@ -421,8 +377,6 @@ const offerWakeOf = (matchmaker: Matchmaker): ReadonlyArray<Action> =>
         : [],
   })
 
-// NOTE: after anything happens: seat who fits in open rooms, group four,
-// settle the offer, then tell everyone still waiting where they stand.
 const settle = (matchmaker: Matchmaker, nowMs: number): Stepped => {
   const seated = seatInRooms(
     {
@@ -448,8 +402,6 @@ const settle = (matchmaker: Matchmaker, nowMs: number): Stepped => {
   }
 }
 
-// EVENTS
-
 export const arrive: {
   (player: Queued, nowMs: number): (matchmaker: Matchmaker) => Stepped
   (matchmaker: Matchmaker, player: Queued, nowMs: number): Stepped
@@ -471,7 +423,6 @@ export const arrive: {
     ),
 )
 
-// NOTE: a player who cancelled or whose socket closed.
 export const leave: {
   (socket: string, nowMs: number): (matchmaker: Matchmaker) => Stepped
   (matchmaker: Matchmaker, socket: string, nowMs: number): Stepped
@@ -535,8 +486,6 @@ export const answer: {
     ),
 )
 
-// NOTE: a public room says how many it seats and whether it still takes
-// players (in its lobby, before everyone pressed READY).
 export const listed: {
   (room: RoomListing, nowMs: number): (matchmaker: Matchmaker) => Stepped
   (matchmaker: Matchmaker, room: RoomListing, nowMs: number): Stepped
@@ -563,8 +512,6 @@ export const listed: {
     ),
 )
 
-// NOTE: a seat or a room that did not work out: the room is forgotten
-// until it lists itself again, and the player goes back to the front.
 export const seatFailed: {
   (
     player: Queued,

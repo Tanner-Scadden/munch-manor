@@ -19,18 +19,10 @@ import {
   type TableChange,
 } from './Protocol'
 
-// REMOTE
-
-// NOTE: the main thread side of the protocol. Each call gets an id made of
-// the session and a counter, so ids never clash between tabs. A response is
-// matched to its call by id; a Changed response goes to `changes`. The
-// sender can be swapped, as when a follower tab becomes the leader, and
-// every call still in flight then fails at once instead of timing out.
 export interface Sender {
   readonly send: (request: Request) => Effect.Effect<void>
 }
 
-/** @stability unstable */
 export interface Remote {
   readonly session: string
   readonly call: (
@@ -43,7 +35,6 @@ export interface Remote {
   readonly changes: PubSub.PubSub<ReadonlyArray<TableChange>>
 }
 
-/** @stability unstable */
 export const connectionError: {
   (operation: string): (message: string) => SqlError.SqlError
   (message: string, operation: string): SqlError.SqlError
@@ -57,7 +48,6 @@ export const connectionError: {
   }),
 )
 
-/** @stability unstable */
 export const databaseError: {
   (operation: string): (failure: DatabaseFailure) => SqlError.SqlError
   (failure: DatabaseFailure, operation: string): SqlError.SqlError
@@ -90,7 +80,6 @@ const responseId = (response: Response): Option.Option<string> =>
     Changed: () => Option.none(),
   })
 
-/** @stability unstable */
 export const makeRemote: {
   (initialSender: Sender): (session: string) => Effect.Effect<Remote>
   (session: string, initialSender: Sender): Effect.Effect<Remote>

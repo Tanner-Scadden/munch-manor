@@ -4,11 +4,6 @@ import { encodeJson } from '../json'
 import { openBrowser, runAudit, wait } from './lib'
 import { attempt } from './page'
 
-// Loads a deployed copy of the game in headless Chrome and checks that it
-// boots: the page answers 200, the game's two canvases mount (the 3D world
-// and the overlay), and nothing throws.
-// Usage: bun live-check.ts [url]
-
 const URL = process.argv[2] ?? 'https://munchmanor.com/'
 const EXPECTED_CANVASES = 2
 

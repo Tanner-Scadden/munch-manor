@@ -1,45 +1,14 @@
-// A set piece carved from its views, as the sprite stacking article's
-// views_to_slices does: a front, a top, and a side view as pixel maps, and a
-// block kept only where all three agree (the visual hull). Each face of a
-// block takes its color from the view that sees it: the front from the
-// front, the top from the top, the sides from the side, so the outline drawn
-// on the front art stays on the front face alone. Hand fixes add or take
-// away blocks where three views cannot say it (an arch, a hole, an
-// overhang).
-//
-// A piece of thin parts (a chandelier's chain, ring, and candles) carved
-// from one top and one side fills in where one part's top meets another's
-// side. So the top and the side may come in parts, each carved against the
-// one front on its own and the blocks joined: one part is the plain carve.
-//
-// The grid: x across (east), y down the piece's rows, z deep from its front
-// plane (0) toward its back (north). The front view is read along the lens's
-// ray, `lean` rows up for each pixel of depth: 1 for the game's own art,
-// drawn as the 3D lens sees it (src/render/iso/voxelShape.ts), 0 for a true
-// elevation.
-//
-// Plain data, no pixi: the 3D renderer turns a carved model into its mesh
-// (src/render/iso/carvedMesh.ts), and Munch Studio can show the views it was
-// carved from beside what came out (`draftedViewsOf`, `carvedViewsOf`,
-// `voxelsOf`).
-
 import { Array, Option, Record, String } from 'effect'
 
 import type * as Draw from '../render/draw'
 import { parseColor } from './png'
 import { type Palette, TRANSPARENT } from './sprite'
 
-// NOTE: a view as a pixel map: one character a pixel, `.` clear.
 export type PixelView = Readonly<{
   rows: ReadonlyArray<string>
   palette: Palette
 }>
 
-// NOTE: a part's top and side, and where they sit in the piece.
-// - top: seen from above with north up, column x less `left`, its last row
-//   the part's nearest depth, `near`, and each row up one deeper.
-// - side: seen from the east, column z less `near` (the nearest on the
-//   left), row y less `rise`.
 export type CarvePart = Readonly<{
   name: string
   top: PixelView
@@ -49,8 +18,6 @@ export type CarvePart = Readonly<{
   near?: number
 }>
 
-// NOTE: the views of a piece. The front is seen from the lens, column x,
-// row the picture's row.
 export type CarveViews = Readonly<{
   front: PixelView
   parts: Array.NonEmptyReadonlyArray<CarvePart>
@@ -58,7 +25,6 @@ export type CarveViews = Readonly<{
 
 export type Voxel = Readonly<{ x: number; y: number; z: number }>
 
-// NOTE: a hand-added block may carry its own color, for a face no view sees.
 type AddedVoxel = Voxel & Readonly<{ color?: string }>
 
 export type CarveFixes = Readonly<{
@@ -66,7 +32,6 @@ export type CarveFixes = Readonly<{
   remove?: ReadonlyArray<Voxel>
 }>
 
-// NOTE: a block's part, by index, or none for a hand-added one.
 const NO_PART = 255
 
 export type CarvedModel = Readonly<{
@@ -75,16 +40,9 @@ export type CarvedModel = Readonly<{
   depth: number
   lean: number
   views: CarveViews
-  // NOTE: one byte a block at `indexIn`: the part it was carved for, or
-  // NO_PART for a hand-added block or none (see `solid`).
   part: Uint8Array
-  // NOTE: one byte a block, 1 solid.
   solid: Uint8Array
-  // NOTE: the hand-added blocks' own colors, by index.
   own: ReadonlyMap<number, string>
-  // NOTE: a default form's color for a block's tops and sides, by index:
-  // its front pixel's, or the nearest one inside an outline, so an outline
-  // shows on the front face alone.
   fill: ReadonlyMap<number, string>
 }>
 
@@ -93,7 +51,6 @@ export type Face = 'Front' | 'Back' | 'Top' | 'Bottom' | 'Left' | 'Right'
 const widthOf = (view: PixelView): number =>
   Array.reduce(view.rows, 0, (most, row) => Math.max(most, row.length))
 
-// NOTE: a view's color at a pixel, none where it is clear or off the map.
 const viewColorAt = ({
   view,
   column,
@@ -111,8 +68,6 @@ const viewColorAt = ({
       symbol === TRANSPARENT ? Option.none() : Record.get(view.palette, symbol),
   )
 
-// NOTE: every pixel's color of a view, row by row, clear as `.`, to set two
-// views side by side whatever their symbols.
 export const viewColorsOf = (
   view: PixelView,
 ): ReadonlyArray<ReadonlyArray<string>> =>
@@ -141,7 +96,6 @@ const isInside = (
   y < size.height &&
   z < size.depth
 
-// NOTE: a part's top and side pixels for a block.
 const partTopAt = (part: CarvePart, { x, z }: Voxel) =>
   viewColorAt({
     view: part.top,
@@ -156,9 +110,6 @@ const partSideAt = (part: CarvePart, { y, z }: Voxel) =>
     row: y - (part.rise ?? 0),
   })
 
-// NOTE: the grid's size from its views: as wide as the front and every
-// part's top, as deep as the deepest part, and as tall as every part's
-// side, or as the front reaches down its deepest ray.
 const sizeOf = (
   views: CarveViews,
   lean: number,
@@ -182,8 +133,6 @@ const sizeOf = (
   }
 }
 
-// NOTE: carves the piece: a block wherever the front and one part's top and
-// side all see something along it, then the hand fixes, the removals last.
 export const carve = ({
   views,
   lean = 0,
@@ -229,8 +178,6 @@ export const carve = ({
   }
 }
 
-// NOTE: the hand fixes applied to a carve's blocks, the removals last, and
-// the added blocks' own colors.
 const fixedOwn = ({
   size,
   solid,
@@ -263,14 +210,8 @@ const fixedOwn = ({
   return own
 }
 
-// HAND-PLACED BLOCKS
-
 const NO_VIEW: PixelView = { rows: [], palette: {} }
 
-// NOTE: a piece that is only hand-placed blocks, each its own color, with
-// no views to carve from: a thin run no three views can say (the
-// chandelier's rope across the dining room, src/render/room/chandelierRope.ts).
-// Its grid holds the blocks from 0; one outside it is left out.
 export const blocksModelOf = (
   blocks: ReadonlyArray<Voxel & Readonly<{ color: string }>>,
 ): CarvedModel => {
@@ -298,17 +239,6 @@ export const blocksModelOf = (
   }
 }
 
-// DEFAULT FORM
-
-// NOTE: a sprite's form with no views drawn for it, read off its front art
-// alone: each pixel a stack of blocks straight back from the lens, as deep
-// as the art is thick there and centered on one plane down the sprite's
-// middle, so a body is round. A pixel's thickness is its run across or
-// down, whichever is shorter (a leg stays a leg, the torso is as deep as it
-// is wide), and its stack thins toward either end of both runs as a
-// circle's chord does. `most` caps the depth.
-// - near: how many blocks back its stack starts, per pixel.
-// - thick: how many blocks it holds, 0 where the art is clear.
 export type SpriteForm = Readonly<{
   width: number
   height: number
@@ -319,8 +249,6 @@ export type SpriteForm = Readonly<{
 
 type Runs = Readonly<{ at: Uint8Array; length: Uint8Array }>
 
-// NOTE: where each pixel sits in its run of solid pixels and how long the
-// run is, along a row (`step` 1) or a column (`step` the width).
 const runsAlong = (
   input: Readonly<{
     solid: Uint8Array
@@ -345,8 +273,6 @@ const runsAlong = (
   }
 }
 
-// NOTE: a circle's chord through a run: `thickness` blocks at its middle,
-// fewer toward its ends, never less than one.
 const chordOf = (
   input: Readonly<{ thickness: number; at: number; length: number }>,
 ): number => {
@@ -358,11 +284,6 @@ const chordOf = (
   )
 }
 
-// NOTE: each solid pixel's way in from its row's nearer end, 0 at either,
-// and never more than one past a solid pixel's over or under it: so where
-// an arm held out makes a row's run long, the torso it joins keeps its own
-// width. A body is as deep as it is wide, not as tall, so a clear pixel
-// over or under one leaves it be; the run down rounds its top and bottom.
 const inwardOf = (
   input: Readonly<{ across: Runs; width: number; height: number }>,
 ): Uint8Array => {
@@ -430,8 +351,6 @@ export const formOf = ({
     const acrossAt = across.at[index] ?? 0
     const downAt = down.at[index] ?? 0
     const thickness = Math.min(most, acrossLength, downLength)
-    // NOTE: never deeper than twice its way in (`inwardOf`), so a row's
-    // run that an arm held out makes long leaves the torso its own width.
     const blocks = Math.min(
       1 + 2 * (inward[index] ?? 0),
       chordOf({ thickness, at: acrossAt, length: acrossLength }),
@@ -447,8 +366,6 @@ export const formOf = ({
   return { width, height, depth, near, thick }
 }
 
-// NOTE: the color a pixel's tops and sides wear: its own, or for an outline
-// pixel the nearest one along its row or column that is no outline.
 const fillOf = (
   input: Readonly<{
     front: PixelView
@@ -491,9 +408,6 @@ const fillOf = (
   return own
 }
 
-// NOTE: a sprite's default carve: its form (`formOf`) as blocks, lean 1 as
-// the game's art is drawn, each block's front its pixel and its tops and
-// sides its fill, then the hand fixes.
 const defaultCarveOf = (
   input: Readonly<{
     front: PixelView
@@ -550,10 +464,6 @@ const defaultCarveOf = (
   }
 }
 
-// NOTE: how a sprite's carve is refined: the outline's symbols, shown on
-// the front face alone; the most blocks deep; top and side views by part,
-// carved as `carve` does in place of the default form; and hand fixes. Kept
-// at module scope beside the pixel map, as the carve is cached by it.
 export type SpriteCarve = Readonly<{
   outline?: string
   most?: number
@@ -576,10 +486,6 @@ const refinementIdOf = (refine: SpriteCarve): number => {
 
 const NO_REFINEMENT: SpriteCarve = {}
 
-// NOTE: a sprite's pixel map carved into a volume, as `spriteShapes` bakes
-// it into an image: one line beside the map, built on first use and kept by
-// its pixels, palette, and refinement, never per frame. With no parts it is
-// the default form; with parts, the visual hull of their views.
 export const carveSprite = ({
   pixels,
   palette,
@@ -625,7 +531,6 @@ export const carveSprite = ({
   return model
 }
 
-// NOTE: every block of a box, both corners in it, for a hand fix.
 export const voxelsWithin = ({
   from,
   to,
@@ -651,7 +556,6 @@ export const isSolidAt = ({
 }: Readonly<{ model: CarvedModel; voxel: Voxel }>): boolean =>
   isInside(model, voxel) && model.solid[indexIn(model, voxel)] === 1
 
-// NOTE: every block of the piece, front slice first, row by row.
 export const voxelsOf = (model: CarvedModel): ReadonlyArray<Voxel> => {
   const voxels: Array<Voxel> = []
   for (let z = 0; z < model.depth; z += 1) {
@@ -666,8 +570,6 @@ export const voxelsOf = (model: CarvedModel): ReadonlyArray<Voxel> => {
   return voxels
 }
 
-// NOTE: each view's pixel for a block, by the face it colors: its own
-// part's top and side, or every part's in turn for a hand-added block.
 type Read = (model: CarvedModel, voxel: Voxel) => Option.Option<string>
 
 const frontColorOf: Read = (model, { x, y, z }) =>
@@ -702,8 +604,6 @@ const VIEW_ORDER: Readonly<Record<Face, ReadonlyArray<Read>>> = {
   Right: [sideColorOf, frontColorOf, topColorOf],
 }
 
-// NOTE: a face's color: a hand-added block's own, else the view that sees
-// the face, else the others in turn; none for no block.
 export const faceColorOf = ({
   model,
   voxel,
@@ -729,7 +629,6 @@ export const faceColorOf = ({
   )
 }
 
-// NOTE: a picture as a pixel map, its palette one character a color.
 const SYMBOLS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
 
 const pictureOf = (
@@ -773,9 +672,6 @@ const pictureOf = (
   }
 }
 
-// NOTE: the pixels of a list of rectangles inside a box as a view, each the
-// last one painted over it, so a piece's front can be its 2D art itself.
-// What is mostly see-through (a glow, a shadow) is left clear.
 const SOLID_ALPHA = 128
 
 export const pixelViewOfShapes = ({
@@ -811,9 +707,6 @@ export const pixelViewOfShapes = ({
   })
 }
 
-// NOTE: the views a piece was carved from, whole: the front as drafted, and
-// the parts' tops and sides laid over one another in their order, for a
-// reviewer to read as one top and one side.
 const draftedViewsOf = (
   model: CarvedModel,
 ): Readonly<{ front: PixelView; top: PixelView; side: PixelView }> => {
@@ -837,7 +730,6 @@ const draftedViewsOf = (
   }
 }
 
-// NOTE: the first block along a run of grid cells, nearest the viewer first.
 const firstAlong = (
   model: CarvedModel,
   cells: ReadonlyArray<Voxel>,
@@ -848,10 +740,6 @@ const firstAlong = (
     voxel => faceColorOf({ model, voxel, face }),
   )
 
-// NOTE: what the carve made, seen square from the front, the top, and the
-// side, each pixel the nearest face's color: the drafted views less what no
-// block holds, for a reviewer to set beside them. The front is read along
-// the same ray the carve read it by; the top's last row is the front.
 export const carvedViewsOf = (
   model: CarvedModel,
 ): Readonly<{ front: PixelView; top: PixelView; side: PixelView }> => {
@@ -891,10 +779,6 @@ export const carvedViewsOf = (
   }
 }
 
-// NOTE: the picture the game's lens makes of a piece carved with `lean` 1
-// (src/render/iso/voxelShape.ts): each block's front at its row less its
-// depth, and its top, where nothing sits on it, a row over that, the nearer
-// face winning. Its first row is the one over the front view's row 0.
 export const lensViewOf = (model: CarvedModel): PixelView => {
   const { width, height, depth } = model
   const colors = new Map<number, Readonly<{ color: string; near: number }>>()
@@ -927,9 +811,6 @@ export const lensViewOf = (model: CarvedModel): PixelView => {
   })
 }
 
-// NOTE: what a reviewer sets side by side (Munch Studio's carved models):
-// the views drafted, the views of what came out, and every block with its
-// faces' colors.
 export type ShowpieceSheet = Readonly<{
   size: Readonly<{ width: number; height: number; depth: number }>
   drafted: Readonly<{ front: PixelView; top: PixelView; side: PixelView }>

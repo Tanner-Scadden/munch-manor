@@ -50,7 +50,6 @@ import { doorCounts, rollSpawns } from '../../waves/endlessWaves'
 import { JOIN_LEAD_MS, beginPreparation, joinNewDoors } from '../../waves/waves'
 import { OVEN_RULES, flameBoxOf, ovenBoxesOf } from '../kitchen'
 
-// NOTE: enough keys for the kitchen's padlock, with two to spare.
 const KEYS = EXIT_RULES.kitchenKeys + 2
 
 const FRAME_MS = FIXED_STEP_MS

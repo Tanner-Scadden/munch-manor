@@ -28,16 +28,6 @@ import { dareThingPool, thingsOpenedBy } from '../../world/dare/milestones'
 import { focusOf, playersOf } from '../../world/party/party'
 import { Phase } from '../../world/schema/worldSchema'
 
-// The Proof Shelf's rules (docs/PROGRESSION_PLAN.md, pillar B): your
-// friends' treehouse shelf, a slot per dare thing per difficulty and a hook
-// for Uncle Chunk's big key on each, each slot keeping the first run that
-// filled it (src/shared/proofData.ts). A run puts what it found on the
-// shelf when it ends, as it pays out: munched, escaped, or out the back
-// door. Each player's own client stamps its own shelf with the crew as it
-// saw them, so nothing rides the wire.
-
-// THE SLOTS
-
 export const ShelfThing = Schema.Literals([...DareKind.literals, BIG_KEY])
 export type ShelfThing = typeof ShelfThing.Type
 
@@ -47,10 +37,6 @@ export const ShelfSpot = Schema.Struct({
 })
 export type ShelfSpot = typeof ShelfSpot.Type
 
-// NOTE: the shelf's rows, easiest at the top, and each row's slots, the
-// house's things in the dare card's order, then the things the player's
-// milestones opened (src/world/dare/milestones.ts), so the shelf grows a
-// slot as each opens, and the big key's hook last.
 export const SHELF_ROWS: Array.NonEmptyReadonlyArray<Difficulty> =
   Difficulty.literals
 
@@ -89,8 +75,6 @@ export const maybeStampAt: {
     ),
 )
 
-// NOTE: the slots shown that are filled (a thing a later build added stays
-// on the shelf, unshown).
 export const filledCount: {
   (things: ReadonlyArray<ShelfThing>): (proof: SavedProof) => number
   (proof: SavedProof, things: ReadonlyArray<ShelfThing>): number
@@ -107,10 +91,6 @@ export const filledCount: {
     ).length,
 )
 
-// MOVING BETWEEN SLOTS
-
-// NOTE: the arrow keys walk the shelf: left and right along a row, up and
-// down between rows, wrapping at the ends.
 const ARROW_STEPS: Readonly<
   Record<string, readonly [columns: number, rows: number]>
 > = {
@@ -135,7 +115,6 @@ const stepped = <A>(
     Option.getOrElse(() => from),
   )
 
-// NOTE: the key and the slots along a row as the shelf shows them.
 export type Press = Readonly<{
   code: string
   things: Array.NonEmptyReadonlyArray<ShelfThing>
@@ -152,8 +131,6 @@ export const maybeSteppedSpot: {
       difficulty: stepped(SHELF_ROWS, spot.difficulty, rows),
     })),
 )
-
-// DAYS
 
 const MONTHS: Array.NonEmptyReadonlyArray<string> = [
   'JAN',
@@ -184,7 +161,6 @@ const dayPartsOf = (stamp: DayStamp): DayParts => ({
   day: partOf(stamp, 8, 10),
 })
 
-// NOTE: a stamp's day as the shelf prints it: NOV 13.
 export const dayLabel = (stamp: DayStamp): string => {
   const { month, day } = dayPartsOf(stamp)
   return `${monthName(month)} ${day}`
@@ -209,8 +185,6 @@ export const daysInMonth = (stamp: DayStamp): number => {
 
 const WEEKDAY_OFFSETS = [0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4]
 
-// NOTE: the weekday the month's first day falls on, Sunday 0, worked out
-// from the date alone (Sakamoto's method), so no clock is read.
 export const firstWeekdayOf = (stamp: DayStamp): number => {
   const { year, month } = dayPartsOf(stamp)
   const shifted = month < 3 ? year - 1 : year
@@ -228,7 +202,6 @@ export const firstWeekdayOf = (stamp: DayStamp): number => {
 const twoDigits = (value: number): string =>
   value < 10 ? `0${value}` : `${value}`
 
-// NOTE: a day of a stamp's month, as a stamp.
 export const dayOfMonth: {
   (day: number): (stamp: DayStamp) => DayStamp
   (stamp: DayStamp, day: number): DayStamp
@@ -237,8 +210,6 @@ export const dayOfMonth: {
   return `${parts.year}-${twoDigits(parts.month)}-${twoDigits(day)}`
 })
 
-// NOTE: the month the calendar shows: today's, or the last stamped day's
-// before today is known.
 export const maybeCalendarDay: {
   (
     stampedDays: ReadonlyArray<DayStamp>,
@@ -258,11 +229,6 @@ export const maybeCalendarDay: {
     ),
 )
 
-// NEW PIPS
-
-// NOTE: a slot filled and a mission day stamped are each an unlock id in
-// the synced set of what was seen (src/domain/unlocks.ts), so the PROOF
-// card's NEW pip clears on every device once the shelf has been opened.
 const entryUnlockId = (entry: ProofEntry): string =>
   `proof:${entry.thing}:${entry.difficulty}`
 
@@ -271,7 +237,6 @@ export const spotUnlockId = (spot: ShelfSpot): string =>
 
 const dayUnlockId = (day: DayStamp): string => `proof:day:${day}`
 
-// NOTE: a new slot on the shelf for a thing a milestone opened.
 const openedUnlockId = (kind: DareKind): string => `proof:open:${kind}`
 
 const isProofId = (id: string): boolean => String.startsWith('proof:')(id)
@@ -288,8 +253,6 @@ const unseenProofOf = (model: Model): ReadonlyArray<string> =>
 export const hasNewProof = (model: Model): boolean =>
   Array.isReadonlyArrayNonEmpty(unseenProofOf(model))
 
-// NOTE: the shelf opened: everything on it is seen, and what was not wears
-// NEW while it stays open.
 export const markProofSeen = (model: Model): Model => {
   const unseen = unseenProofOf(model)
   return UiStruct.evolve(model, {
@@ -301,10 +264,6 @@ export const markProofSeen = (model: Model): Model => {
   })
 }
 
-// SHELVING A RUN
-
-// NOTE: how a run that just ended ended, off the phase it ends on. A run
-// left from the pause MENU is no ending, so it shelves nothing.
 const maybeEndingOf = (phase: Phase): Option.Option<ProofEnding> =>
   Phase.matchOrElse(
     phase,
@@ -329,8 +288,6 @@ const waveOf = (phase: Phase): number =>
 
 const MAX_NAME = 32
 
-// NOTE: the crew as this player saw them: everyone in the run but their
-// own seat, named as the crew board names them, a bot marked a bot.
 const crewOf = (run: Model): ReadonlyArray<CrewMate> => {
   const names = seatNamesOf(run)
   const ownSlot = focusOf(run).seat.slot
@@ -353,8 +310,6 @@ const crewOf = (run: Model): ReadonlyArray<CrewMate> => {
   )
 }
 
-// NOTE: Uncle Chunk felled: his key in flight or the door open, or the
-// crew already out through it.
 const isChunkFelled = (run: Model): boolean =>
   Finale.isAnyOf(['KeyFlying', 'Open'])(run.dare.finale) ||
   Phase.isAnyOf(['Escaped'])(run.phase)
@@ -366,9 +321,6 @@ const shelfThingsOf = (run: Model): ReadonlyArray<ShelfThing> => [
   ...(isChunkFelled(run) ? [BIG_KEY] : []),
 ]
 
-// NOTE: on the frame a run reaches its end screen, everything it found
-// goes on the shelf at its difficulty, stamped. A slot already filled
-// keeps its first stamp.
 export const shelveRun: {
   (after: Model): (before: Model) => Model
   (before: Model, after: Model): Model

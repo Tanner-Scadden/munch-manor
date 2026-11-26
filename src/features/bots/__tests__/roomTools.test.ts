@@ -11,10 +11,6 @@ import { levelOf } from '../../../world/level/arena'
 import { CHANDELIER_DROP } from '../../../world/level/plan'
 import { CHANDELIER_CROWD, chandelierShot } from '../dareSearch'
 
-// The room tools as a bot's skills (src/features/bots/dareSearch.ts, THE
-// ROOM TOOLS): the dining room's chandelier, shot down on a crowd in the
-// table's gap.
-
 const gapOf = (model: Model) => Option.getOrThrow(gapBoxOf(levelOf(model)))
 
 const withCrowd = (model: Model, count: number): Model => {
@@ -31,7 +27,6 @@ const withCrowd = (model: Model, count: number): Model => {
   })
 }
 
-// NOTE: south of the gap, with the gap between it and the chandelier.
 const southOf = (model: Model) => {
   const gap = gapOf(model)
   return { x: (gap.left + gap.right) / 2, y: gap.bottom + 30 }

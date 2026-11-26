@@ -9,8 +9,6 @@ import type { ZombieKind } from '../../world/schema/entitySchema'
 import type { KillCounts } from '../../world/schema/worldSchema'
 import { ZOMBIE_KINDS } from '../../world/zombies/zombies'
 
-// ENTRIES
-
 export type MunchopediaEntry = Readonly<{
   kind: ZombieKind
   bio: string
@@ -74,10 +72,6 @@ export const entryOf = (kind: ZombieKind): MunchopediaEntry =>
 
 export const entryName = (kind: ZombieKind): string => ZOMBIE_KINDS[kind].name
 
-// DISCOVERY
-
-// NOTE: Uncle Chunk is counted once each time he is beaten, so his kills are
-// the times he was beaten and he unlocks the same way as the rest.
 export const killsOf: {
   (kind: ZombieKind): (kills: KillCounts) => number
   (kills: KillCounts, kind: ZombieKind): number
@@ -119,15 +113,12 @@ export const unopenedKinds = (model: Model): ReadonlyArray<ZombieKind> =>
 export const hasUnopenedEntry = (model: Model): boolean =>
   Array.isReadonlyArrayNonEmpty(unopenedKinds(model))
 
-// NOTE: the menu panel's title and blurb over the Dare Journal.
 export const munchopediaText = (
   model: Model,
 ): Readonly<{ title: string; blurb: string }> => ({
   title: JOURNAL_NAME,
   blurb: `${discoveredKinds(model.bests.killsByKind).length} of ${ENTRY_COUNT} discovered, ${countLabel(model.bests.totalKills)} zombies splatted`,
 })
-
-// BADGES
 
 type Badge = Readonly<{ threshold: number; name: string }>
 
@@ -142,8 +133,6 @@ export const earnedBadges = (count: number): ReadonlyArray<Badge> =>
 
 export const countLabel = (count: number): string =>
   count.toLocaleString('en-US')
-
-// PICTURES
 
 export type EntryFrame = Readonly<{
   src: string
@@ -167,8 +156,6 @@ const imageOf = (
     height: shape.height,
   }))
 
-// NOTE: an entry walks through every wear stage in turn, a few strides each,
-// facing right like the new zombie card.
 const STRIDES_PER_STAGE = 4
 
 const strideSprite = (stage: WornFrames, stride: number) =>
@@ -178,10 +165,6 @@ const strideSprite = (stage: WornFrames, stride: number) =>
 
 const firstEntryFrames = new Map<ZombieKind, Option.Option<EntryFrame>>()
 
-// NOTE: an unknown entry's silhouette and a tile's picture: the first
-// stride, an <img>, which cannot crop a sprite out of the prebuilt atlas, so
-// it gets an image of its own, built the first time the Munchopedia shows
-// the kind, not as the game loads.
 export const firstEntryFrame = (
   kind: ZombieKind,
 ): Option.Option<EntryFrame> => {
@@ -198,9 +181,6 @@ export const firstEntryFrame = (
 
 const ENTRY_STRIDE_MS = 200
 
-// NOTE: a known entry walks through every wear stage in turn, a few strides
-// each, facing right like the new zombie card, carved into blocks on its
-// plinth by the world's renderer (src/render/iso/plinth.ts).
 const plinthImagesOf = (kind: ZombieKind): ReadonlyArray<Draw.Image> =>
   pipe(
     ZOMBIE_SPRITES[kind].stages,

@@ -1,14 +1,5 @@
 import type { Appearance, Hat } from '../../shared/playerData'
 
-// The closet's hats as pixel maps (GAME_DESIGN.md, "Rank and Bones"), all
-// original. A hat is eight pixels wide like the figure. Its rows start
-// `above` rows over the face's first row; the rest lie over the face's
-// rows 0 and on, where row 0 is the empty row over the head, row 1 its top,
-// and the eyes are on row 4, which no hat reaches. The sprite grows by
-// `above` rows at the top and its feet stay where they were.
-//
-// Hat symbols are lowercase so they never meet the figure's capitals.
-
 export type HatArt = Readonly<{
   above: number
   rows: ReadonlyArray<string>
@@ -16,14 +7,8 @@ export type HatArt = Readonly<{
 
 export const NO_HAT: HatArt = { above: 0, rows: [] }
 
-// NOTE: the tallest hat's rows over the head, so a card or a portrait can
-// leave room for any hat.
 export const MAX_HAT_ABOVE = 5
 
-// NOTE: how many pixels a hat stands over the head the marks were placed
-// for (a name tag, READY, the seat mark, the reload bar): the rows it adds
-// at the top, and the empty row over the head that it fills. 0 for a bare
-// head. A worn hat shows for every calling (2026-11-01).
 export const hatRiseOf = (look: Appearance): number => {
   const hat = look.hat
   return hat === 'None' ? 0 : HAT_ART[hat].above + 1

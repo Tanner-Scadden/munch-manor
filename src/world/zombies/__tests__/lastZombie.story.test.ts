@@ -22,8 +22,6 @@ const RAMP_TICKS = Math.ceil(
 )
 const DELAY = LAST_ZOMBIE_RULES.delayMs
 
-// NOTE: the player stands on the start spot and the zombies far to its
-// left, on open floor, so each walks straight at the player for seconds.
 const FAR_X = START_LEVEL.start.x - 150
 const PLAYER_Y = START_LEVEL.start.y
 
@@ -50,7 +48,6 @@ const straggler = zombieAt(1, FAR_X, PLAYER_Y, { speed: SLOW })
 const zombieById = (model: Model, id: number): Zombie =>
   Option.getOrThrow(Array.findFirst(model.zombies, zombie => zombie.id === id))
 
-// NOTE: how far the zombie walks over the next few frames, per second.
 const paceOver = (start: Model, id: number) =>
   Effect.gen(function* () {
     const before = yield* modelAfter(start, steps())

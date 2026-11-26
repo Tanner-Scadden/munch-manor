@@ -1,14 +1,3 @@
-// NOTE: AGENTS.md "Folders" lays out `src`, and this keeps it so. Fails when
-// a file sits straight in `src` (only `vite-env.d.ts` may), when a folder of
-// `src` is not one of the layers, when a test (`*.test.ts`) is not in a
-// `__tests__/` folder, when a fixture (`*.fixture.ts`) is in neither a
-// `__tests__/` folder nor the test homes (`src/test/`), or when a module
-// that is not a test or a fixture sits in a `__tests__/` folder.
-// munch/folder-imports (tools/lint/munchPlugin.ts) checks what the folders
-// import.
-//
-//   bun tools/lint/folders.ts [root]
-
 import { Glob } from 'bun'
 import {
   Array,
@@ -26,8 +15,6 @@ import * as NodeServices from '@effect/platform-node/NodeServices'
 
 import { problemOf } from './folderRules'
 
-// NOTE: the script has printed every problem, so the runtime reports
-// nothing more and exits with 1.
 class FoldersDrifted extends Schema.TaggedError<
   FoldersDrifted,
   { readonly brand: unique symbol }
@@ -42,7 +29,6 @@ class FoldersDrifted extends Schema.TaggedError<
 
 const program = Effect.gen(function* () {
   const path = yield* Path.Path
-  // NOTE: the repository, or another checkout of it given as the argument.
   const root = Option.getOrElse(Array.get(process.argv, 2), () =>
     path.resolve(import.meta.dirname, '../..'),
   )

@@ -6,13 +6,6 @@ import type { Html } from '@effect/ui/html'
 import { CLOCK_ICON } from '../art/icons'
 import { iconView } from './menuParts'
 
-// The parts of Dare's break clock pill that the single player lobby
-// (src/features/lobby/view.ts) and the co-op lobby
-// (src/features/coop/picksView.ts) share: a clock and its pick, ∞ for none.
-// Each lobby builds its own button, as it does a modifier's tile. A press
-// steps to the next choice (EASY_BREAK_CHOICES in
-// src/world/run/difficulty.ts).
-
 const easyBreakText = (seconds: number): string =>
   seconds > 0 ? `${seconds}s` : '∞'
 

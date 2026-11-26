@@ -1,6 +1,3 @@
-// The guns as the analytical balance model (model.ts) sees them: their
-// stats, sustained damage, and time to kill.
-
 import { Function } from 'effect'
 
 import type { WeaponKind } from '../../src/app/model'
@@ -9,7 +6,6 @@ import { effectiveStats } from '../../src/world/gear/weapons'
 export type Gun = 'Pistol' | 'Shotgun' | 'Smg'
 export type SpareGun = 'Shotgun' | 'Smg'
 
-// NOTE: only the fields the damage math reads, so tests can hand-make one.
 export type GunStats = Readonly<{
   damage: number
   pellets: number
@@ -25,8 +21,6 @@ export const gunStats: {
   effectiveStats(kind, tier),
 )
 
-// The damage a second a gun lands over a long fight: a magazine emptied at
-// its fire rate, then a reload, with hitShare of the damage landing.
 export const sustainedDps: {
   (hitShare: number): (stats: GunStats) => number
   (stats: GunStats, hitShare: number): number
@@ -37,8 +31,6 @@ export const sustainedDps: {
     ((stats.magazine * stats.fireIntervalMs + stats.reloadMs) / 1000),
 )
 
-// The expected seconds one gun takes to kill one zombie of hp, reloads
-// included: the first shot lands at once.
 export const timeToKill: {
   (stats: GunStats, hitShare: number): (hp: number) => number
   (hp: number, stats: GunStats, hitShare: number): number

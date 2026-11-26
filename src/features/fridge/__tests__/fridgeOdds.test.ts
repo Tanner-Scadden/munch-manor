@@ -16,11 +16,6 @@ import {
   fridgeOverheadShapes,
 } from '../fridgeView'
 
-// The fridge's odds note: once a blank cream card in the kitchen's corner,
-// since it stood in the 3D world's overhead strata, where each leaf stands
-// at its own foot and the card hid its own rows. It is drawn on the overlay
-// now, the card first and its rows on it, and kept off everything pinned.
-
 const model = atFridge(10)
 const camera = cameraOf(model)
 

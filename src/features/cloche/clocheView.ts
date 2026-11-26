@@ -17,13 +17,6 @@ import type { SlotRoomId, Vector } from '../../world/schema/entitySchema'
 import { clamp, easeOut } from '../../world/step/geometry'
 import { CLOCHE_RULES } from './clocheReveal'
 
-// What the cloche reveal looks like (src/features/cloche/clocheReveal.ts),
-// drawn on the overlay over the actors: the silver dome on its gold plate
-// rattles over the doorway, lifts and fades, and the room's icon pops up
-// from the plate with a squash and stretch, holds, and fades with the plate.
-
-// THE ART
-
 const OUTLINE = '#140c10'
 
 const CLOCHE_PALETTE: Palette = {
@@ -54,15 +47,12 @@ const PLATE: Sprite = spriteShapes(
   CLOCHE_PALETTE,
 )
 
-// THE LIFT
-
 const LIFT_PX = 16
 const PLATE_DROP_PX = 5
 const RATTLE_STEP_MS = 40
 const ICON_POP_SCALE = 1.3
 const OPACITY_STEPS = 4
 
-// NOTE: opacity in a few steps, so the fade reads as pixel art.
 const stepped = (share: number): number =>
   Math.ceil(clamp(share, 0, 1) * OPACITY_STEPS) / OPACITY_STEPS
 
@@ -72,7 +62,6 @@ const faded = (
 ): ReadonlyArray<Draw.Shape> =>
   opacity >= 1 ? shapes : opacity <= 0 ? [] : [group({ opacity, shapes })]
 
-// NOTE: the icon grows past its size and settles, a squash and stretch.
 const iconScaleAt = (share: number): Readonly<{ x: number; y: number }> => {
   const grow =
     share < 0.6
@@ -107,8 +96,6 @@ const liftShapes = (
   ]
 }
 
-// NOTE: the reveal for everyone in the room, placed in the world by the
-// screen camera like the fridge's.
 export const clocheShapes: {
   (camera: Camera): (model: Model) => ReadonlyArray<Draw.Shape>
   (model: Model, camera: Camera): ReadonlyArray<Draw.Shape>

@@ -26,31 +26,6 @@ import {
   type Vector,
 } from '../schema/worldSchema'
 
-// Buying things in the world by standing still or holding the interact key
-// beside them, the way a wall buy works: no dialog, nothing paused or
-// covered. Walk up to a purchasable and either hold the key (or the touch
-// HUD's hold button) for half a second, or just stand still there for a
-// second, the way a teammate revives (src/world/party/revive.ts); either fills the same
-// ring, and the key fills it twice as fast. Letting go, walking off, firing,
-// or stabbing cancels. A press the crew's key ring cannot cover is refused
-// at once; standing there short of it does nothing.
-//
-// Standing never buys by accident: it counts only while the player neither
-// moves, fires, nor stabs, never in the first moments of a wave, and after any buy the player must move (or press the
-// key) before standing buys again, so one buy never chains into the next.
-//
-// The hold is World state, stepped from each seat's own intent, so co-op
-// works the same: each player holds for themselves, and the keys come off
-// the crew's one ring (src/world/keys/keys.ts).
-//
-// A new kind of purchasable (like the Mystery Leftovers fridge) adds a case
-// to `Purchasable` in src/world/schema/worldSchema.ts, its offers to `offersOf`, its buy
-// to `buy`, and its tag to the view's `tagOf` (src/features/shop/purchaseView.ts).
-//
-// The kitchen's back door (src/world/kitchen/backDoor.ts) is held the same
-// way, for nothing, and its hold fills only while the whole crew stands at
-// it: away from it, the ring waits where it is.
-
 type PurchaseRules = Readonly<{
   holdMs: number
   standMs: number
@@ -58,9 +33,6 @@ type PurchaseRules = Readonly<{
   waveGraceMs: number
 }>
 
-// NOTE: a second of standing is twice the key's half second, so it reads as
-// a choice and not a pause between strafes, and half a revive's two seconds,
-// since a buy is undone by walking away while a revive is not.
 export const PURCHASE_RULES: PurchaseRules = {
   holdMs: 500,
   standMs: 1000,
@@ -68,12 +40,6 @@ export const PURCHASE_RULES: PurchaseRules = {
   waveGraceMs: 1500,
 }
 
-// NOTE: a purchasable for sale right now: what it is, its price in keys, the box a
-// player must stand within `reachPx` of, and the spot its price tag hangs
-// from (the top middle of the tag).
-// `isFull` is an offer with nothing left to sell right now, such as the
-// stove with no gun it cooks in hand: a press shakes it, and standing never
-// buys.
 export type Offer = Readonly<{
   target: Purchasable
   price: number
@@ -125,10 +91,6 @@ export const isSamePurchasable: {
   }),
 )
 
-// NOTE: how long the key holds to buy: half a second, but two at the
-// stove, since a cook is a choice for the rest of the run, and at the back
-// door, which ends it. Standing fills at half the key's speed, as
-// everywhere.
 const holdMsOf = (target: Purchasable): number =>
   Purchasable.match(target, {
     Exit: () => PURCHASE_RULES.holdMs,
@@ -143,10 +105,6 @@ const holdMsOf = (target: Purchasable): number =>
 const reachOf = (world: World, slot: PlayerSlot, offer: Offer): number =>
   distanceToBox(seatStateAt(world, slot).player, offer.box)
 
-// NOTE: the nearest offer the player stands within reach of.
-// NOTE: a downed or bled-out player buys nothing (src/world/step/simulation.ts,
-// visitStall), so nothing is in their reach: no lit tag, hold button, or
-// spoken price for them.
 export const maybeOfferInReach: {
   (slot: PlayerSlot): (world: World) => Option.Option<Offer>
   (world: World, slot: PlayerSlot): Option.Option<Offer>
@@ -185,7 +143,6 @@ export const maybeOfferOf: {
     ),
 )
 
-// NOTE: the keys a buy is short of, off the crew's one ring.
 export const shortfallFor: {
   (offer: Offer): (world: World) => number
   (world: World, offer: Offer): number
@@ -193,8 +150,6 @@ export const shortfallFor: {
   Math.max(0, offer.price - heldKeys(world)),
 )
 
-// NOTE: how far the hold has filled, from 0 to 1. `heldMs` counts in the
-// key's time: standing adds to it at half speed.
 export const holdProgress = (purchase: Purchase): number =>
   Purchase.match(purchase, {
     Idle: () => 0,
@@ -204,8 +159,6 @@ export const holdProgress = (purchase: Purchase): number =>
     Spent: () => 0,
   })
 
-// NOTE: standing still to buy: not moving, firing, or stabbing (the
-// trigger, with the knife in hand), and the wave past its first moments.
 const isStandingToBuy: {
   (slot: PlayerSlot): (world: World) => boolean
   (world: World, slot: PlayerSlot): boolean
@@ -222,8 +175,6 @@ const isStandingToBuy: {
 )
 
 const STAND_RATE = PURCHASE_RULES.holdMs / PURCHASE_RULES.standMs
-
-// STEP
 
 const withPurchase = (
   world: World,
@@ -270,8 +221,6 @@ const complete = (world: World, slot: PlayerSlot, offer: Offer): World =>
       ),
   })
 
-// NOTE: one tick of the seat at `slot` at whatever it may be holding the
-// interact key beside. Called for standing players.
 export const advancePurchase: {
   (slot: PlayerSlot, deltaMs: number): (world: World) => World
   (world: World, slot: PlayerSlot, deltaMs: number): World
@@ -347,8 +296,6 @@ export const advancePurchase: {
   },
 )
 
-// NOTE: whether the interact key belongs to a purchasable right now, so a
-// press there holds to buy instead of starting the wave.
 export const isInteractTaken: {
   (slot: PlayerSlot): (world: World) => boolean
   (world: World, slot: PlayerSlot): boolean

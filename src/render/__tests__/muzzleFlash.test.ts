@@ -26,20 +26,11 @@ import { candelabraShapes } from '../room/diningArt'
 import { coverBlocks } from '../room/roomCover'
 import { FLAME_COLOR } from '../room/roomPalette'
 
-// The muzzle flash sits on the gun's tip in 3D at every angle: it stands on
-// the player's own plane, as the gun does, its middle just past the last
-// pixel the gun's art draws, and anything standing shows on the very pixel
-// the 2D game drew it on (src/render/iso/space.ts). The flash sat off the gun
-// for weeks once the game went 3D, placed by numbers of its own; these fail
-// the moment one path drifts from the other.
-
-// NOTE: the eight ways a player faces, each one of a gun's drawn turns.
 const FACINGS: ReadonlyArray<Vector> = Array.makeBy(8, index => ({
   x: Math.round(Math.cos((index * Math.PI) / 4) * 1000) / 1000,
   y: Math.round(Math.sin((index * Math.PI) / 4) * 1000) / 1000,
 }))
 
-// NOTE: the guns a player holds and fires; the Pan swings instead.
 const GUNS: ReadonlyArray<WeaponKind> = Array.filter(
   Record.keys(WEAPONS),
   kind => kind !== 'Pan',
@@ -59,8 +50,6 @@ const firing = (kind: WeaponKind, facing: Vector): Model =>
 
 const playerOf = (model: Model) => model.seats[0].player
 
-// NOTE: where a world point shows on the play camera, in game pixels: its
-// column, and its row up the camera's up.
 const screenOf = (point: Vec3): Vector => ({
   x: point.x / UNIT,
   y:
@@ -83,8 +72,6 @@ const imageSources = (shapes: ReadonlyArray<Draw.Shape>): Set<string> =>
     ),
   )
 
-// NOTE: the middle of every opaque pixel the gun's own images draw, read
-// back from the images: the art as drawn, transparent padding left out.
 const gunPixels = (model: Model, kind: WeaponKind): ReadonlyArray<Vector> => {
   const { facing } = playerOf(model)
   const gunSources = imageSources(
@@ -128,8 +115,6 @@ const gunPixels = (model: Model, kind: WeaponKind): ReadonlyArray<Vector> => {
   )
 }
 
-// NOTE: the middle of the flash as drawn: its rectangles' box, sparks and
-// all, which sit round it evenly.
 const flashMiddle = (model: Model): Vector => {
   const corners = Array.flatMap(
     flatten(playerFlashDrawable(playerOf(model)).shapes),

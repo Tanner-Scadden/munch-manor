@@ -1,15 +1,3 @@
-// The nightly balance suite. Run it through the heavy guard, never
-// directly: `bun run balance:nightly`. It plays every campaign bot, endless,
-// the portrait campaign bots, and the wave snapshot pass for every wave, one
-// job after another with the guard's WORKERS, holds the results to the
-// targets and the stored baseline, and writes
-// tools/balance/reports/<YYYY-MM-DD>.md. `--update-baseline` rewrites
-// tools/balance/baseline.json, which is also written when it is missing.
-// Each job yields the guard's turn between its chunks, and the suite
-// yields between jobs, so other agents' jobs go in between.
-// `--extend-baseline` adds only the metrics the baseline lacks. `--runs n`
-// and `--wave-runs n` shrink the jobs for a quick try.
-
 import {
   Array,
   Clock,
@@ -68,8 +56,6 @@ class BadSummary extends Schema.TaggedError<
   reason: Schema.String,
 }) {}
 
-// NOTE: a failed job prints why before the suite fails, so the runtime
-// reports nothing more and the exit code is 1.
 class NightlyExit extends Schema.TaggedError<
   NightlyExit,
   { readonly brand: unique symbol }
@@ -86,8 +72,6 @@ const failWith = (message: string): Effect.Effect<never, NightlyExit> =>
   Console.error(`nightly: ${message}`).pipe(
     Effect.andThen(Effect.fail(NightlyExit.make({ code: 1 }))),
   )
-
-// JOBS
 
 const SIMULATE = 'tools/balance/simulate.ts'
 const REPORTS = 'tools/balance/reports'
@@ -193,20 +177,18 @@ type Played = Readonly<{
 const collect = (
   jobs: ReadonlyArray<Job>,
   summaries: ReadonlyArray<Summary>,
-): Played =>
-  Array.reduce(
-    Array.zip(jobs, summaries),
-    { campaigns: [], maybeWavePass: Option.none() } satisfies Played,
-    (played: Played, [job, summary]): Played =>
-      summary._tag === 'Campaign'
-        ? {
-            ...played,
-            // NOTE: a nightly's handful of jobs.
-            // oxlint-disable-next-line munch/no-append-in-reduce
-            campaigns: Array.append(played.campaigns, { job, summary }),
-          }
-        : { ...played, maybeWavePass: Option.some(summary) },
-  )
+): Played => {
+  const campaigns: Array<CampaignResult> = []
+  let maybeWavePass: Option.Option<WavePassSummary> = Option.none()
+  for (const [job, summary] of Array.zip(jobs, summaries)) {
+    if (summary._tag === 'Campaign') {
+      campaigns.push({ job, summary })
+    } else {
+      maybeWavePass = Option.some(summary)
+    }
+  }
+  return { campaigns, maybeWavePass }
+}
 
 const metricsOf = (
   played: Played,
@@ -231,8 +213,6 @@ const program = Effect.gen(function* () {
   const date = localDate(startedAt)
   const scratch = yield* fs.makeTempDirectoryScoped({ prefix: 'nightly-' })
   const jobs = nightlyJobs(invocation.sizes)
-  // NOTE: between jobs the suite yields the guard's turn, and runs the next
-  // job with the WORKERS the guard granted.
   const grantedWorkers = yield* Ref.make(Option.none<number>())
   const summaries = yield* Effect.forEach(jobs, (job, index) =>
     Effect.gen(function* () {

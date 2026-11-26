@@ -35,17 +35,6 @@ import {
 import type * as Draw from './draw'
 import type { Payoff } from './renderSchema'
 
-// How a player at work or playing a payoff is drawn (src/render/actionPose.ts):
-// their own look in an action stance (src/art/appearance.ts, so the hat,
-// the hero's prop, the shirt, and the skin all carry over), leaning into
-// the work, with the tool in the front hand (src/art/handTools.ts) and the
-// bits that fly: sweat off a CPR, junk out of a trunk, the dumbwaiter's
-// rope running through the hands, the find held up with a sparkle. The gun
-// is put away while the hands are busy. Every frame is a sprite built
-// once; only where it is placed changes.
-
-// NOTE: what the standing body is drawn with: the player's spot, look,
-// tone, fade, and squash, as the standing frames are.
 export type BodyLook = Readonly<{
   foot: Vector
   stances: Readonly<Record<ActStance, SpriteSet>>
@@ -75,8 +64,6 @@ const bodyShape = (
     shapes: look.stances[stance][look.tone][facing],
   })
 
-// NOTE: the front hand's pixel, in the world, for a stance leaning by
-// `dx` and `dy`.
 const handAt = (
   look: BodyLook,
   stance: ActStance,
@@ -99,8 +86,6 @@ const toolAt = (
   opacity: number,
 ): Draw.Shape => group({ opacity, shapes: [placeAt(at.x, at.y, tool[facing])] })
 
-// WORK
-
 type Extras = (
   look: BodyLook,
   pose: WorkingPose,
@@ -112,8 +97,6 @@ const NONE: Extras = () => []
 const CYCLE_SWEAT_MS = 420
 const SWEAT_FROM_SHARE = 0.25
 
-// NOTE: CPR works up a sweat: a drop flicks off the back of the head and
-// falls, once the revive is a quarter in.
 const sweat: Extras = (look, pose) => {
   if (pose.share < SWEAT_FROM_SHARE) {
     return []
@@ -138,8 +121,6 @@ const sweat: Extras = (look, pose) => {
 const JUNK_ARC_PX = 9
 const JUNK_REACH_PX = 11
 
-// NOTE: a rummaged trunk coughs up junk over the shoulder, one piece a
-// pass, round the sock, the bone, and the rag.
 const junk: Extras = (look, pose, hand) => {
   const art = MOTIONS.Rummage
   const cycleMs = art.frameMs * art.frames.length
@@ -165,8 +146,6 @@ const junk: Extras = (look, pose, hand) => {
 
 const ROPE_TOP_PX = 15
 
-// NOTE: the dumbwaiter's rope hangs in front of the hauler, top to waist,
-// and runs through the hands each pull.
 const rope: Extras = (look, pose, hand) => [
   toolAt(
     pose.frame % 2 === 0 ? ROPE_FRAMES[0] : ROPE_FRAMES[1],
@@ -203,9 +182,6 @@ const MOTION_EXTRAS: Readonly<Record<WorkingPose['motion'], Extras>> = {
   Pry: holding(CROWBAR),
 }
 
-// NOTE: the sprite faces only left or right, so work up above the player
-// (a tool on the wall behind them, the pot on its shelf) raises the arms a
-// stance higher and turns the lean into a stretch upward.
 const ALOFT: Readonly<Record<ActStance, ActStance>> = {
   Reach: 'FrontUp',
   ReachLow: 'Reach',
@@ -219,8 +195,6 @@ const ALOFT: Readonly<Record<ActStance, ActStance>> = {
 }
 const ALOFT_MIN_PX = 4
 
-// NOTE: work on the floor (a chest, a trunk, a trap) stays low wherever
-// it lies.
 const FLOOR_WORK: ReadonlyArray<WorkingPose['motion']> = [
   'Compress',
   'Rummage',
@@ -255,8 +229,6 @@ const workingShapes = (
   ]
 }
 
-// PAYOFFS
-
 type PayoffArt = Readonly<{
   stance: (share: number) => Option.Option<ActStance>
   lift: (share: number) => number
@@ -267,9 +239,6 @@ const always = (stance: ActStance) => (): Option.Option<ActStance> =>
 
 const FLAT = (): number => 0
 
-// NOTE: each payoff's stance as it plays (none: the standing frames) and
-// how far it lifts the body. The swap keeps the body as it stands and
-// tosses the gun instead (src/render/playerView.ts).
 const PAYOFF_ART: Readonly<Record<Payoff, PayoffArt>> = {
   HoldUp: {
     stance: always('BothUp'),
@@ -307,8 +276,6 @@ const THING_SIZES: Readonly<Record<DareKind, Vector>> = Record.map(
   },
 )
 
-// NOTE: the find held up in both hands over the head, a sparkle
-// twinkling at its corner.
 const heldUpShapes = (
   look: BodyLook,
   maybeThing: Option.Option<DareKind>,
@@ -353,8 +320,6 @@ const pryOpenShapes = (
   ),
 ]
 
-// NOTE: a payoff drawn in its stance, or none while it plays in the
-// standing frames (a swap, a grab getting up).
 const beatShapes = (
   look: BodyLook,
   pose: BeatPose,
@@ -370,8 +335,6 @@ const beatShapes = (
   ])
 }
 
-// NOTE: the body at work or in a payoff, in place of the standing frames
-// and the gun; none when the player stands as usual.
 export const maybeActingShapes: {
   (
     pose: ActionPose,
@@ -390,8 +353,6 @@ export const maybeActingShapes: {
     }),
 )
 
-// RELOAD
-
 const MAG_OUT_SHARE = 0.3
 const MAG_IN_SHARE = 0.75
 const SLAP_SHARE = 0.88
@@ -399,11 +360,6 @@ const MAG_DROP_PX = 7
 const MAG_TILT = 0.45
 const SLAP_KICK = 0.3
 
-// NOTE: a reload drawn on the gun, beyond its bar: the gun tips down and
-// the old magazine drops out, the new one comes up from the belt, and the
-// palm slaps it home with a kick of the muzzle. `tilt` turns the gun
-// toward the floor (sign by facing), and the magazine is placed from the
-// gun's grip.
 export const reloadMotionOf = (
   share: number,
 ): Readonly<{ tilt: number; maybeMag: Option.Option<Vector> }> => {
@@ -439,7 +395,6 @@ export const magazineShape: {
     toolAt(MAGAZINE, at, facing, opacity),
 )
 
-// NOTE: a swapped gun is tossed up spinning and caught.
 const TOSS_PX = 5
 
 export const tossOf = (

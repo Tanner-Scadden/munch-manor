@@ -45,16 +45,8 @@ import { Phase } from '../../../world/schema/worldSchema'
 import { isPocketCardBlocking, maybeClueRoom } from '../pocketCard'
 import { pocketCardShapes } from '../pocketCardView'
 
-// The dare card opened again from the HUD's list (src/features/dare/pocketCard.ts),
-// with its satchel (src/features/dare/pocketCardView.ts): Tab, a
-// controller's Select, or a click on the list opens it; alone the run waits
-// under it; any key or tap past its gate, or the same key, puts it away.
-// Found things sit in the satchel, the ones new since the last look drop
-// in, and a thing still missing shows its room once known, by difficulty.
-
 const FRAME_MS = 50
 
-// NOTE: the library's thing, still hidden, and the portrait found.
 const SPOON_SPOT = hidingSpotIn(levelOf(quietWave(3)), LIBRARY_ROOM_ID)
 
 const thingsWith = (found: ReadonlyArray<DareKind>): ReadonlyArray<DareThing> =>

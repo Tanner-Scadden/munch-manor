@@ -1,11 +1,3 @@
-// The display cases pass: the dining room's three cases in a break, the
-// player beside the glass one and the trophy one, with each case's prize
-// behind its glass and its feat's lock over it showing the player's own
-// progress; and the first-time card a case raises in a break. On a
-// 1280x720 desktop, an 844x390 phone on its side, and a 390x844 phone held
-// upright, as `cases-<TAG>-<viewport>-<scene>.png`.
-//   TAG=after bun run heavy -- --shared bun tools/audit/shotsCases.ts
-// ONLY picks scenes, and VIEWPORTS picks screens.
 import { Effect } from 'effect'
 
 import { runHarnessAudit } from './harnessServer'

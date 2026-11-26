@@ -40,8 +40,6 @@ export const startsRun: {
     Phase.isAnyOf(['Arriving', 'Preparation'])(after.phase),
 )
 
-// NOTE: `started` is the Model a start button built from `$.model`, the
-// Model before it.
 export const startFromButton =
   (started: Model): UpdateStep =>
   $ =>

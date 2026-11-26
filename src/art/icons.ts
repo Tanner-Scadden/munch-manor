@@ -8,8 +8,6 @@ import { GRAB_PALETTE, GRAB_PIXELS } from './prizeArt'
 import { type Palette, pixelRuns } from './sprite'
 import { TRAP_ICON_PIXELS } from './sprites/traps'
 
-// PIXEL ICONS
-
 const LIGHT = '#f4f1de'
 const SHADE = '#140c10'
 const ALERT = '#ff6b5e'
@@ -19,10 +17,6 @@ const ICON_PALETTE: Palette = { X: LIGHT, O: SHADE, R: ALERT }
 const iconWidth = (pixels: ReadonlyArray<string>): number =>
   Array.reduce(pixels, 0, (widest, row) => Math.max(widest, row.length))
 
-// NOTE: the icons are the game's own pixel maps turned into SVG, so the HTML
-// buttons over the canvas use the same chunky pixels as the canvas HUD.
-// NOTE: a call is data-first when it starts with the pixel rows (an array);
-// the data-last form starts with the palette (a record).
 const isPixelsFirst = (args: IArguments): boolean => Array.isArray(args[0])
 
 export const pixelIconUrl: {
@@ -180,8 +174,6 @@ export const NEXT_TRAP_ICON = icon([
   '..X.....',
 ])
 
-// NOTE: What's New's page arrows beside the day's title: newer points left,
-// older right, as the days run newest first.
 export const NEWER_NEWS_ICON = icon([
   '...XX',
   '..XX.',
@@ -202,8 +194,6 @@ export const OLDER_NEWS_ICON = icon([
   'XX...',
 ])
 
-// NOTE: MEDIC! for a downed player (src/world/party/medic.ts): a red cross on a light
-// plate.
 export const MEDIC_ICON = icon([
   '.XXXXXXX.',
   'XXXRRRXXX',
@@ -220,8 +210,6 @@ export const TRAP_BUTTON_ICONS: Readonly<Record<TrapKind, string>> = Record.map(
   TRAP_ICON_PIXELS,
   ({ pixels, palette }) => pixelIconUrl(pixels, palette),
 )
-
-// HOME RAIL
 
 const RAIL_PALETTE: Palette = {
   X: LIGHT,
@@ -310,7 +298,6 @@ const COFFEE_PALETTE: Palette = {
   S: '#b8c2b0',
 }
 
-// NOTE: a steaming mug for the coffee pill on the escape card.
 export const COFFEE_ICON = pixelIconUrl(
   [
     '..S..S...',
@@ -334,8 +321,6 @@ const COFFEE_CUP_PALETTE: Palette = {
   H: '#ff6b8b',
 }
 
-// NOTE: the home corner's coffee: Rattles' mug with a heart on it. Its steam
-// is COFFEE_STEAM_ICON, drawn apart so the wisps can rise.
 export const COFFEE_CUP_ICON = pixelIconUrl(
   [
     'XXXXXXXX..',
@@ -350,15 +335,10 @@ export const COFFEE_CUP_ICON = pixelIconUrl(
   COFFEE_CUP_PALETTE,
 )
 
-// NOTE: one wisp of steam, rising over the coffee in the home corner.
 export const COFFEE_STEAM_ICON = pixelIconUrl(['.S', 'S.', '.S', 'S.'], {
   S: '#e8eee0',
 })
 
-// THE MANOR HAND
-
-// NOTE: three cards fanned out, the character's, the Munchopedia's, and
-// What's New's, for the MORE button that deals the hand.
 export const HAND_ICON = pixelIconUrl(
   [
     '.....GGGGGGG.....',
@@ -378,8 +358,6 @@ export const HAND_ICON = pixelIconUrl(
   RAIL_PALETTE,
 )
 
-// SETTINGS
-
 export const SHAKE_ICON = icon([
   'X.XXXXX.X',
   'X.X...X.X',
@@ -388,7 +366,6 @@ export const SHAKE_ICON = icon([
   'X.XXXXX.X',
 ])
 
-// NOTE: RECORD MY RUNS: a tape's red dot, filled while on and a ring off.
 export const RECORD_ON_ICON = icon([
   '..XXXXX..',
   '.XXXXXXX.',
@@ -419,8 +396,6 @@ export const STATS_ICON = icon([
   'XXXXXXXXX',
 ])
 
-// CONTROLS
-
 export const AIM_ICON = icon([
   '....X....',
   '..XXXXX..',
@@ -433,7 +408,6 @@ export const AIM_ICON = icon([
   '....X....',
 ])
 
-// NOTE: a finger pressing down, for the touch HUD's hold-to-buy button.
 export const HOLD_ICON = icon([
   '...OO.....',
   '..OXXO....',
@@ -447,8 +421,6 @@ export const HOLD_ICON = icon([
   '..OOOOOO..',
 ])
 
-// NOTE: a controller with shake lines at its sides, for the Profile's
-// RUMBLE tile.
 export const RUMBLE_ICON = icon([
   'X...........X',
   '.X..XXXXX..X.',
@@ -459,8 +431,6 @@ export const RUMBLE_ICON = icon([
   '...XXX.XXX...',
 ])
 
-// NOTE: an upright phone with a little Groaner on its screen. The portrait
-// home menu's turn hint tips it on its side with CSS.
 export const TURN_PHONE_ICON = pixelIconUrl(
   [
     '.XXXXXXX.',
@@ -478,8 +448,6 @@ export const TURN_PHONE_ICON = pixelIconUrl(
   RAIL_PALETTE,
 )
 
-// HOME BADGES
-
 const BADGE_PALETTE: Palette = {
   X: LIGHT,
   O: SHADE,
@@ -490,8 +458,6 @@ const BADGE_PALETTE: Palette = {
   W: '#4a2a70',
 }
 
-// NOTE: the end card draws the trophy and the skulls on its canvas too
-// (src/features/end/endView.ts), from the same pixel maps.
 export const TROPHY_PIXELS: ReadonlyArray<string> = [
   'YYYYYYYYY',
   'Y.YYYYY.Y',
@@ -552,8 +518,6 @@ const tint = (pixels: ReadonlyArray<string>, color: string): PixelArt => ({
   palette: { X: color, O: SHADE },
 })
 
-// NOTE: one skull per difficulty, each in its level's color with its own
-// face: sleepy Easy, plain Normal, angry Hard, and Nightmare in flames.
 export const SKULL_ART: Readonly<Record<Difficulty, PixelArt>> = {
   Easy: tint(skullPixels('Sleepy'), '#9be36a'),
   Normal: tint(skullPixels('Open'), '#ffe066'),
@@ -586,8 +550,6 @@ export const SKULL_OFF_ICON = tinted(skullPixels('Open'), '#4a3f52')
 
 export const KILLS_ICON = tinted(skullPixels('Open'), LIGHT)
 
-// NOTE: Campaign is a story banner: a flag with a gold star on a pole,
-// planted on a dotted trail of rooms. Endless is the infinity loop.
 export const CAMPAIGN_ICON = pixelIconUrl(
   [
     '.DUUUUUU.',
@@ -604,8 +566,6 @@ export const CAMPAIGN_ICON = pixelIconUrl(
   BADGE_PALETTE,
 )
 
-// NOTE: the lobby's map card: the manor itself, a gabled house with lit
-// windows and a door, in the campaign door's purples.
 export const MANOR_ICON = pixelIconUrl(
   [
     '.....UU......',
@@ -629,8 +589,6 @@ export const ENDLESS_ICON = pixelIconUrl(
   BADGE_PALETTE,
 )
 
-// NOTE: PLAY's only mark, so it is a full, nearly equilateral triangle that
-// reads at a glance even small.
 export const PLAY_ICON = pixelIconUrl(
   [
     'X.......',
@@ -658,7 +616,6 @@ export const REWIND_ICON = icon([
   '...X...X',
 ])
 
-// NOTE: skip ahead, two arrows to a bar: the first-run card's SKIP IT.
 export const SKIP_ICON = icon([
   'X...X...X',
   'XX..XX..X',
@@ -669,9 +626,6 @@ export const SKIP_ICON = icon([
   'X...X...X',
 ])
 
-// NOTE: GitHub's own mark (the Invertocat, from Primer's octicons), white and
-// unchanged as GitHub's logo rules ask: never pixelated, recolored, or
-// redrawn. The Code card in the MORE hand shows it.
 const GITHUB_MARK_PATH =
   'M10.226 17.284c-2.965-.36-5.054-2.493-5.054-5.256 0-1.123.404-2.336 1.078-3.144-.292-.741-.247-2.314.09-2.965.898-.112 2.111.36 2.83 1.01.853-.269 1.752-.404 2.853-.404 1.1 0 1.999.135 2.807.382.696-.629 1.932-1.1 2.83-.988.315.606.36 2.179.067 2.942.72.854 1.101 2 1.101 3.167 0 2.763-2.089 4.852-5.098 5.234.763.494 1.28 1.572 1.28 2.807v2.336c0 .674.561 1.056 1.235.786 4.066-1.55 7.255-5.615 7.255-10.646C23.5 6.188 18.334 1 11.978 1 5.62 1 .5 6.188.5 12.545c0 4.986 3.167 9.12 7.435 10.669.606.225 1.19-.18 1.19-.786V20.63a2.9 2.9 0 0 1-1.078.224c-1.483 0-2.359-.808-2.987-2.313-.247-.607-.517-.966-1.034-1.033-.27-.023-.359-.135-.359-.27 0-.27.45-.471.898-.471.652 0 1.213.404 1.797 1.235.45.651.921.943 1.483.943.561 0 .92-.202 1.437-.719.382-.381.674-.718.944-.943'
 
@@ -679,7 +633,6 @@ export const GITHUB_MARK_ICON = `url("data:image/svg+xml,${encodeURIComponent(
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="#ffffff" d="${GITHUB_MARK_PATH}"/></svg>`,
 )}")`
 
-// NOTE: the end screens' RETRY, a round arrow, and HOME, a little house.
 export const RETRY_ICON = pixelIconUrl(
   [
     '...XXXX.X',
@@ -694,8 +647,6 @@ export const RETRY_ICON = pixelIconUrl(
   { X: SHADE },
 )
 
-// NOTE: the little house of the rooms opened: the break's rooms counter on
-// the canvas (src/features/kitchen/roomsFound.ts) and the pause screen's.
 export const HOUSE_PIXELS: ReadonlyArray<string> = [
   '...o...',
   '..oRo..',
@@ -717,7 +668,6 @@ export const HOUSE_PALETTE: Palette = {
 
 export const ROOMS_ICON = pixelIconUrl(HOUSE_PIXELS, HOUSE_PALETTE)
 
-// NOTE: a green check on a thing found, on the pause screen's list.
 export const FOUND_CHECK_ICON = pixelIconUrl(
   [
     '......OO',
@@ -743,7 +693,6 @@ export const HOME_ICON = icon([
   '.XXXXXXX.',
 ])
 
-// NOTE: the red pixel X on every menu's close button (closeButtonView).
 export const CLOSE_ICON = pixelIconUrl(
   [
     'OOO...OOO',
@@ -759,8 +708,6 @@ export const CLOSE_ICON = pixelIconUrl(
   { O: SHADE, R: '#ff5a4e' },
 )
 
-// PROFILE
-
 const PROFILE_PALETTE: Palette = {
   X: LIGHT,
   O: SHADE,
@@ -774,7 +721,6 @@ const PROFILE_PALETTE: Palette = {
   S: '#8a8f86',
 }
 
-// NOTE: a hello-my-name-is badge for the Name tab.
 export const NAME_ICON = pixelIconUrl(
   [
     'YYYYYYYYYYY',
@@ -789,7 +735,6 @@ export const NAME_ICON = pixelIconUrl(
   PROFILE_PALETTE,
 )
 
-// NOTE: a phone and a laptop joined by a spark, for the Account tab.
 export const ACCOUNT_ICON = pixelIconUrl(
   [
     'TTTT........',
@@ -803,7 +748,6 @@ export const ACCOUNT_ICON = pixelIconUrl(
   PROFILE_PALETTE,
 )
 
-// NOTE: a die showing five, for the dice that rolls a look or a name.
 export const DICE_ICON = pixelIconUrl(
   [
     '.XXXXXXX.',
@@ -821,8 +765,6 @@ export const DICE_ICON = pixelIconUrl(
   PROFILE_PALETTE,
 )
 
-// NOTE: the devices on the Account tab: a phone and a laptop with a little
-// Groaner on the screen.
 export const PHONE_ICON = pixelIconUrl(
   [
     '.TTTTT.',
@@ -853,7 +795,6 @@ export const LAPTOP_ICON = pixelIconUrl(
   PROFILE_PALETTE,
 )
 
-// NOTE: a swirling portal, for summoning your other device with a code.
 export const PORTAL_ICON = pixelIconUrl(
   [
     '...UUUUU...',
@@ -870,7 +811,6 @@ export const PORTAL_ICON = pixelIconUrl(
   PROFILE_PALETTE,
 )
 
-// NOTE: a keypad, for typing in a code from your other device.
 export const KEYPAD_ICON = pixelIconUrl(
   [
     'TTTTTTTTTT',
@@ -887,8 +827,6 @@ export const KEYPAD_ICON = pixelIconUrl(
   PROFILE_PALETTE,
 )
 
-// NOTE: an arrow pouring into a phone, for the device that takes the other
-// device's progress.
 export const TAKES_PROGRESS_ICON = pixelIconUrl(
   [
     '...YYY...',
@@ -904,13 +842,10 @@ export const TAKES_PROGRESS_ICON = pixelIconUrl(
   PROFILE_PALETTE,
 )
 
-// NOTE: the zap between two devices once they are linked.
 export const ZAP_ICON = pixelIconUrl(
   ['...YYY', '..YYY.', '.YYY..', 'YYYYYY', '..YYY.', '.YYY..', 'YYY...'],
   PROFILE_PALETTE,
 )
-
-// UPDATE GIFT
 
 const GIFT_PALETTE: Palette = {
   X: LIGHT,
@@ -923,8 +858,6 @@ const GIFT_PALETTE: Palette = {
   K: '#3f7a2a',
 }
 
-// NOTE: the update gift on the home menu comes in three layers, so CSS can
-// rattle the box, fling the lid, and pop the Groaner out of it.
 export const GIFT_LID_ICON = pixelIconUrl(
   [
     '..YYY.....YYY..',
@@ -971,10 +904,6 @@ export const SPARKLE_ICON = pixelIconUrl(
   GIFT_PALETTE,
 )
 
-// INSTALL
-
-// NOTE: a phone with a gold arrow dropping onto its home row, for the tile
-// that puts the game on the Home Screen.
 export const INSTALL_ICON = pixelIconUrl(
   [
     '.TTTTTTT.',
@@ -992,8 +921,6 @@ export const INSTALL_ICON = pixelIconUrl(
   PROFILE_PALETTE,
 )
 
-// NOTE: a Home Screen with Munch Manor's Groaner as the big app in the
-// middle, for the last step of the picture guide.
 export const HOME_SCREEN_APP_ICON = pixelIconUrl(
   [
     '.TTTTTTTTTT.',
@@ -1014,8 +941,6 @@ export const HOME_SCREEN_APP_ICON = pixelIconUrl(
   PROFILE_PALETTE,
 )
 
-// NOTE: the kitchen tour's tracker: the break clock held (an hourglass with
-// a pause mark), the kitchen's boards, the fridge, and its prize to take.
 const TOUR_ICON_PALETTE: Palette = {
   o: SHADE,
   w: LIGHT,
@@ -1093,8 +1018,6 @@ export const TOUR_PRIZE_ICON = pixelIconUrl(
   TOUR_ICON_PALETTE,
 )
 
-// RUN MODIFIERS
-
 export const MODIFIER_PALETTE: Palette = {
   O: SHADE,
   R: ALERT,
@@ -1106,10 +1029,6 @@ export const MODIFIER_PALETTE: Palette = {
   W: '#e9fbff',
 }
 
-// NOTE: Friendly Fire is a bullet flying into a teammate's heart; Big Crowd
-// three green heads; Broke a coin with a red slash through it; Glass a
-// heart of ice with a crack down it. The end card draws them on its canvas
-// too (src/features/end/endView.ts), from the same pixel maps.
 export const MODIFIER_PIXELS: Readonly<
   Record<Modifier, ReadonlyArray<string>>
 > = {
@@ -1160,8 +1079,4 @@ export const MODIFIER_ICONS: Readonly<Record<Modifier, string>> = Record.map(
   pixels => pixelIconUrl(pixels, MODIFIER_PALETTE),
 )
 
-// THE GRAB
-
-// NOTE: the open hand of a take, on the touch hold button beside the
-// prize's own picture (src/features/shop/purchaseHud.ts).
 export const GRAB_ICON = pixelIconUrl(GRAB_PIXELS, GRAB_PALETTE)

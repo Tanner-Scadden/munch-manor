@@ -1,6 +1,3 @@
-// Co-op audit (tools/audit/coop.ts): the room's World and link as each page
-// draws them.
-
 import { Effect, Function, Schema } from 'effect'
 import type { Page } from 'playwright-core'
 
@@ -9,10 +6,6 @@ import { Vector } from '@game/world/schema/entitySchema'
 
 import { type AuditFailed, attempt, decodedFrom, evaluateAs } from '../page'
 
-// THE ROOM'S WORLD, AS THE PAGE DRAWS IT
-
-// NOTE: the readout src/features/coop/auditReadout.ts `readoutOf` writes on the arena, in
-// the Schema both sides share (src/features/coop/readout.ts).
 export type Seat = Readout['players'][number]
 
 const Net = Schema.Struct({
@@ -60,9 +53,6 @@ export const netOf = (
     }
   })
 
-// NOTE: read at once, never waited for: off the arena (a party wipe sends
-// the room back to its lobby) there is no readout, and a locator would
-// wait 30 s for it on every poll.
 export const readoutOf = (
   page: Page,
 ): Effect.Effect<Readout | undefined, AuditFailed | Schema.SchemaError> =>
@@ -82,9 +72,6 @@ export const slotOf = (page: Page) =>
 
 type ClientPoint = Readonly<{ x: number; y: number }>
 
-// NOTE: the parlour fills the 320 by 180 view while the kitchen is shut,
-// so the camera stands still and a world point is a fixed point on the
-// game canvas.
 export const toClient: {
   (
     x: number,

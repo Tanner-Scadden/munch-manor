@@ -32,12 +32,6 @@ import { HeroPicker, type HeroPickerProps } from '../block'
 import { startingCallingOf } from '../callingPick'
 import { Events } from '../message'
 
-// The lobby's hero card and the picker it opens (src/features/lobby/view.ts,
-// src/features/heroes/callingCards.ts). The lobby and the picker are each a
-// child component, drawn here on their own from the props the root hands
-// them; the root's side of a pick is its LobbyMessages, and Y opening the
-// picker is in calling.story.test.ts.
-
 const atRank = (rank: number, calling: Calling) =>
   UiStruct.evolve(home, {
     rank: current => ({ ...current, earnedPoints: pointsForRank(rank) }),
@@ -45,8 +39,6 @@ const atRank = (rank: number, calling: Calling) =>
     calling: () => calling,
   })
 
-// NOTE: the lobby as the root draws it for a player of this rank wearing
-// this hero, with the hero picker open or not.
 const lobbyAt = (
   rank: number,
   calling: Calling,
@@ -77,8 +69,6 @@ const lobbyAt = (
   isKeyboard: true,
 })
 
-// NOTE: the picker as the lobby draws it: a player of this rank with these
-// Bones and heroes bought, and a hero tried on or none.
 const pickerAt = (
   rank: number,
   bones: number,
@@ -95,8 +85,6 @@ const pickerAt = (
   layout: 'Panel',
 })
 
-// NOTE: ui-kit's Dialog draws its panel once its own Model says it is
-// shown, which its Mount sets on the page and a Scene never runs.
 const SHOWN_DIALOG = {
   mounted: true,
   started: true,
@@ -110,7 +98,6 @@ const SHOWN_DIALOG = {
 const card = (calling: Calling) =>
   withAttrs({ 'data-calling': calling })(byClass('calling-card'))
 
-// NOTE: a card's first perk or drawback line.
 const lineOf = (calling: Calling, sign: 'Perk' | 'Drawback') =>
   firstOf(
     Locator.inside(
@@ -132,8 +119,6 @@ const shortBuy = HtmlLocator.role('button', {
   name: 'Buy for 60 Bones, too few',
 })
 
-// NOTE: an attribute of what a child's Scene draws (`expectAttr` steps the
-// root's Scene).
 const attrOf = (node: Locator.Node, name: string): string | undefined =>
   node.attrs?.[name]
 

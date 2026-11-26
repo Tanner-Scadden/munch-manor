@@ -39,23 +39,6 @@ import { focusOf } from '../../world/party/party'
 import { Phase, type Vector } from '../../world/schema/worldSchema'
 import { distanceBetween } from '../../world/step/geometry'
 
-// NOTE: the dare's things in the house (src/world/dare/dare.ts), one in each
-// room that holds one, and Uncle Chunk's big key flying from where he fell
-// into the front door's lock (src/world/dare/finale.ts). Help by
-// difficulty:
-//
-// - Dare (Easy) and Double Dare (Normal): a thing in its open room is always
-//   drawn on its spot, twice its size in a dark outline, bobbing over a
-//   shadow inside a soft gold glow that pulses, so it reads from across the
-//   room and stands out from the decor. The owner bought every room on Easy
-//   and still found nothing when things hid until you stepped close
-//   (playtest, 2026-11-10).
-// - Dare also keeps the gold sparkle over each, through waves and breaks.
-// - Triple Dare (Hard) and Triple Dog Dare (Nightmare): a thing is unseen
-//   until a player walks close in its open room, when its spot glints.
-//
-// The arrow that points the way is src/features/dare/darePointer.ts.
-
 const BOB_MS = 300
 const BOB_PX = 1
 const HALF_BIG_ICON = Math.floor(DARE_BIG_ICON_SIZE / 2)
@@ -70,12 +53,8 @@ const GLOW_PULSE_PX = 2
 const GLOW_FILL = 'rgba(255, 224, 102, 0.22)'
 const GLOW_RING = 'rgba(255, 224, 102, 0.55)'
 
-// NOTE: how much higher a thing floats over a room's find (its trunk, its
-// book stack, its dumbwaiter, src/features/dare/findView.ts), to clear it.
 const OVER_FIND_PX = 9
 
-// NOTE: how high over its spot a shown thing floats, at most, for the
-// pointer and the bubble to clear it.
 export const SHOWN_THING_TOP =
   BIG_LIFT_PX + OVER_FIND_PX + HALF_BIG_ICON + BOB_PX
 
@@ -94,7 +73,6 @@ const NEAR_GLINT: Sprite = bakeShapes([
   rect(-1, 0, 3, 1, '#fff7d0'),
 ])
 
-// NOTE: the help's sparkle, bigger and gold, seen from across the room.
 const SPARKLE: Sprite = bakeShapes([
   rect(0, -3, 1, 7, '#ffe066'),
   rect(-3, 0, 7, 1, '#ffe066'),
@@ -105,7 +83,6 @@ const SPARKLE: Sprite = bakeShapes([
 const bobOf = (elapsedMs: number): number =>
   Math.floor(elapsedMs / BOB_MS) % 2 === 0 ? 0 : BOB_PX
 
-// NOTE: the difficulties whose things lie in plain sight in an open room.
 const SHOWS_THINGS: Readonly<Record<Difficulty, boolean>> = {
   Easy: true,
   Normal: true,
@@ -116,8 +93,6 @@ const SHOWS_THINGS: Readonly<Record<Difficulty, boolean>> = {
 export const isThingShownOn = (difficulty: Difficulty): boolean =>
   SHOWS_THINGS[difficulty]
 
-// NOTE: a thing on the list still lying in its open room, in plain sight
-// on this run's difficulty.
 const shownThingSpots = (
   model: Model,
 ): ReadonlyArray<Readonly<{ thing: DareThing; spot: Vector }>> => {
@@ -129,8 +104,6 @@ const shownThingSpots = (
     DareThingState.isAnyOf(['Hidden'])(thing.state)
       ? Option.match(maybeLyingAt(thing, level), {
           onNone: () => Result.failVoid,
-          // NOTE: the cellar's thing shows only while its bulb is lit
-          // (src/world/cellar/bulb.ts).
           onSome: spot =>
             isHiddenInDark(model, spot)
               ? Result.failVoid
@@ -145,8 +118,6 @@ const glowRadiusOf = (elapsedMs: number): number =>
     GLOW_RADIUS + Math.sin((FULL_TURN * elapsedMs) / GLOW_MS) * GLOW_PULSE_PX,
   )
 
-// NOTE: a thing in plain sight: its shadow and the thing floating over it,
-// its glow on the floor under them (dareGroundShapes).
 const shownDrawable = (
   model: Model,
   thing: DareThing,
@@ -171,10 +142,6 @@ const shownDrawable = (
   }
 }
 
-// THE BIG KEY
-
-// NOTE: Uncle Chunk's big key (BIG_KEY_PIXELS in src/art/dareArt.ts),
-// glinting as it turns in the air.
 const BIG_KEY: Sprite = spriteShapes(BIG_KEY_PIXELS, BIG_KEY_PALETTE, TOP_LEFT)
 const BIG_KEY_GLINT: Sprite = spriteShapes(
   Array.map(BIG_KEY_PIXELS, row => String.replaceAll('Y', 'W')(row)),
@@ -187,8 +154,6 @@ const KEY_ARC_PX = 26
 const KEY_GLINT_MS = 120
 const LOCK_DROP_PX = 4
 
-// NOTE: the key's flight sorts with what stands around it by the floor
-// under it, rising in an arc from where he fell to the lock.
 const keyDrawable = (model: Model): Option.Option<Drawable> =>
   Finale.matchOrElse(
     model.dare.finale,
@@ -235,8 +200,6 @@ bakeRings(
   GLOW_RING,
 )
 
-// NOTE: the glow on the floor under each thing in plain sight, pulsing, in
-// whole pixels on the floor itself.
 export const dareGroundShapes = (model: Model): ReadonlyArray<Draw.Shape> => {
   const radius = glowRadiusOf(model.elapsedMs)
   return Array.flatMap(shownThingSpots(model), ({ spot }) => {
@@ -256,10 +219,6 @@ export const dareDrawables = (model: Model): ReadonlyArray<Drawable> => [
   ),
 ]
 
-// HELP
-
-// NOTE: the spots the gold sparkle shines over: every thing in plain sight
-// on Dare, through waves and breaks alike.
 const sparkleSpots = (model: Model): ReadonlyArray<Vector> =>
   runDifficultyOf(model) === 'Easy' &&
   Phase.isAnyOf(['Preparation', 'Wave'])(model.phase)
@@ -277,8 +236,6 @@ const sparkleShapes = (model: Model): ReadonlyArray<Draw.Shape> =>
         ),
       )
 
-// NOTE: on Triple Dare and Triple Dog Dare, a hidden thing's spot glints
-// for a player walking near it.
 const nearGlintShapes = (model: Model): ReadonlyArray<Draw.Shape> => {
   if (
     isThingShownOn(runDifficultyOf(model)) ||
@@ -297,8 +254,6 @@ const nearGlintShapes = (model: Model): ReadonlyArray<Draw.Shape> => {
       : Result.failVoid,
   )
 }
-
-// OVERHEAD
 
 export const dareOverheadShapes = (model: Model): ReadonlyArray<Draw.Shape> => [
   ...nearGlintShapes(model),

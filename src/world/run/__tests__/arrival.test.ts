@@ -19,10 +19,6 @@ import { maybePlayerAt } from '../../party/party'
 import { Phase } from '../../schema/worldSchema'
 import { ARRIVAL_MS, SLAM_MS, skipArrival, slamAtMs } from '../arrival'
 
-// The intro's clock in a co-op room (src/world/run/arrival.ts): the room
-// counts up to the slam for the whole crew, nothing moves while it does, and
-// every client reads the slam on the same room tick.
-
 const fullRoom = startRoomWorld([0, 1, 2], 7, {
   ...DEFAULT_ROOM_SETTINGS,
   intro: 'Full',
@@ -45,9 +41,6 @@ const applyDiff = (client: RoomWorld, from: RoomWorld, to: RoomWorld) => {
   return readRoomDiff(makeReader(writer.finish()), client)
 }
 
-// NOTE: the room ticks with each client following it through the wire: one
-// every tick, one every third, as a laggier client would. Each records the
-// room tick it first read the first break on.
 const followed = (() => {
   const clients = [
     { every: 1, at: fullRoom, copy: readBack(fullRoom), slamTick: -1 },

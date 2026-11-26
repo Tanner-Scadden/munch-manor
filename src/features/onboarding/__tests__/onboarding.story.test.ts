@@ -96,8 +96,6 @@ const clearingWave = (wave: number, base: Model): Model =>
 const introduced = (base: Model, kinds: ReadonlyArray<ZombieKind>): Model =>
   UiStruct.evolve(base, { introducedKinds: () => kinds })
 
-// NOTE: the break before wave 2, with these kinds met; START WAVE
-// (`startWave`) starts wave 2.
 const beforeWave2 = (kinds: ReadonlyArray<ZombieKind>): Model => {
   const [, spawns] = rollSpawns(1, 2)
   return UiStruct.evolve(introduced(asVeteran(newPlayerCardSeen), kinds), {
@@ -188,13 +186,11 @@ describe('new zombie card', () => {
           ),
         ),
         steps(
-          // NOTE: one 60 Hz tick clears the wave; a 50 ms frame is three.
           tick(FIXED_STEP_MS),
           checkModel(current => {
             expect(cardKind(current)).toStrictEqual(Option.none())
             expect(remainingMs(current)).toBe(PREPARATION_MS)
           }),
-          // NOTE: the clearing blow holds the world still first.
           ticks(4, TICK_MS),
           checkModel(current => {
             expect(remainingMs(current)).toBeCloseTo(
@@ -260,8 +256,6 @@ describe('new zombie card', () => {
     'in endless, only kinds not yet introduced this session get a card',
     () =>
       Effect.gen(function* () {
-        // NOTE: an endless run's tenth wave cleared: the next tick is the
-        // break before wave 11.
         const victorious = (kinds: ReadonlyArray<ZombieKind>): Model =>
           introduced(
             clearingWave(

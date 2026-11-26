@@ -23,19 +23,11 @@ import { tileCenter } from '../../level/tileGrid'
 import { isWalkableTile } from '../../level/tileQueries'
 import { SHELF_RULES, secretShelfOf } from '../secretShelf'
 
-// The library's secret shelf (src/world/library/secretShelf.ts): in the
-// wall the library shares with the dining room, a red book sticks out. A
-// player who walks up to it in a round pulls it, and the shelf swings open
-// for the rest of the run, a free second way between the two rooms.
-
 const LIBRARY_OPEN = levelFor(MANOR_SPEC, [EAST_EXIT])
 const SHELF = Option.getOrThrow(secretShelfOf(LIBRARY_OPEN))
 
-// NOTE: the shelf's two rows, in the dining room's east wall and the
-// library's west wall.
 const DINING_SIDE = { column: SHELF.tile.column - 1, row: SHELF.tile.row }
 
-// NOTE: a player whose body touches the book.
 const atBook = (model: Model): Model =>
   withPlayerAt(model, SHELF.book.x + PLAYER_RADIUS + 1, SHELF.book.y)
 

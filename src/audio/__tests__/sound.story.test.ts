@@ -73,8 +73,6 @@ const withOneHitZombieInFront = (base: Model): Model =>
 const pressFire = holdFire
 const pressMute = press('KeyM')
 
-// NOTE: the sounds the frame left pending are exactly `expected`, in
-// order; each is then played.
 const expectSounds = (expected: ReadonlyArray<SoundEffect>): StoryStep =>
   checkPendingSounds(sounds => {
     expect(sounds).toEqual(expected)
@@ -86,8 +84,6 @@ const COMBAT_SOUNDS: ReadonlyArray<SoundEffect> = [
   'ZombieDeath',
 ]
 
-// NOTE: the audio engine asked for (AcquireAudioEngine), answered as built
-// or as missing.
 const engineBuilt: StoryStep = s =>
   s.resolve(AcquireAudioEngine, Message.SucceededAcquireAudioEngine())
 
@@ -263,8 +259,6 @@ describe('frame sounds', () => {
           openFloorSpot(index).y,
         ),
       )
-      // NOTE: shots from a gun the player does not carry, so the forty kills
-      // level nothing and no level-up fanfare joins the sounds.
       const killingBullets = Array.map(victims, ({ id, x, y }): Bullet => ({
         id: id + floodSize,
         x,

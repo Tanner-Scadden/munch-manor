@@ -343,8 +343,6 @@ describe('NEW BEST', () => {
 })
 
 describe('the run records', () => {
-  // NOTE: a campaign death on wave 5 with 34 kills, against records that
-  // stood before it.
   const campaignAt = (furthestWave: number, mostKills: number): Model =>
     lastHeart(
       withBests(
@@ -615,8 +613,6 @@ describe('sharing a run', () => {
     }),
   )
 
-  // NOTE: the sheet itself opens in the click (ShareFromClick), so the tap's
-  // Message only counts it.
   it.effect.each([
     ['a phone', 'Touch'],
     ['a desktop', 'KeyboardMouse'],

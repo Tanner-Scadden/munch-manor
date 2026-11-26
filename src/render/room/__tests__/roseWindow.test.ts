@@ -18,11 +18,6 @@ import {
 import { roomBoxOf } from '../room'
 import { windowPanesOf } from '../windows'
 
-// The rose window (src/render/room/roseWindowArt.ts) hangs in the library's
-// back wall in every slot the library rolls into, and its colored light
-// lands on the library's open floor, clear of the stacks, the desk, and the
-// globe.
-
 test.each(Array.map(ARRANGEMENTS, arrangement => [arrangement]))(
   'the rose window lights the library wherever it stands: %o',
   arrangement => {

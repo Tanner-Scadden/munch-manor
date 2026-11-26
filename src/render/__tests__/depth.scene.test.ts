@@ -75,8 +75,6 @@ const zombieIndex = (current: Model, zombie: Zombie): number =>
     ),
   )
 
-// NOTE: Rattles' trunk, the last shape of his spot, never moves; he dozes
-// through a wave.
 const trunkIndex = (current: Model): number =>
   indexOf(
     worldShapesOf(current),
@@ -163,8 +161,6 @@ describe('Depth sort', () => {
       { row: 1, first: 6, last: 7 },
       { row: 1, first: 21, last: 22 },
     ])
-    // NOTE: the dining room's north door, cols 27 and 28, and the kitchen's
-    // boards and back door once it is open.
     expect(spans(MANOR)).toEqual([{ row: 1, first: 27, last: 28 }])
     expect(spans(openExit(MANOR, 'Kitchen'))).toEqual([
       { row: -14, first: 12, last: 13 },

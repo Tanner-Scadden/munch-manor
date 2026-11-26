@@ -41,11 +41,6 @@ import {
   SOLO_WIN_RATE,
 } from './queries'
 
-// Prints what real players did, from a stage's analytics D1 database:
-//
-//   bun tools/analytics/report.ts --stage prod
-//   bun tools/analytics/report.ts --stage pr-42
-
 const USAGE = 'Usage: bun tools/analytics/report.ts --stage <prod|pr-N|name>'
 
 class UsageError extends Schema.TaggedError<
@@ -62,8 +57,6 @@ const stageArgument = (
     Effect.fromOption,
     Effect.mapError(() => UsageError.make({ message: USAGE })),
   )
-
-// QUERIES
 
 const Count = Schema.Finite
 
@@ -88,7 +81,6 @@ const CrewWaveRow = Schema.Struct({
   deaths: Count,
 })
 
-// NOTE: per game: a co-op game is one crew_key (tools/analytics/queries.ts).
 const CrewRow = Schema.Struct({
   crew_size: Count,
   runs: Count,
@@ -97,7 +89,6 @@ const CrewRow = Schema.Struct({
   quits: Count,
 })
 
-// NOTE: per player: each row is one player's own seat.
 const CrewPlayerRow = Schema.Struct({
   crew_size: Count,
   players: Count,
@@ -106,7 +97,6 @@ const CrewPlayerRow = Schema.Struct({
   revives: Schema.NullOr(Count),
 })
 
-// NOTE: per player: one player's own link over one co-op game.
 const NetworkRow = Schema.Struct({
   crew_key: Schema.String,
   crew_size: Count,
@@ -178,8 +168,6 @@ const EndRow = Schema.Struct({
   outcome: Schema.String,
   runs: Count,
 })
-
-// FORMATTING
 
 const percent = (part: number, whole: number): string =>
   whole > 0 ? `${Math.round((100 * part) / whole)}%` : '-'
@@ -255,9 +243,6 @@ const section = (
     ? `${title}\n(no runs yet)`
     : `${title}\n${table(headers, rows)}`
 
-// NOTE: one game's players side by side, then where its lag looks to
-// come from (packages/netcode NetStats.ts, lagVerdictOf): every player bad
-// together reads as the server, one alone as that player's connection.
 const NETWORK_HEADERS = [
   'player',
   'device',
@@ -326,8 +311,6 @@ const networkSection = (rows: ReadonlyArray<NetworkRow>): string =>
       )}`
     : `${NETWORK_TITLE}\n(no runs yet)`
 
-// PROGRAM
-
 const program = Effect.gen(function* () {
   const stage = yield* stageArgument(process.argv.slice(2))
   const token = yield* apiToken
@@ -376,9 +359,6 @@ const program = Effect.gen(function* () {
     Array.reduce(ends, 0, (sum, row) =>
       row.party === party && row.outcome === outcome ? sum + row.runs : sum,
     )
-  // NOTE: a co-op end screen's shares are against the co-op games that
-  // ended there (ENDS counts a crew's game once), so a crew of three that
-  // all share reads as 3 per game.
   const runsEndedOn = (screen: string): number =>
     endedAs(
       String.startsWith('Coop')(screen) ? 'Crew' : 'Solo',

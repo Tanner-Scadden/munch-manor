@@ -11,19 +11,8 @@ import {
 import { type Box, type Tile, tileBox } from '../level/tileGrid'
 import type { DisplayCase, Vector } from '../schema/worldSchema'
 
-// Where the display cases stand (src/world/feats/cases.ts): their spots on
-// the rooms' maps, their boxes and feet, and whether a case's room is open.
-// Apart from the cases' rules so the dare (src/world/dare/dare.ts) can read
-// where a case stands with no import cycle.
-
-// THE SPOTS
-
-// NOTE: how a case looks: a gun rack on the wall, a glass display case, or
-// a trophy case. Only the drawing reads it.
 export type CaseLook = 'Rack' | 'Glass' | 'Trophy'
 
-// NOTE: `isNear` spots sit by the start and draw from the easier pool. A
-// spot is the run of tiles a room's map marks for it (`cc`), left to right.
 export type CaseSpot = Readonly<{
   tiles: Array.NonEmptyReadonlyArray<Tile>
   room: string
@@ -46,25 +35,20 @@ const isStartRoom = (spec: LevelSpec, room: RoomSpec): boolean => {
 
 const spotsBySpec = new WeakMap<LevelSpec, ReadonlyArray<CaseSpot>>()
 
-// NOTE: a level's case spots, read off its rooms' maps (roomSpotsOf in
-// src/world/level/plan.ts), in room order: every `cc` of the room a run
-// starts in (the dining room's three, docs/ROOM_DRAFTS.md), then the first
-// of each other room, the kitchen and each slot's, so wherever a room
-// stands its case stands with it. The count and which are near never
-// change with the arrangement, so a run rolls its cases before its rooms
-// are placed. A level keeps its spots, so a frame only reads them.
 const caseSpotsOf = (spec: LevelSpec): ReadonlyArray<CaseSpot> => {
   const cached = spotsBySpec.get(spec)
   if (cached !== undefined) {
     return cached
   }
+  const roomsById = new Map<RoomSpec['id'], RoomSpec>()
+  for (const roomSpec of spec.rooms) {
+    if (!roomsById.has(roomSpec.id)) {
+      roomsById.set(roomSpec.id, roomSpec)
+    }
+  }
   const pieces = Array.flatMap(roomSpotsOf(spec), ({ room, cases }) => {
-    const isNear = Option.exists(
-      // NOTE: a few rooms, once a level spec (cached).
-      // oxlint-disable-next-line munch/no-nested-scan
-      Array.findFirst(spec.rooms, ({ id }) => id === room),
-      roomSpec => isStartRoom(spec, roomSpec),
-    )
+    const roomSpec = roomsById.get(room)
+    const isNear = roomSpec !== undefined && isStartRoom(spec, roomSpec)
     return Array.filterMap(isNear ? cases : Array.take(cases, 1), tiles =>
       Array.isReadonlyArrayNonEmpty(tiles)
         ? Result.succeed({ tiles, room, isNear })
@@ -82,8 +66,6 @@ const caseSpotsOf = (spec: LevelSpec): ReadonlyArray<CaseSpot> => {
   return spots
 }
 
-// NOTE: the spots a run's cases are rolled for: the start level's, whose
-// count and near ones every arrangement shares.
 export const CASE_SPOTS: ReadonlyArray<CaseSpot> = caseSpotsOf(START_LEVEL.spec)
 
 const NO_SPOT: CaseSpot = {
@@ -118,7 +100,6 @@ export const caseLookOf: {
     spotOf(level, displayCase).look,
 )
 
-// NOTE: the floor point a case stands on, the middle of its tiles' bottom.
 export const caseFootOf: {
   (displayCase: DisplayCase): (level: Level) => Vector
   (level: Level, displayCase: DisplayCase): Vector
@@ -127,7 +108,6 @@ export const caseFootOf: {
   return { x: (box.left + box.right) / 2, y: box.bottom }
 })
 
-// NOTE: a case counts once its room is open.
 export const isCaseShown: {
   (displayCase: DisplayCase): (level: Level) => boolean
   (level: Level, displayCase: DisplayCase): boolean

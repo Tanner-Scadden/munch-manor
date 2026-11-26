@@ -1,24 +1,12 @@
 import { plugin } from 'bun'
 import { Array, Console, Effect, FileSystem, Path, Schema } from 'effect'
 
-// Draws public/og-image.png, the 1200x630 card shown when a link to the game
-// is shared: the dripping MUNCH MANOR logo from the title screen, the chomping
-// Groaner head from the app icon, and one line in the game's pixel font, on
-// the icon's purple. Nothing on it names a wave, a feature, or a version, so
-// it only needs a rerun when the logo or the icon art changes.
-//   bun og.ts
-// It also writes shots/og-600.png and shots/og-300.png, the card scaled down
-// the way chat apps shrink a link preview.
 import * as NodeServices from '@effect/platform-node/NodeServices'
 
 import { openBrowser, runAuditWith } from './lib'
 import { attempt } from './page'
 import { BIG_HEAD, PALETTE } from './zombieHead'
 
-// SOURCES
-
-// The logo is private to src/screens/game/overlay.ts, so it is loaded with a few exports
-// added. The head is the app icon's (zombieHead.ts).
 plugin({
   name: 'og-sources',
   setup(build) {
@@ -38,8 +26,6 @@ export { logoLetterPixels, MUNCH_LOOK, MANOR_LOOK, TITLE_WORDS, LOGO_GAP, LOGO_L
 type Rows = ReadonlyArray<string>
 type Palette = Readonly<Record<string, string>>
 
-// NOTE: the added exports are invisible to TypeScript, so the module is
-// decoded: a renamed or reshaped export fails here by name.
 const LogoLook = Schema.Struct({
   palette: Schema.Record(Schema.String, Schema.String),
 })
@@ -71,8 +57,6 @@ runAuditWith(
     const font: { textPixels: (text: string) => Rows } = yield* attempt(
       () => import('../../src/art/font.ts'),
     )
-
-    // CARD
 
     const WIDTH = 1200
     const HEIGHT = 630
@@ -113,8 +97,6 @@ runAuditWith(
       rects.push({ x, y, width, height, fill: color })
     }
 
-    // Paints a pixel map at a whole number scale, one rectangle per run of
-    // cells that share a color.
     const paintRows = (
       rows: Rows,
       palette: Palette,
@@ -149,8 +131,6 @@ runAuditWith(
     const widthOf = (rows: Rows): number =>
       Math.max(0, ...Array.map(rows, row => row.length))
 
-    // LAYOUT
-
     const HEAD_SCALE = 14
     const LOGO_SCALE = 6
     const TEXT_SCALE = 5
@@ -161,8 +141,6 @@ runAuditWith(
 
     type Letter = Readonly<{ rows: Rows; palette: Palette; bob: number }>
 
-    // The same seeds and the same bob as the title screen, frozen at its first
-    // frame, so the letters sit at the jaunty tilt the game opens on.
     const LOGO: ReadonlyArray<ReadonlyArray<Letter>> = Array.map(
       screens.TITLE_WORDS,
       (word, line) =>
@@ -211,10 +189,6 @@ runAuditWith(
     const LOGO_Y = Math.round(MIDDLE - (LOGO_H + 40 + 6 * TEXT_SCALE) / 2) - 8
     const TAG_Y = LOGO_Y + LOGO_H + 30
 
-    // BACKGROUND
-
-    // A stepped vignette in 10 pixel cells: the purple darkens toward the
-    // corners, the way the icon's glow steps.
     const CELL = 10
     for (let cy = 0; cy < HEIGHT / CELL; cy++) {
       for (let cx = 0; cx < WIDTH / CELL; cx++) {
@@ -233,7 +207,6 @@ runAuditWith(
       }
     }
 
-    // The icon's glow behind the head, in the head's own cells.
     const GLOW_X = HEAD_X + HEAD_W / 2
     const GLOW_Y = HEAD_Y + HEAD_H / 2
     for (let gy = -16; gy <= 16; gy++) {
@@ -255,7 +228,6 @@ runAuditWith(
       }
     }
 
-    // Sparkles, as on the icon: small pixel crosses.
     const SPARKLES: ReadonlyArray<readonly [number, number, number]> = [
       [GLOW_X - 190, GLOW_Y - 150, 6],
       [GLOW_X + 175, GLOW_Y + 140, 6],
@@ -271,7 +243,6 @@ runAuditWith(
       fill(sx - size * 3, sy - size, size * 6, size * 2, COLORS.sparkle)
     }
 
-    // Floorboards along the bottom, dark so they frame without pulling the eye.
     fill(0, FLOOR_TOP, WIDTH, HEIGHT - FLOOR_TOP, COLORS.board)
     fill(0, FLOOR_TOP, WIDTH, 5, COLORS.boardTop)
     const BOARD_H = 24
@@ -282,8 +253,6 @@ runAuditWith(
         fill(x, top, 4, BOARD_H - 4, COLORS.seam)
       }
     }
-
-    // FOREGROUND
 
     paintRows(HEAD, PALETTE, HEAD_X, HEAD_Y, HEAD_SCALE)
 
@@ -302,7 +271,6 @@ runAuditWith(
       })
     })
 
-    // The tagline with a hard drop shadow, like the game's text.
     const TAG_X = TEXT_X + Math.round((TEXT_W - TAG_W) / 2)
     paintRows(
       TAGLINE,
@@ -324,8 +292,6 @@ runAuditWith(
     )
     paintRows(SUBLINE, { '#': COLORS.soft }, SUB_X, SUB_Y, SUB_SCALE)
 
-    // RENDER
-
     const browser = yield* openBrowser
     const context = yield* attempt(() =>
       browser.newContext({
@@ -339,8 +305,6 @@ runAuditWith(
         `<!doctype html><html><body style="margin:0"><svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" height="${HEIGHT}" viewBox="0 0 ${WIDTH} ${HEIGHT}" shape-rendering="crispEdges" style="display:block"></svg></body></html>`,
       ),
     )
-    // NOTE: the card's rects as SVG rects, drawn in order as the 2D canvas
-    // filled them, with no canvas context.
     yield* attempt(() =>
       page.evaluate((list: ReadonlyArray<Rect>) => {
         const svg = document.querySelector('svg')
@@ -370,8 +334,6 @@ runAuditWith(
       }),
     )
     yield* Console.log(`wrote public/og-image.png (${WIDTH}x${HEIGHT})`)
-
-    // PREVIEWS
 
     yield* fs.makeDirectory(SHOTS, { recursive: true })
     const cardBytes = yield* fs.readFile(OUT)

@@ -1,7 +1,3 @@
-// The Lobby as the root draws it, for the lobby's Scenes: a child is a
-// leaf in the root's Scene, so its insides are read in a Scene of its own,
-// made with the props the root's view hands it at that step.
-
 import {
   Array,
   type Effect,
@@ -24,8 +20,6 @@ import { LobbyProps } from '../model'
 
 const isLobbyProps = Schema.is(LobbyProps)
 
-// NOTE: the props the root's view hands the Lobby (src/app/lobbyView.ts),
-// or none while it is not drawn.
 export const lobbyPropsIn = (s: AppScene): Option.Option<LobbyProps> =>
   Array.findFirst(childrenOf(s.view), node =>
     Match.value(node).pipe(
@@ -38,7 +32,6 @@ export const lobbyPropsIn = (s: AppScene): Option.Option<LobbyProps> =>
     ),
   )
 
-// NOTE: whether the root draws the Lobby (up, or folding back into PLAY).
 export const expectLobbyDrawn =
   (isDrawn: boolean): SceneStep =>
   s =>
@@ -50,7 +43,6 @@ export const expectLobbyDrawn =
       }
     })
 
-// NOTE: a Scene of the Lobby with the props the root hands it now.
 export const lobbySceneIn = (
   s: AppScene,
 ): Effect.Effect<LobbyScene, never, Scope.Scope> =>
@@ -64,7 +56,6 @@ export const lobbySceneIn = (
 
 export type LobbyScene = HtmlScene.Steps<typeof Lobby>
 
-// NOTE: an attribute on the Lobby's card, `undefined` for none.
 export const lobbyAttr: {
   (
     name: string,
@@ -89,7 +80,5 @@ export const lobbyAttr: {
       }),
 )
 
-// NOTE: leaving the lobby (BACK, Escape, or a tap on the dim) folds the
-// card back into PLAY and hands focus back to PLAY, reporting nothing.
 export const focusesPlay: RootStep = s =>
   s.resolve(FocusHomeButton.make({ button: 'Play' }), Component.noop)

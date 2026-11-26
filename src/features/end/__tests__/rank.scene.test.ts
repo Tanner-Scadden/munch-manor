@@ -19,11 +19,6 @@ import {
 import { type SceneStep, sceneOf, steps } from '../../../test/testing'
 import { pointsForRank } from '../../../world/heroes/rank'
 
-// The rank in the menus: the badge and number on the home menu's player,
-// and the Profile's plate (src/ui/rankBadgeView.ts).
-
-// NOTE: 85 points is rank 2 with 35 of its 70 done, and 16 Bones. Rank
-// 3 opens the Handyman.
 const ranked = UiStruct.evolve(homeAfterRead, {
   rank: rank => ({ ...rank, earnedPoints: 85, earnedBones: 16 }),
 })
@@ -31,7 +26,6 @@ const ranked = UiStruct.evolve(homeAfterRead, {
 const onHero = (name: string): Locator.Locator =>
   Locator.inside(byClass('home-hero'), byClass(name))
 
-// NOTE: the Profile opened from the gear, its Dialog shown.
 const openProfile: SceneStep = steps(
   s => s.click(settingsButton),
   showDialog(PROFILE_DIALOG_ID),

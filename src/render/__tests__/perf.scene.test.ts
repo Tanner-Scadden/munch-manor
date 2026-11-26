@@ -90,8 +90,6 @@ import type * as Draw from '../draw'
 import { type Leaf, flatten } from '../iso/flatten'
 import { type Decal, DecalKind, type Particle } from '../renderSchema'
 
-// WORST-CASE ROOMS
-
 const cycle = <A>(items: Array.NonEmptyReadonlyArray<A>, index: number): A =>
   pipe(
     Array.get(items, index % items.length),
@@ -143,10 +141,6 @@ const GLOWING_INDEX = 2
 const FRENZIED_INDICES: ReadonlyArray<number> = [4, 9, 12, 13, 16, 17, 19]
 const FRENZY_PACK = 77
 
-// NOTE: the worst case stages one of each new sight: a Big Leaguer heaving a
-// Groaner overhead while another Groaner is in the air over its landing mark,
-// an Ankle Biter about to break through the floor, a Kaboomer shot twice and
-// pulsing hard beside the player, and a frenzied pack with its steam.
 const stagedZombie = (zombie: Zombie, index: number): Zombie => {
   if (index === CHUCKER_INDEX) {
     return UiStruct.evolve(zombie, {
@@ -261,8 +255,6 @@ const blastAt = (index: number): Blast => ({
   ageMs: 40 + index * 20,
 })
 
-// NOTE: the game keeps only the newest HORDE! callout, so the worst case has
-// one of them, a pack bonus, and the other kinds in turn.
 const POPUP_KINDS_IN_TURN: Array.NonEmptyReadonlyArray<PopupKind> = [
   'Damage',
   'Kill',
@@ -326,9 +318,6 @@ const ALL_BOOSTED: Boosts = {
   Pierce: BoostTimer.On({ remainingMs: 4000, durationMs: 9000 }),
 }
 
-// NOTE: the game never shows a glob in the air while he braces, since he waits
-// for a glob to land before he winds up again. The worst case draws both
-// anyway, with the most puddles, so the budget covers any frame he can make.
 const WORST_GLOBS: ReadonlyArray<Glob> = [
   ...Array.makeBy(BOSS_RULES.globMax - 1, index =>
     Glob.Pooled({
@@ -345,8 +334,6 @@ const WORST_GLOBS: ReadonlyArray<Glob> = [
   }),
 ]
 
-// NOTE: the room is played by a veteran who has learned every lesson, so no
-// tutorial hint is drawn. The budgets were recorded without hints.
 const fullRoom = (mode: RunMode, wave: number, tier: number): Model => {
   const started = startOrResume(
     UiStruct.evolve(asVeteran(initialModel), {
@@ -415,8 +402,6 @@ const fullRoom = (mode: RunMode, wave: number, tier: number): Model => {
   )
 }
 
-// COUNTING PAINTER
-
 type PaintCounts = Readonly<{
   paintOps: number
   fillStyleChanges: number
@@ -452,11 +437,6 @@ const fillOf = (leaf: Leaf): Option.Option<string> =>
     ? Option.none()
     : Option.some(leaf.shape.fill ?? '')
 
-// NOTE: the work the overlay's painter (FlatPainter in src/render/iso/
-// painter.ts) does for a picture: a Sprite or a Graphics call per leaf of
-// the flattened shapes (its paint operations), a change of fill between
-// one vector leaf and the next (a new style in the Graphics' batch), and
-// every shape and group the picture holds (its shapes painted).
 const paintOf = (shapes: ReadonlyArray<Draw.Shape>): PaintCounts => {
   const leaves = flatten(shapes)
   const fills = Array.getSomes(Array.map(leaves, fillOf))
@@ -482,9 +462,6 @@ const isOverlayPicture = (
 ): value is Readonly<{ shapes: OverlayShapes }> =>
   Predicate.hasProperty(value, 'shapes') && Array.isArray(value.shapes)
 
-// NOTE: the picture the overlay element is handed this render.
-// OverlayScene.paint skips a picture that is the same object as the one it
-// painted last, so a frame whose picture is kept paints nothing.
 const overlayPictureOf = (s: AppScene): Option.Option<unknown> =>
   pipe(
     Array.head(s.all(byClass('overlay-layer'))),
@@ -493,7 +470,6 @@ const overlayPictureOf = (s: AppScene): Option.Option<unknown> =>
     ),
   )
 
-// NOTE: what a frame paints, from the picture before it.
 const paintBetween = (
   previous: Option.Option<unknown>,
   current: Option.Option<unknown>,
@@ -518,8 +494,6 @@ type FrameCost = Readonly<{
 
 type Measured = FrameCost & Readonly<{ imagesBuilt: number }>
 
-// NOTE: the overlay's picture of the frame once the surface is measured,
-// and of the next frame, once the mouse moves: the steady frame.
 const measureFrames = Effect.fnUntraced(function* (model: Model) {
   const s = yield* exactSceneOf(model)
   s.pipe(measureSurfaceAs(WIDE_SURFACE), ackHudSlots)
@@ -540,85 +514,6 @@ const measureFrames = Effect.fnUntraced(function* (model: Model) {
   } satisfies Measured
 })
 
-// BUDGETS
-
-// NOTE: shapesBuilt went from 2200 to 2250 when a horde's DINNER BELL banner
-// and the rattling doors joined the worst case. It went to 2450, and
-// fullRepaintPaintOps from 2550 to 2750, when power-ups joined it: two pickups
-// on the floor, all four boosts running, and a callout with the longest name.
-// The callout is about two thirds of that and sits on the overlay canvas, so
-// the steady paint budgets did not change. The boss and wear raised them
-// again: the room was 2430 shapes, 1420 steady paint operations, and 2720 on
-// a full repaint before. Worn sprites, gas leaks, and the red stump on a limb
-// decal add about 30 shapes and 40 paint operations. Uncle Chunk adds about
-// 150 shapes: his sprite is about 65 rectangles, his stomp ring 3 circles, and
-// his bar about 70 more on the overlay, most of them the letters of his name.
-// His far attacks did not raise them. The worst case now has him enraged and
-// bracing for a charge, with a glob in the air and four puddles, instead of
-// mid-stomp: 2614 shapes, 1527 steady paint operations, and 2935 on a full
-// repaint before, 2628, 1554, and 2952 after. ENRAGED replaces his name on
-// the bar instead of joining it, which keeps the overlay the same size.
-// The Chucker, the Ankle Biter, frenzy, and the new Gasbag raised the steady
-// paint budget from 1560 to 1585. The staged sights alone cost nothing net:
-// an Ankle Biter under the floor is a ring and a few cracks, cheaper than the
-// Big Lug it replaced, and a held or thrown Groaner draws no health bar. What
-// they add is the one HORDE! callout the game allows at a time (14 paint
-// operations, its letters) and a red glow and a puff of steam on each of
-// the seven frenzied zombies (14). The Gasbag's sprite was redrawn so its
-// glowing belly costs no more runs than the old one, and its two bubbles and
-// valve spark add 3. The room measured 2656 shapes, 1577 steady paint
-// operations, 1564 fill changes, 1659 shapes painted, and 2986 on a full
-// repaint.
-// Then drawing every fixed sprite, glyph, and baked text as one Draw.Image
-// instead of a Rect per pixel run cut the room from 2656 shapes, 1577 steady
-// paint operations, and 2986 on a full repaint to 687, 543, and 1120,
-// with 458 fill changes and 581 shapes painted. What is left is mostly
-// particles, decals, bars, and shadows, which change every frame.
-// The display cases (November 2026) added 10 shapes to the worst rooms, 748
-// and 746 against 738 before: each locked case in view is five images (its
-// body, its prize, its glass and padlock, and its feat's ring and icon), and
-// its count shows only to a player standing near it. The paint budgets did
-// not move.
-// The library and the cellar put two more room images on the floor canvas
-// (743 shapes at the alive cap, from 740 or under); the floor canvas paints
-// only when the level changes, so no steady paint budget moved. The dark
-// cellar fits the same budget: its mask is about a dozen shapes, cut from
-// baked light pools, and a zombie out in the dark draws only its eyes.
-// The cellar's own display case, locked in view, paints 597 steady
-// operations there, so that budget went from 590 to 600, and 603 with the
-// rolled house's cloche, so 610 (and its shapes painted 638, so 640).
-// The dare card on the HUD added one baked slot per thing on the list, the
-// 3 on Normal, and the house's dare things a few shapes more.
-// A display case's count shows always (owner's playtest, 2026-11-10: what
-// opens a case reads from across the room), a glyph image each, and its
-// padlock's gold notch is one image more: the dark cellar went to 772 shapes,
-// 620 steady paint operations, and 655 shapes painted, so 775, 625, and 660.
-// Baking each count whole would cut a few images, but a count changes with
-// every kill, so its sprites would be built at runtime, off the atlas.
-// The room finds and the hub touches (layer 21, 2026-11-11): a hidden
-// thing's prop in its room (one image, and its gold ring while worked), and
-// the dining room's touches of each open room, one image each (the hatch,
-// the books, one drifting note, the cobweb, one puff of dust). With every
-// room open the dark cellar went to 778 shapes and 664 painted, and the
-// rolled house to 631 steady paint operations, so 785, 635, and 670.
-// Uncle Chunk's second phase throws three plates at a time, so the plates
-// he keeps on the floor went from 5 to 9 (`globMax`, 2026-11-11): every
-// puddle in this room now draws: the dark cellar went to 794 shapes and
-// 680 painted, and the rolled house to 647 steady paint operations, so
-// 800, 650, and 685. The room tools (layer 20, 2026-11-11) put the bulb's
-// chain and a barrel in the cellar, each with its ring, while a zombie out
-// in the dark is not drawn at all, so the budgets still hold.
-// The 3D renderer (November 2026) took the world off Foldkit's canvases:
-// shapesBuilt still counts every shape a frame builds for it, while the
-// paint budgets now measure the overlay alone, well under the old numbers.
-// The 3D frame's own cost is `bun run perf:check`'s to gate.
-// The Effect UI port (November 2026) drew the overlay with Pixi from one
-// picture of `Draw` shapes in place of the canvases, so the paint budgets
-// now count its painter: a leaf of the flattened picture a paint operation,
-// a change of fill between vector leaves a fill change, and every shape and
-// group a shape painted. A picture kept the same object paints nothing (a
-// mouse move leaves the overlay as it was), and the full repaint measured
-// about 100 operations, so the budgets stand with room.
 const BUDGET: FrameCost = {
   shapesBuilt: 800,
   steadyPaintOps: 650,
@@ -627,9 +522,6 @@ const BUDGET: FrameCost = {
   fullRepaintPaintOps: 1200,
 }
 
-// NOTE: every zombie and the player are sprite images among the shapes
-// built. If none were, the shape budget above would pass without counting
-// the sprites at all.
 const IMAGES_BUILT_MIN = ZOMBIE_ALIVE_MAX + 1
 
 const BUDGET_KEYS: ReadonlyArray<keyof FrameCost> = [
@@ -640,9 +532,6 @@ const BUDGET_KEYS: ReadonlyArray<keyof FrameCost> = [
   'fullRepaintPaintOps',
 ]
 
-// NOTE: the kitchen open with both ovens belching, the player up in it, and
-// half the crowd moved up beside the player. The other half stays down in
-// the parlour, out of the camera's view, where it is culled from drawing.
 const kitchenRoom = (wave: number): Model => {
   const room = fullRoom(RunMode.Campaign(), wave, 2)
   return modifyFocus(
@@ -668,10 +557,6 @@ const kitchenRoom = (wave: number): Model => {
   )
 }
 
-// NOTE: the cellar open and dark, the player down in it firing (the shot's
-// flash widens its light), and the whole crowd moved down beside it, most
-// of it out in the dark as eyes. The light mask is drawn over the part of
-// the cellar on the camera (src/render/cellarDark.ts).
 const cellarRoom = (wave: number): Model => {
   const room = fullRoom(RunMode.Campaign(), wave, 2)
   return modifyFocus(
@@ -696,11 +581,6 @@ const cellarRoom = (wave: number): Model => {
   )
 }
 
-// NOTE: the worst house a roll can stand: the dark cellar in the west slot
-// beside the dining room, so the camera holds the cellar's mask and the
-// dining room both, every room and the shelf open so the floor canvas holds
-// all five room images, the crowd in the cellar, and the cloche lifting
-// over the far boards.
 const rolledCellarRoom = (wave: number): Model => {
   const room = fullRoom(RunMode.Campaign(), wave, 2)
   return modifyFocus(
@@ -742,10 +622,6 @@ const rolledCellarRoom = (wave: number): Model => {
   )
 }
 
-// NOTE: the fridge weapons at their busiest in the open kitchen: the
-// Cooker held at full pressure with three lids in the air and a blast
-// flashing, the fridge open with a prize flying out, and a third of the
-// crowd frozen solid or reeling from the Pan.
 const fridgeFight = (
   room: Model,
   spare: CarriedGun,
@@ -855,7 +731,6 @@ describe('Frame cost', () => {
       Effect.gen(function* () {
         const measured = yield* measureFrames(model)
         const report = `measured ${jsonOf(measured)}\nbudget   ${jsonOf(BUDGET)}`
-        // NOTE: an overlay picture painted at all, so the budgets measure one.
         expect(measured.fullRepaintPaintOps, report).toBeGreaterThan(0)
         Array.forEach(BUDGET_KEYS, key => {
           expect(

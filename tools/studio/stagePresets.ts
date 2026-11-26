@@ -1,9 +1,3 @@
-// The 3D stage's light presets: where in the manor the picked thing stands
-// and the light the game's own house lights give it there (a candle beside
-// it, the chandelier over it, the flashlight in the cellar's dark, a
-// lightning strike, and the break's, a wave's, the frenzy's, and the dread's
-// moods), as the plain frame the renderer reads (src/render/iso/lights.ts).
-// The stage element (./stage3d.ts) builds the level and stands the thing.
 import { Array, Function, Option, Schema } from 'effect'
 
 import {
@@ -52,8 +46,6 @@ export const PRESET_LABELS: Readonly<Record<StagePreset, string>> = {
 
 type Spot = Readonly<{ x: number; y: number }>
 
-// NOTE: where the thing stands (its foot, in game pixels), the light it
-// stands in, and where a viewer would hold the flashlight from.
 export type StageSetup = Readonly<{
   spot: Spot
   lights: LightsFrame
@@ -61,7 +53,6 @@ export type StageSetup = Readonly<{
   facing: Spot
 }>
 
-// NOTE: every room of a house open, as the live room's scenes show it.
 export const stageLevelOf = (house: number): Level =>
   levelFor(
     manorSpecFor(
@@ -84,7 +75,6 @@ const roomMiddleOf = (level: Level, id: string): Spot =>
     },
   )
 
-// NOTE: a flame of this kind's spot, nearest the dining room's middle.
 const flameSpotOf = (level: Level, kind: FlameKind): Option.Option<Spot> => {
   const middle = roomMiddleOf(level, DINING_ROOM_ID)
   return Array.match(
@@ -104,14 +94,9 @@ const flameSpotOf = (level: Level, kind: FlameKind): Option.Option<Spot> => {
   )
 }
 
-// NOTE: how far off a candle the thing stands, and how far south of the
-// chandelier's hanging point (it hangs over the table's gap).
 const CANDLE_OFFSET: Spot = { x: 18, y: 8 }
 const UNDER_CHANDELIER = 40
-// NOTE: how far south of the thing the flashlight's holder stands.
 const FLASHLIGHT_BACK = 36
-// NOTE: a mood's flames: those burning this near the thing, in game pixels,
-// as the game lights the few nearest the viewer.
 const FLAME_REACH = 140
 
 const moodOf = (preset: StagePreset): Mood =>
@@ -148,8 +133,6 @@ const spotOf = (level: Level, preset: StagePreset): Spot => {
 const isNear = (a: Spot, b: Spot): boolean =>
   Math.hypot(a.x - b.x, a.y - b.y) <= FLAME_REACH
 
-// NOTE: read again each frame: the moods' and the flames' numbers come off
-// the lab's tables as they are now.
 export const stageSetupOf: {
   (preset: StagePreset): (level: Level) => StageSetup
   (level: Level, preset: StagePreset): StageSetup
@@ -178,7 +161,6 @@ export const stageSetupOf: {
               ? spec.kind === 'Chandelier'
               : !isDark && spec.kind !== 'Bulb' && isNear(spec.spot, spot),
         x: spec.x,
-        // NOTE: read as the lab has them now, so a slid flame shows at once.
         intensity: FLAME_TUNING.now[spec.kind].intensity,
       })),
     },

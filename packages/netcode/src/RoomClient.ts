@@ -30,18 +30,11 @@ import {
   openSocket,
 } from './Socket'
 
-// NOTE: the realtime channel from the browser: one socket to the GameRoom
-// at a time, a Hello with a fresh token on each, every decoded frame as an
-// event, and a reconnect with backoff when the socket drops. `events` is a
-// plain Stream, so an Effect UI Subscription can map it to Messages, and
-// `send` an Effect a Command can run. What the frames mean is Session.ts.
-
 export const RoomEvent = Schema.TaggedUnion({
   Connecting: { attempt: Schema.Finite },
   Received: { frame: ServerFrame, bytes: Schema.Finite, atMs: Schema.Finite },
   Dropped: { reason: Schema.String },
   Stopped: { reason: Schema.String },
-  // NOTE: the socket's free ping came back: sent at `sentMs`, back at `atMs`.
   Ponged: { sentMs: Schema.Finite, atMs: Schema.Finite },
 })
 export type RoomEvent = typeof RoomEvent.Type
@@ -54,30 +47,16 @@ export interface RoomClientOptions {
 
 export interface RoomClient {
   readonly events: Stream.Stream<RoomEvent>
-  // NOTE: the bytes written, or none when no socket is open.
   readonly send: (frame: ClientFrame) => Effect.Effect<Option.Option<number>>
-  // NOTE: says Leave, which frees the seat, and stops reconnecting.
   readonly leave: Effect.Effect<void>
-  // NOTE: drops the socket and connects again at once, for a Session that
-  // could not apply a message and needs the Snapshot a new link brings.
   readonly resync: Effect.Effect<void>
 }
 
-// NOTE: the sync engine's ping, which the Durable Object answers by
-// auto-response without waking, keeps the socket alive and measures the
-// round trip, for free: an auto-response is never billed. It goes every
-// 2 seconds, in the lobby and in the run alike.
 const HEARTBEAT = '2 seconds'
-// NOTE: the room sends 20 times a second in a run, and the ping is
-// answered every 2 seconds even in the lobby, so this long with nothing at
-// all is a dead link (a half-open TCP connection never closes by itself):
-// the socket is dropped and a new one connects.
 const SILENT_MS = 6000
 const WATCH_EVERY = '1 second'
 const DEFAULT_MAX_BACKOFF_MS = 5000
 
-// NOTE: refusals that another try would only repeat. An Unauthorized one
-// is retried, since the next try brings a fresh token.
 const isFinal = (frame: ServerFrame): boolean =>
   frame._tag === 'Kicked' ||
   (frame._tag === 'Refused' && frame.reason !== 'Unauthorized')

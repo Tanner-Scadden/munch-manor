@@ -27,9 +27,6 @@ import { type LevelSpec } from '../plan'
 import { tileIndex } from '../tileGrid'
 import { isDoorTile, isWalkableTile } from '../tileQueries'
 
-// NOTE: a made-up map with one boarded exit that holds a door shut, since
-// the parlour's exit has no room behind it yet. The kitchen below the boards
-// has its own door, shut until the exit opens.
 const HALL: LevelSpec = {
   id: 'TestHall',
   rooms: [
@@ -70,8 +67,6 @@ const WEST_BOARDS = { column: 0, row: 12 }
 const HALLWAY = { x: 35, y: 25 }
 const BOARD_GAP_COLOR = '#140e0b'
 
-// NOTE: the room is baked into one image, so the boards are found among the
-// image's pixels.
 const drawsBoards = (shapes: ReadonlyArray<Draw.Shape>): boolean =>
   Array.some(
     shapes,
@@ -221,9 +216,6 @@ describe('the manor', () => {
     expect(roomAt(opened, { x: -160, y: 130 }).id).toBe('Parlour')
   })
 
-  // NOTE: the padlocks (owner, 2026-11-10, after the pacing report): the
-  // kitchen 8, the first room off the dining room 40, the second 75, and
-  // the far room 90.
   test('prices its padlocks 8, then 40 and 75 by rooms opened, then 90', () => {
     const shut = levelOf({ level: startingLevel })
     expect(exitKeysOf(shut, 'Kitchen')).toBe(8)
@@ -246,8 +238,6 @@ describe('the manor', () => {
       ),
     })
     expect(closedExits(opened)).toEqual([])
-    // NOTE: the library's open shelf shows the dark gap it swung from, so
-    // only the other rooms are checked for boards.
     expect(
       drawsBoards(
         Array.filter(

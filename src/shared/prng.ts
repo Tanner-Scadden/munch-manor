@@ -56,7 +56,6 @@ type Keyed<A> = Readonly<{ key: number; item: A }>
 const byKey = <A>(): Order.Order<Keyed<A>> =>
   Order.mapInput(Order.Number, ({ key }: Keyed<A>) => key)
 
-// NOTE: the items in an order drawn from the generator, one draw each.
 export const shuffle: {
   <A>(
     items: Array.NonEmptyReadonlyArray<A>,
@@ -86,7 +85,6 @@ export const shuffle: {
   },
 )
 
-// NOTE: a draw from a stream as an index below `count`.
 export const drawIndex: {
   (count: number): (state: number) => Seeded<number>
   (state: number, count: number): Seeded<number>
@@ -95,8 +93,6 @@ export const drawIndex: {
   return [draw.nextState, Math.floor(draw.value * count)]
 })
 
-// NOTE: one of the lines, never the one the player saw last (Rattles'
-// hints and the end card's death tip, from the cosmetic stream).
 export const pickLine: {
   (
     lines: Array.NonEmptyReadonlyArray<string>,
@@ -124,8 +120,6 @@ export const pickLine: {
   },
 )
 
-// NOTE: a number from 0 to 1 for a whole number, the same on every engine
-// (Math.sin is not, so this is an integer hash).
 export const unitOf = (n: number): number => {
   let h = Math.imul(n ^ 0x9e3779b9, 0x85ebca6b)
   h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35)

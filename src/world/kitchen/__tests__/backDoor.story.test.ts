@@ -41,16 +41,8 @@ import { Life, type Vector } from '../../schema/worldSchema'
 import { offersOf } from '../../shop/purchase'
 import { BACK_DOOR_RULES, backDoorStandOf } from '../backDoor'
 
-// Leaving early by the kitchen's back door (src/world/kitchen/backDoor.ts):
-// in a break, once a thing on the list is found, a hold at the door ends
-// the run LeftEarly, paid for its waves and things and nothing more. With
-// nothing found, in a wave, in Endless, or once Uncle Chunk's key is in
-// the air, there is no leaving. In a crew the hold fills only while every
-// standing player is at the door.
-
 const HOLD_TICKS = Math.ceil(BACK_DOOR_RULES.holdMs / FIXED_STEP_MS) + 3
 
-// NOTE: hidden far from anyone, so nobody finds it by walking past.
 const HIDDEN = DareThingState.Hidden({ x: 2, y: 2, workedMs: 0 })
 
 const FOUND: ReadonlyArray<DareThing> = [
@@ -75,8 +67,6 @@ const doorSpotOf = (world: World): Vector =>
 const placed = (spot: Vector) => (player: World['seats'][number]['player']) =>
   UiStruct.evolve(player, { x: () => spot.x, y: () => spot.y })
 
-// NOTE: a campaign break on wave 4, three waves cleared, the kitchen open,
-// and the player at the back door with `things` in the house.
 const atBackDoor = (things: ReadonlyArray<DareThing> = FOUND): Model => {
   const run = withKitchen(
     withDareThings(
@@ -171,12 +161,8 @@ describe('the back door alone', () => {
   })
 })
 
-// THE CREW
-
 const FAR: Vector = { x: 40, y: 40 }
 
-// NOTE: the two seat room in a campaign break, the kitchen open, a thing
-// found, seat 0 at the back door and seat 1 at `second`.
 const crewRoom = (second: Vector, secondLife: Life = Life.Standing()) => {
   const opened = withKitchen(
     UiStruct.evolve(TWO_SEAT_ROOM.world, {
@@ -208,7 +194,6 @@ const crewTick = (slot: number, buttons: number): PlayerTick => ({
   rttMs: 0,
 })
 
-// NOTE: seat 0 holds the door for the hold's time; seat 1 stands still.
 const heldByOne = (room: RoomWorld): RoomWorld =>
   Array.reduce(Array.range(1, HOLD_TICKS), room, current =>
     stepRoomWorld(current, [crewTick(0, INTERACT_BUTTON), crewTick(1, 0)]),

@@ -4,7 +4,6 @@ import type { PlatformError } from 'effect/PlatformError'
 import { readTextIfPresent } from './lock'
 import { type Ledger, decodeLedger, encodeLedger } from './records'
 
-/** @stability unstable */
 export const readLedger = (
   path: string,
 ): Effect.Effect<Ledger, never, FileSystem.FileSystem> =>
@@ -25,7 +24,6 @@ const writeLedger = (
     yield* fs.rename(draft, path)
   })
 
-/** @stability unstable */
 export const updateLedger: {
   (
     change: (ledger: Ledger) => Ledger,

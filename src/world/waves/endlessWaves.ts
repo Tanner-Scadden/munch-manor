@@ -54,14 +54,9 @@ import {
   squads,
 } from './wavePlans'
 
-// ENDLESS
-
 export const endlessDepth = (wave: number): number =>
   Math.max(0, wave - FINAL_WAVE)
 
-// NOTE: health past the finale climbs a little faster every wave, so a
-// maxed loadout still meets zombies that outgrow it: x1.13 one wave in, x2.8
-// ten waves in, x5.8 twenty waves in.
 export const hpScaleFor = (wave: number): number => {
   const depth = endlessDepth(wave)
   return 1 + ENDLESS_HP_PER_WAVE * depth + ENDLESS_HP_RAMP * depth * depth
@@ -329,10 +324,6 @@ export type RolledWave = Readonly<{
   holds: ReadonlyArray<Hold>
 }>
 
-// NOTE: doors are the level's spawn doors as the wave is rolled. They are
-// the parlour's four until the kitchen is open. near are the ones weighted
-// 2:1 toward the players (src/world/waves/doorWeights.ts), none for a roll
-// that knows no players.
 export const rollWave: {
   (
     wave: number,
@@ -346,7 +337,6 @@ export const rollWave: {
     near?: ReadonlyArray<DoorId>,
   ): Seeded<RolledWave>
 } = Function.dual(
-  // NOTE: data-first has the wave second; data-last has the doors there or nothing.
   (args: IArguments): boolean => typeof args[1] === 'number',
   (
     state: number,
@@ -385,7 +375,6 @@ export const rollSpawns: {
     doors?: ReadonlyArray<DoorId>,
   ): Seeded<ReadonlyArray<PlannedSpawn>>
 } = Function.dual(
-  // NOTE: data-first has the wave second; data-last has the doors there or nothing.
   (args: IArguments): boolean => typeof args[1] === 'number',
   (
     state: number,
@@ -405,26 +394,26 @@ export type DoorCount = Readonly<{
   kinds: Array.NonEmptyReadonlyArray<KindCount>
 }>
 
+const NO_SPAWNS: ReadonlyArray<PlannedSpawn> = []
+
 const kindCounts = (
   spawns: ReadonlyArray<PlannedSpawn>,
-): ReadonlyArray<KindCount> =>
-  Array.filterMap(ZOMBIE_KIND_ORDER, kind => {
-    // NOTE: a few zombie kinds, read when a wave is planned or shown.
-    // oxlint-disable-next-line munch/no-nested-scan
-    const count = Array.filter(spawns, spawn => spawn.kind === kind).length
+): ReadonlyArray<KindCount> => {
+  const counts = new Map<ZombieKind, number>()
+  for (const { kind } of spawns) {
+    counts.set(kind, (counts.get(kind) ?? 0) + 1)
+  }
+  return Array.filterMap(ZOMBIE_KIND_ORDER, kind => {
+    const count = counts.get(kind) ?? 0
     return count > 0 ? Result.succeed({ kind, count }) : Result.failVoid
   })
+}
 
-// NOTE: zombies that come up through the floor are counted apart from the
-// doors, so every door's count is exactly what walks through it.
 export const floorCounts = (
   spawns: ReadonlyArray<PlannedSpawn>,
 ): ReadonlyArray<KindCount> =>
   kindCounts(Array.filter(spawns, spawn => !isThroughDoor(spawn)))
 
-// NOTE: both forms start with an array. Three arguments are data-first;
-// two are data-first unless the second is a list of doors (strings), as
-// traps are objects.
 const isSpawnsFirst = (args: IArguments): boolean =>
   args.length >= 3 ||
   (args.length === 2 &&
@@ -448,13 +437,19 @@ export const doorCounts: {
     doors: ReadonlyArray<DoorId> = DOOR_IDS,
   ): ReadonlyArray<DoorCount> => {
     const spawns = routeSpawns(plannedSpawns, traps, [], doors)
+    const byDoor = new Map<DoorId, Array<PlannedSpawn>>()
+    for (const spawn of spawns) {
+      if (isThroughDoor(spawn)) {
+        const atDoor = byDoor.get(spawn.door)
+        if (atDoor === undefined) {
+          byDoor.set(spawn.door, [spawn])
+        } else {
+          atDoor.push(spawn)
+        }
+      }
+    }
     return Array.filterMap(DOOR_IDS, door => {
-      // NOTE: at most 13 doors, read when a wave is planned or shown.
-      // oxlint-disable-next-line munch/no-nested-scan
-      const atDoor = Array.filter(
-        spawns,
-        spawn => isThroughDoor(spawn) && spawn.door === door,
-      )
+      const atDoor = byDoor.get(door) ?? NO_SPAWNS
       return Array.match(kindCounts(atDoor), {
         onEmpty: () => Result.failVoid,
         onNonEmpty: kinds =>

@@ -13,14 +13,6 @@ import { asVeteran } from '../../../test/veteran'
 import { heldWeapon } from '../../../world/gear/weapons'
 import { focusOf, modifyFocus } from '../../../world/party/party'
 
-// The touch HUD's gun slots, melee slot, and reload button act on their
-// click. A browser makes no click for a tap while another finger is down, so
-// with a thumb on the move stick the slots used to do nothing: the owner
-// could not swap or reload while moving. src/input/touchTaps.ts now makes that
-// click from the second finger's own tap (tested in src/input/__tests__/touchTaps.test.ts
-// and in headless Chrome by tools/audit/twoThumbs.ts); these stories check
-// that the click does its job with the move stick held, and leaves it held.
-
 const MOVE_FINGER = 3
 
 const carrying = (loaded: number): Model =>
@@ -41,7 +33,6 @@ const carrying = (loaded: number): Model =>
     },
   )
 
-// NOTE: the left thumb lands on the left of the surface, the move stick.
 const moveThumbDown = Message.PressedPointer({
   pointerId: MOVE_FINGER,
   device: 'Touch',

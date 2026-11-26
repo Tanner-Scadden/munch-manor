@@ -45,9 +45,6 @@ import {
   openServerDatabase,
 } from './fixtures'
 
-// NOTE: every test runs on it.effect's TestClock and waits with settle (see
-// src/Testing.ts), so time moves only when a test moves it.
-
 interface Device {
   readonly database: LocalDatabase
   readonly replica: Replica
@@ -116,8 +113,6 @@ const connectionIs =
   (status: SyncStatus): boolean =>
     status._tag === tag
 
-// NOTE: every status the replica's stream shows, in order, from now on. The
-// recording fiber starts at once, so it has subscribed before this returns.
 const recordStatuses = (replica: Replica) =>
   Effect.gen(function* () {
     const seen = yield* SubscriptionRef.make<ReadonlyArray<ScopeStatus>>([])
@@ -171,8 +166,6 @@ describe('scope status', () => {
         const currentStatus_2 = yield* (yield* openReplica(database))
           .currentStatus
         expect(currentStatus_2).toEqual(notFresh)
-        // A tab closed after a receipt committed but before its status
-        // moved: the stored seq is behind the confirmed one.
         const behind = yield* Schema.encodeEffect(
           Schema.fromJsonString(ScopeStatus),
         )(ScopeStatus.cases.Ready.make({ seq: 0, fresh: true }))
@@ -180,7 +173,6 @@ describe('scope status', () => {
         const currentStatus_3 = yield* (yield* openReplica(database))
           .currentStatus
         expect(currentStatus_3).toEqual(notFresh)
-        // A database synced by a build from before the status table.
         yield* database.sql`DELETE FROM sync_status`
         const reopened = yield* openReplica(database)
         const currentStatus_4 = yield* reopened.currentStatus
@@ -271,9 +263,6 @@ describe('scope status', () => {
 })
 
 describe('switching scopes', () => {
-  // NOTE: a device linked while its first session connects. The session has
-  // read the old scope and is opening its channel when the scope switches
-  // and the sync is kicked. It must still end up on the new scope.
   it.effect(
     'a switch while a session connects moves the session to the new scope',
     () =>
@@ -335,8 +324,6 @@ describe('awaiting a settlement', () => {
         kind: 'runs',
         count: 2,
       })
-      // NOTE: offline until the receipt watch has subscribed, so the
-      // receipt cannot go out before anyone listens.
       const net = yield* host.network()
       yield* net.setOnline(false)
       const sync = yield* syncOver(net.transport, device.replica, 'phone')

@@ -12,15 +12,6 @@ import {
 import { toBrowserError } from '../shared/describeError'
 import type { InstallOffer, InstallOutcome } from './deviceSchema'
 
-// SERVICE
-
-// NOTE: Chrome's install prompt, as one Effect service. Chrome fires
-// beforeinstallprompt once, any time after load, and its event is the only
-// handle that can show the prompt later. The layer listens from the moment
-// the runtime starts and holds the event here, outside the Model: the
-// installOffers Subscription tells update what is on offer, and the
-// ShowInstallPrompt Command asks this service to show it. Tests and the
-// audit harness swap in a quiet one.
 export class InstallPrompt extends Context.Service<
   InstallPrompt,
   {
@@ -28,8 +19,6 @@ export class InstallPrompt extends Context.Service<
     readonly prompt: Effect.Effect<InstallOutcome>
   }
 >()('munch-manor/platform/install/InstallPrompt') {}
-
-// LIVE
 
 type UserChoice = Readonly<{ outcome: string }>
 
@@ -87,8 +76,6 @@ export const layer: Layer.Layer<InstallPrompt> = Layer.effect(
     yield* Effect.forkIn(offered, scope)
     yield* Effect.forkIn(installed, scope)
 
-    // NOTE: Chrome lets an event prompt once, so the offer is spent the
-    // moment it is used, whatever the player picks.
     const prompt = Effect.gen(function* () {
       const maybeDeferred = yield* Ref.getAndSet(held, Option.none())
       if (Option.isNone(maybeDeferred)) {
@@ -102,10 +89,6 @@ export const layer: Layer.Layer<InstallPrompt> = Layer.effect(
   }),
 )
 
-// QUIET
-
-// NOTE: for tests and the audit harness: nothing is ever offered, and a
-// prompt asked for anyway is turned down.
 export const quietLayer: Layer.Layer<InstallPrompt> = Layer.succeed(
   InstallPrompt,
   InstallPrompt.of({

@@ -1,10 +1,3 @@
-// The frame's copies of the Model and the World held to a budget by
-// count, not by time. A step that writes a field copies the whole Model
-// (118 fields) or World (39), so the fields a frame leaves with a new
-// reference count the copies it could not skip. A field rewritten with a
-// value equal to the one it had (a list rebuilt with the same elements, a
-// record made again with the same numbers) is a copy made for nothing:
-// none is allowed, and the steps after see identity and skip their own.
 import { Array, Effect, Record, Result } from 'effect'
 
 import { describe, expect, it } from '@effect/vitest'
@@ -35,8 +28,6 @@ import { focusOf } from '../party/party'
 const FRAMES = 240
 const CHASE_SPEED = 40
 
-// NOTE: equal by value, field by field, for the test alone (a frame never
-// compares deeply).
 const isEqualValue = (first: unknown, second: unknown): boolean => {
   if (Object.is(first, second)) {
     return true
@@ -59,9 +50,7 @@ const isEqualValue = (first: unknown, second: unknown): boolean => {
 }
 
 type Rewrites = Readonly<{
-  // NOTE: every Model field each frame left with a new reference, summed.
   written: number
-  // NOTE: the same, of those whose value is equal to the frame before's.
   needless: ReadonlyArray<string>
 }>
 
@@ -98,16 +87,13 @@ const framesFrom = (
     return modelAfter(
       start,
       steps(
-        ...(isFiring ? [holdFire] : []), // NOTE: the first frames build what a level keeps, so the count
-        // starts after them.
+        ...(isFiring ? [holdFire] : []),
         ticks(5, FRAME_MS),
         recordTicks(FRAMES, FRAME_MS, frames),
       ),
     ).pipe(Effect.as<ReadonlyArray<Model>>(frames))
   })
 
-// NOTE: a wave with a crowd closing in from all round and the player
-// firing into it, so zombies walk, bullets fly and land, and keys drop.
 const fightingWave = (): Model => {
   const base = quietWave(3)
   const { x, y } = focusOf(base).player
@@ -125,8 +111,6 @@ const fightingWave = (): Model => {
   )
 }
 
-// NOTE: the same break with a thing on the dare's list, so Rattles calls
-// his hint on the first frame and it stays up through the rest.
 const hintedBreak = (): Model => {
   const { x, y } = hidingSpotIn(levelOf(armedBreak), LIBRARY_ROOM_ID)
   return withDareThings(armedBreak, [
@@ -144,10 +128,6 @@ describe('the frame copies', () => {
       const frames = yield* framesFrom(armedBreak, false)
       const { written, needless } = rewritesOver(frames)
       expect(needless).toEqual([])
-      // NOTE: the break clock, the World's clock, and the run's stats once
-      // a frame, and now and then the seat and a cosmetic: 886 fields over
-      // 240 frames (3,107 before the copies were cut, 1,125 while the idle
-      // clock counted up each frame).
       expect(written).toBeLessThanOrEqual(890)
     }),
   )
@@ -164,8 +144,6 @@ describe('the frame copies', () => {
           ),
         ).toBe(true)
         expect(needless).toEqual([])
-        // NOTE: the hint keeps the time it ends, so a frame of it writes
-        // nothing (it counted down each frame before: 1,125 fields).
         expect(written).toBeLessThanOrEqual(890)
       }),
   )
@@ -180,9 +158,6 @@ describe('the frame copies', () => {
         ),
       ).toBe(true)
       expect(needless).toEqual([])
-      // NOTE: 2125 fields over 240 frames (3,459 before the copies were cut).
-      // What is left moves every tick (the zombies, the bullets, the clocks,
-      // the stats, the particles).
       expect(written).toBeLessThanOrEqual(2125)
     }),
   )

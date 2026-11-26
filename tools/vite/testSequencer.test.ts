@@ -36,8 +36,6 @@ describe('shardFiles', () => {
     const totals = Array.map(shards, shard =>
       Number.sumAll(Array.map(shard, fileMsOf)),
     )
-    // NOTE: the 200 fast files fill in under the slow ones, so the shards
-    // end within one fast file of each other.
     expect(Math.max(...totals) - Math.min(...totals)).toBeLessThanOrEqual(
       fileMsOf('src/fast/__tests__/f0.test.ts'),
     )

@@ -1,4 +1,4 @@
-import { Array, Option } from 'effect'
+import { Array, Function, Option } from 'effect'
 
 import type { View } from '@effect/ui'
 import type { Html } from '@effect/ui/html'
@@ -21,20 +21,8 @@ import {
 } from './shopGuide'
 import { guideArtOf, sectionArtOf } from './shopGuideArt'
 
-// The guide to the house's finds, on the Munchopedia's Shop page: chunky
-// bars, the item's art, one short line, and its upgrade ladder as icons. A
-// fridge prize not pulled yet is a dark ??? card.
-//
-// NOTE: a view function, not a component: its one piece of state, shut or
-// open on a section, is its parent's (`GuideStatus`), since the parent
-// draws the guide in place of its own pages while it is open, and the
-// parent's Done stands in the guide's actions row. Its buttons send the
-// parent's Messages, handed in as `onSection` and `onBack`.
-
 const UNKNOWN_NAME = '???'
 const UNKNOWN_LINE = 'Pull the fridge to find out.'
-
-// PICTURES
 
 const artView = <M>(art: ShopArt, className: string, h: Html.H<M>) =>
   h.span
@@ -45,8 +33,6 @@ const artView = <M>(art: ShopArt, className: string, h: Html.H<M>) =>
       '--art-w': `${art.width}`,
       '--art-h': `${art.height}`,
     })
-
-// BARS
 
 const barLabel = (bar: GuideBar): string =>
   `${STAT_NAMES[bar.stat]} ${bar.now} of ${BAR_SEGMENTS}${
@@ -89,14 +75,9 @@ const barsView = <M>(bars: ReadonlyArray<GuideBar>, h: Html.H<M>) =>
   Array.isReadonlyArrayNonEmpty(bars) &&
   h.ul.class('sg-bars').children(Array.map(bars, bar => barView(bar, h)))
 
-// LADDER AND CHIPS
-
-// NOTE: a price is in skeleton keys (src/world/keys/keys.ts).
 const priceTag = (price: number): string =>
   `${price} ${price === 1 ? 'key' : 'keys'}`
 
-// NOTE: a tier is earned by kills with the gun, so a step shows the kills
-// it takes.
 const stepView = <M>(step: LadderStep, h: Html.H<M>) =>
   h.li
     .class('sg-step')
@@ -120,8 +101,6 @@ const chipView = <M>(chip: GuideChip, h: Html.H<M>) =>
 const chipsView = <M>(chips: ReadonlyArray<GuideChip>, h: Html.H<M>) =>
   Array.isReadonlyArrayNonEmpty(chips) &&
   h.ul.class('sg-chips').children(Array.map(chips, chip => chipView(chip, h)))
-
-// ENTRIES
 
 const priceView = <M>(entry: GuideEntry, h: Html.H<M>) =>
   Option.match(entry.price, {
@@ -171,8 +150,6 @@ const entryView = <M>(
     )
 }
 
-// SECTIONS
-
 const sectionButtonView = <M>(
   section: ShopGuideSection,
   chosen: ShopGuideSection,
@@ -194,7 +171,6 @@ const sectionButtonView = <M>(
       ),
   )
 
-// NOTE: the whole guide: the section buttons over the chosen section's cards.
 const sectionsView = <M>(
   seenUnlocks: ReadonlyArray<string>,
   section: ShopGuideSection,
@@ -223,28 +199,18 @@ const sectionsView = <M>(
         ),
     )
 
-// THE GUIDE
+export interface GuideOptions<M, A extends View.Input<M>> {
+  readonly status: GuideStatus
+  readonly seenUnlocks: ReadonlyArray<string>
+  readonly onSection: (section: ShopGuideSection) => M
+  readonly onBack: M
+  readonly actions: A
+}
 
-export type GuideOptions<M, A extends View.Input<M>> = Readonly<{
-  status: GuideStatus
-  // NOTE: the unlocks seen: a fridge prize is ??? until it is pulled.
-  seenUnlocks: ReadonlyArray<string>
-  onSection: (section: ShopGuideSection) => M
-  onBack: M
-  // NOTE: what stands after BACK in the actions row: the panel's Done.
-  actions: A
-}>
-
-// NOTE: the guide over the panel's actions row: BACK, then the parent's
-// actions. Its box takes no room of its own, so the panel lays them out as
-// the rest of its pages. Shut, it draws nothing. A view function takes the
-// parent's `h` first, as a component call does (Effect UI's "Reusing view
-// functions"), so it has no data-last form.
-// @effect-diagnostics-next-line missingPipeableSignature:off
-export const Guide = <M, A extends View.Input<M>>(
+const guideOf = <M, A extends View.Input<M>>(
   h: Html.H<M>,
   options: GuideOptions<M, A>,
-) =>
+): GuideView<M, A> =>
   GuideStatus.match(options.status, {
     Closed: () => null,
     Open: ({ section }) =>
@@ -265,3 +231,21 @@ export const Guide = <M, A extends View.Input<M>>(
         ),
       ),
   })
+
+type GuideView<M, A extends View.Input<M>> = Html.Element<
+  M,
+  View.Requirements<A | View.Content<M>>,
+  Html.Events,
+  HTMLDivElement,
+  'div'
+> | null
+
+export const Guide: {
+  <M, A extends View.Input<M>>(
+    options: GuideOptions<M, A>,
+  ): (h: Html.H<M>) => GuideView<M, A>
+  <M, A extends View.Input<M>>(
+    h: Html.H<M>,
+    options: GuideOptions<M, A>,
+  ): GuideView<M, A>
+} = Function.dual(2, guideOf)

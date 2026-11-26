@@ -1,12 +1,3 @@
-// The finds and wake-ups pass (docs/ESCAPE_PLAN.md, layer 21): each room's
-// find (the parlour's trunk, the library's hollow book, the kitchen's
-// dumbwaiter) before it is worked, being worked with its gold ring, and the
-// moment it is found, then the kitchen woken mid-wave, its rush coming
-// through its own doors. On a 1280x720 desktop, an 844x390 phone on its
-// side, and a 390x844 phone held upright, as
-// `finds-<TAG>-<viewport>-<scene>.png`.
-//   TAG=after bun run heavy -- --shared bun tools/audit/shotsFinds.ts
-// ONLY picks scenes, and VIEWPORTS picks screens.
 import { Effect } from 'effect'
 
 import { runHarnessAudit } from './harnessServer'
@@ -27,9 +18,6 @@ import {
 
 type Scene = Readonly<{ name: string; query: string }>
 
-// NOTE: 20 frames (a third of a second) play before each shot: `findwork`
-// sets how far the work stands before them, so `found` finishes the work
-// a few frames in and shows the find's burst.
 const findScenes = (
   name: string,
   room: string,
@@ -49,9 +37,6 @@ const findScenes = (
   },
 ]
 
-// NOTE: the kitchen bought mid-wave: its rush comes a pack warning in
-// (1 s) and over 10 s, so 8 s of play shows it pouring through the back
-// door and the window.
 const SCENES: ReadonlyArray<Scene> = [
   ...findScenes('parlour', 'Parlour', 0.15),
   ...findScenes('library', 'Library', 0.15),

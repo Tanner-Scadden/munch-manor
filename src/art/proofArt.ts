@@ -5,13 +5,6 @@ import { BIG_KEY_PALETTE, BIG_KEY_PIXELS } from './dareArt'
 import { pixelIconUrl } from './icons'
 import type { Palette } from './sprite'
 
-// The Proof Shelf's pixel art (src/features/proof/), a first draft for the
-// owner and Demi in Munch Studio: the treehouse's planks and brackets, the
-// stamp each slot wears for how its run ended, the empty hook Uncle
-// Chunk's big key hangs on, and the calendar's gold star for a day of
-// missions done. The things themselves are the dare card's own pictures
-// (DARE_ICON_URLS and DARE_SILHOUETTE_URLS in src/art/dareArt.ts).
-
 type Pixels = ReadonlyArray<string>
 
 export const PROOF_PALETTE: Palette = {
@@ -29,8 +22,6 @@ export const PROOF_PALETTE: Palette = {
   c: '#f4f1de',
 }
 
-// NOTE: one board of the shelf, stretched across its row, with a grain
-// line and a dark lip under it.
 export const PLANK_PIXELS: Pixels = [
   'WWWWWWWWWWWWWWWWWWWWWWWW',
   'wwwwwwwwwdwwwwwwwwwwwwww',
@@ -39,7 +30,6 @@ export const PLANK_PIXELS: Pixels = [
   'oooooooooooooooooooooooo',
 ]
 
-// NOTE: the bracket nailed under each end of a board.
 export const BRACKET_PIXELS: Pixels = [
   'oooooo',
   'oWwwwo',
@@ -49,8 +39,6 @@ export const BRACKET_PIXELS: Pixels = [
   'oo....',
 ]
 
-// NOTE: the bent nail Uncle Chunk's big key hangs on, bare until he falls
-// on that shelf's difficulty.
 export const HOOK_PIXELS: Pixels = [
   '.nn..',
   'n..n.',
@@ -61,9 +49,6 @@ export const HOOK_PIXELS: Pixels = [
   'kk...',
 ]
 
-// NOTE: how the run that found a thing ended, one stamp each: the front
-// door open on the night (ESCAPED), a chicken's head (CHICKEN, out the
-// kitchen's back door), and a zombie's bite (MUNCHED).
 export const STAMP_PIXELS: Readonly<Record<ProofEnding, Pixels>> = {
   Escaped: [
     'ooooooo..',
@@ -100,7 +85,6 @@ export const STAMP_PIXELS: Readonly<Record<ProofEnding, Pixels>> = {
   ],
 }
 
-// NOTE: a day of missions done, stamped on the shelf's calendar.
 export const DAY_STAR_PIXELS: Pixels = [
   '...y...',
   '..yyy..',

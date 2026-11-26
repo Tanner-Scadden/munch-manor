@@ -5,10 +5,6 @@ import { dioramaCameraOf, dioramaStepOf } from '../diorama'
 import { plinthFrameOf } from '../plinthPose'
 import { PITCH, UNIT } from '../space'
 
-// The title's diorama (src/render/iso/diorama.ts) and the Munchopedia's
-// plinth (src/render/iso/plinthPose.ts): their own cameras, one canvas pixel
-// to a game pixel, and still with reduced motion.
-
 const TARGET = { x: 10, y: 0, z: 20 }
 
 const cameraAt = (clockMs: number, isStill: boolean) =>
@@ -83,7 +79,6 @@ describe('the plinth', () => {
   test('the figure fills most of its frame, the plinth below it', () => {
     const boss = plinthFrameOf(image(30, 40))
     expect(40 / boss.size).toBeGreaterThan(0.75)
-    // NOTE: the figure's top inside the frame, the foot near its bottom.
     expect(boss.middle + boss.size / 2).toBeGreaterThanOrEqual(40)
     expect(boss.size / 2 - boss.middle).toBeLessThan(12)
   })

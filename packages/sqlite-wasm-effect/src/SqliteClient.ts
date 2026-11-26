@@ -33,10 +33,6 @@ import {
 } from './Protocol'
 import { type Remote, connectionError, databaseError } from './Remote'
 
-// STATUS
-
-// NOTE: the leader tab owns the database file; a follower sends its
-// statements through the leader. See the README.
 export const Role = Schema.Literals(['Leader', 'Follower'])
 export type Role = typeof Role.Type
 
@@ -52,15 +48,11 @@ export class SqliteOpenError extends Schema.TaggedError<
   reason: Schema.String,
 }) {}
 
-/** @stability unstable */
 export type Migrations = Record<
   string,
   Effect.Effect<void, unknown, SqlClient.SqlClient>
 >
 
-// SERVICE
-
-/** @stability unstable */
 export interface SqliteClientService {
   readonly sql: SqlClient.SqlClient
   readonly status: Effect.Effect<Status>
@@ -87,7 +79,6 @@ export interface SqliteClientService {
   >
 }
 
-/** @stability unstable */
 export class SqliteClient extends Context.Service<
   SqliteClient,
   SqliteClientService
@@ -96,8 +87,6 @@ export class SqliteClient extends Context.Service<
 export const MIGRATIONS_TABLE = 'effect_sql_migrations'
 
 const DEFAULT_REQUEST_TIMEOUT: Duration.Input = '30 seconds'
-
-// PARAMETERS
 
 const toSqlValue = (value: unknown): Result.Result<SqlValue, string> => {
   if (Predicate.isNullish(value)) {
@@ -137,8 +126,6 @@ const toSqlValues = (
         ),
     }),
   )
-
-// CONNECTION
 
 interface Rows {
   readonly columns: ReadonlyArray<string>
@@ -222,15 +209,10 @@ const makeConnection = (
   }
 }
 
-// CLIENT
-
 export interface ClientOptions {
   readonly requestTimeout?: Duration.Input | undefined
 }
 
-// NOTE: builds both services over any Remote, so the worker layer and the
-// in-process layer share everything above the transport.
-/** @stability unstable */
 export const makeClient: {
   (
     status: Ref.Ref<Status>,
@@ -318,8 +300,6 @@ export const makeClient: {
     }),
 )
 
-// OPEN
-
 export const DEFAULT_OPEN_TIMEOUT: Duration.Input = '60 seconds'
 
 export interface DatabaseFile {
@@ -327,7 +307,6 @@ export interface DatabaseFile {
   readonly directory: string
 }
 
-/** @stability unstable */
 export const openThrough: {
   (
     database: DatabaseFile,
@@ -373,7 +352,6 @@ export const openThrough: {
     ),
 )
 
-/** @stability unstable */
 export const layerFromClient = (
   build: Effect.Effect<
     SqliteClientService,

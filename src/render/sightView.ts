@@ -16,17 +16,10 @@ import type { World } from '../world/schema/world'
 import { addVectors, scaleVector } from '../world/step/geometry'
 import * as Draw from './draw'
 
-// NOTE: the sight is a shop upgrade for the run, and it shows for any aim,
-// keys or pointer. A gun that shoots straight gets a laser line, and one that
-// scatters gets a fan as wide as its spread. Both stop at the first wall or
-// doorway, as the shots would, and both reach as far as a shot flies.
-
 const LASER_COLOR = 'rgba(255, 58, 63, 0.55)'
 const FAN_FILL = 'rgba(255, 58, 63, 0.12)'
 const FAN_EDGE_COLOR = 'rgba(255, 58, 63, 0.35)'
 
-// NOTE: the knife and the Pan fire nothing, so the sight goes dark while
-// the melee slot is in hand.
 const hasSight = (model: World): boolean =>
   focusOf(model).laserSight === 'Fitted' &&
   !isWieldingMelee(focusOf(model).player)

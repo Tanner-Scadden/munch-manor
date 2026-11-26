@@ -1,11 +1,3 @@
-// The gun levels pass (owner, 2026-11-10: "I am also very confused on how I
-// do the upgrades for the weapon now."): the HUD's gun slots with their
-// kills toward the next level part filled, the level up's pop, the first
-// time hint as a gun nears its first level, a cooked gun's slot, and the
-// pause screen's guns. On a 1280x720 desktop, an 844x390 phone on its side,
-// and a 390x844 phone held upright, as `guns-<TAG>-<viewport>-<scene>.png`.
-//   TAG=after bun run heavy -- --shared bun tools/audit/shotsGunLevels.ts
-// ONLY picks scenes, and VIEWPORTS picks screens.
 import { Effect } from 'effect'
 
 import { runHarnessAudit } from './harnessServer'

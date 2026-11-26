@@ -25,16 +25,11 @@ import {
 import { tapSound, unlockAudio } from './sound'
 import { type UpdateStep, combine, defineHandlers, modelStep } from './step'
 
-// COMMANDS
-
-// NOTE: the build check reads `version.json` over the network, so it is a
-// service a test fakes (`FetchBuild.toLayer(...)`).
 export class FetchBuild extends Command.Service<FetchBuild>()(
   'app/FetchBuild',
   {
     args: {},
     success: VersionMessage,
-    // NOTE: a slow check is dropped for the newer one.
     mode: 'switch',
   },
 ) {
@@ -49,8 +44,6 @@ export class FetchBuild extends Command.Service<FetchBuild>()(
   )
 }
 
-// NOTE: the service worker only precaches for offline play, so a failure
-// changes nothing on screen: it is logged and nothing is reported.
 export const RegisterServiceWorker = Command.make(
   'RegisterServiceWorker',
   { args: {} },
@@ -75,13 +68,9 @@ export const UpdateServiceWorker = Command.make(
     ),
 )
 
-// VERSION
-
 export const checkForUpdate: UpdateStep = $ =>
   isCheckingForUpdates(RUNNING_BUILD) ? $.run(FetchBuild.make()) : $.model
 
-// NOTE: a newer build also asks the service worker to look for it, so the
-// new build installs in the background before the player taps the chip.
 export const recordRemoteBuild: {
   (remoteBuild: string): (runningBuild: string) => UpdateStep
   (runningBuild: string, remoteBuild: string): UpdateStep
@@ -99,8 +88,6 @@ export const recordRemoteBuild: {
     },
 )
 
-// NOTE: the service worker registers once the splash is gone, so precaching
-// the game for offline play never slows the game's own first load.
 export const registerServiceWorkerAfterSplash =
   (runningBuild: string): UpdateStep =>
   $ =>
@@ -108,8 +95,6 @@ export const registerServiceWorkerAfterSplash =
       ? $.run(RegisterServiceWorker.make())
       : $.model
 
-// NOTE: the build check, the update gift, and the service worker
-// (src/platform/message.ts).
 export const versionHandlers = defineHandlers({
   TickedUpdateCheck: checkForUpdate,
 

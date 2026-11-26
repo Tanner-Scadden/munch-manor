@@ -1,6 +1,3 @@
-// The studio's left side: the library's tabs, each with an icon from the
-// game's own art, and the display settings as segmented controls, swatches,
-// and switches. It redraws only when one of them changes.
 import { Array, Function, Option, String } from 'effect'
 
 import type { Facing } from '../../src/art/sprite'
@@ -61,9 +58,6 @@ const TOOL_LABELS: Readonly<Record<LiveTool, string>> = {
   Loupe: '🔍 Loupe',
 }
 
-// NOTE: the live room's controls: which room, its mood, who stands in it,
-// the storm, the chandelier, and how it is shown. Each choice sends the
-// whole scene with one part changed.
 const liveControls = (
   live: LiveScene,
   liveTool: LiveTool,
@@ -145,7 +139,6 @@ const TONE_LABELS: Readonly<Record<Tone, string>> = {
   Rage: 'Angry',
 }
 
-// NOTE: a tab's icon scaled to fit its box, the same size for every tab.
 const iconView = (tab: Tab, h: StudioH): StudioHtml => {
   const sprite = tabIconOf(tab)
   const bounds = padded(spritesBounds([sprite]))
@@ -396,8 +389,6 @@ const sidebarBody = (
       .children('When Claude changes the art, it shows up here by itself.'),
   )
 
-// NOTE: the tabs holding something Claude changed that has not been looked
-// at since, as one string the lazy sidebar can compare.
 const freshTabsOf = (model: Model): string =>
   Array.join(
     Array.filter(Tab.literals, tab =>
@@ -419,8 +410,6 @@ const freshTabsOf = (model: Model): string =>
     ',',
   )
 
-// NOTE: one value the lazy sidebar can compare, rebuilt only when the room
-// or its toggles change.
 const roomViews = new Map<string, RoomView>()
 
 const roomViewOf = (model: Model): RoomView => {
@@ -439,7 +428,6 @@ const roomViewOf = (model: Model): RoomView => {
   return view
 }
 
-// NOTE: the sidebar is built again only when one of these changes.
 export const sidebarView: {
   (model: Model): (h: StudioH) => StudioHtml
   (h: StudioH, model: Model): StudioHtml

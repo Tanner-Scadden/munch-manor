@@ -43,15 +43,8 @@ const servicesOf = (env: Bindings): WorkerServices => ({
   addressSalt: env.ADDRESS_SALT,
 })
 
-// NOTE: the router is built once per isolate, outside any request, so a
-// request only pays for its own work against the 10 ms CPU limit of the free
-// plan. Each request gets its bindings through WorkerEnv. The /sync paths
-// (sync.ts) go to the sync Durable Objects; everything else is analytics.
 const { handler } = makeHandler()
 
-// NOTE: the daily retention cleanup, fired by the Cron Trigger declared in
-// alchemy.run.ts. It deletes run rows older than 90 days, as of the time the
-// trigger was scheduled for.
 const cleanUp = (env: Bindings, scheduledMs: number) =>
   Effect.scoped(
     Effect.gen(function* () {
@@ -64,10 +57,6 @@ const cleanUp = (env: Bindings, scheduledMs: number) =>
     }),
   )
 
-// NOTE: the edge. Each request runs one Effect: routeSync answers the /sync
-// paths, routeRoom the /room paths (co-op rooms), routeRecording the
-// recorded runs' path, each with every failure on them, and anything else
-// goes to the analytics handler.
 const respond = (request: Request, env: Bindings) =>
   Effect.flatMap(
     Effect.filterOrElse(

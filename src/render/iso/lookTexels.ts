@@ -1,11 +1,3 @@
-// The look pass's two small textures as plain bytes, built from the
-// tunables in src/render/iso/lookSpecs.ts and the level: the ramps (one row
-// of band colors per room, under a row of the tunables themselves) and the
-// room map (which room's ramp each tile of the house wears, black for a room
-// not yet opened and for the outside, and which tiles the cellar's dark
-// lies on). src/render/iso/look.ts uploads them
-// and its shader reads them.
-
 import { Array, Option, Record } from 'effect'
 
 import { TILE_SIZE } from '../../shared/constants'
@@ -15,17 +7,11 @@ import type { LookSpecs, RoomLook } from './lookSpecs'
 import { NEUTRAL } from './lookSpecs'
 import { mixColor } from './mood'
 
-// NOTE: the ramps' width: a band a column, the steps' most and black.
 export const RAMP_COLUMNS = 16
 
-// NOTE: the tunables ride in the ramps' first row as bytes, so the shader
-// reads every number from one texture and a lab can change them live. A
-// number past 1 is stored over its range.
 export const CUT_RANGE = 2
 export const BRIGHTEST_RANGE = 4
 
-// NOTE: the room map covers the world from this tile, this many tiles
-// across and down: every level the plans build fits inside it.
 export const ROOM_MAP = {
   column: -64,
   row: -32,
@@ -33,8 +19,6 @@ export const ROOM_MAP = {
   rows: 64,
 } as const
 
-// NOTE: a room's slot in the ramps: 0 is the void, 1 the neutral look, then
-// each room with a script of its own in the specs' order.
 const VOID_SLOT = 0
 const NEUTRAL_SLOT = 1
 
@@ -58,21 +42,17 @@ export const slotOf = (
 const byte = (share: number): number =>
   Math.round(Math.min(1, Math.max(0, share)) * 255)
 
-// NOTE: a hue at full brightness: its brightest channel lifted to 255.
 const fullHue = (color: number): ReadonlyArray<number> => {
   const channels = [(color >> 16) & 0xff, (color >> 8) & 0xff, color & 0xff]
   const most = Math.max(1, ...channels)
   return Array.map(channels, channel => Math.round((channel * 255) / most))
 }
 
-// NOTE: the hue up the ramp at `t`, 0 the shadow and 1 the light.
 const hueAt = (look: RoomLook, t: number): number =>
   t < 0.5
     ? mixColor({ from: look.shadow, to: look.mid, share: t * 2 })
     : mixColor({ from: look.mid, to: look.light, share: t * 2 - 1 })
 
-// NOTE: band `band` of a room's ramp, 1 to steps: the accent leaned into
-// the lowest, then shadow to light.
 const bandHueOf = (
   input: Readonly<{ look: RoomLook; band: number; steps: number }>,
 ): number => {
@@ -83,8 +63,6 @@ const bandHueOf = (
     : hue
 }
 
-// NOTE: the ramps as RGBA bytes, RAMP_COLUMNS across and rampRowsOf down.
-// Row 0 holds the tunables, row 1 the void (all black), then a row a slot.
 export const rampTexelsOf = (specs: LookSpecs): Uint8Array => {
   const rows = rampRowsOf(specs)
   const texels = new Uint8Array(RAMP_COLUMNS * rows * 4)
@@ -120,12 +98,6 @@ export const rampTexelsOf = (specs: LookSpecs): Uint8Array => {
   return texels
 }
 
-// NOTE: the slot (as its red byte) each world tile in ROOM_MAP wears: the
-// open room whose box holds the tile's middle, or the void. Walls on a
-// room's edge are inside its box, so they wear its ramp; a shut room and
-// the yard are black. The green byte is full on the dark cellar's tiles
-// (`isDark`, its bulb out), so the dark ends on the same whole tiles and
-// walls as the room.
 export const roomTexelsOf = (
   input: Readonly<{ specs: LookSpecs; level: Level; isDark: boolean }>,
 ): Uint8Array => {
@@ -140,7 +112,6 @@ export const roomTexelsOf = (
     const y = (ROOM_MAP.row + row + 0.5) * TILE_SIZE
     for (let column = 0; column < ROOM_MAP.columns; column += 1) {
       const x = (ROOM_MAP.column + column + 0.5) * TILE_SIZE
-      // NOTE: a level has at most a handful of rooms (six today).
       const maybeIndex = Array.findFirstIndex(
         open,
         ({ box }) =>

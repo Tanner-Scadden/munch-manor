@@ -13,15 +13,8 @@ import {
 import { type Model } from '../model'
 import { subscriptions } from '../subscriptions'
 
-// The root's Subscriptions with no dependencies (src/app/subscriptions.ts)
-// start their Stream once and are never restarted by a Model change: each
-// keeps its key from frame to frame, so the runtime never closes and opens
-// it again. The list itself is kept by its gates, so a frame builds no
-// Subscription and no list.
-
 const FRAMES = 30
 
-// NOTE: the Subscriptions on for the life of the page, by key.
 const STATIC_KEYS = [
   'PlayerSync',
   'Today',

@@ -50,14 +50,6 @@ import { PLAYER_SCOPE_KIND } from '../../src/platform/playerScopeParts.ts'
 import { SavedDareMarks, noDareMarks } from '../../src/shared/dareMarkData.ts'
 import { SavedJournal } from '../../src/shared/journalData.ts'
 
-// NOTE: the sync Worker's logic, kept apart from the Durable Object classes
-// in sync.ts so `bun test` can run it without the Workers runtime. One
-// Durable Object per scope (SyncScope) holds that scope's log and tables in
-// its SQLite storage; one Durable Object (SyncDirectory) maps devices to
-// players and keeps the link codes.
-
-// LIMITS
-
 const MAX_EXCHANGE_BYTES = 64 * 1024
 const MAX_IDENTITY_BYTES = 4 * 1024
 
@@ -91,28 +83,21 @@ export const failureResponse = (
     json(identityFailureStatus(failure), text),
   )
 
-// ERRORS
-
-// NOTE: a Durable Object's services (its SQLite client and the scope host or
-// directory on it) could not be built. The next request tries again.
 export class SyncSetupFailed extends Schema.TaggedError<
   SyncSetupFailed,
   { readonly brand: unique symbol }
 >()('SyncSetupFailed', { cause: Schema.Unknown }) {}
 
-// NOTE: the scope server could not open its log and tables.
 export class ScopeHostFailed extends Schema.TaggedError<
   ScopeHostFailed,
   { readonly brand: unique symbol }
 >()('ScopeHostFailed', { cause: Schema.Unknown }) {}
 
-// NOTE: reading a body, or a call to another Durable Object, failed.
 export class SyncCallFailed extends Schema.TaggedError<
   SyncCallFailed,
   { readonly brand: unique symbol }
 >()('SyncCallFailed', { step: Schema.String, cause: Schema.Unknown }) {}
 
-// NOTE: an internal request whose body did not decode.
 export class BadSyncBody extends Schema.TaggedError<
   BadSyncBody,
   { readonly brand: unique symbol }
@@ -120,8 +105,6 @@ export class BadSyncBody extends Schema.TaggedError<
 
 export type SyncError = SyncSetupFailed | SyncCallFailed | BadSyncBody
 
-// NOTE: every sync error becomes a JSON answer, and the internal ones are
-// logged. The client treats a failed request as one to try again later.
 export const syncErrorResponse = (
   effect: Effect.Effect<Response, SyncError>,
 ): Effect.Effect<Response> =>
@@ -164,15 +147,6 @@ export const tryCall: {
     }),
 )
 
-// NIGHTMARE
-
-// NOTE: whether a player has unlocked Nightmare, and the Dare Journal's
-// milestones they have reached, as their own scope holds them on the
-// server. A co-op room asks before it seats them, so the lobby never takes
-// a client's word for Nightmare (Lobby.ts, ChangedPicks), and as a run
-// starts, so the host's milestones open the room's new dare things
-// (src/world/dare/milestones.ts). Anything that goes wrong reads as locked
-// with no milestones.
 export const NIGHTMARE_PATH = '/internal/nightmare'
 const SCOPE_HEADER = 'x-sync-scope'
 
@@ -230,7 +204,6 @@ export const playerFactsIn = (
     },
   )
 
-/** @stability unstable */
 export const playerFactsOf = (host: ScopeHost): Effect.Effect<PlayerFacts> =>
   Effect.map(Effect.orDie(host.server.snapshot), snapshot =>
     snapshot._tag === 'Snapshot' ? playerFactsIn(snapshot.tables) : NO_FACTS,
@@ -293,13 +266,6 @@ export const readPlayerFacts: {
   },
 )
 
-// SETUP
-
-// NOTE: a Durable Object builds its Effect services once, on first use, in a
-// scope that lives as long as the object. Only a success is kept: a failed
-// build closes its scope and the next caller builds again, so one failure
-// does not break the object until it is evicted. Callers that arrive while a
-// build is running share it.
 export const setupOnce = <A, E>(
   setup: Effect.Effect<A, E, Scope.Scope>,
 ): Effect.Effect<Effect.Effect<A, E>> =>
@@ -314,10 +280,6 @@ export const setupOnce = <A, E>(
     exit => (Exit.isSuccess(exit) ? Duration.infinity : Duration.zero),
   )
 
-// NOTE: builds the SQLite client in the setup's scope, then the services on
-// it, so the client lives as long as they do. A storage call that throws is
-// a setup failure too, so it is answered and retried like one.
-/** @stability unstable */
 export const buildOn: {
   <A, E1, E2>(
     make: Effect.Effect<A, E2, SqlClient.SqlClient>,
@@ -342,8 +304,6 @@ export const buildOn: {
     ),
 )
 
-// AUTH
-
 export const authenticateWith =
   (secret: string): Authenticate =>
   token =>
@@ -356,14 +316,9 @@ export const authenticateWith =
       ),
     )
 
-// NOTE: each Durable Object's SQLite client, over its own storage. The hosts
-// here build it once, on first use, and keep it for the object's life (see
-// setupOnce).
-/** @stability unstable */
 export const sqlOf = (storage: DurableObjectState['storage']) =>
   SqliteClient.layer({ storage })
 
-// NOTE: whether a request asks to become a WebSocket.
 export const isWebSocketUpgrade = (request: Request): boolean =>
   Option.exists(
     Option.fromNullishOr(request.headers.get('upgrade')),
@@ -379,8 +334,6 @@ export const bearerOf = (request: Request): Option.Option<string> =>
         : Option.none(),
   )
 
-// NOTE: only player scopes exist so far. A scope id that does not parse, or
-// names another kind, never reaches a Durable Object.
 export const playerScopeOf = (url: URL): Option.Option<string> =>
   Option.flatMap(Option.fromNullishOr(url.searchParams.get('scope')), scope =>
     Option.filter(
@@ -389,18 +342,12 @@ export const playerScopeOf = (url: URL): Option.Option<string> =>
     ).pipe(Option.as(scope)),
   )
 
-// SCOPE HOST
-
 export interface Socket {
   readonly send: (message: string) => void
   readonly connection: Connection
   readonly setConnection: (connection: Connection) => Effect.Effect<void>
 }
 
-// NOTE: `onMessage` and `exchangeWith` say which deltas they applied, so a
-// host with more to do on a mutation (the GameRoom starting a game on
-// StartedGame) can react after the broadcast.
-/** @stability unstable */
 export interface ScopeHost {
   readonly server: ScopeServer
   readonly onMessage: (
@@ -466,7 +413,6 @@ const deltasOf = (
     message._tag === 'Deltas' ? message.deltas : [],
   )
 
-/** @stability unstable */
 export const makeScopeHost: {
   (
     authenticate: Authenticate,
@@ -510,9 +456,6 @@ export const makeScopeHost: {
           return deltasOf(result.broadcast)
         })
 
-      // NOTE: the HTTP fallback: a batch of messages on a connection that
-      // lasts one request. The requester gets the broadcasts too, so it sees
-      // its own deltas; sockets on the same scope get the broadcasts as usual.
       const exchangeWith = (body: string, everyone: ReadonlyArray<Socket>) =>
         Effect.gen(function* () {
           if (new TextEncoder().encode(body).byteLength > MAX_EXCHANGE_BYTES) {
@@ -550,8 +493,6 @@ export const makeScopeHost: {
       const exchange = (body: string, everyone: ReadonlyArray<Socket>) =>
         Effect.map(exchangeWith(body, everyone), result => result.response)
 
-      // NOTE: the server mutation a link makes. Its delta goes to every
-      // device on the scope at once.
       const linkedDevices = (
         count: number,
         id: string,
@@ -579,8 +520,6 @@ export const makeScopeHost: {
       return { server, onMessage, exchange, exchangeWith, linkedDevices }
     }),
 )
-
-// DIRECTORY
 
 export interface DirectoryRequest {
   readonly path: string
@@ -653,8 +592,6 @@ const LinkCodeJson = Schema.Struct({
   expiresMs: Schema.Finite,
 })
 
-// NOTE: answers one identity request. On a successful redeem it also says
-// which player gained a device, so the caller can tell that player's scope.
 export const handleDirectory: {
   (
     secret: string,
@@ -733,11 +670,6 @@ export const handleDirectory: {
     ),
 )
 
-// DURABLE OBJECT HOSTS
-
-// NOTE: what SyncScope runs, apart from the Workers runtime: its scope host,
-// built once on first use.
-/** @stability unstable */
 export const scopeHostOnce: {
   <E>(
     scope: string,
@@ -766,12 +698,6 @@ export interface DirectoryHost {
   readonly fetch: (request: Request) => Effect.Effect<Response>
 }
 
-// NOTE: what SyncDirectory runs, apart from the Workers runtime. One request
-// is handled at a time: the input gate only covers storage, and token checks
-// await WebCrypto. After a link, the player's scope is told the new device
-// count. The link is already saved by then, so a failure to tell is logged
-// and the link still answers 200.
-/** @stability unstable */
 export const makeDirectoryHost = <E>(options: {
   readonly sql: Layer.Layer<SqlClient.SqlClient, E>
   readonly secret: string

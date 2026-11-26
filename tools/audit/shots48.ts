@@ -1,11 +1,3 @@
-// The teammate bots pass: the single player lobby with its + BOT tiles, with
-// one bot and with three, a run with three bots mid-wave, and the end card
-// with bots, on a 1280x720 desktop, an 844x390 phone on its side, and a
-// 390x844 phone held upright, as `s48-<TAG>-<viewport>-<scene>.png`. It exits
-// with 1 when a + BOT tile or an x is under 48 px on a phone, or the seats
-// run past the screen.
-//   TAG=after bun run heavy -- --shared bun tools/audit/shots48.ts
-// ONLY picks scenes, and VIEWPORTS picks screens.
 import { Effect } from 'effect'
 
 import { runHarnessAudit } from './harnessServer'

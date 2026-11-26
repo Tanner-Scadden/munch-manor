@@ -1,7 +1,3 @@
-// NOTE: small readers of oxlint's typed AST that the project's rules
-// share (tools/lint/munchPlugin.ts, tools/lint/testRules.ts,
-// tools/lint/perfRules.ts).
-
 import { Array, Function, Record } from 'effect'
 
 import type { ESTree } from '@oxlint/plugins'
@@ -50,9 +46,6 @@ export const isFunctionNode = (
   node.type === 'FunctionExpression' ||
   node.type === 'FunctionDeclaration'
 
-// NOTE: whether the name appears in the node, at any depth: `step(m)`,
-// `leaveFor(m, 'Kicked')`, `playSounds(cues)(keep(m))`. The walk reads each
-// field of a node as unknown, skipping the link back to its parent.
 export const mentions: {
   (name: string): (value: unknown) => boolean
   (value: unknown, name: string): boolean
@@ -74,7 +67,6 @@ export const mentions: {
 
 const WORLD_NAME = /^world$|World$/
 
-// NOTE: a value named as a World: `world`, `nextWorld`, `x.world`.
 export const isWorldNamed = (node: ESTree.Node): boolean =>
   (node.type === 'Identifier' && WORLD_NAME.test(node.name)) ||
   (node.type === 'MemberExpression' &&

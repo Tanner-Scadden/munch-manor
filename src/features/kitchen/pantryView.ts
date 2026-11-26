@@ -11,19 +11,12 @@ import { maybeStash, pantrySpotOf } from '../../world/kitchen/pantry'
 import { levelOf } from '../../world/level/arena'
 import type { PantryGoodie } from '../../world/schema/entitySchema'
 
-// The pantry stash (src/world/kitchen/pantry.ts) in the world: its goodie bobbing on the
-// floor in front of the cupboard for the break, over a little shadow, with a
-// glint that winks now and then. Show, don't explain: a coin or a
-// heart says what it is, and walking onto it takes it.
-
 const BOB_MS = 280
 const BOB_PX = 1
 const LIFT_PX = 4
 const GLINT_MS = 1400
 const GLINT_ON_MS = 160
 
-// NOTE: the key is drawn from its top left corner, the rest from their
-// middles, so each sits by its own offset.
 type GoodieLook = Readonly<{ sprite: Sprite; dx: number; dy: number }>
 
 const GOODIE_LOOKS: Readonly<Record<PantryGoodie, GoodieLook>> = {
@@ -31,7 +24,6 @@ const GOODIE_LOOKS: Readonly<Record<PantryGoodie, GoodieLook>> = {
   Heart: { sprite: HEART_SPRITE, dx: 0, dy: 0 },
 }
 
-// NOTE: the stash sorts with what stands around it, by the floor it sits on.
 export const pantryDrawables = (model: Model): ReadonlyArray<Drawable> =>
   isKitchenShown(model)
     ? Option.match(

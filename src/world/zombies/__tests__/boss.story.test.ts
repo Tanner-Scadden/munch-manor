@@ -419,8 +419,7 @@ describe('a boss wave', () => {
             checkModel(current => {
               expect(Phase.isAnyOf(['Wave'])(current.phase)).toBe(true)
               expect(Boss.isAnyOf(['Arriving'])(current.boss)).toBe(true)
-            }), // NOTE: one tick more than the entrance, as summing 1000/60 ms ticks
-            // can leave a hair of it still to run.
+            }),
             ticks(Math.ceil(BOSS_RULES.entranceMs / FRAME_MS) + 1, FRAME_MS),
             checkModel(current => {
               expect(Phase.isAnyOf(['Wave'])(current.phase)).toBe(true)
@@ -555,8 +554,6 @@ describe('the door preview', () => {
 describe('determinism', () => {
   it.effect('the same seed plays the same charges, spits, and belches', () =>
     Effect.gen(function* () {
-      // NOTE: the fight in the dining room's wide aisle north of the table
-      // (rows 7 to 9), where a charge's lane has room on both sides.
       const AISLE_Y = 85
       const start = (seed: number): Model =>
         UiStruct.evolve(
@@ -578,8 +575,6 @@ describe('determinism', () => {
           ),
           { rngState: () => seed },
         )
-      // NOTE: the fight's last Model and every frame's event tags, gathered
-      // in an array only this Story fills.
       const play = (seed: number) =>
         Effect.suspend(() => {
           const tags: Array<GameEvent['_tag']> = []

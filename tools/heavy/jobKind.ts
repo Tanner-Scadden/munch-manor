@@ -2,8 +2,6 @@ import { Array, Function, Option, Schema, String, pipe } from 'effect'
 
 import { JobClass } from './records'
 
-// JOB
-
 const DEFAULT_PARALLEL = 3
 
 export const JobKind = Schema.TaggedUnion({
@@ -17,9 +15,6 @@ export const jobKindOf = (command: ReadonlyArray<string>): JobKind =>
     ? JobKind.cases.Balance.make({})
     : JobKind.cases.Other.make({})
 
-// NOTE: a script counts by its name alone (`taps.ts`, `./taps.ts`) or under
-// an `audit/` folder (`tools/audit/taps.ts`), so `src/platform/save.ts` is not the
-// save audit.
 const auditScript = (names: string): RegExp =>
   new RegExp(`^(?:(?:.*/)?audit/|\\./)?(?:${names})\\.ts$`)
 
@@ -27,9 +22,6 @@ const TIMING_SCRIPTS: ReadonlyArray<RegExp> = [
   auditScript('perf|perf-check|profile|measure|spikes|splash'),
 ]
 
-// NOTE: the balance bot, the determinism checks, and a recorded run's replay
-// are not timed, but they keep cores busy for minutes, so they size
-// themselves to the budget.
 const CPU_SCRIPTS: ReadonlyArray<RegExp> = [
   /(?:^|\/)balance\/(?:simulate|nightly)\.ts$/,
   /(?:^|\/)determinism\/(?:crossEngine|beforeAfter)\.ts$/,
@@ -42,10 +34,6 @@ const SHARED_SCRIPTS: ReadonlyArray<RegExp> = [
   ),
 ]
 
-// NOTE: these scripts drive several browser contexts at once, set by their
-// own variable, and each context costs about this many cores. shots33 shoots
-// full HD desktop screens, which measured near two cores a context: with a
-// cost of one it pushed the load to 16 against a target of 8.4.
 const PARALLEL_SCRIPTS: ReadonlyArray<readonly [RegExp, string, number]> = [
   [auditScript('taps'), 'TAPS_PARALLEL', 1],
   [auditScript('closes'), 'CLOSES_PARALLEL', 1],
@@ -54,13 +42,10 @@ const PARALLEL_SCRIPTS: ReadonlyArray<readonly [RegExp, string, number]> = [
   [auditScript('shots34'), 'SHOTS_PARALLEL', 1],
 ]
 
-// NOTE: the environment variables a Shared script's cost reads.
 export const PARALLEL_ENV_KEYS: ReadonlyArray<string> = Array.dedupe(
   Array.map(PARALLEL_SCRIPTS, ([, key]) => key),
 )
 
-// NOTE: the command is split into words, so a script inside `sh -c "..."`
-// is still found.
 const commandWords = (command: ReadonlyArray<string>): ReadonlyArray<string> =>
   pipe(
     command,
@@ -74,9 +59,6 @@ const mentionsAny = (
 ): boolean =>
   Array.some(words, word => Array.some(patterns, pattern => pattern.test(word)))
 
-// NOTE: the most careful class a command names wins, and a command the
-// guard does not know is Timing, so a new heavy script runs alone until it
-// is listed.
 export const jobClassOf: {
   (
     maybeOverride: Option.Option<JobClass>,
@@ -112,8 +94,6 @@ const parallelOf = (maybeValue: Option.Option<string>): number => {
   return globalThis.Number.isFinite(value) ? Math.max(1, Math.floor(value)) : 1
 }
 
-// NOTE: about one core per browser context. A Shared script that drives
-// one page costs 1, and taps.ts with TAPS_PARALLEL=3 costs 3.
 export const sharedCostOf: {
   (
     env: (key: string) => Option.Option<string>,

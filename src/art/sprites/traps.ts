@@ -14,8 +14,6 @@ import {
   spriteWidth,
 } from '../sprite'
 
-// TRAPS
-
 export const GNOME_PALETTE: Palette = {
   R: '#d8423a',
   D: '#a8302a',
@@ -155,12 +153,6 @@ export const TRAP_ICONS: Readonly<Record<TrapKind, Sprite>> = Record.map(
   ({ pixels, palette }) => spriteShapes(pixels, palette),
 )
 
-// TRAP CRATES
-
-// NOTE: the trap crate (src/world/gear/crates.ts), baked once: Shut through
-// a wave and before traps are found, Open in a break, its lid leaned up
-// behind and the dark inside showing (the find peeks out of it). Both are
-// drawn from their bottom middle, where the crate stands.
 export type CrateLook = 'Shut' | 'Open'
 
 const CRATE_PIXELS: Readonly<Record<CrateLook, ReadonlyArray<string>>> = {
@@ -199,5 +191,4 @@ export const CRATE_SPRITES: Readonly<Record<CrateLook, Sprite>> = Record.map(
     }),
 )
 
-// NOTE: how far into the crate the find's icon sits, from its floor up.
 export const CRATE_FIND_RISE = 9

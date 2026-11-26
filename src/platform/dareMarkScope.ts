@@ -12,23 +12,12 @@ import {
 import { Difficulty } from '../shared/playerData'
 import { PLAYER_SCOPE_KIND, toRejected } from './playerScopeParts'
 
-// The dare ladder's column in the player scope (src/platform/playerScope.ts):
-// `dare_marks`, the best mark opened on each difficulty as JSON, and the
-// mutation that climbs it. Apart from the scope so its file stays one job.
-// Shared with the sync Worker, like the scope, so it imports only `effect`,
-// the sync engine, and src/shared/.
-
 export const DareMarksJson = Schema.fromJsonString(SavedDareMarks)
 
 const DareMarksRow = Schema.Struct({ dare_marks: DareMarksJson })
 
 const encodeDareMarks = Schema.encodeEffect(DareMarksJson)
 
-// NOTE: a mark opened on a difficulty: the scope keeps the higher of what it
-// has and this, so two devices that climb offline both keep their best, in
-// whatever order the server gets them. The mark's Schema caps it at the
-// ladder's top.
-/** @stability unstable */
 export const ClimbedDareLadder = defineMutation({
   name: 'ClimbedDareLadder',
   version: 1,

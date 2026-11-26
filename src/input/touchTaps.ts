@@ -1,33 +1,9 @@
 import { Function } from 'effect'
 
 import * as DetMath from '../shared/detMath'
-// NOTE: taps on touch screens, made from each finger's own pointer events
-// instead of the browser's click.
-//
-// A browser makes a `click` from a touch only when that touch is a lone
-// tap. With another finger on the glass (a thumb on the move stick, a palm
-// on the edge of an iPhone), iOS WebKit and Chrome show the button pressed
-// and never send the click, so every button that acts on OnClick did
-// nothing. And a lone tap's click goes to whatever is under the finger when
-// it lifts, so a press that began on a dialog's panel could close the
-// dialog from its backdrop once the panel had moved.
-//
-// So on the game's root, a touch pointer that goes down and comes up as a
-// tap (short, and still) clicks the nearest element that holds both where
-// it went down and where it came up, as a mouse's click does. The button's
-// own OnClick then runs, the same Message as a mouse click or Enter. The
-// browser's own click for that touch, if one follows, is dropped, so a press
-// acts once. Mouse, pen, and keyboard clicks are left alone.
-//
-// Every element inside the root gets this, so a new button needs nothing:
-// the HUD's slots, the dialogs, co-op, and the end screens alike.
 
-// NOTE: a held finger is not a tap: it is a thumb on a stick or a resting
-// palm, and lifting it must not press what it rests on.
 export const TAP_MAX_MS = 600
-// NOTE: a finger that wanders this far has dragged, as a browser judges it.
 export const TAP_SLOP_PX = 12
-// NOTE: how long after a tap the browser's own click for it may still come.
 export const CLICK_ECHO_MS = 800
 
 type Press = Readonly<{
@@ -51,8 +27,6 @@ const commonAncestor = (a: Element, b: Element): Element | null => {
 const isInert = (element: Element): boolean =>
   element.closest('[inert]') !== null
 
-// NOTE: listens on `root` until the returned function is called, and calls
-// `onTap` after each tap it makes.
 export const listenForTouchTaps: {
   (onTap: () => void): (root: HTMLElement) => () => void
   (root: HTMLElement, onTap: () => void): () => void
@@ -89,8 +63,6 @@ export const listenForTouchTaps: {
     if (isHeld || isDragged) {
       return
     }
-    // NOTE: a touch's pointerup goes to where it went down, so where it came
-    // up is looked up.
     const lifted = root.ownerDocument.elementFromPoint(
       event.clientX,
       event.clientY,
@@ -115,8 +87,6 @@ export const listenForTouchTaps: {
     onTap()
   }
 
-  // NOTE: the browser's own click for a tap already made. A keyboard's
-  // click (Enter or Space on a button) has no detail, so it always counts.
   const onClick = (event: MouseEvent): void => {
     if (!isDispatching && event.detail > 0 && event.timeStamp <= echoUntil) {
       event.preventDefault()

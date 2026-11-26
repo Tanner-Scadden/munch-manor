@@ -1,31 +1,3 @@
-// Headless balance simulation. Run it from the repo root through the heavy
-// guard (tools/heavy), never directly:
-//   bun run balance [runs] [firstSeed]
-//   MODE=endless bun run balance [runs] [firstSeed]
-//   WORKERS=4 bun run balance 200   (splits the runs over processes, capped)
-//   TIMELINE=1 bun run balance 40   (adds the wave timeline audit)
-//   END_REPORT=1 bun run balance 100   (adds where each run stopped and
-//     each Uncle Chunk fight, tools/balance/endReport.ts)
-//   AIM=sharp bun run balance 200   (the old bot, without the human limits)
-//   KITE=1 bun run balance 200   (runs from the boss, never dodges)
-//   NO_DODGE=1 bun run balance 200   (ignores every floor tell)
-//   DIFFICULTY=hard bun run balance 200   (easy, normal, hard, or nightmare)
-//   bun run balance -- --wave 4 --runs 200   (the wave snapshot pass)
-//   bun run balance -- --wave all --runs 100   (every campaign wave)
-//   bun run balance -- --runs 100 --seed-offset 100   (the next 100 seeds)
-// Flags: --runs n, --first-seed n, --seed-offset n (skips the first n runs'
-// seeds, so a second batch plays new seeds: --seed-offset 100 after a batch
-// of 100 plays runs 100 to 199 of the same seed list), --wave n|all, --slots
-// n (snapshot slots, 10 by default), and --json path (also write the summary
-// the nightly suite reads). Under the guard it plays the runs in chunks of about 25 (by
-// slot groups for a wave pass) and yields the guard's turn between them, so
-// waiting jobs go in between; the report is the same as one unchunked
-// batch, since every run is seeded by its index. HEAVY_CHUNK_RUNS=n sets
-// the chunk, and 0 plays it whole. It drives the game's own init model and update with the bot in
-// tools/balance/bot.ts (its parts in tools/balance/bot/) and prints survival per wave, run length, the money
-// curve, and which zombie kinds cost the bot the most hearts. Nothing here
-// ships with the game.
-
 import {
   Array,
   Config,
@@ -75,10 +47,6 @@ const { printEndReport } = await import('./endReport')
 const turn = await import('../heavy/turn')
 const { nextChunk } = await import('../heavy/decision')
 
-// TUNE=path/to/tune.ts loads a module whose default export edits the
-// tables in place before the runs, so a balance idea can be tried without
-// touching src. Bake the winning numbers into src afterwards.
-// NOTE: the tables a tune module may edit in place.
 const tuneTables = Effect.map(
   Effect.all({
     wavePlans: Effect.promise(() => import('../../src/world/waves/wavePlans')),
@@ -118,8 +86,6 @@ const tuneTables = Effect.map(
 )
 type TuneTables = Effect.Success<typeof tuneTables>
 
-// NOTE: a tune module is the caller's own script: its default export is
-// checked to be a function, and is trusted to take the tables.
 const TuneModule = Schema.Struct({
   default: Schema.declare(
     (value: unknown): value is (tables: TuneTables) => void =>
@@ -149,8 +115,6 @@ const applyTune = (tune: string) =>
     const tables = yield* tuneTables
     module.default(tables)
   })
-
-// ARGUMENTS
 
 const argv = process.argv.slice(2)
 const flagValue = (name: string): string | undefined => {
@@ -183,7 +147,6 @@ const SimulateConfig = Config.all({
   maybeWorkerOut: Config.String('WORKER_OUT').pipe(Config.option),
 })
 
-// NOTE: what the whole batch reads, from the flags and the environment.
 type Setup = {
   readonly options: BotOptions
   readonly isEndless: boolean
@@ -221,18 +184,6 @@ const waveList = (flag: string): Array<number> => {
   return [wave]
 }
 
-// WORKERS
-
-// A worker plays one share of the work and writes its results as JSON, so
-// WORKERS=n gives the same report as one process, only sooner. A campaign
-// worker plays a slice of the seeds, from:to. A wave worker plays the
-// snapshot slots whose index modulo the worker count is its own, index:count,
-// among the slots of its chunk, WORKER_SLOTS=from:to. A worker writes its
-// RunResults or WaveRuns through their Schemas (bot/results.ts) and this
-// process decodes them with the same ones, so they read exactly as results
-// played in process.
-
-// NOTE: an env var holding from:to, two whole numbers.
 const rangeFrom = (text: string): readonly [number, number] => {
   const [from, ...rest] = Array.map(String.split(':')(text), Number)
   const to = rest[0]
@@ -249,7 +200,6 @@ class WorkerFailed extends Schema.TaggedError<
   message: Schema.String,
 }) {}
 
-// NOTE: plays this process's share as a worker and writes it to `out`.
 const playAsWorker = (
   setup: Setup,
   slice: string,
@@ -294,8 +244,6 @@ const playAsWorker = (
 
 const SELF = fileURLToPath(import.meta.url)
 
-// NOTE: plays one worker's share in a child process and reads back what it
-// wrote, decoded with `schema`.
 const runWorker = <A>(
   schema: Schema.ConstraintDecoder<ReadonlyArray<A>>,
   slice: string,
@@ -359,8 +307,6 @@ const playRange = (setup: Setup, workers: number, first: number, end: number) =>
     return Array.flatten(outputs)
   })
 
-// NOTE: the guard may give a later chunk more or fewer workers. Returns the
-// workers for the next chunk.
 const yieldTurn = (label: string, workers: Ref.Ref<number>) =>
   Effect.gen(function* () {
     const current = yield* Ref.get(workers)
@@ -371,9 +317,6 @@ const yieldTurn = (label: string, workers: Ref.Ref<number>) =>
     )
   })
 
-// NOTE: plays the runs in chunks, in seed order, yielding the guard's turn
-// between chunks. Run i is always seed i, so the results do not depend on
-// where the chunks fall.
 const playAll = (setup: Setup, workers: Ref.Ref<number>) =>
   Effect.gen(function* () {
     const results: Array<RunResult> = []
@@ -430,9 +373,6 @@ const playSlots = (
     return Array.flatten(outputs)
   })
 
-// NOTE: a wave pass chunks by snapshot slot, one slot a worker, so each
-// slot's snapshots are found once. The runs are sorted by wave and run, so
-// the order never depends on the chunks or the workers.
 const playWaves = (
   setup: Setup,
   workers: Ref.Ref<number>,
@@ -466,8 +406,6 @@ const writeJson = (setup: Setup, value: unknown) =>
       yield* Console.log(`\nWrote the summary to ${setup.jsonOut}`)
     }
   })
-
-// WAVE SNAPSHOT PASS
 
 const reportWavePass = (
   setup: Setup,
@@ -508,8 +446,6 @@ const reportWavePass = (
     yield* writeJson(setup, pass)
   })
 
-// CAMPAIGN
-
 const median = (values: Array<number>): number => summary.median(values)
 
 const mean = (values: Array<number>): number =>
@@ -531,9 +467,6 @@ const reportCampaign = (
   elapsed: number,
 ) =>
   Effect.gen(function* () {
-    // NOTE: an escape runs past the ten tuned waves into the ramp, so the
-    // campaign's tables go on to CAMPAIGN_REPORT_WAVES, a fixed count so
-    // the nightly's metrics keep the same keys from run to run.
     const lastWave = setup.isEndless
       ? Math.max(...Array.map(results, result => result.cleared + 1))
       : Math.max(FINAL_WAVE, CAMPAIGN_REPORT_WAVES)
@@ -597,8 +530,6 @@ const reportCampaign = (
         Array.map(results, r => r.escape.keyWave),
         wave => wave > 0,
       )
-      // NOTE: the finale: runs Uncle Chunk came in, those he ended (the run
-      // over with him still standing), and his fight's length.
       const met = Array.filter(results, r => r.escape.chunkWave > 0)
       const killedByChunk = Array.filter(
         met,
@@ -617,8 +548,6 @@ const reportCampaign = (
       yield* Console.log(
         `Escape: things found a run median ${median(Array.map(results, r => r.escape.found))}, cases opened median ${median(Array.map(results, r => r.escape.casesOpened))}`,
       )
-      // NOTE: the wave the bot bought its first room open in, its second,
-      // and so on, the median over the runs that opened that many.
       const roomWaves = Array.map(Array.range(0, 3), index => {
         const waves = Array.getSomes(
           Array.map(results, r => Array.get(r.escape.openedWaves, index)),
@@ -911,8 +840,6 @@ const reportCampaign = (
     )
   })
 
-// TIMELINE
-
 const seconds = (ms: number) => (ms / 1000).toFixed(1)
 
 const printTimeline = (result: RunResult) =>
@@ -1013,8 +940,6 @@ const reportTimelines = (results: Array<RunResult>, lastWave: number) =>
       )
     }
   })
-
-// THE BATCH
 
 const program = Effect.gen(function* () {
   const config = yield* SimulateConfig

@@ -1,7 +1,3 @@
-// The input's Schemas: the game surface's rectangle, the sticks, the mouse
-// and hold buttons, a polled controller, the device, and the Model's `input`
-// record.
-
 import { Option, Schema } from 'effect'
 
 import { UiSchema } from '@effect/ui'
@@ -13,9 +9,6 @@ export const SurfaceRectangle = Schema.Struct({
   top: Schema.Finite,
   width: Schema.Finite,
   height: Schema.Finite,
-  // NOTE: the page's devicePixelRatio when measured, so the stage can snap
-  // one screen pixel to a whole number of device pixels (src/render/screen.ts).
-  // Left out, the stage fits the surface as it always did.
   pixelRatio: Schema.optionalKey(Schema.Finite),
 })
 export type SurfaceRectangle = typeof SurfaceRectangle.Type
@@ -38,8 +31,6 @@ export const MouseButton = UiSchema.TaggedEnum({
 })
 export type MouseButton = typeof MouseButton.Type
 
-// NOTE: a finger holding the touch HUD's hold-to-buy button, by its pointer,
-// so lifting that finger lets go and no other finger does.
 export const HoldButton = UiSchema.TaggedEnum({
   Released: {},
   Held: { pointerId: Schema.Finite },
@@ -62,20 +53,11 @@ export type TouchControls = typeof TouchControls.Type
 export const Orientation = Schema.Literals(['Landscape', 'Portrait'])
 export type Orientation = typeof Orientation.Type
 
-// NOTE: what the click after a press on a HUD gun or knife slot does. A
-// mouse press there mid-wave is a shot at the world beneath, so its click
-// passes through; a touch, or a mouse outside a wave, acts on the slot.
 export const SlotClick = Schema.Literals(['Acts', 'PassesThrough'])
 export type SlotClick = typeof SlotClick.Type
 
-// NOTE: a fire press no game step has seen yet. A click let go before the
-// next step (a quick click on a slow frame) would leave the trigger
-// Released at every step, so the press waits here and holds the trigger for
-// the next step, which marks it Seen (src/app/frame.ts).
 const FirePress = Schema.Literals(['Seen', 'Waiting'])
 
-// NOTE: a controller as last polled (src/input/gamepad.ts): its index, its
-// four stick axes, and each button's value, all in 1/64 steps.
 export const Gamepad = Schema.Struct({
   index: Schema.Finite,
   axes: Schema.Array(Schema.Finite),
@@ -83,13 +65,9 @@ export const Gamepad = Schema.Struct({
 })
 export type Gamepad = typeof Gamepad.Type
 
-// NOTE: where a controller moves focus in a menu (src/input/padFocus.ts):
-// the topmost open dialog, co-op's screen, or the page.
 export const PadScope = Schema.Literals(['TopDialog', 'Coop', 'Page'])
 export type PadScope = typeof PadScope.Type
 
-// NOTE: what A found to press: a focused control it clicked, or nothing
-// with focus, which a screen that reads keys takes as Enter.
 export const PadClick = Schema.Literals(['Clicked', 'NothingFocused'])
 export type PadClick = typeof PadClick.Type
 

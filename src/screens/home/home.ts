@@ -38,15 +38,6 @@ import {
   RunMode,
 } from '../../world/schema/worldSchema'
 
-// BUTTONS
-
-// NOTE: the home layout. Arrow keys walk PLAY, CO-OP, the MANOR button, the
-// coffee, then the gear. The mode, difficulty, and hero are picked in the
-// single player lobby PLAY opens (src/features/lobby/lobby.ts). Everything else lives in
-// the MANOR hand, so a new feature is a new card there and PLAY never
-// moves. CO-OP joins only in builds where co-op is released
-// (src/features/coop/release.ts), and the coffee only while a support link is set
-// (homeButtonsOf).
 export const HOME_BUTTONS: Array.NonEmptyReadonlyArray<HomeButton> =
   IS_COOP_RELEASED
     ? ['Play', 'Coop', 'Manor', 'Bests', 'Missions', 'Support', 'Settings']
@@ -65,19 +56,14 @@ const HOME_BUTTON_IDS: Readonly<Record<HomeButton, string>> = {
 export const isSupportShown = (model: Model): boolean =>
   Option.isSome(model.release.maybeSupportUrl)
 
-// NOTE: the bests badge is a button, and is drawn only once the player has
-// a best on the chosen level or a zombie splatted.
 const hasBests = (model: Model): boolean =>
   Option.isSome(bestsFor(model).maybeBestEndlessWave) ||
   Option.isSome(bestsFor(model).maybeFastestWinMs) ||
   model.bests.totalKills > 0
 
-// NOTE: the mission card shows once the day is known (src/platform/today.ts)
-// and the day has its three.
 export const isMissionCardShown = (model: Model): boolean =>
   Option.exists(maybeTodaysMissions(model), Array.isReadonlyArrayNonEmpty)
 
-// NOTE: the buttons the home menu draws, in arrow key order.
 export const homeButtonsOf = (model: Model): ReadonlyArray<HomeButton> =>
   Array.filter(
     HOME_BUTTONS,
@@ -89,19 +75,11 @@ export const homeButtonsOf = (model: Model): ReadonlyArray<HomeButton> =>
 
 type HomeKey = Readonly<{ code: string; cap: string; name: string }>
 
-// NOTE: one key per action. Enter, C, L, Z, I, and O were already the home
-// keys. J joins up for co-op, V opens the MANOR hand, and B buys Rattles a
-// coffee, letters no other screen uses, so WASD, R, Q, T, G, H, K, M, and N
-// keep their one meaning. E, X, and Y pick the mode, difficulty, and hero in
-// the lobby (src/features/lobby/lobby.ts).
 export const HOME_KEYS: Readonly<Record<HomeButton, HomeKey>> = {
   Play: { code: 'Enter', cap: 'ENTER', name: 'Enter' },
   Coop: { code: 'KeyJ', cap: 'J', name: 'J' },
   Manor: { code: 'KeyV', cap: 'V', name: 'V' },
-  // NOTE: the bests badge opens the Munchopedia, so it shares the card's key.
   Bests: { code: 'KeyZ', cap: 'Z', name: 'Z' },
-  // NOTE: U for the day's missions, a letter only a couch player's fire
-  // uses, in a run.
   Missions: { code: 'KeyU', cap: 'U', name: 'U' },
   Support: { code: 'KeyB', cap: 'B', name: 'B' },
   Settings: { code: 'KeyO', cap: 'O', name: 'O' },
@@ -121,8 +99,6 @@ export const isSupportKey = (code: string): boolean =>
 export const isSettingsKey = (code: string): boolean =>
   code === HOME_KEYS.Settings.code
 
-// NOTE: the turn hint shows on the portrait home menu until it is dismissed
-// or the phone turns.
 export const isTurnHintShown = (model: Model): boolean =>
   isOnHome(model.phase) && isPortrait(model) && !model.home.isTurnHintSeen
 
@@ -134,10 +110,6 @@ export const seeTurnHint = (model: Model): Model =>
 export const homeButtonId = (button: HomeButton): string =>
   HOME_BUTTON_IDS[button]
 
-// THE MANOR HAND
-
-// NOTE: the order the cards are dealt, left to right. A future feature, such
-// as the cosmetic shop or the co-op lobby, is one more card here.
 export const HAND_CARDS: Array.NonEmptyReadonlyArray<HandCard> = [
   'Character',
   'Munchopedia',
@@ -147,26 +119,19 @@ export const HAND_CARDS: Array.NonEmptyReadonlyArray<HandCard> = [
   'Code',
 ]
 
-// NOTE: the link card opens a page in a new tab, so it has no key and no
-// dialog.
 export type LinkHandCard = Extract<HandCard, 'Code'>
 export type KeyedHandCard = Exclude<HandCard, LinkHandCard>
 
 export const isLinkHandCard = (card: HandCard): card is LinkHandCard =>
   card === 'Code'
 
-// NOTE: the game's public source, for the Code card.
 export const SOURCE_URL = 'https://github.com/Tanner-Scadden/munch-manor'
 
-// NOTE: every card but the links keeps the key its rail button had, and the
-// key works straight from the menu without opening the hand.
 export const HAND_KEYS: Readonly<Record<KeyedHandCard, HomeKey>> = {
   Character: { code: 'KeyC', cap: 'C', name: 'C' },
   Munchopedia: { code: 'KeyZ', cap: 'Z', name: 'Z' },
   WhatsNew: { code: 'KeyL', cap: 'L', name: 'L' },
   HowToPlay: { code: 'KeyI', cap: 'I', name: 'I' },
-  // NOTE: P for the Proof Shelf, a letter only a couch player's reload
-  // uses, in a run.
   Proof: { code: 'KeyP', cap: 'P', name: 'P' },
 }
 
@@ -244,9 +209,6 @@ export const steppedHomeFocus: {
   },
 )
 
-// CORNER
-
-// NOTE: a newer build waits on the home menu only, never mid-run.
 export const isUpdateGiftShown = (model: Model): boolean =>
   Option.isSome(model.release.maybeNewerBuild) && isOnHome(model.phase)
 
@@ -254,24 +216,15 @@ const isInstalled = (model: Model): boolean =>
   model.settings.screenFit === 'Installed' ||
   model.release.installOffer === 'Installed'
 
-// NOTE: the install tile is for a browser that can put the game on the Home
-// Screen: one that offered Chrome's install prompt, or an iPhone, which can
-// only do it by hand. Installed, or with no way to install, it hides.
 export const isInstallTileShown = (model: Model): boolean =>
   isOnHome(model.phase) &&
   !isInstalled(model) &&
   (model.release.installOffer === 'Ready' ||
     model.settings.screenFit === 'HomeScreen')
 
-// MODE
-
 export const runModeOf = (mode: HomeMode): RunMode =>
   mode === 'Campaign' ? RunMode.Campaign() : RunMode.Endless()
 
-// NOTE: what the single player lobby picks from, as the root keeps it and
-// hands the lobby.
-// NOTE: a friend's dare taken holds the picks to its link's (src/domain/beatMyRun.ts):
-// its mark shows whatever this player has opened, and no bot sits in.
 export const lobbyPicksOf = (model: Model): LobbyPicks => {
   const isHeld = isDareTaken(model)
   return {
@@ -296,8 +249,6 @@ export const switchMode = (model: Model): Model =>
         mode: mode => (mode === 'Campaign' ? 'Endless' : 'Campaign'),
       }),
   })
-
-// WHAT'S NEW
 
 export const isNewsUnseen = (model: Model): boolean =>
   Option.match(maybeNewestNewsDay, {
@@ -330,10 +281,6 @@ export const turnNewsPage: {
   }),
 )
 
-// MUNCHOPEDIA
-
-// NOTE: an entry the Munchopedia opened (its OutMessage `OpenedEntry`):
-// its NEW ENTRY goes, and a zombie already found is saved as opened.
 export const openedEntry: {
   (kind: ZombieKind): (model: Model) => Model
   (model: Model, kind: ZombieKind): Model
@@ -349,8 +296,6 @@ export const openedEntry: {
       }),
   }),
 )
-
-// BESTS
 
 export const bestsFor = (model: Model): DifficultyBests =>
   model.bests.byDifficulty[model.difficulty.chosen]
@@ -409,11 +354,6 @@ const countRun = (
     : counted
 }
 
-// NOTE: a run is counted when it ends: on Game Over, on an escape, and when
-// the player leaves it for the menu. Counting then and not every frame means
-// the save is written once a run.
-// NOTE: `played` is the run's difficulty, which an online co-op run takes
-// from the room.
 export const countRunFrom: {
   (after: Model, played?: Difficulty): (before: Model) => Model
   (before: Model, after: Model, played?: Difficulty): Model
@@ -451,9 +391,6 @@ export const countRunFrom: {
   },
 )
 
-// NOTE: the NEW ENTRY pop stays up on the end screen and the menu until the
-// entry is opened or another run starts. The dot on the rail stays until the
-// entry is opened.
 export const forgetNewEntriesFrom: {
   (after: Model): (before: Model) => Model
   (before: Model, after: Model): Model
@@ -467,8 +404,6 @@ export const forgetNewEntriesFrom: {
       })
     : after,
 )
-
-// FEEDBACK
 
 export const feedbackSentence = (model: Model): string =>
   isAskingForFeedback(model) ? ` ${FEEDBACK_LINE}` : ''

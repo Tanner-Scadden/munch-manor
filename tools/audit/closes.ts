@@ -1,35 +1,14 @@
-// The close button pass: every menu dialog's shared close X (the shop, the
-// MORE hand, Settings, What's New, the Munchopedia, an entry, and its Shop
-// guide, How to play, the character picker, the lobby's hero picker, the
-// install steps, and the update greeting) on an 844x390 landscape phone,
-// 390x844 and 375x667 upright phones, all with touch, and 1280x720 and
-// 1920x1080 with a mouse, as `closes-<TAG>-<viewport>-<scene>.png`.
-// For each close it checks:
-//   - the button is at least 48 px and on screen, and its visible face is
-//     smaller (26 to 34 px on a phone, at most 40 px on a desktop),
-//   - the face's center and corners and the hit area's edges and corners all
-//     hit the button (document.elementFromPoint), so nothing covers it and a
-//     tap just off the face still lands,
-//   - the button's box does not cross any other button, link, or tab in the
-//     dialog, or its title, Rattles' bubble, the wallet, or the tabs' text,
-//   - a real tap (a click on a desktop) on the face's center and on two
-//     opposite corners of the hit area each sends exactly one close (the
-//     root's ClosedDialog, or the hero picker's RequestedClose...) and no
-//     other tap Message, reaches nothing behind it, and closes the dialog,
-//   - Escape sends one close the same way and closes the dialog.
-// Then it buys in the shop with a tap (a click on a desktop), opened from its
-// query and again after co-op's screen (`buy` and `buy-after-coop`): there
-// must be one `<dialog id="shop">`, one open dialog, no repeated id, a buy
-// button that its center hits, and one ClickedBuyButton that spends money.
-// Exits with 1 on any problem.
-//   TAG=after bun run heavy -- bun tools/audit/closes.ts
-// ONLY picks scenes, such as `ONLY=shop,hand`, VIEWPORTS picks screens
-// (`l844`, `p390`, `p375`, `d1280`, `d1920`), and CLOSES_PARALLEL sets how
-// many scenes run at once (3 by default).
 import { Array, Effect, Option, String } from 'effect'
 import type { Page } from 'playwright-core'
 
 import { runHarnessAudit } from './harnessServer'
+import {
+  type Point,
+  closeOverlaps,
+  missedCloseFace,
+  placeBuyButton,
+  shopShapeOf,
+} from './inPage/closes'
 import {
   DESKTOP_1280,
   DESKTOP_1920,
@@ -69,7 +48,6 @@ type Scene = Readonly<{
   name: string
   query: string
   open: ReadonlyArray<string>
-  // NOTE: the first open step is PLAY, which opens the lobby, not a dialog.
   opensLobby?: boolean
 }>
 
@@ -100,9 +78,6 @@ const SCENES: ReadonlyArray<Scene> = [
     query: 'kills=Shambler:40,Runner:3',
     open: [MANOR, '#hand-card-munchopedia', '#munch-shop-tile'],
   },
-  // NOTE: the difficulty panel opens only to ask a new player first, and
-  // that question has no close (the lobby picks the difficulty after), so
-  // it is not here.
   { name: 'howto', query: '', open: [MANOR, '#hand-card-howtoplay'] },
   { name: 'character', query: '', open: [MANOR, '#hand-card-character'] },
   {
@@ -122,14 +97,8 @@ const INSET = 2
 const OPEN_TIMEOUT_MS = 10_000
 const CLOSE_TIMEOUT_MS = 3000
 
-// NOTE: BACK shares the close's look (`menu-close menu-back`) and stands
-// before it on a Munchopedia entry and its Shop guide, so it is left out.
 const CLOSE = 'dialog[open] .menu-close:not(.menu-back)'
 
-// NOTE: what a close button must never cover: the dialog's other controls
-// and the text a player reads first. A tab panel takes focus so it can
-// scroll, but it is a frame around controls, not one, so only what is in it
-// counts.
 const OTHERS = Array.join(
   [
     'button',
@@ -155,7 +124,6 @@ const TEXTS = Array.join(
   ',',
 )
 
-type Point = Readonly<{ x: number; y: number }>
 type Box = Readonly<{
   left: number
   top: number
@@ -168,12 +136,6 @@ type Placed = Readonly<{
   points: ReadonlyArray<Readonly<{ name: string; point: Point }>>
 }>
 
-// NOTE: how a close reaches the root (the harness logs only the root's
-// Messages): ui-kit's Dialog asks to close on a tap on its X and on Escape
-// alike, which the root hears as `ClosedDialog` (src/ui/dialog.ts), and the
-// hero picker's X or Escape reaches it as the lobby's or co-op's
-// `RequestedClose...HeroPicker`. A tap and Escape are told apart only by
-// what the audit did.
 const CLOSE_TAGS = /^(ClosedDialog|RequestedClose\w*)$/
 
 const isCloseTag = (tag: string) => CLOSE_TAGS.test(tag)
@@ -187,10 +149,6 @@ const press = (page: Page, viewport: Viewport, point: Point) =>
       : page.mouse.click(point.x, point.y),
   )
 
-// NOTE: the harness's ready signal says the scene is in. A dialog the game
-// opens itself, such as the shop on reaching the stall, is waited for by
-// its close, and each tap that opens a dialog waits for it to open and
-// settle, never for a fixed time.
 const openScene = (page: Page, viewport: Viewport, scene: Scene) =>
   Effect.gen(function* () {
     yield* settleAnimations(page)
@@ -223,8 +181,6 @@ const openScene = (page: Page, viewport: Viewport, scene: Scene) =>
     yield* settleAnimations(page)
   })
 
-// NOTE: every scene starts from its query with an empty save, switched in on
-// a page of the same screen, whatever an earlier close left behind.
 const freshScene = (pages: ScenePages, viewport: Viewport, scene: Scene) =>
   Effect.gen(function* () {
     const page = yield* pages.open(
@@ -299,201 +255,18 @@ const placeClose = (page: Page) =>
     ),
   )
 
-// NOTE: a close flush in a panel's corner has the corner of its target
-// under the panel's rounded corner, which clips what the panel holds: no
-// tap can land there, on the button or on anything else in the panel, so a
-// point outside the clipping panel's rounded inner edge is left out.
 const missedPoints = (page: Page, placed: Placed) =>
   attempt(() =>
-    page.evaluate(
-      ({ selector, points }) => {
-        const button = document.querySelector(selector)
-        const clipperOf = (element: Element | null): Element | null => {
-          for (
-            let at = element?.parentElement ?? null;
-            at !== null;
-            at = at.parentElement
-          ) {
-            const style = getComputedStyle(at)
-            if (
-              style.overflowX !== 'visible' ||
-              style.overflowY !== 'visible'
-            ) {
-              return at
-            }
-          }
-          return null
-        }
-        const clipper = clipperOf(button)
-        const isClippedAway = (point: Point) => {
-          if (clipper === null) {
-            return false
-          }
-          const style = getComputedStyle(clipper)
-          const box = clipper.getBoundingClientRect()
-          const border = parseFloat(style.borderTopWidth)
-          const top = box.top + border
-          const bottom = box.bottom - border
-          const left = box.left + border
-          const right = box.right - border
-          const corners = [
-            {
-              radius: style.borderTopLeftRadius,
-              x: left,
-              y: top,
-              sx: 1,
-              sy: 1,
-            },
-            {
-              radius: style.borderTopRightRadius,
-              x: right,
-              y: top,
-              sx: -1,
-              sy: 1,
-            },
-            {
-              radius: style.borderBottomLeftRadius,
-              x: left,
-              y: bottom,
-              sx: 1,
-              sy: -1,
-            },
-            {
-              radius: style.borderBottomRightRadius,
-              x: right,
-              y: bottom,
-              sx: -1,
-              sy: -1,
-            },
-          ]
-          // NOTE: runs in the page, which has no effect module.
-          // @effect-diagnostics-next-line preferEffectArray:off
-          return corners.some(corner => {
-            const inner = Math.max(0, parseFloat(corner.radius) - border)
-            const cx = corner.x + corner.sx * inner
-            const cy = corner.y + corner.sy * inner
-            const isInCornerSquare =
-              (point.x - cx) * corner.sx < 0 && (point.y - cy) * corner.sy < 0
-            return (
-              isInCornerSquare && Math.hypot(point.x - cx, point.y - cy) > inner
-            )
-          })
-        }
-        const isMissed = ({ point }: { point: Point }) => {
-          if (isClippedAway(point)) {
-            return false
-          }
-          const hit = document.elementFromPoint(point.x, point.y)
-          return button === null || hit === null || !button.contains(hit)
-        }
-        const describe = ({ name, point }: { name: string; point: Point }) => {
-          const hit = document.elementFromPoint(point.x, point.y)
-          // NOTE: runs in the page, which has no effect module.
-          // @effect-diagnostics-next-line preferEffectString:off
-          return `${name} hits ${hit === null ? 'nothing' : `${hit.tagName.toLowerCase()}.${hit.className}`}`
-        }
-        // NOTE: runs in the page, which has no effect module.
-        // @effect-diagnostics-next-line preferEffectArray:off
-        const missed = points.filter(isMissed)
-        // NOTE: runs in the page, which has no effect module.
-        // @effect-diagnostics-next-line preferEffectArray:off
-        return missed.map(describe)
-      },
-      { selector: CLOSE, points: placed.points },
-    ),
+    page.evaluate(missedCloseFace, { selector: CLOSE, points: placed.points }),
   )
 
-// NOTE: text is measured by its own glyphs, not its block, since a title row
-// that stops short of the close still spans the panel's width. Text only a
-// screen reader reads is left out.
 const overlaps = (page: Page) =>
   attempt(() =>
-    page.evaluate(
-      ({ selector, others, texts }) => {
-        const close = document.querySelector(selector)
-        const dialog = document.querySelector('dialog[open]')
-        if (close === null || dialog === null) {
-          return []
-        }
-        const c = close.getBoundingClientRect()
-        const crosses = (r: DOMRect) =>
-          r.width > 0 &&
-          r.height > 0 &&
-          r.left < c.right - 0.5 &&
-          r.right > c.left + 0.5 &&
-          r.top < c.bottom - 0.5 &&
-          r.bottom > c.top + 0.5
-        const isShown = (element: Element) => {
-          const style = getComputedStyle(element)
-          return (
-            style.visibility !== 'hidden' &&
-            style.display !== 'none' &&
-            element.closest('.sr-only') === null
-          )
-        }
-        const name = (element: Element) =>
-          (
-            element.getAttribute('aria-label') ??
-            (element instanceof HTMLElement
-              ? element.innerText
-              : element.className)
-          )
-            // NOTE: runs in the page, which has no effect module.
-            // @effect-diagnostics-next-line preferEffectString:off
-            .replace(/\s+/g, ' ')
-            // NOTE: runs in the page, which has no effect module.
-            // @effect-diagnostics-next-line preferEffectString:off
-            .slice(0, 40)
-        const found: Array<string> = []
-        for (const other of globalThis.Array.from(
-          dialog.querySelectorAll(others),
-        )) {
-          if (
-            other === close ||
-            close.contains(other) ||
-            other.contains(close)
-          ) {
-            continue
-          }
-          if (isShown(other) && crosses(other.getBoundingClientRect())) {
-            found.push(
-              // NOTE: runs in the page, which has no effect module.
-              // @effect-diagnostics-next-line preferEffectString:off
-              `covers ${other.tagName.toLowerCase()} "${name(other)}"`,
-            )
-          }
-        }
-        for (const text of globalThis.Array.from(
-          dialog.querySelectorAll(texts),
-        )) {
-          if (!isShown(text) || text.contains(close)) {
-            continue
-          }
-          const walker = document.createTreeWalker(text, NodeFilter.SHOW_TEXT)
-          const rects: Array<DOMRect> = []
-          for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-            if ((node.parentElement?.closest('.sr-only') ?? null) !== null) {
-              continue
-            }
-            const range = document.createRange()
-            range.selectNodeContents(node)
-            rects.push(...globalThis.Array.from(range.getClientRects()))
-          }
-          const boxes =
-            text.matches('.shop-keeper, .look-preview, [role="tablist"]') ||
-            rects.length === 0
-              ? [text.getBoundingClientRect()]
-              : rects
-          // NOTE: runs in the page, which has no effect module.
-          // @effect-diagnostics-next-line preferEffectArray:off
-          if (boxes.some(crosses)) {
-            found.push(`covers the text "${name(text)}"`)
-          }
-        }
-        return found
-      },
-      { selector: CLOSE, others: OTHERS, texts: TEXTS },
-    ),
+    page.evaluate(closeOverlaps, {
+      selector: CLOSE,
+      others: OTHERS,
+      texts: TEXTS,
+    }),
   )
 
 const isOnScreen = (page: Page, box: Box) =>
@@ -536,7 +309,6 @@ const waitForClosed = (page: Page) =>
 
 type CloseAct = (page: Page, placed: Placed) => Effect.Effect<void, AuditFailed>
 
-// NOTE: one fresh scene per tap, since the tap closes the dialog.
 const checkClosing = (
   pages: ScenePages,
   viewport: Viewport,
@@ -658,8 +430,6 @@ const checkScene = (
     return problems
   })
 
-// BUYING
-
 type BuyRoute = Readonly<{ name: string; before: ReadonlyArray<string> }>
 
 const BUY_ROUTES: ReadonlyArray<BuyRoute> = [
@@ -669,51 +439,9 @@ const BUY_ROUTES: ReadonlyArray<BuyRoute> = [
 
 const isBuyTap = (tag: string) => String.endsWith('ClickedBuyButton')(tag)
 
-const shopShape = (page: Page) =>
-  attempt(() =>
-    page.evaluate(() => {
-      // NOTE: runs in the page, which has no effect module.
-      // @effect-diagnostics-next-line preferEffectArray:off
-      const ids = [...document.querySelectorAll('[id]')].map(
-        element => element.id,
-      )
-      return {
-        shops: document.querySelectorAll('dialog#shop').length,
-        open: document.querySelectorAll('dialog[open]').length,
-        // NOTE: runs in the page, which has no effect module.
-        // @effect-diagnostics-next-line preferEffectArray:off
-        repeated: [...new Set(ids.filter((id, i) => ids.indexOf(id) !== i))],
-      }
-    }),
-  )
+const shopShape = (page: Page) => attempt(() => page.evaluate(shopShapeOf))
 
-const placeBuy = (page: Page) =>
-  attempt(() =>
-    page.evaluate(() => {
-      const button = document.querySelector(
-        'dialog[open] li[data-verdict="available"] button',
-      )
-      if (button === null) {
-        return null
-      }
-      const box = button.getBoundingClientRect()
-      const point = {
-        x: box.left + box.width / 2,
-        y: box.top + box.height / 2,
-      }
-      const hit = document.elementFromPoint(point.x, point.y)
-      return {
-        point,
-        isHit: hit !== null && button.contains(hit),
-        hit:
-          hit === null
-            ? 'nothing'
-            : // NOTE: runs in the page, which has no effect module.
-              // @effect-diagnostics-next-line preferEffectString:off
-              `${hit.tagName.toLowerCase()}.${hit.className} in ${hit.closest('dialog')?.id ?? 'no dialog'}`,
-      }
-    }),
-  )
+const placeBuy = (page: Page) => attempt(() => page.evaluate(placeBuyButton))
 
 const balanceText = (page: Page) =>
   attempt(() =>
@@ -794,12 +522,6 @@ const checkBuying = (
 runHarnessAudit(
   Effect.gen(function* () {
     const tag = yield* auditTag
-    // NOTE: the shop must open as one dialog whose buy buttons take a tap. A
-    // shut dialog comes from a cache, and once that cache handed snabbdom a
-    // stale shell after co-op opened, so the shop opened as a second
-    // `<dialog id="shop">` under an empty one that took every tap. So the
-    // shop is opened straight from its query, and again after co-op's
-    // screen.
     const shop = yield* Effect.fromOption(
       Array.findFirst(SCENES, scene => scene.name === 'shop'),
     ).pipe(Effect.mapError(() => failWith('No shop scene')))

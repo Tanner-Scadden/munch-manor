@@ -53,12 +53,7 @@ import {
   lidBlastRadius,
 } from '../fridgeWeapons'
 
-// The Mystery Leftovers weapons (src/world/fridge/fridgeWeapons.ts), played through
-// Block-aware Stories with a thumb on the aim stick: hold to charge or swing, lift to
-// throw.
-
 const FRAME_MS = FIXED_STEP_MS
-// NOTE: the dining room's wide aisle north of the party table, rows 7 to 9.
 const ROW_Y = 85
 const PLAYER_X = 100
 
@@ -101,10 +96,6 @@ const frames = (count: number): ReadonlyArray<Message> =>
 
 const press: ReadonlyArray<Message> = [FIRE_PRESS, FIRE_PUSH]
 
-// NOTE: the first Model, `start` included, where `isDone` holds as the
-// Messages play through a Block-aware Story, or the last if it never does:
-// the frame a shot first lands. The Story gathers each Model it passes in
-// an array only it fills, as `recordTicks` does.
 const firstModelWhere = (
   start: Model,
   messages: ReadonlyArray<Message>,
@@ -130,8 +121,6 @@ const firstModelWhere = (
     )
   })
 
-// NOTE: the Pan is in the melee slot, the Cooker and Brain Freeze in a gun
-// slot.
 const spareOf = (current: Model): CarriedGun =>
   Option.getOrThrow(
     Option.orElse(maybePanOf(focusOf(current).player), () =>

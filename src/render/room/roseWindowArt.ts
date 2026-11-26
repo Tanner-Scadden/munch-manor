@@ -1,23 +1,12 @@
-// The library's rose window: a round stained-glass window high in the
-// north wall over the reading nook, between the stopped clock and the map,
-// over clear floor, so the colored light it throws lands where the crew
-// walks, clear of the stacks and the secret shelf. Its glass is worked
-// out from a wheel (eight petals round a four-leaf middle in lead), not
-// drawn by hand, so the art and the light it throws read off one grid
-// (src/render/iso/godRays.ts, src/render/iso/emissives.ts).
-
 import { Array, Option, Record, Result, String } from 'effect'
 
 import type * as Draw from '../draw'
 import { pixelArt } from '../drawing'
 import type { Box } from './roomPalette'
 
-// NOTE: the window's size in game pixels, its stone ring included.
 const SIZE = 17
 const MIDDLE = (SIZE - 1) / 2
 
-// NOTE: the glass colors by letter: `L` is the lead between the panes, `S`
-// and `s` the stone ring and its lit edge.
 export const ROSE_PALETTE: Readonly<Record<string, string>> = {
   S: '#4a4250',
   s: '#6e6478',
@@ -33,13 +22,9 @@ const PETALS = 8
 const PETAL_COLORS: ReadonlyArray<string> = ['r', 'b']
 const HEART_COLORS: ReadonlyArray<string> = ['g', 'p']
 
-// NOTE: the share of a turn round the middle, 0 to 1, from the top going
-// clockwise.
 const turnOf = (dx: number, dy: number): number =>
   (Math.atan2(dx, -dy) / (Math.PI * 2) + 1) % 1
 
-// NOTE: how far a pixel's middle sits from the nearest of `count` spokes,
-// in pixels along its ring.
 const offSpoke = (dx: number, dy: number, count: number): number => {
   const share = turnOf(dx, dy) * count
   const off = Math.abs(share - Math.round(share)) / count
@@ -76,7 +61,6 @@ const letterAt = (column: number, row: number): string => {
   return offSpoke(dx, dy, 4) < 0.5 ? 'L' : (HEART_COLORS[leaf % 2] ?? 'g')
 }
 
-// NOTE: the window's pixel map, one letter a game pixel.
 const ROSE_PIXELS: ReadonlyArray<string> = Array.makeBy(SIZE, row =>
   Array.join(
     Array.makeBy(SIZE, column => letterAt(column, row)),
@@ -84,7 +68,6 @@ const ROSE_PIXELS: ReadonlyArray<string> = Array.makeBy(SIZE, row =>
   ),
 )
 
-// NOTE: whether a letter is colored glass, which glows and throws light.
 const isRoseGlass = (letter: string): boolean =>
   String.includes(letter)('rbgpy')
 
@@ -93,17 +76,11 @@ const spotOf = (room: Box): Readonly<{ x: number; y: number }> => ({
   y: room.y + 2,
 })
 
-// NOTE: the glass inside the stone ring, where the storm rains and its light
-// leaves from.
 export const roseGlassOf = (room: Box): Box => {
   const { x, y } = spotOf(room)
   return { x: x + 1, y: y + 1, width: SIZE - 2, height: SIZE - 2 }
 }
 
-// NOTE: the colored glass as runs along each row, from the window's top
-// left, built once: what a strike lights and the rain runs over, so the
-// lead and the stone ring stay dark and the round window never flashes
-// as a square.
 const GLASS_RUNS: ReadonlyArray<Box> = Array.flatMap(ROSE_PIXELS, (line, row) =>
   Array.filterMap(
     Array.makeBy(SIZE, column => column),
@@ -132,7 +109,6 @@ export const roseWindowShapes = (room: Box): ReadonlyArray<Draw.Shape> => {
   return pixelArt(x, y, ROSE_PIXELS, ROSE_PALETTE)
 }
 
-// NOTE: the glass alone, for the glow laid over it in the dark.
 const GLASS_PALETTE: Readonly<Record<string, string>> = Record.filter(
   ROSE_PALETTE,
   (_, letter) => isRoseGlass(letter),

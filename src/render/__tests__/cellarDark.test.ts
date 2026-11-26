@@ -12,11 +12,6 @@ import { modifyFocus } from '../../world/party/party'
 import { TOOL_RULES } from '../../world/stations/toolRules'
 import { cellarDarkOf } from '../cellarDark'
 
-// The cellar's dark (src/render/cellarDark.ts), once the cellar is open
-// and its bulb is out. A zombie in it is not drawn at all (no eyes, bar, or shadow) unless it is
-// close to the viewing player, fading in over the last tile, or in their
-// flashlight's beam the way they face; a lit cellar draws every zombie.
-
 const inCellar = (model: Model): Model =>
   withPlayerAt(
     UiStruct.evolve(model, {

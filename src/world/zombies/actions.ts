@@ -5,10 +5,6 @@ import { UiStruct } from '@effect/ui'
 import type { World } from '../schema/world'
 import { type Zombie, ZombieAction } from '../schema/worldSchema'
 
-// RECOVERY
-
-// NOTE: how long a zombie the Clang Pan rang stays Winded once it is up,
-// so the Pan cannot daze it again at once (src/world/fridge/fridgeWeapons.ts).
 export const REELING_GUARD_MS = 1200
 
 const isRecovering = ZombieAction.isAnyOf([

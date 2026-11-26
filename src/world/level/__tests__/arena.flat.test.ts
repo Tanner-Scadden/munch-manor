@@ -38,8 +38,6 @@ import {
   isWalkableTile,
 } from '../tileQueries'
 
-// NOTE: the array-building versions the flat loops replaced, kept here as
-// the oracle: they must answer exactly as the loops do.
 const pointsAlong = (
   from: Vector,
   to: Vector,
@@ -145,7 +143,6 @@ describe('tile flags', () => {
               'walkable',
               isWalkableTile(level, column, row) === (inside && !solid),
             ],
-            // the player is stopped by every solid tile and by the yard
             [
               'player solid',
               !inside ||

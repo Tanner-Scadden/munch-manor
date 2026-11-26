@@ -6,8 +6,6 @@ import type { Vector } from '../schema/entitySchema'
 
 export const ZERO_VECTOR: Vector = { x: 0, y: 0 }
 
-// NOTE: the four ways on screen, y down, and a unit step each way: an
-// arrow's bob and a controller's focus step in a menu.
 export type ScreenDirection = 'Up' | 'Down' | 'Left' | 'Right'
 
 export const SCREEN_STEPS: Readonly<Record<ScreenDirection, Vector>> = {
@@ -17,7 +15,6 @@ export const SCREEN_STEPS: Readonly<Record<ScreenDirection, Vector>> = {
   Right: { x: 1, y: 0 },
 }
 
-// NOTE: the way to push when two things sit on the same spot.
 export const OUTWARD: Vector = { x: 1, y: 0 }
 
 export const vectorLength = ({ x, y }: Vector): number => DetMath.hypot(x, y)
@@ -73,12 +70,9 @@ export const distanceBetween: {
   DetMath.hypot(to.x - from.x, to.y - from.y),
 )
 
-// NOTE: a number kept to two places: a gun's spread compared, a color's
-// alpha written.
 export const hundredths = (value: number): number =>
   Math.round(value * 100) / 100
 
-// NOTE: the point `t` of the way from `from` to `to`.
 export const lerp: {
   (to: number, t: number): (from: number) => number
   (from: number, to: number, t: number): number
@@ -94,11 +88,9 @@ export const clamp: {
   Math.min(max, Math.max(min, value)),
 )
 
-// NOTE: a share from 0 to 1 eased in and out, slow at both ends.
 export const smoothStep = (share: number): number =>
   share * share * (3 - 2 * share)
 
-// NOTE: a share of 0 to 1 eased out, fast at first and settling.
 export const easeOut = (share: number): number => 1 - (1 - share) * (1 - share)
 
 export const circlesOverlap: {
@@ -148,7 +140,6 @@ export const closestPointOnSegment: {
   return { x: from.x + segmentX * along, y: from.y + segmentY * along }
 })
 
-// NOTE: a timer's time left after a frame, never below zero.
 export const countDown: {
   (deltaMs: number): (remainingMs: number) => number
   (remainingMs: number, deltaMs: number): number
@@ -174,8 +165,6 @@ export const decayKnockback: {
   },
 )
 
-// NOTE: a point inside a box, its left and top edges in, its right and
-// bottom out.
 export const isInsideBox: {
   (
     box: Readonly<{ left: number; top: number; right: number; bottom: number }>,

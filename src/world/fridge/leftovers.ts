@@ -40,23 +40,6 @@ import {
 import type { Offer } from '../shop/purchase'
 import { dropCharge, isFridgeWeapon } from './fridgeWeapons'
 
-// Mystery Leftovers (GAME_DESIGN.md): a grimy fridge against the kitchen's
-// back wall. Once the kitchen is open it is for sale any time the round
-// runs, through the hold to buy (src/world/shop/purchase.ts): hold the interact key at
-// its door and two skeleton keys come off the crew's ring
-// (src/world/keys/keys.ts), the door creaks open in a puff of green
-// fog, and the prize pops up and flies to whoever pulled. Its prizes are
-// the fridge-only weapons (src/world/fridge/fridgeWeapons.ts), the Cooker and Brain
-// Freeze into a gun slot as a bought gun goes and the Clang Pan into the
-// melee slot in place of the knife, or a gag: a moldy Sandwich that heals a
-// heart, or a Dud that burps one key back. A weapon arrives fresh, at tier
-// 0, and levels on its own kills. After
-// three or four pulls it slams shut with a rumble for a while, and the rare
-// prize comes a little more often after each slam.
-//
-// The pull draws from the fridge's own stream (`fridgeRngState` in the
-// World's loot), so it never changes the drops or which zombies come.
-
 type FridgeRules = Readonly<{
   keys: number
   dudRefund: number
@@ -73,8 +56,6 @@ type FridgeRules = Readonly<{
   leavePx: number
 }>
 
-// NOTE: two keys a pull, and the Dud gives one back (docs/ESCAPE_PLAN.md,
-// "Key costs and drops"): starting points, not tuned on the balance bot yet.
 export const FRIDGE_RULES: FridgeRules = {
   keys: 2,
   dudRefund: 1,
@@ -91,11 +72,6 @@ export const FRIDGE_RULES: FridgeRules = {
   leavePx: 40,
 }
 
-// NOTE: out of 100 on a first pull. Brain Freeze, the rare one, is 8.5 in
-// 100, and each slam adds 3 more, up to 20; the gags are about one pull in
-// seven. The Dud went from 9 to 4 (owner, 2026-11-02), its 5 shared out to
-// the weapons by their weights (36, 36, 8). The weapon the puller already
-// carries is never pulled again: its share goes to the rest.
 export const PRIZE_WEIGHTS: Readonly<Record<FridgePrize, number>> = {
   Cooker: 38.25,
   Pan: 38.25,
@@ -112,8 +88,6 @@ export const PRIZE_ORDER: ReadonlyArray<FridgePrize> = [
   'Dud',
 ]
 
-// NOTE: the gag that burps a key back: the Dud, so it never feels like a
-// total loss. The Sandwich's heart is its own reward.
 export const refundOf = (prize: FridgePrize): number =>
   prize === 'Dud' ? FRIDGE_RULES.dudRefund : 0
 
@@ -150,8 +124,6 @@ export const prizeWeights: {
     }),
 )
 
-// NOTE: a Glass run (src/world/run/modifiers.ts) pulls no Sandwich: one heart is
-// one heart. Its share goes to the rest, as a carried weapon's does.
 const withoutHealing = (
   weights: ReadonlyArray<readonly [FridgePrize, number]>,
 ): ReadonlyArray<readonly [FridgePrize, number]> =>
@@ -160,9 +132,6 @@ const withoutHealing = (
     ([prize, weight]) => [prize, prize === 'Sandwich' ? 0 : weight] as const,
   )
 
-// NOTE: the kitchen tour's free pull shows off a weapon, never a gag: the
-// same draw from the fridge's own stream, against the weapons' weights alone,
-// so it never shifts the waves or the drops.
 const weaponsOnly = (
   weights: ReadonlyArray<readonly [FridgePrize, number]>,
 ): ReadonlyArray<readonly [FridgePrize, number]> =>
@@ -172,8 +141,6 @@ const weaponsOnly = (
       [prize, isFridgePrizeWeapon(prize) ? weight : 0] as const,
   )
 
-// NOTE: the odds the seat at `slot` would pull with right now, as each
-// prize's share of 1: what the fridge door's odds card shows.
 export const prizeOddsFor: {
   (
     slot: PlayerSlot,
@@ -208,7 +175,6 @@ const weightsFor = (
   return isKitchenTourOn(world) ? weaponsOnly(weights) : weights
 }
 
-// NOTE: a roll from 0 to 1 against the weights, in their order.
 export const pickPrize: {
   (
     roll: number,
@@ -249,8 +215,6 @@ export const pickPrize: {
   },
 )
 
-// WHERE
-
 const FRIDGE_SYMBOL = pipe(
   Record.toEntries(COVER_SYMBOLS),
   Array.findFirst(([, kind]) => kind === 'Fridge'),
@@ -260,7 +224,6 @@ const FRIDGE_SYMBOL = pipe(
 
 const fridgeBoxes = new WeakMap<Level, Option.Option<Box>>()
 
-// NOTE: the fridge's tiles on the map; a level keeps its box.
 export const fridgeBoxOf = (level: Level): Option.Option<Box> => {
   const cached = fridgeBoxes.get(level)
   if (cached !== undefined) {
@@ -273,8 +236,6 @@ export const fridgeBoxOf = (level: Level): Option.Option<Box> => {
   return box
 }
 
-// NOTE: for sale once the kitchen is open, in a break or mid-wave, while
-// the door is shut. Never for a Broke run: there are no pulls.
 const isFridgeForSale = (world: World): boolean =>
   !activeModifiersOf(world).broke &&
   Phase.isAnyOf(['Preparation', 'Wave'])(world.phase) &&
@@ -286,14 +247,10 @@ export const fridgeSpot = (box: Box) => ({
   y: box.top + FRIDGE_RULES.tagDropPx,
 })
 
-// NOTE: a weapon on offer is the puller's alone to take, for nothing: the
-// pull already paid for it.
 const isOfferedTo = (world: World, slot: PlayerSlot): boolean =>
   FridgeDoor.isAnyOf(['Offering'])(world.fridge.door) &&
   world.fridge.door.slot === slot
 
-// NOTE: the kitchen tour's pull is free (src/world/run/tutorialRules.ts);
-// every other costs FRIDGE_RULES.keys.
 export const fridgePriceFor = (world: World): number =>
   isKitchenTourOn(world) ? 0 : FRIDGE_RULES.keys
 
@@ -330,14 +287,6 @@ export const fridgeOffers: {
   }),
 )
 
-// THE PULL
-
-// NOTE: a fridge weapon arrives at tier 0 with no kills of its own, and
-// levels on its own kills like any gun (src/world/gear/gunLevels.ts). The
-// gun it replaces takes its kills and tier with it.
-// NOTE: the Cooker and Brain Freeze go in a gun slot, as a bought gun
-// does. The Pan goes in the melee slot in place of the knife and both guns
-// stay; a reload of the last gun carries on, as it does with the knife out.
 export const giveWeapon: {
   (kind: WeaponKind): (player: Player) => Player
   (player: Player, kind: WeaponKind): Player
@@ -353,8 +302,6 @@ export const giveWeapon: {
       }),
 )
 
-// NOTE: a gag resolves at once: the Sandwich heals a heart, and the Dud
-// burps a key back onto the ring. A weapon waits on offer in the door.
 const givePrize = (world: World, slot: PlayerSlot, prize: FridgePrize): World =>
   Option.match(weaponOf(prize), {
     onSome: () => world,
@@ -384,8 +331,6 @@ const givePrize = (world: World, slot: PlayerSlot, prize: FridgePrize): World =>
     },
   })
 
-// NOTE: the pull: the keys come off the ring, the prize drawn from the fridge's own
-// stream and given to the seat that held, and the door swings open.
 export const pullFridge: {
   (slot: PlayerSlot, price: number): (world: World) => Option.Option<World>
   (world: World, slot: PlayerSlot, price: number): Option.Option<World>
@@ -423,8 +368,6 @@ export const pullFridge: {
   },
 )
 
-// NOTE: after a pull the door shuts, unless that was the batch's last: the
-// third pull slams it half the time and the fourth always does.
 const shut = (world: World): World => {
   const { pulls } = world.fridge
   const draw = nextRandom(world.loot.fridgeRngState)
@@ -473,8 +416,6 @@ const spotOf = (world: World) =>
     onSome: fridgeSpot,
   })
 
-// NOTE: take it: the puller holds at the door and the weapon is theirs: a
-// gun slot for the Cooker or Brain Freeze, the melee slot for the Pan.
 export const takePrize: {
   (slot: PlayerSlot): (world: World) => Option.Option<World>
   (world: World, slot: PlayerSlot): Option.Option<World>
@@ -498,8 +439,6 @@ export const takePrize: {
     : Option.none(),
 )
 
-// NOTE: leave it: the puller walked off or the time ran out, and the
-// weapon sinks back into the fridge. The pull stays paid.
 const leavePrize = (world: World): World => {
   const spot = spotOf(world)
   return shut(
@@ -538,7 +477,6 @@ const afterReveal = (world: World, prize: FridgePrize, slot: number): World =>
       })
     : shut(world)
 
-// NOTE: one tick of the fridge's door, while the round runs.
 export const advanceFridge: {
   (deltaMs: number): (world: World) => World
   (world: World, deltaMs: number): World

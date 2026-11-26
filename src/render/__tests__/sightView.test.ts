@@ -35,12 +35,8 @@ const fighting: Model = modifyFocus(
 
 const unfitted: Model = modifyFocus(fighting, { laserSight: () => 'None' })
 
-// NOTE: the right thumb aims exactly along its deflection, so a stick pushed
-// straight right or straight up gives a sight to test against.
 const THUMB = 70
 
-// NOTE: the thumb pushes the aim stick this far along a floor direction,
-// as the screen shows it through the lens, so the sight runs along it.
 const thumbAim = (dx: number, dy: number) => {
   const onScreen = floorToScreenDirection({ x: dx, y: dy })
   const stretch = Math.hypot(dx, dy) / Math.hypot(onScreen.x, onScreen.y)

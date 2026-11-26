@@ -4,11 +4,6 @@ import type { SurfaceRectangle } from '../input/inputSchema'
 import { PLAYER_MAX_HP } from '../shared/constants'
 import { type Box, type Screen, stagePlacement, thumbAreaTop } from './screen'
 
-// Where the HUD's parts sit on each screen: the hearts, the streak, the gun
-// and trap slots, and the strip behind the top rows. The HUD draws there
-// (src/screens/game/hud.ts), the touch controls lay their buttons over the
-// slots, and a fridge prize flies to its gun slot.
-
 export const HEART_SPACING = 9
 export const HUD_MARGIN = 5
 
@@ -19,12 +14,6 @@ export const SLOT_HEIGHT = 12
 export const SLOT_GAP = 3
 export const TRAP_SLOT_WIDTH = 24
 
-// NOTE: the row's slots by layout. In landscape they are one line: a gun's
-// icon, pips, and ammo side by side. In portrait a phone held upright has
-// room for the four in one row (two guns, the melee slot, the reload
-// button) only if the slots stack: a gun's icon and pips over its ammo, and
-// the melee slot and the reload button square, the row's height. Every
-// target stays at least 48 px wide on a 360 px phone (24 HUD pixels).
 type SlotSizes = Readonly<{
   gunWidth: number
   meleeWidth: number
@@ -48,8 +37,6 @@ const gunPairWidth = ({ gunWidth }: SlotSizes): number =>
 export const gunPairWidthOf = (screen: Screen): number =>
   gunPairWidth(SLOT_SIZES[screen.layout])
 
-// NOTE: the reload button's face past the melee slot (src/screens/game/touchControls.ts):
-// one more slot in landscape, a square the row's height in portrait.
 export const reloadFaceOf = (
   screen: Screen,
 ): Readonly<{ width: number; height: number }> =>
@@ -57,9 +44,6 @@ export const reloadFaceOf = (
     ? { width: 18, height: SLOT_HEIGHT }
     : { width: SLOT_SIZES.Portrait.height, height: SLOT_SIZES.Portrait.height }
 
-// NOTE: the crew's key count sits under the hearts at twice the font's
-// size, so the currency of the escape reads at a glance. Beside the hearts
-// it would push the boosts' chips into the boss's name under the wave.
 const KEYS_LEFT = HUD_MARGIN
 const KEYS_TOP = HUD_MARGIN + 10
 const BOOST_CHIPS_LEFT = HUD_MARGIN + PLAYER_MAX_HP * HEART_SPACING + 2
@@ -85,15 +69,6 @@ export type HudLayout = Readonly<{
   pocket: PocketSpots
 }>
 
-// NOTE: the dare pocket (src/features/dare/dareCard.ts), laid out from its
-// right edge. Shut, a chip of the card and how many are found: in landscape
-// in the top strip left of the pause button, in portrait at the bottom
-// right of the HUD band. Open in a break, the whole list: in landscape it
-// drops from the chip's place over the room's top right, in portrait it
-// hangs just under the band, clear of the band's rows and the guided first
-// break's tracker in it.
-// `isBesideBossBar` is true where the shut chip shares the boss bar's row
-// (portrait), so the bar centers on what the chip leaves of it.
 type PocketSpots = Readonly<{
   shutRight: number
   shutTop: number
@@ -106,10 +81,6 @@ export const POCKET_CHIP_HEIGHT = 15
 const POCKET_PORTRAIT_LIFT = 2
 const POCKET_PORTRAIT_DROP = 2
 
-// NOTE: the two guns sit centered at the bottom, with the melee slot on
-// their right (and on touch the reload button past it, src/screens/game/touchControls.ts).
-// In portrait they sit at the bottom of the thumb area, stacked (SLOT_SIZES),
-// and the HUD is a band on top.
 export const hudLayoutFor = (screen: Screen): HudLayout => {
   const slots = SLOT_SIZES[screen.layout]
   const slotTop = screen.height - HUD_MARGIN - slots.height
@@ -165,8 +136,6 @@ export const hudLayoutFor = (screen: Screen): HudLayout => {
   }
 }
 
-// NOTE: slots 0 and 1 are the guns, slot 2 the melee slot, narrower: it
-// has only its icon and ∞, or the Pan's icon and dent meter.
 export const MELEE_SLOT_INDEX = 2
 
 export const slotLeftOf: {
@@ -210,11 +179,6 @@ export const gunClusterBox = (screen: Screen): Box => {
 
 export const HUD_STRIP_HEIGHT = 20
 
-// NOTE: where the window shows the world clear of the HUD, in screen
-// pixels, `gap` in from each edge: the top HUD rows cover a landscape
-// window's top, and the gun slots and their key caps its bottom. A marker
-// pinned to the edge for something out of sight keeps inside it (the front
-// door in the finale, the guided first break's next spot).
 const TOP_HUD_CLEARANCE = 22
 const KEY_CAP_CLEARANCE = 4
 
@@ -246,11 +210,6 @@ export const clearWindowOf: {
   }
 })
 
-// NOTE: the touch START WAVE pill's box on the screen, in screen pixels,
-// for the canvas art that must keep clear of it (Rattles' bubble). The pill
-// is sized in CSS pixels (at least 132 wide, and with its border, shadow,
-// and the gap over the gun row about 80 tall), so its screen size depends on the
-// stage's scale: this is a little wider and taller than the pill.
 const START_WAVE_PILL_HALF_CSS = 84
 const START_WAVE_PILL_RISE_CSS = 86
 
@@ -269,12 +228,6 @@ export const startWavePillBox: {
   }
 })
 
-// NOTE: the corner button over a run (PAUSE, or co-op's LEAVE in its
-// place), an HTML button the canvas cannot draw over, in screen pixels.
-// It is 48 CSS pixels square, 6 in from the game surface's top right
-// (`.corner-buttons` in src/app/styles.css, `.coop-arena-hud` in
-// src/features/coop/coop.css), so where it lands on the screen depends on
-// how the stage sits in the surface.
 const CORNER_INSET_CSS = 6
 const CORNER_BUTTON_CSS = 48
 

@@ -9,8 +9,6 @@ import { breakSpawns, home, pastTimedBreaks } from '../../../test/model.fixture'
 import { modelAfter, tick } from '../../../test/testing'
 import { DIFFICULTIES } from '../difficulty'
 
-// NOTE: wave 4 cleared on `difficulty`, so the next frame rolls wave 5's
-// break from the same seed on every level.
 const clearingOn = (difficulty: Difficulty): Model =>
   UiStruct.evolve(pastTimedBreaks(home), {
     difficulty: setting =>

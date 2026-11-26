@@ -1,7 +1,3 @@
-// The environment knobs that tune the balance bot (AIM=sharp, KITE=1,
-// FLEE_PX=40, ...), read once through Config when the bot loads. The bot's
-// modules read them as plain values, since its every frame is plain code.
-
 import { Config, Console, Effect, Function, Option } from 'effect'
 
 const knob = (name: string) => Config.String(name).pipe(Config.option)
@@ -51,14 +47,11 @@ const KNOBS = Effect.runSync(
 
 type Knob = keyof typeof KNOBS
 
-// NOTE: the knob's text, or undefined when it is not set.
 export const knobText = (name: Knob): string | undefined =>
   Option.getOrUndefined(KNOBS[name])
 
-// NOTE: whether the knob is set at all, as NO_DODGE=1 is.
 export const isKnobSet = (name: Knob): boolean => Option.isSome(KNOBS[name])
 
-// NOTE: the knob read as a number, or `fallback` when it is not set.
 export const knobNumber: {
   (fallback: number): (name: Knob) => number
   (name: Knob, fallback: number): number
@@ -66,7 +59,5 @@ export const knobNumber: {
   Number(knobText(name) ?? fallback),
 )
 
-// NOTE: one line of a debug trace (DEBUG=1, BOSS_TRACE=1) from the bot's
-// frame, which is plain code.
 export const traceLine = (...parts: ReadonlyArray<unknown>): void =>
   Effect.runSync(Console.log(...parts))

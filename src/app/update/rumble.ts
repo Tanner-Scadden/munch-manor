@@ -9,11 +9,6 @@ import type { GameEvent } from '../../world/schema/worldSchema'
 import type { Model } from '../model'
 import type { UpdateStep } from './step'
 
-// COMMAND
-
-// NOTE: shakes the controller at `index`. A pad with no rumble motor, or a
-// browser with no `vibrationActuator`, plays nothing, and a failure is
-// ignored: the rumble is a nicety, never in the way.
 const playRumble = ({
   index,
   strong,
@@ -55,16 +50,11 @@ export const Rumble = Command.make(
   args => pipe(playRumble(args), Effect.ignore, Effect.as(Component.noop)),
 )
 
-// CUES
-
-// NOTE: the pad that rumbles: the one in hand, while it is the device in
-// use and the rumble is on.
 const rumblingPad = (model: Model): Option.Option<number> =>
   model.settings.rumbleSetting === 'On' && model.lastDevice === 'Gamepad'
     ? Option.map(model.input.maybeGamepad, pad => pad.index)
     : Option.none()
 
-// NOTE: a frame's rumble, felt by the player in focus.
 export const rumbleFor =
   (events: ReadonlyArray<GameEvent>): UpdateStep =>
   $ =>

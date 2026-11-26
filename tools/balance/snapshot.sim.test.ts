@@ -14,10 +14,6 @@ import {
 } from './bot/snapshots'
 import { summarizeWave } from './summary'
 
-// NOTE: the smoke pass plays wave 2 from two snapshot slots, three runs, so
-// it stays a few seconds, in the sim tier (`bun run test:full` and CI). It
-// catches gross regressions only: a wave 2 the bot can no longer clear, a
-// snapshot that is not deterministic, or a wave that never ends. The real pass is `bun run balance -- --wave 2 --runs 100`.
 const SMOKE_WAVE = 2
 
 const toJson = encodeJson(Schema.Unknown)

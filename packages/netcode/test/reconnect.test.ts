@@ -5,8 +5,6 @@ import { describe, expect, it } from '@effect/vitest'
 
 import { type Ended, backoffUpTo, reconnecting } from '../src/Reconnect'
 
-// NOTE: a connection that ends as scripted, recording each attempt number
-// and the clock when it started, on it.effect's TestClock.
 const play = (script: ReadonlyArray<Ended>) =>
   Effect.gen(function* () {
     const tries = yield* Ref.make<ReadonlyArray<readonly [number, number]>>([])

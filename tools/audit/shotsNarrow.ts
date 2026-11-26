@@ -1,16 +1,8 @@
-// The narrow phone pass: the menus on a 360x780 phone held upright and a
-// 780x360 phone on its side, as `narrow-<TAG>-<viewport>-<scene>.png` in
-// NARROW_SHOTS (default /tmp/narrow-shots). The shop with each tab, home,
-// the PLAY lobby with the modifier row, the co-op lobby, the Profile's
-// tabs, the Munchopedia with the Shop guide, and the end card. It exits with
-// 1 when something in the open menu runs past the screen's edge, a box
-// scrolls sideways, or (on the Look tab) a button is under 44 px.
-//   TAG=after bun run heavy -- --shared bun tools/audit/shotsNarrow.ts
-// ONLY picks scenes, and VIEWPORTS picks screens.
 import { Config, Console, Effect } from 'effect'
 import type { Page } from 'playwright-core'
 
 import { runHarnessAudit } from './harnessServer'
+import { inspectNarrow } from './inPage/shotsNarrow'
 import {
   type Act,
   auditTag,
@@ -47,7 +39,6 @@ type Scene = Readonly<{
   isLook?: boolean
 }>
 
-// NOTE: a tap, not a click, so the game stays on its touch layout.
 const tapTab =
   (name: RegExp): Act =>
   page =>
@@ -146,70 +137,7 @@ type Report = Readonly<{
 }>
 
 const inspect = (page: Page, minTap: number) =>
-  attempt((): Promise<Report> =>
-    page.evaluate((min: number) => {
-      // NOTE: this runs in the page, where Effect's modules are not loaded,
-      // so it reads the elements with plain loops and the page's own String.
-      const root =
-        document.querySelector('dialog[open]') ??
-        document.querySelector('.coop') ??
-        document.body
-      const label = (el: Element) => {
-        const classes = globalThis.String(el.className)
-        const name = el.getAttribute('aria-label') ?? el.textContent
-        // NOTE: runs in the page, where Effect's String is not loaded.
-        // @effect-diagnostics-next-line preferEffectString:off
-        return `${el.tagName.toLowerCase()}.${classes.replaceAll(' ', '.')}:${name.trim().slice(0, 24)}`
-      }
-      const MAX_LISTED = 8
-      const past: Array<string> = []
-      const sideways: Array<string> = []
-      // NOTE: the screen-reader text, the canvases, and the world behind a
-      // menu are not the menu.
-      for (const el of [root, ...root.querySelectorAll('*')]) {
-        const box = el.getBoundingClientRect()
-        if (
-          box.width <= 0 ||
-          box.height <= 0 ||
-          el.closest('.sr-only, canvas, .world-window, .world-view') !== null
-        ) {
-          continue
-        }
-        if (
-          past.length < MAX_LISTED &&
-          (box.right > innerWidth + 1 || box.left < -1)
-        ) {
-          past.push(label(el))
-        }
-        if (
-          sideways.length < MAX_LISTED &&
-          el.scrollWidth > el.clientWidth + 1 &&
-          el.clientWidth > 0 &&
-          getComputedStyle(el).display !== 'inline'
-        ) {
-          sideways.push(label(el))
-        }
-      }
-      const small: Array<string> = []
-      if (min !== 0) {
-        for (const el of root.querySelectorAll('button')) {
-          const height = el.getBoundingClientRect().height
-          if (height > 0 && height < min) {
-            small.push(label(el))
-          }
-        }
-      }
-      const scroller = document.scrollingElement ?? document.documentElement
-      return {
-        past,
-        sideways,
-        small,
-        pageScrolls:
-          scroller.scrollHeight > innerHeight + 1 ||
-          scroller.scrollWidth > innerWidth + 1,
-      }
-    }, minTap),
-  )
+  attempt((): Promise<Report> => page.evaluate(inspectNarrow, minTap))
 
 runHarnessAudit(
   Effect.gen(function* () {

@@ -36,11 +36,6 @@ import {
   isChandelierDown,
 } from '../chandelier'
 
-// The dining room's chandelier (src/world/dining/chandelier.ts): a shot
-// through it in a wave drops it into the gap in the party table, crushing
-// the zombies under it and blocking the gap until the next break, when it
-// is hung again. It never hurts a player.
-
 const FRAME_MS = FIXED_STEP_MS
 
 const GAP = Option.getOrThrow(gapBoxOf(MANOR))
@@ -51,8 +46,6 @@ const GAP_MIDDLE = {
 const GAP_COLUMN = Math.floor(GAP.left / 10)
 const GAP_ROW = Math.floor(GAP.top / 10)
 
-// NOTE: a shot flying north up the gap from the start spot's side of the
-// table, toward the chandelier hung over it.
 const shotUpTheGap: Bullet = UiStruct.evolve(
   bulletInto(500, zombieAt(0, GAP_MIDDLE.x, GAP.bottom + 6)),
   {
@@ -61,12 +54,10 @@ const shotUpTheGap: Bullet = UiStruct.evolve(
   },
 )
 
-// NOTE: a shot already at the chain, so nothing in the gap stops it first.
 const shotAtTheChain: Bullet = UiStruct.evolve(shotUpTheGap, {
   y: () => GAP.top - 2,
 })
 
-// NOTE: the player stands west of the table, out of the shot's way.
 const wave = (model: Model): Model => withPlayerAt(model, 40, 130)
 
 const zombieIn = (model: Model, id: number): Option.Option<number> =>

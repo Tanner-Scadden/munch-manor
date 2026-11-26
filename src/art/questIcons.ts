@@ -1,15 +1,9 @@
 import { pixelIconUrl } from './icons'
 import type { Palette } from './sprite'
 
-// The guided first break's pixel icons, apart from the rest so each file
-// stays one job.
-
 const LIGHT = '#f4f1de'
 const SHADE = '#140c10'
 
-// NOTE: the guided first break's tracker (src/features/onboarding/questView.ts):
-// a skeleton key, a padlock, a display case with a gun behind its glass,
-// and the dare card with its row of things.
 const QUEST_PALETTE: Palette = {
   o: SHADE,
   r: '#ff4a4f',
@@ -87,7 +81,6 @@ export const QUEST_CARD_ICON = pixelIconUrl(
   QUEST_PALETTE,
 )
 
-// NOTE: START WAVE, the tour's last step: the gold button with a go mark.
 export const QUEST_START_ICON = pixelIconUrl(
   [
     '.ooooooooo.',
@@ -103,8 +96,6 @@ export const QUEST_START_ICON = pixelIconUrl(
   QUEST_PALETTE,
 )
 
-// NOTE: the big gold arrow that bobs over START WAVE on the tour's last
-// step, the same arrow as the tours' edge arrow, pointing down.
 export const QUEST_START_ARROW_ICON = pixelIconUrl(
   [
     '..ooooo..',

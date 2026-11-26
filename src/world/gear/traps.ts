@@ -85,8 +85,6 @@ import {
 } from '../zombies/zombies'
 import { WEAPONS } from './weapons'
 
-// TABLE
-
 type TrapStats = Readonly<{
   name: string
   blurb: string
@@ -126,8 +124,6 @@ export const TRAPS: Readonly<Record<TrapKind, TrapStats>> = {
   },
 }
 
-// NOTE: how far a slow zombie in the room will walk to chew a standing
-// Plank Pile, measured along its path. See maybeBaitDoor in simulation.ts.
 export const BAIT_RULES = {
   pullPx: 60,
 }
@@ -138,8 +134,6 @@ export const TRAP_KIND_ORDER: Array.NonEmptyReadonlyArray<TrapKind> = [
 ]
 
 export const TURRET_WEAPON: WeaponKind = 'Peashooter'
-
-// GEOMETRY
 
 export const trapBox: {
   (trap: Trap): (level: Level) => Box
@@ -203,11 +197,8 @@ export const trapBlockers: {
     Array.map(traps, trap => trapBox(level, trap)),
 )
 
-// HEALTH
-
 export type TrapStage = 'Sturdy' | 'Cracked' | 'Splintered'
 
-// NOTE: how worn a trap looks, by the share of its own health left.
 const stageAt = (hp: number, maxHp: number): TrapStage => {
   const share = hp / maxHp
   if (share > 2 / 3) {
@@ -290,8 +281,6 @@ export const clearBrokenTraps = (model: World): World => {
   })
 }
 
-// CHEWING
-
 const isTouchingBox =
   (box: Box) =>
   (zombie: Zombie): boolean =>
@@ -362,8 +351,6 @@ const chewTraps = (model: World, seconds: number): World => {
     ],
   })
 }
-
-// TURRETS
 
 type Sighting = Readonly<{ zombie: Zombie; distance: number }>
 
@@ -538,8 +525,6 @@ export const advanceTraps: {
   ),
 )
 
-// STOCK
-
 export const placedCount: {
   (kind: TrapKind): (traps: ReadonlyArray<Trap>) => number
   (traps: ReadonlyArray<Trap>, kind: TrapKind): number
@@ -549,16 +534,25 @@ export const placedCount: {
     Array.filter(traps, trap => trap._tag === kind).length,
 )
 
-// NOTE: in co-op each player counts only the traps they placed, against a
-// limit of their own (decided row 21). Single player counts every trap.
-const ownTraps = (model: World, slot: PlayerSlot): ReadonlyArray<Trap> =>
-  isCoop(model)
-    ? Array.filter(model.traps, ({ id }) =>
-        // NOTE: at most 8 traps by a seat's 2 trap ids.
-        // oxlint-disable-next-line munch/no-nested-scan
-        Array.contains(seatStateAt(model, slot).seat.trapIds, id),
-      )
-    : model.traps
+const trapIdSets = new WeakMap<ReadonlyArray<number>, ReadonlySet<number>>()
+
+const trapIdSetOf = (trapIds: ReadonlyArray<number>): ReadonlySet<number> => {
+  const cached = trapIdSets.get(trapIds)
+  if (cached !== undefined) {
+    return cached
+  }
+  const ids: ReadonlySet<number> = new Set(trapIds)
+  trapIdSets.set(trapIds, ids)
+  return ids
+}
+
+const ownTraps = (model: World, slot: PlayerSlot): ReadonlyArray<Trap> => {
+  if (!isCoop(model)) {
+    return model.traps
+  }
+  const ids = trapIdSetOf(seatStateAt(model, slot).seat.trapIds)
+  return Array.filter(model.traps, ({ id }) => ids.has(id))
+}
 
 export const trapLimitOf: {
   (kind: TrapKind): (model: World) => number
@@ -641,8 +635,6 @@ export const stockTrap: {
   }),
 )
 
-// PLACEMENT
-
 export const TrapSpot = UiSchema.TaggedEnum({
   Doorway: { door: DoorId },
   Floor: { column: Schema.Finite, row: Schema.Finite },
@@ -718,17 +710,25 @@ const maybeDoorInReach = (
     Array.head,
   )
 
-// At most half the room's open doors take planks, so a full co-op crew
-// cannot board up the whole room: 2 of the parlour's 4, 3 of 6 with the
-// kitchen open. Solo's own cap of two never reaches it.
+const levelDoorSets = new WeakMap<Level, ReadonlySet<DoorId>>()
+
+const levelDoorsOf = (level: Level): ReadonlySet<DoorId> => {
+  const cached = levelDoorSets.get(level)
+  if (cached !== undefined) {
+    return cached
+  }
+  const doors: ReadonlySet<DoorId> = new Set(level.doorIds)
+  levelDoorSets.set(level, doors)
+  return doors
+}
+
 const isHalfBoarded = (model: World): boolean => {
-  const { doorIds } = levelOf(model)
+  const level = levelOf(model)
+  const levelDoors = levelDoorsOf(level)
   const boarded = Array.filter(barricadedDoors(model.traps), door =>
-    // NOTE: at most 13 doors by at most 8 traps.
-    // oxlint-disable-next-line munch/no-nested-scan
-    Array.contains(doorIds, door),
+    levelDoors.has(door),
   )
-  return boarded.length >= Math.floor(doorIds.length / 2)
+  return boarded.length >= Math.floor(level.doorIds.length / 2)
 }
 
 const barricadePlacement = (
@@ -784,7 +784,6 @@ const floorVerdict = (
     Array.contains(trapTileIndices(level, trap), index),
   )
   return firstReason([
-    // NOTE: the yard is walkable for zombies, never floor for a trap.
     [
       !isWalkableTile(level, column, row) ||
         hasTileFlag(level, index, TILE_OUTSIDE),
@@ -903,8 +902,6 @@ export const maybePlacement: {
     }),
 )
 
-// NOTE: a trap's health as its placer sets it down: the Handyman's are
-// sturdier.
 const placedHp = (kind: TrapKind, player: Player): number =>
   TRAPS[kind].hp * trapHealthScaleOf(player)
 
@@ -957,8 +954,6 @@ const stepOutOfDoorway = (
 
 export type PlacedInWorld = Readonly<{ world: World; trap: Trap }>
 
-// NOTE: places the selected trap for the player in the World's per-player
-// fields, who owns it in co-op.
 export const placeTrapIn: {
   (slot: PlayerSlot): (model: World) => Result.Result<PlacedInWorld, string>
   (model: World, slot: PlayerSlot): Result.Result<PlacedInWorld, string>
@@ -1010,8 +1005,6 @@ export const placeTrapIn: {
     }),
 )
 
-// MENDING
-
 const missingShare = (trap: Trap): number =>
   Math.max(0, 1 - trap.hp / trap.maxHp)
 
@@ -1019,14 +1012,6 @@ export const isDamaged = (trap: Trap): boolean => missingShare(trap) > 0
 
 export const healthShare = (trap: Trap): number => 1 - missingShare(trap)
 
-// Mending (docs/ESCAPE_PLAN.md, layer 6): a player who stands still beside
-// a damaged trap mends it for free, from broken to whole in `fullMs` in a
-// break, so a lightly chewed trap mends in a moment. Since 2026-11-10 it
-// mends in a wave too, at `waveScale` of the speed (3 s from broken to
-// whole), so the break stays the safe time to mend. The Handyman mends
-// twice as fast. Standing is the hold to buy's standing (no move, no
-// trigger), so mending never needs a key. A player mends the nearest
-// damaged trap in reach, and two players at one trap mend it together.
 type MendRules = Readonly<{
   fullMs: number
   reachPx: number
@@ -1039,7 +1024,6 @@ export const MEND_RULES: MendRules = {
   waveScale: 0.5,
 }
 
-// NOTE: the share of a break's mending speed the phase mends at.
 const mendPhaseScaleOf = (phase: Phase): number =>
   Phase.isAnyOf(['Wave'])(phase) ? MEND_RULES.waveScale : 1
 
@@ -1056,7 +1040,6 @@ const isStandingStill = (world: World, slot: PlayerSlot): boolean => {
   )
 }
 
-// NOTE: the damaged trap the player at `slot` is mending this tick, if any.
 export const maybeMendingTrap: {
   (slot: PlayerSlot): (world: World) => Option.Option<Trap>
   (world: World, slot: PlayerSlot): Option.Option<Trap>
@@ -1113,7 +1096,6 @@ const mendFor =
       },
     })
 
-// NOTE: one tick of mending, every seat in slot order.
 export const advanceMending: {
   (deltaMs: number): (world: World) => World
   (world: World, deltaMs: number): World

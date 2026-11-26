@@ -7,13 +7,6 @@ import { type TraceEvent, collectTrace } from './measure'
 import { attempt, evaluateAs, failWith } from './page'
 import { SCENARIOS } from './scenarios'
 
-// NOTE: the frames that cost the most in a scenario, and what ran in them.
-// The averages in profile.ts hide a spike (a blast, a chandelier's fall) in
-// the frames around it, so this traces the main thread and samples the CPU
-// at once, takes the longest animation frames, and sums the samples that
-// fall inside them, by function, self and inclusive. `Q` is a harness query
-// of its own (with `aim=x,y` the harness holds the trigger, so no bot reads
-// the page between frames); otherwise `SCENARIO` names one in scenarios.ts.
 runHarnessAudit(
   Effect.gen(function* () {
     const RATE = yield* Config.String('RATE').pipe(
@@ -85,8 +78,6 @@ runHarnessAudit(
     )
     yield* wait(MS)
     const { profile } = yield* attempt(() => cdp.send('Profiler.stop'))
-    // NOTE: `DUMP=path` saves the raw CPU profile, as profile.ts does, for a
-    // closer read (or Chrome's Performance panel).
     const dump = yield* Config.String('DUMP').pipe(Config.withDefault(''))
     if (dump !== '') {
       const text = encodeJson(Schema.Unknown)(profile)
@@ -99,8 +90,6 @@ runHarnessAudit(
     )
     yield* attempt(() => cdp.send('Tracing.end'))
     const traceEvents = yield* trace.done
-
-    // THE FRAMES
 
     type TimedEvent = TraceEvent & Readonly<{ dur: number }>
     const isTimed = (e: TraceEvent): e is TimedEvent =>
@@ -134,10 +123,6 @@ runHarnessAudit(
     yield* Console.log(
       `${scenarioQuery.value} at ${RATE}x over ${MS}ms: ${frames.length} frames, p50 ${msOf(durationAt(0.5))}ms, p95 ${msOf(durationAt(0.95))}ms, p99 ${msOf(durationAt(0.99))}ms, max ${msOf(byLength[0]?.dur ?? 0)}ms`,
     )
-    // NOTE: a display frame can hold two callbacks (the tick, then the render
-    // armed ahead), and a busy frame runs them back to back, so the gaps are
-    // read off the page's own frame clock: every callback in one frame is
-    // handed the same timestamp.
     const stamps = yield* evaluateAs(
       page,
       Schema.Array(Schema.Finite),
@@ -170,7 +155,6 @@ runHarnessAudit(
         ', ',
       )}`,
     )
-    // THE SAMPLES IN THE LONGEST FRAMES
 
     const nodes = new Map(Array.map(profile.nodes, n => [n.id, n]))
     const parent = new Map<number, number>()
@@ -199,28 +183,17 @@ runHarnessAudit(
       now += delta
       times.push(now)
     }
-    // NOTE: `TOP=0` sums every frame of the window, for the steady cost
-    // rather than the spikes.
     const worst = TOP === 0 ? byLength : Array.take(byLength, TOP)
     const ROWS = yield* Config.String('ROWS').pipe(
       Config.withDefault('45'),
       Config.map(Number),
     )
-    // NOTE: `UNDER=draw,view` splits the time of the outermost call whose label
-    // starts with it into the calls straight under it, inclusive, so a deep
-    // stack reads one level at a time.
     const unders = yield* Config.String('UNDER').pipe(
       Config.withDefault(''),
       Config.map(text =>
         Array.filter(String.split(',')(text), name => name !== ''),
       ),
     )
-    // NOTE: `ABOVE=transformFields` splits the own time of every call whose
-    // label starts with it (the time in its own code, not its callees') by
-    // the calls above it, so a helper many
-    // callers share says who spends it.
-    // NOTE: a helper's callers are often a wrapper (a dual's arrow), so each
-    // caller is named with the calls above it, this many in all.
     const ABOVE_DEPTH = 3
     const aboves = yield* Config.String('ABOVE').pipe(
       Config.withDefault(''),
@@ -228,8 +201,6 @@ runHarnessAudit(
         Array.filter(String.split(',')(text), name => name !== ''),
       ),
     )
-    // NOTE: `PER=1` prints each of the longest frames on its own; otherwise
-    // their samples are summed, which shows what a long frame is made of.
     const isPer = yield* Config.String('PER').pipe(
       Config.withDefault(''),
       Config.map(per => per === '1'),
@@ -258,7 +229,6 @@ runHarnessAudit(
           aboves,
           () => undefined,
         )
-        // NOTE: how many more calls above join each caller's chain.
         const callersLeft: Array<number> = Array.map(aboves, () => 0)
         let child = label
         const belowLabels: Array<string | undefined> = Array.map(

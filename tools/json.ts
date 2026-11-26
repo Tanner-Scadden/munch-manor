@@ -1,14 +1,6 @@
 import { Effect, FileSystem, Function, Result, Schema } from 'effect'
 import type { PlatformError } from 'effect/PlatformError'
 
-// NOTE: the tools read and write JSON through a Schema, as the game does
-// (AGENTS.md "Code shape"): a report, a fixture, or a reply that changed
-// shape fails at the read with the Schema's message, not later as
-// `undefined`. Declare a Schema for the fields the tool reads: a Struct
-// ignores the rest.
-
-// NOTE: JSON text decoded with `schema`. A bad text throws the Schema's
-// message, for the scripts and configs that read JSON outside Effect.
 export const decodeJson =
   <S extends Schema.ConstraintDecoder<unknown>>(
     schema: S,
@@ -30,8 +22,6 @@ const encodeJsonWith = <S extends Schema.ConstraintEncoder<unknown>>(
     Result.getOrThrowWith(encode(value), error => new Error(error.message))
 }
 
-// NOTE: a value as JSON text through `schema`, indented by `space` when set:
-// `encodeJson(schema)`, `encodeJson(schema, 2)`, or `pipe(schema, encodeJson(2))`.
 export const encodeJson: {
   (
     space?: number,
@@ -47,8 +37,6 @@ export const encodeJson: {
   encodeJsonWith,
 )
 
-// NOTE: a JSON file decoded with `schema`.
-/** @stability unstable */
 export const readJsonFile: {
   <S extends Schema.ConstraintDecoder<unknown>>(
     path: string,
@@ -84,8 +72,6 @@ export const readJsonFile: {
     }),
 )
 
-// NOTE: writes `value` through `schema` as indented JSON with a final newline.
-/** @stability unstable */
 export const writeJsonFile: {
   <S extends Schema.ConstraintEncoder<unknown>>(
     path: string,

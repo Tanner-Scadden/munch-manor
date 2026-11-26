@@ -31,13 +31,6 @@ import {
   wave,
 } from './rank.fixture'
 
-// Rank and Bones (src/world/heroes/rank.ts, src/features/end/rankRun.ts): a run pays its points and
-// Bones into the saved rank when it ends or is left, and sets what the end
-// card's strip shows. The numbers are the design's: a Normal run that dies
-// on wave 7 pays 60 points and 6 Bones; a Normal escape on wave 10 with its
-// three things and Uncle Chunk felled 315 and 31.
-
-// NOTE: the end card's beat is over, so its buttons work.
 const afterBeat = (model: Model): Model =>
   UiStruct.evolve(model, { screenMs: () => 60_000 })
 
@@ -215,7 +208,6 @@ describe('an escape', () => {
       Effect.gen(function* () {
         const won = yield* ended(lastWave)
         expect(won.phase._tag).toBe('Escaped')
-        // NOTE: the first escape on Normal adds its 50 Bones.
         expect(won.rank).toMatchObject({ earnedPoints: 315, earnedBones: 81 })
         expect(won.runGains.maybeRankGain).toEqual(
           Option.some({
@@ -275,8 +267,6 @@ describe('leaving a run', () => {
   )
 
   it.effect('the practice gate pays nothing', () =>
-    // NOTE: a guided run cannot have cleared waves, so the stats are forced
-    // to show that the gate itself pays nothing.
     Effect.gen(function* () {
       const s = yield* storyOf(
         UiStruct.evolve(initialModel, {

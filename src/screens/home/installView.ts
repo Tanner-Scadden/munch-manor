@@ -17,16 +17,11 @@ import { closeButtonView } from '../../ui/cornerButtons'
 import type { DialogParts } from '../../ui/dialog'
 import { isInstallTileShown } from './home'
 
-// TILE
-
 const tileLabel = (model: Model): string =>
   model.release.installOffer === 'Ready'
     ? 'Install Munch Manor'
     : 'Add to Home Screen: show me how'
 
-// NOTE: a phone with an arrow dropping onto it, beside the gear. It pulses
-// until its first tap. Chrome shows its own install prompt; an iPhone gets
-// the picture guide.
 export const installTileView: {
   (h: ApplicationViewBuilder): (model: Model) => ApplicationHtml | null
   (model: Model, h: ApplicationViewBuilder): ApplicationHtml | null
@@ -54,8 +49,6 @@ export const installTileView: {
       : null,
 )
 
-// GUIDE
-
 type Step = Readonly<{ icon: string; word: string }>
 
 const STEPS: ReadonlyArray<Step> = [
@@ -64,8 +57,6 @@ const STEPS: ReadonlyArray<Step> = [
   { icon: HOME_SCREEN_APP_ICON, word: 'Play!' },
 ]
 
-// NOTE: on newer iPhones Share hides behind the ••• by the address bar, so
-// the first step wears a little ••• bubble.
 const stepView = (
   { icon, word }: Step,
   index: number,
@@ -119,8 +110,6 @@ const guidePanelView = (
   ),
 ]
 
-// NOTE: the iPhone picture guide's insides, for the root's Dialog
-// (src/app/dialogs.ts).
 export const homeScreenGuideInsidesView: {
   (
     h: ApplicationViewBuilder,

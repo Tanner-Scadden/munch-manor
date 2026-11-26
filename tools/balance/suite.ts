@@ -1,8 +1,3 @@
-// The pure half of the nightly suite: the jobs it runs, the metrics it
-// reads from their summaries, the targets and baseline it holds them to,
-// and the Markdown report. tools/balance/nightly.ts runs the jobs and does
-// the file work.
-
 import {
   Array,
   DateTime,
@@ -27,8 +22,6 @@ import {
   type Target,
 } from './targets'
 
-// JOBS
-
 type View = 'Landscape' | 'Portrait'
 
 export type Job = Readonly<{
@@ -43,8 +36,6 @@ export type JobSizes = Readonly<{ campaignRuns: number; waveRuns: number }>
 
 export const NIGHTLY_SIZES: JobSizes = { campaignRuns: 200, waveRuns: 100 }
 
-// NOTE: every job sets VIEW, so a VIEW left in the caller's shell never
-// turns a landscape job into a portrait one.
 const viewEnv = (view: View): Readonly<Record<string, string>> => ({
   VIEW: view === 'Portrait' ? 'portrait' : 'landscape',
 })
@@ -63,9 +54,6 @@ const campaignJob = (
   args: [`${sizes.campaignRuns}`, '1'],
 })
 
-// NOTE: every job sets AIM too. Easy and Normal are tuned on the human bot
-// (tools/balance/bot/hand.ts), Hard and Nightmare on the sharp one, a
-// skilled player's stand-in (decided 2026-10-31).
 const HUMAN = { AIM: 'human' }
 const SHARP = { AIM: 'sharp' }
 
@@ -129,8 +117,6 @@ export const nightlyJobs = (sizes: JobSizes): ReadonlyArray<Job> => [
   },
 ]
 
-// ARGUMENTS
-
 type BaselinePolicy = 'Update' | 'Extend' | 'KeepUnlessMissing'
 
 export type Invocation = Readonly<{
@@ -163,15 +149,10 @@ export const parseInvocation = (args: ReadonlyArray<string>): Invocation => ({
       : 'KeepUnlessMissing',
 })
 
-// DATES
-
-// NOTE: the day on the laptop's own clock, as YYYY-MM-DD.
 export const localDate = (ms: number): string =>
   DateTime.formatIsoDate(
     DateTime.makeZonedUnsafe(ms, { timeZone: DateTime.zoneMakeLocal() }),
   )
-
-// METRICS
 
 type Unit = 'Share' | 'Minutes' | 'Seconds' | 'Hearts' | 'Wave' | 'Ratio'
 
@@ -183,9 +164,6 @@ export type Metric = Readonly<{
   unit: Unit
 }>
 
-// NOTE: how far a metric may move from the baseline before the report calls
-// it drift. Runs of 200 swing by about 5 points from noise alone, and runs
-// of 100 by about 8, so the tolerances sit at that noise.
 const TOLERANCE: Readonly<Record<string, number>> = {
   wins: 0.05,
   closeCalls: 0.1,
@@ -265,8 +243,6 @@ export const campaignMetrics: {
       ),
     ]
     if (summary.kind === 'Endless') {
-      // NOTE: each wave's mean length, for the ramp an escape plays past
-      // wave 10 (RAMP_TARGETS in targets.ts).
       const lengths = Array.map(waves, wave =>
         metric(
           `${id}.length.w${wave}`,
@@ -436,8 +412,6 @@ export const wavePassMetrics = (
     ]
   })
 
-// NOTE: the sawtooth's peaks are held on Hard (see PEAK_RATIO_TARGET in
-// targets.ts); Normal's rows stay for the record.
 export const modelMetrics = (model: BalanceModel): ReadonlyArray<Metric> => [
   ...Array.map(model.Hard, row =>
     metric(
@@ -472,8 +446,6 @@ export const modelMetrics = (model: BalanceModel): ReadonlyArray<Metric> => [
     ),
   ]),
 ]
-
-// TARGETS
 
 export type Verdict =
   | Readonly<{ _tag: 'InTarget'; target: Target; value: number }>
@@ -513,8 +485,6 @@ export const judge: {
       }),
     ),
 )
-
-// BASELINE
 
 export const Baseline = Schema.Struct({
   createdAt: Schema.String,
@@ -558,9 +528,6 @@ export type Drift =
   | Readonly<{ _tag: 'New'; metric: Metric }>
   | Readonly<{ _tag: 'Missing'; key: string; baseline: number }>
 
-// NOTE: the baseline keeps four decimals, so a deterministic metric can be
-// off by up to 0.00005 from it. This slack keeps that, and a value sitting
-// exactly on the tolerance, from being called drift.
 const EPSILON = 1e-4
 
 export const compareToBaseline: {
@@ -596,8 +563,6 @@ export const compareToBaseline: {
   },
 )
 
-// NOTE: keeps every number already in the baseline and adds the metrics it
-// has never seen, so a new job gets a baseline without moving the old ones.
 export const extendBaseline: {
   (metrics: ReadonlyArray<Metric>): (before: Baseline) => Baseline
   (before: Baseline, metrics: ReadonlyArray<Metric>): Baseline
@@ -611,8 +576,6 @@ export const extendBaseline: {
     },
   }),
 )
-
-// PORTRAIT
 
 export type PortraitGap = Readonly<{
   pair: PortraitPair
@@ -660,8 +623,6 @@ export const portraitGaps = (
 
 export const portraitGapLine = (gap: PortraitGap): string =>
   `${gap.pair.title}: portrait wins ${formatValue(gap.portrait.winShare, 'Share')} against landscape ${formatValue(gap.landscape.winShare, 'Share')} (${formatDelta(gap.winGap, 'Share')}, tolerance ${formatValue(PORTRAIT_GAP_TOLERANCE, 'Share')})`
-
-// REPORT
 
 const formatValue = (value: number, unit: Unit): string =>
   unit === 'Share'

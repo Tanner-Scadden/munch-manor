@@ -62,10 +62,6 @@ import { DebutCard, Phase, RunMode } from '../../world/schema/worldSchema'
 import { ZOMBIE_KINDS } from '../../world/zombies/zombies'
 import { iconButtonView } from './touchControls'
 
-// TEXT
-
-// NOTE: the split keeps each sentence end with its spaces as its own part,
-// so a part that starts with a letter starts a sentence.
 const SENTENCE_END = /([.!?]\s+)/
 const STARTS_LOWER = /^[a-z]/
 
@@ -81,8 +77,6 @@ export const toSentenceCase = (shouted: string): string =>
 
 export const debutPitch = (kind: ZombieKind): string =>
   toSentenceCase(ZOMBIE_KINDS[kind].pitch)
-
-// CORNER BUTTONS
 
 const muteButtonView = (
   model: Model,
@@ -154,8 +148,6 @@ const cornerButtons = (
   h: ApplicationViewBuilder,
 ): ReadonlyArray<ApplicationHtml | null> => {
   const audioButtons = [musicButtonView(model, h), muteButtonView(model, h)]
-  // NOTE: a co-op room has no pause (decided 7); its LEAVE takes the
-  // corner instead (src/features/coop/view.ts).
   const pause = isCoopOpen(model.coop) ? [] : [pauseButtonView(h)]
   return Phase.match(model.phase, {
     Ready: () => [],
@@ -181,8 +173,6 @@ export const cornerButtonsView: {
   (model: Model, h: ApplicationViewBuilder): ApplicationHtml =>
     h.div.class('corner-buttons').children(cornerButtons(model, h)),
 )
-
-// PAUSE MENU BUTTON
 
 const pauseMenuButtonView: {
   (h: ApplicationViewBuilder): (model: Model) => ApplicationHtml
@@ -212,11 +202,6 @@ const pauseMenuButtonView: {
       : null,
 )
 
-// END BUTTONS
-
-// NOTE: a newer build waits on the menu, so the end screens offer only MENU,
-// and it carries a little gift that bobs on its corner, the same one the
-// menu shows.
 const updateGiftBadgeView = (h: ApplicationViewBuilder): ApplicationHtml =>
   h.span
     .class('mode-button-gift')
@@ -250,13 +235,6 @@ const menuOnlyView = (
       ),
   )
 
-// NOTE: the end card's buttons, icon first and all one size: HOME, then
-// RETRY (AGAIN after an escape), then SHARE. Nobody goes back in after an
-// escape: Endless is its own mode. Each
-// pops in a beat after the one before it. SHARE has no key: the share
-// sheet and the clipboard want a tap or a click.
-//
-// NOTE: `heads` is PLAY AGAIN's crew, each lit once they are in.
 type CrewHead = Readonly<{ slot: number; portrait: string; isIn: boolean }>
 
 type EndButton = Readonly<{
@@ -298,7 +276,6 @@ const retryButton = (model: Model): EndButton => ({
   heads: [],
 })
 
-// NOTE: a post that went to the clipboard flashes COPIED! with a tick.
 const shareButton = (model: Model): EndButton => {
   const isCopied = isShareCopied(model)
   return {
@@ -358,18 +335,11 @@ const endButtonFace = (
     : []),
 ]
 
-// NOTE: this run's post, the room's difficulty in an online co-op run. The
-// words are src/features/end/share.ts's.
 export const shareTextOf = (model: Model): string =>
   shareText(sharedRunOf(model, runDifficultyOf(model)))
 
-// NOTE: the root's ShareFromClick Mount (src/app/mount.ts), handed in by
-// the root's view, since a screen imports nothing of `app/`.
 type ShareMount = ApplicationMount
 
-// NOTE: SHARE carries its post and the ShareFromClick Mount, which opens
-// the share sheet (or copies the post) in the click itself; its click
-// counts the share (src/app/update/end.ts).
 const sharePostButton = (
   h: ApplicationViewBuilder,
   model: Model,
@@ -405,8 +375,6 @@ const endButtonView =
       )
       .on('click', button.message)
       .children(endButtonFace(model, button, h))
-
-// AN ONLINE ROOM'S CARD
 
 const LEAVE_ROOM_BUTTON: EndButton = {
   id: END_LEAVE_ROOM_BUTTON_ID,
@@ -457,9 +425,6 @@ const crewHeadsOf = (model: Model, room: CoopRoom): ReadonlyArray<CrewHead> =>
       ),
   })
 
-// NOTE: PLAY AGAIN is this player's READY in the room's lobby, so the same
-// crew plays the room's next pick (KEEP GOING after a win) once everyone is
-// in. Its heads light as each player says yes.
 const playAgainButton = (model: Model, room: CoopRoom): EndButton => {
   const heads = crewHeadsOf(model, room)
   const isKeepGoing = Option.exists(
@@ -480,9 +445,6 @@ const playAgainButton = (model: Model, room: CoopRoom): EndButton => {
   }
 }
 
-// NOTE: in an online co-op run the room's lobby comes next, so the card
-// offers the room's choices (src/app/update/end.ts): LEAVE, PLAY AGAIN, LOBBY,
-// and SHARE.
 const endButtonsOf = (model: Model): ReadonlyArray<EndButton> => {
   const maybeRoom = maybeRoomOf(model.coop)
   if (Option.isSome(maybeRoom)) {
@@ -510,8 +472,6 @@ const endActionsView = (
       Array.map(endButtonsOf(model), endButtonView(model, shareMount, h)),
     )
 
-// NOTE: `shareMount` makes the root's ShareFromClick Mount (src/app/mount.ts),
-// which SHARE carries, only when SHARE is drawn.
 export const modeChoiceView: {
   (
     shareMount: ShareMount,
@@ -533,8 +493,6 @@ export const modeChoiceView: {
     if (offer === 'Nothing') {
       return null
     } else if (isCoopOpen(model.coop)) {
-      // NOTE: an online room's card offers the room's choices, with or without
-      // a newer build waiting, until LOBBY lets the lobby in.
       return isRunCardHeld(model) ? endActionsView(model, shareMount, h) : null
     } else if (offer === 'MenuOnly') {
       return menuOnlyView(model, h)
@@ -543,8 +501,6 @@ export const modeChoiceView: {
     }
   },
 )
-
-// DEBUT CARD
 
 const DEBUT_TITLE_ID = 'debut-title'
 const DEBUT_BODY_ID = 'debut-body'

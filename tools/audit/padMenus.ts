@@ -1,11 +1,3 @@
-// Every menu by controller, end to end in headless Chrome, with the stand-in
-// pad of tools/audit/padStandIn.ts and no mouse or keyboard: the d-pad
-// steps the home menu, A opens the MORE hand, its How to play, Munchopedia,
-// and What's New panels, the Profile (whose tabs the bumper turns), co-op
-// where it ships, and the lobby with its hero picker; B closes each. The
-// end card and pause take the d-pad and B too. The focus ring must show on
-// what has focus. Screenshots go to `padmenus-<TAG>-d1280-<step>.png`.
-//   TAG=after bun run heavy -- --shared bun tools/audit/padMenus.ts
 import { Effect, Schema } from 'effect'
 import type { Page } from 'playwright-core'
 
@@ -35,8 +27,6 @@ import {
 } from './padStandIn'
 import { attempt, evaluateAs } from './page'
 
-// NOTE: a returning player, so PLAY opens the lobby rather than starting
-// a new player's first run.
 const VETERAN =
   'learned=move,fire,startWave,swap,pickup,timedBreaks,openBreak,dareTour,dareKey,rattles&rank=4000&calling=Handyman'
 
@@ -53,12 +43,10 @@ const FocusView = Schema.Struct({
 })
 type FocusView = typeof FocusView.Type
 
-// NOTE: what has focus and what is open, read in the page.
 const focusView = (page: Page) =>
   evaluateAs(page, FocusView, () => {
     const active = document.activeElement
     const isControl = active instanceof HTMLElement && active !== document.body
-    // NOTE: a hand card draws its ring on its face, not itself.
     const face = isControl
       ? (active.querySelector('.hand-card-face') ?? active)
       : null
@@ -85,11 +73,8 @@ const DeviceView = Schema.Struct({
 
 const deviceView = (page: Page) => modelAs(page, DeviceView)
 
-// NOTE: long enough for a dialog to open or close and its focus to land.
 const SETTLE_MS = 600
 
-// NOTE: presses one way until the control with this id has focus, as a
-// player hunting for it would, or gives up after a lap.
 const stepTo = (page: Page, id: string, button: number, most: number) =>
   Effect.gen(function* () {
     for (let step = 0; step < most; step += 1) {
@@ -141,7 +126,6 @@ runHarnessAudit(
     yield* sceneReady(page)
     yield* wait(300)
 
-    // THE HOME MENU
     const home = yield* press(page, DPAD_DOWN)
     const device = yield* deviceView(page)
     check(device.lastDevice === 'Gamepad', 'the d-pad did not take the device')
@@ -151,7 +135,6 @@ runHarnessAudit(
     const stepped = yield* press(page, DPAD_DOWN)
     check(stepped.id !== home.id, 'the d-pad did not step the home menu')
 
-    // THE MORE HAND
     yield* reach(page, 'home-manor', DPAD_DOWN, 'the d-pad never reached MORE')
     const hand = yield* press(page, A)
     check(hand.openDialogs > 0, 'A on MORE opened no hand')
@@ -162,7 +145,6 @@ runHarnessAudit(
     const handShut = yield* press(page, B)
     check(handShut.openDialogs === 0, 'B did not put the hand away')
 
-    // THE HAND'S PANELS
     for (const card of ['howtoplay', 'munchopedia', 'whatsnew']) {
       yield* reach(
         page,
@@ -188,7 +170,6 @@ runHarnessAudit(
       check(closed.openDialogs === 0, `B did not close the ${card} panel`)
     }
 
-    // THE PROFILE
     yield* reach(
       page,
       'home-settings',
@@ -209,7 +190,6 @@ runHarnessAudit(
     const profileShut = yield* press(page, B)
     check(profileShut.openDialogs === 0, 'B did not close the Profile')
 
-    // CO-OP, where this build ships it
     if (profileShut.hasCoopButton) {
       yield* reach(
         page,
@@ -226,7 +206,6 @@ runHarnessAudit(
       check(!coopShut.isCoopOpen, 'B did not back out of co-op')
     }
 
-    // THE LOBBY AND THE HERO PICKER
     yield* reach(
       page,
       'home-play',
@@ -254,7 +233,6 @@ runHarnessAudit(
     check(!lobbyShut.isLobbyOpen, 'B did not back out of the lobby')
     yield* closePage(page)
 
-    // THE END CARD
     const end = yield* openPage(browser, viewport)
     yield* attempt(() => end.addInitScript(padStandIn))
     yield* attempt(() => end.goto(harnessUrl('wave=3&phase=gameover', 'nodev')))
@@ -266,7 +244,6 @@ runHarnessAudit(
     yield* shotOf(end, 'end')
     yield* closePage(end)
 
-    // PAUSE
     const paused = yield* openPage(browser, viewport)
     yield* attempt(() => paused.addInitScript(padStandIn))
     yield* attempt(() =>

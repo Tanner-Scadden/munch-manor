@@ -1,17 +1,3 @@
-// The kitchen's goop as the roof leaks' puddles are drawn (leaks.ts): one
-// picture on the floor, a thick stew you can just see the tiles through.
-// Its footprint is the World's slip area (src/world/kitchen/kitchen.ts,
-// src/world/kitchen/soupPot.ts): every soup tile whole, and the pot's puddle
-// every pixel whose middle lies inside its radius. The stew is a rounded
-// splat over it, never more than a pixel past its edge, darker and murkier
-// toward its middle and lighter where it runs thin at its rim, a pale sheen
-// on its far edge and a dark lip on its near one, carrots, peas, and potato
-// in chunks of two and three pixels. The kitchen's flames show in it as
-// short streaks of light, as on the leaks' water, and bubbles swell and pop
-// off the World's clock. Cosmetic only, and in whole game pixels.
-//
-// Plain data, no pixi.
-
 import { Array, Option, Order, Result } from 'effect'
 
 import { TILE_SIZE } from '../../shared/constants'
@@ -41,18 +27,12 @@ import {
 } from './leaks'
 import { type FlameKind, flameSpecsOf } from './lightSpecs'
 
-// THE FOOTPRINT
-
-// NOTE: a game pixel of the footprint, by its top left corner.
 type Pixel = Readonly<{ x: number; y: number }>
 
 const keyOf = (x: number, y: number): string => `${x},${y}`
 
-// NOTE: the footprint: its pixels, a key each.
 export type Footprint = ReadonlyMap<string, Pixel>
 
-// NOTE: every soup tile whole, as the World's tile flag reads it, while the
-// kitchen is open (the World slips no one in it before).
 export const soupFootprintOf = (level: Level): Footprint => {
   const pixels = new Map<string, Pixel>()
   if (!isRoomOpen(level, KITCHEN_ROOM_ID)) {
@@ -70,8 +50,6 @@ export const soupFootprintOf = (level: Level): Footprint => {
   return pixels
 }
 
-// NOTE: the pot's puddle, every pixel whose middle lies inside its radius,
-// as `isInPuddle` reads a point, with the soup's tiles under it.
 export const spilledFootprintOf = ({
   level,
   soup,
@@ -96,22 +74,13 @@ export const spilledFootprintOf = ({
     return pixels
   })
 
-// THE SPLAT
-
-// NOTE: the picture's margin round the footprint, the blur's reach that
-// rounds its corners, and how far past the footprint the stew may run.
 const PAD = 4
 const BLUR = 4
 const REACH_PAST = 1
-// NOTE: the edge's wobble: a lattice this many pixels apart, nudging the
-// edge in or out by up to a pixel.
 const WOBBLE_CELL = 6
 const WOBBLE = 0.2
-// NOTE: the most a pixel's way in from the edge is counted.
 const DEEPEST = 8
 
-// NOTE: the drawn stew: each pixel's way in from its edge, 1 at the edge
-// and 0 where there is no stew, over a box in game pixels.
 export type Splat = Readonly<{
   left: number
   top: number
@@ -131,7 +100,6 @@ const depthAt = (splat: Splat, x: number, y: number): number => {
     : (splat.depth[row * splat.width + column] ?? 0)
 }
 
-// NOTE: a smooth roll over the floor, from -1 to 1, for the edge's wobble.
 const wobbleAt = (x: number, y: number): number => {
   const gx = Math.floor(x / WOBBLE_CELL)
   const gy = Math.floor(y / WOBBLE_CELL)
@@ -150,9 +118,6 @@ const EMPTY: Splat = {
   depth: new Uint8Array(0),
 }
 
-// NOTE: the footprint blurred and cut again at its middle, so its corners
-// round and its edge wobbles a pixel either way; then each pixel's way in
-// from the edge, a chamfer's guess at the straight distance.
 export const splatOf = (footprint: Footprint): Splat => {
   const pixels = [...footprint.values()]
   if (pixels.length === 0) {
@@ -203,7 +168,6 @@ export const splatOf = (footprint: Footprint): Splat => {
       distance[row * width + column] = isNear && field >= 0.5 ? far : 0
     }
   }
-  // NOTE: the chamfer's two passes, 3 a step along and 4 a step across.
   const relax = (index: number, other: number, step: number): void => {
     const through = (distance[other] ?? 0) + step
     if (through < (distance[index] ?? 0)) {
@@ -234,7 +198,6 @@ export const splatOf = (footprint: Footprint): Splat => {
   return { left, top, width, height, depth }
 }
 
-// NOTE: every drawn pixel of a splat, row by row.
 const forEachPixel = (
   splat: Splat,
   visit: (x: number, y: number, depth: number) => void,
@@ -249,12 +212,8 @@ const forEachPixel = (
   }
 }
 
-// NOTE: the puddle's quads sit over the leaks' (0.013) and under the storm's
-// thrown light (0.014).
 const OVER_FLOOR = 0.0135
 
-// NOTE: every tile the splats and their near lip's shadow lie on, a quad
-// each, over the picture of the whole level.
 export const splatTilesOf = ({
   level,
   splats,
@@ -280,10 +239,6 @@ export const splatTilesOf = ({
   return tiles
 }
 
-// THE STEW
-
-// NOTE: greenish ochre, murkier and less see-through the deeper it lies,
-// by the way in from its edge.
 const STEW: ReadonlyArray<string> = [
   'rgba(164, 150, 66, 0.6)',
   'rgba(138, 126, 48, 0.8)',
@@ -302,8 +257,6 @@ const FAT = 'rgba(184, 172, 88, 0.7)'
 const stewOf = (depth: number): string =>
   STEW[clamp(depth, 1, STEW.length) - 1] ?? 'transparent'
 
-// NOTE: the color a pixel of stew is painted: the far edge's sheen, the
-// near edge's lip, else the stew by its depth.
 const colorAt = (splat: Splat, x: number, y: number, depth: number): string =>
   depthAt(splat, x, y - 1) === 0
     ? SHEEN
@@ -315,8 +268,6 @@ type Chunk = Readonly<{
   pixels: ReadonlyArray<ReadonlyArray<string>>
 }>
 
-// NOTE: what floats in it, each two or three pixels: a carrot's coin, a
-// chunk of carrot, a pea, a cube of potato.
 const CHUNKS: ReadonlyArray<Chunk> = [
   {
     pixels: [
@@ -346,8 +297,6 @@ const CHUNKS: ReadonlyArray<Chunk> = [
 
 type Spot = Readonly<{ x: number; y: number; kind: number }>
 
-// NOTE: spots spread over the stew a cell each, rolled, deep enough in that
-// what sits there never touches the rim.
 const spotsOf = (
   input: Readonly<{
     splat: Splat
@@ -398,9 +347,6 @@ const chunksOf = (splat: Splat): ReadonlyArray<Spot> =>
     kinds: CHUNKS.length,
   })
 
-// NOTE: the stew's picture, which changes only as the pot's puddle comes
-// and goes: each row in runs of one color, the fat in a few glints, and
-// the chunks over it.
 export const stewShapesOf = (splat: Splat): ReadonlyArray<Draw.Shape> => {
   const shapes: Array<Draw.Shape> = []
   for (let row = 0; row < splat.height; row += 1) {
@@ -421,7 +367,6 @@ export const stewShapesOf = (splat: Splat): ReadonlyArray<Draw.Shape> => {
         runStart = column
         runColor = color
       }
-      // NOTE: under the near lip, its shadow on the floor, a pixel deep.
       if (depth > 0 && depthAt(splat, x, y + 1) === 0) {
         shapes.push(rect(x, y + 1, 1, 1, LIP_SHADOW))
       }
@@ -443,10 +388,6 @@ export const stewShapesOf = (splat: Splat): ReadonlyArray<Draw.Shape> => {
   return shapes
 }
 
-// THE FLAMES IN IT
-
-// NOTE: a flame near the stew and the pixel of it nearest its mirror image,
-// deep enough in that its streak never lies on the rim.
 export type SoupMirror = Readonly<{
   mirror: Mirror
   x: number
@@ -456,8 +397,6 @@ export type SoupMirror = Readonly<{
 
 const MOST_MIRRORS = 3
 
-// NOTE: once per splat: each of the house's few dozen flames against the
-// stew's pixels, the near ones kept, nearest first.
 export const soupMirrorsOf = ({
   level,
   splat,
@@ -471,7 +410,6 @@ export const soupMirrorsOf = ({
   const near = Array.filterMap(flameSpecsOf(level), spec => {
     const mirror = mirrorOf(spec)
     let best = { x: 0, y: 0, gap: Infinity }
-    // NOTE: once per level, a flame against the stew's few thousand pixels.
     Array.forEach(inner, ({ x, y }) => {
       const gap = Math.hypot(x - mirror.x, y - mirror.y)
       if (gap < best.gap) {
@@ -485,7 +423,6 @@ export const soupMirrorsOf = ({
   return Array.sortWith(near, ({ gap }) => gap, Order.Number)
 }
 
-// NOTE: a streak of light along a row of the stew, held off its rim.
 const streakAt = (
   input: Readonly<{
     splat: Splat
@@ -506,8 +443,6 @@ const streakAt = (
   return shapes
 }
 
-// NOTE: a flame in the stew: a warm streak, longer and brighter the nearer,
-// a paler core, and a shorter shimmer a row nearer, kept rows apart.
 const flameStreaksOf = (
   splat: Splat,
   { mirror, x, gap }: SoupMirror,
@@ -548,8 +483,6 @@ const flameStreaksOf = (
   ]
 }
 
-// NOTE: the stew's glints: its nearest lit flames, and the lightning along
-// its far edge.
 export const soupGlintsOf = (
   input: Readonly<{
     splat: Splat
@@ -560,24 +493,21 @@ export const soupGlintsOf = (
 ): ReadonlyArray<Draw.Shape> => {
   const { splat, mirrors, lit, strikeStep } = input
   const shapes: Array<Draw.Shape> = []
-  const rows: Array<number> = []
+  const rows = new Set<number>()
+  const isTaken = (row: number): boolean =>
+    rows.has(row - 1) || rows.has(row) || rows.has(row + 1)
   Array.forEach(
     Array.take(
       Array.filter(mirrors, ({ mirror }) => lit.has(mirror.kind)),
       MOST_MIRRORS,
     ),
     near => {
-      // NOTE: a streak keeps two rows off a nearer flame's, of the three
-      // shown at most.
-      const isTaken = (row: number): boolean =>
-        // oxlint-disable-next-line munch/no-nested-scan
-        Array.some(rows, other => Math.abs(other - row) < 2)
       const row = isTaken(near.y)
         ? isTaken(near.y + 2)
           ? near.y - 2
           : near.y + 2
         : near.y
-      rows.push(row)
+      rows.add(row)
       shapes.push(...flameStreaksOf(splat, near, row))
     },
   )
@@ -592,10 +522,6 @@ export const soupGlintsOf = (
   return shapes
 }
 
-// THE BUBBLES
-
-// NOTE: a bubble's beat: it swells a pixel at a time, then pops in a ring
-// of spray, and the stew lies still till its next.
 const SWELL_STEP_MS = 340
 const POP_MS = 160
 const SWELL_STEPS = 3
@@ -634,8 +560,6 @@ const mote = (
   color: number,
 ): Mote => ({ x, y, hover, width, color, alpha: 0.95, isGlowing: true })
 
-// NOTE: each bubble this frame, off the World's clock: a dot, a dome two
-// wide, a dome three wide with its shine on top, then its spray.
 export const bubbleMotesOf = ({
   bubbles,
   world,

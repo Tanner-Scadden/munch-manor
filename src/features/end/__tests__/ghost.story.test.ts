@@ -9,11 +9,6 @@ import type { BestRun } from '../../../world/schema/worldSchema'
 import { maybeGhostOf } from '../ghostView'
 import { FOUND_THINGS, diesOnWave7, ended, runAt, wave } from './rank.fixture'
 
-// The best run (src/features/end/endBeat.ts's reachRecords) and its ghost
-// on the end card (src/features/end/ghostView.ts): a campaign run keeps the
-// best on its difficulty, the most things found, then the furthest wave,
-// and a loss shows the best while it is better than the run.
-
 const withBestRun = (model: Model, best: BestRun): Model =>
   UiStruct.evolve(model, {
     bests: bests =>

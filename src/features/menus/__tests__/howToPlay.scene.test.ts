@@ -25,10 +25,6 @@ import {
   helpLineOf,
 } from '../pauseHelp'
 
-// NOTE: How to play's cards each carry one line of how to do the thing,
-// from a playtester who found a picture and a word taught nothing. The
-// line shows on focus with a keyboard and on a tap on touch (hover is CSS).
-
 const homeOn = (device: InputDevice): Model =>
   UiStruct.evolve(asVeteran(initialModel), { lastDevice: () => device })
 
@@ -142,9 +138,6 @@ describe('How to play lines', () => {
   )
 })
 
-// NOTE: with a controller in hand, How to play draws the pad with each
-// button named beside it (owner, 2026-11-12). The panel is opened on the
-// Model, since a click to open it would make the mouse the last device.
 describe('the controller diagram', () => {
   const panelOpenOn = (device: InputDevice): Model =>
     UiStruct.evolve(homeOn(device), {

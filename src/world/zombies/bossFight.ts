@@ -1,7 +1,3 @@
-// The boss fight's shared steps: changing the fight, his move, his events,
-// hurting a player, and the plates he throws in flight and pooled. The
-// fight itself is src/world/zombies/boss.ts.
-
 import { Array, Function, Option, Result, pipe } from 'effect'
 
 import { UiStruct } from '@effect/ui'
@@ -30,14 +26,11 @@ import {
 } from '../step/geometry'
 import { BOSS_RULES } from './bossRules'
 
-// NOTE: the tag checks this module runs per zombie per tick, built once.
 const isDazedBossMove = BossMove.isAnyOf(['Dazed'])
 const isFightingBoss = Boss.isAnyOf(['Fighting'])
 const isPooledGlob = Glob.isAnyOf(['Pooled'])
 const isStalkingBossMove = BossMove.isAnyOf(['Stalking'])
 const isVulnerableState = Invulnerability.isAnyOf(['Vulnerable'])
-
-// FIGHT
 
 export type Fight = typeof Boss.cases.Fighting.Type
 
@@ -65,9 +58,6 @@ export const emit =
 export const isEnraged = (boss: Boss): boolean =>
   isFightingBoss(boss) && boss.mood === 'Enraged'
 
-// NOTE: the gap between attacks, never a tell's wind-up: rage and the
-// difficulty's pace both shorten how long he rests, so a faster boss gives
-// the same warning for each attack and less time between them.
 export const gapScale: {
   (fight: Fight): (model: World) => number
   (model: World, fight: Fight): number
@@ -128,8 +118,6 @@ export const isVulnerable: {
   isVulnerableState(seatStateAt(model, slot).player.invulnerability),
 )
 
-// NOTE: hurting a player by the boss's hand: the wound, its knockback
-// scaled, and the PlayerHurt event.
 const hurt = (
   model: World,
   slot: PlayerSlot,
@@ -172,8 +160,6 @@ export const hurtPlayer: {
     knockbackScale: number,
   ): World
 } = Function.dual(5, hurt)
-
-// GLOBS
 
 const isFlying = Glob.isAnyOf(['Flying'])
 

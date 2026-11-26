@@ -1,10 +1,3 @@
-// NOTE: the project's own oxlint rules (AGENTS.md "Code shape"), loaded as a
-// JS plugin by .oxlintrc.json and infra's config. TypeScript over oxlint's
-// typed AST (`@oxlint/plugins`), so typecheck and lint cover it too; oxlint
-// loads it in Node, which strips the types, with no build step.
-// tools/lint/munchPlugin.test.ts runs every rule on code it must and must
-// not flag.
-
 import { Array, Option, String } from 'effect'
 
 import {
@@ -29,12 +22,7 @@ import {
   noStringKeyPerFrame,
   stepWorldAlone,
 } from './perfRules.ts'
-import {
-  liveTestNote,
-  noFloatingStory,
-  noPlainStory,
-  noRunInTests,
-} from './testRules.ts'
+import { noFloatingStory, noPlainStory, noRunInTests } from './testRules.ts'
 
 type Node = ESTree.Node
 
@@ -46,16 +34,12 @@ const isTagMember = (
   node.property.type === 'Identifier' &&
   node.property.name === '_tag'
 
-// NOTE: a variable holding a tag itself: `tag`, `kindTag`.
 const isTagName = (node: Node): node is ESTree.IdentifierReference =>
   node.type === 'Identifier' && /^tag$|Tag$/.test(node.name)
 
 const unwrapChain = (node: ESTree.Expression): Node =>
   node.type === 'ChainExpression' ? node.expression : node
 
-// NOTE: the source text of X in `X._tag === 'Name'` or of a tag held in
-// a variable, `tag === 'Name'` (either side, === or !==), or of the shared X in `X._tag === 'A' || X._tag === 'B'`, or of the
-// first X in `X._tag === 'A' && more`. Anything else has no subject.
 const tagSubject = (
   node: ESTree.Expression,
   sourceCode: SourceCode,
@@ -108,7 +92,6 @@ const noTagChain = defineRule({
   },
   create(context) {
     const sourceCode = context.sourceCode
-    // NOTE: `if (x._tag === 'A') { return … } if (x._tag === 'B') { return … }`
     const checkBody = (body: ReadonlyArray<Node>): void => {
       Array.forEach(body, (current, index) => {
         const previous = body[index - 1]
@@ -130,7 +113,6 @@ const noTagChain = defineRule({
       })
     }
     return {
-      // NOTE: `if (x._tag === 'A') … else if (x._tag === 'B') …`
       IfStatement(node) {
         if (
           node.parent.type === 'IfStatement' &&
@@ -153,7 +135,6 @@ const noTagChain = defineRule({
       BlockStatement: node => checkBody(node.body),
       Program: node => checkBody(node.body),
       StaticBlock: node => checkBody(node.body),
-      // NOTE: `x._tag === 'A' ? a : x._tag === 'B' ? b : c`
       ConditionalExpression(node) {
         if (
           node.parent.type === 'ConditionalExpression' &&
@@ -224,10 +205,6 @@ const noExtractTag = defineRule({
   },
 })
 
-// NOTE: `JSON.parse` and `JSON.stringify`, or the same off `globalThis`.
-// oxlint's no-restricted-properties would do, but an override replaces its
-// whole list, so the files allowed raw JSON would have to repeat every
-// other restricted property. A rule of its own is turned off file by file.
 const isJsonObject = (node: ESTree.Expression): boolean =>
   (node.type === 'Identifier' && node.name === 'JSON') ||
   (node.type === 'MemberExpression' &&
@@ -265,8 +242,6 @@ const noRawJson = defineRule({
   },
 })
 
-// NOTE: the Math functions whose last bit each engine rounds its own way
-// (src/shared/detMath.ts), and `Math` or `globalThis.Math` they hang off.
 const UNSTABLE_MATH: ReadonlySet<string> = new Set([
   'acos',
   'acosh',
@@ -301,8 +276,6 @@ const isMathObject = (node: ESTree.Expression): boolean =>
     node.property.type === 'Identifier' &&
     node.property.name === 'Math')
 
-// NOTE: `2 ** n` is exact on every engine, a power of two being exactly a
-// double; any other base goes through the engine's own pow.
 const isLiteralTwo = (node: ESTree.Node): boolean =>
   node.type === 'Literal' && node.value === 2
 
@@ -349,9 +322,6 @@ const stableMath = defineRule({
   },
 })
 
-// NOTE: the update `$` (Effect UI's update builder, src/app/update/step.ts)
-// in `$.model` or `unchanged($)`: a Step's result that changes nothing.
-// Every update function names its builder `$`. Anything else has no name.
 const bareModelName = (node: ESTree.Expression): string | undefined => {
   if (
     node.type === 'MemberExpression' &&
@@ -375,11 +345,6 @@ const bareModelName = (node: ESTree.Expression): string | undefined => {
   return undefined
 }
 
-// NOTE: Steps run on the same `$`: one applied to it (`step($)`,
-// `playSounds(cues)($)`, `leaveFor($, 'Kicked')`) or several combined
-// (`$.combine(a, b)`). A result built in place (`$.run(...)`,
-// `$.evolve({...})`, `$.set(next)`, `Option.match($.model.x, ...)`) is no
-// Step run, as Foldkit's inline `{ model, commands }` was none.
 const isStepCallOn = (
   node: ESTree.Expression,
   name: string | undefined,
@@ -406,7 +371,6 @@ const noConditionalStep = defineRule({
   },
   create(context) {
     return {
-      // NOTE: `cond ? step($) : $.model`, either way round.
       ConditionalExpression(node) {
         if (
           isStepCallOn(node.consequent, bareModelName(node.alternate)) ||
@@ -433,7 +397,6 @@ const noWorldSpread = defineRule({
   },
   create(context) {
     return {
-      // NOTE: `{ ...model, ...world }`: a spread after the first one.
       ObjectExpression(node) {
         Array.forEach(node.properties, (property, index) => {
           if (
@@ -453,10 +416,6 @@ const noWorldSpread = defineRule({
   },
 })
 
-// NOTE: the root's dialogs, each a DialogState field (src/ui/dialog.ts)
-// that says whether it is up. menuState in src/app/menuState.ts reads them;
-// everything else reads menuState. A new root dialog joins this list,
-// MenuState, and FIELD_OF in src/app/update/dialog.ts together.
 const DIALOG_FIELDS: ReadonlySet<string> = new Set([
   'profileDialog',
   'panelDialog',
@@ -482,7 +441,6 @@ const noMenuField = defineRule({
   },
   create(context) {
     return {
-      // NOTE: `model.profileDialog.isOpen`, `model.coop.screen`.
       MemberExpression(node) {
         const name = memberName(node)
         const owner = memberName(node.object)
@@ -501,7 +459,6 @@ const noMenuField = defineRule({
   },
 })
 
-// NOTE: `f(...)` or `Owner.f(...)` for the named f.
 const isCallOf = (
   node: Node | null,
   name: string,
@@ -510,7 +467,6 @@ const isCallOf = (
   ((node.callee.type === 'Identifier' && node.callee.name === name) ||
     memberName(node.callee) === name)
 
-// NOTE: `Command.make(...)`, a Command whose body needs no service.
 const isCommandMake = (node: Node | null): boolean =>
   node?.type === 'CallExpression' &&
   node.callee.type === 'MemberExpression' &&
@@ -518,8 +474,6 @@ const isCommandMake = (node: Node | null): boolean =>
   node.callee.object.name === 'Command' &&
   propertyName(node.callee) === 'make'
 
-// NOTE: `Command.Service<X>()(...)`, the base of a Command over a service,
-// read through the calls and type arguments around it.
 const isCommandService = (node: Node | null): boolean =>
   node !== null &&
   (node.type === 'CallExpression'
@@ -542,19 +496,16 @@ const commandBesideUpdate = defineRule({
     const commands: Array<ESTree.BindingIdentifier> = []
     const issued = new Set<string>()
     return {
-      // NOTE: `const X = Command.make(...)`.
       VariableDeclarator(node) {
         if (node.id.type === 'Identifier' && isCommandMake(node.init)) {
           commands.push(node.id)
         }
       },
-      // NOTE: `class X extends Command.Service<X>()(...) {}`.
       ClassDeclaration(node) {
         if (node.id !== null && isCommandService(node.superClass)) {
           commands.push(node.id)
         }
       },
-      // NOTE: `X.make(args)`, the Command issued.
       CallExpression(node) {
         if (
           node.callee.type === 'MemberExpression' &&
@@ -578,14 +529,6 @@ const commandBesideUpdate = defineRule({
   },
 })
 
-// NOTE: a press acts on its click. src/input/touchTaps.ts makes every touch
-// tap a click from that finger's own pointer events, so a button works with
-// another finger on the glass and acts once. A handler on a touch's or a
-// mouse's release, or on a touch's start, would act beside that click, or
-// in its place on one device only. `pointerdown` stays allowed: the game
-// surface, the HUD slots, and the hold-to-buy button act the moment a
-// finger lands, which no click can. A Mount listens for a release where it
-// must (touchTaps.ts itself), never an element's `.on(...)`.
 const RELEASE_EVENTS: ReadonlySet<string> = new Set([
   'touchstart',
   'touchend',
@@ -608,7 +551,6 @@ const tapByClick = defineRule({
   },
   create(context) {
     return {
-      // NOTE: `h.button.on('pointerup', Released())`.
       CallExpression(node) {
         const event = node.arguments[0]
         if (
@@ -624,10 +566,6 @@ const tapByClick = defineRule({
   },
 })
 
-// NOTE: a player action's rule lives once, in src/world/step/stepWorld.ts, where the
-// co-op room runs it; single player applies it through its lead seat
-// (src/app/update/action.ts). A client module that imports a rule's own steps,
-// or writes the fields a seat action owns, is deciding the action again.
 const SEAT_ACTION_STEPS: ReadonlySet<string> = new Set([
   'swapInHand',
   'drawMelee',
@@ -648,8 +586,6 @@ const SEAT_ACTION_FIELDS: ReadonlySet<string> = new Set([
   'selectedTrap',
 ])
 
-// NOTE: the calls that change a seat's fields: any Model's fields, the seat a
-// screen is about, a seat by slot, and the `seats` transform.
 const SEAT_WRITERS: ReadonlyArray<string> = [
   'evolve',
   'modifyFocus',
@@ -712,9 +648,6 @@ const seatActionOnce = defineRule({
   },
 })
 
-// NOTE: READY's key is the interact key, held to buy at a purchasable, so
-// only the one key table (src/input/keyActions.ts) asks whether the interact is
-// taken. A key handler that asks itself is mapping keys to actions again.
 const keyActionOnce = defineRule({
   meta: {
     type: 'problem',
@@ -738,11 +671,6 @@ const keyActionOnce = defineRule({
   },
 })
 
-// NOTE: anything standing in the 3D world, a sprite, a voxel body, or a
-// light, stands through `standingPointOf` (src/render/iso/space.ts), given
-// the game pixel its sprite draws. The muzzle flash sat off the gun for weeks
-// once the game went 3D, placed by a height tuned by eye; a module that takes
-// the camera's up or its way toward the lens is about to tune one again.
 const STANDING_BASIS = new Set(['CAMERA_UP', 'TOWARD_CAMERA'])
 
 const standThroughSpace = defineRule({
@@ -768,12 +696,6 @@ const standThroughSpace = defineRule({
   },
 })
 
-// NOTE: the root's dialogs open and close only through openRootDialog and
-// closeRootDialog (src/app/update/dialog.ts), which run what a close does
-// past shutting it (the Profile keeps the name, the panel forgets its
-// question). A Step that writes a dialog's DialogState field itself skips
-// that, and two ways to open one drift apart. The writers: `$.evolve({...})`
-// and `UiStruct.evolve(model, {...})`, with the changes in any argument.
 const DIALOG_WRITERS: ReadonlyArray<string> = ['evolve', 'set']
 
 const noDialogFieldWrite = defineRule({
@@ -809,17 +731,6 @@ const noDialogFieldWrite = defineRule({
   },
 })
 
-// NOTE: the folders of src (AGENTS.md "Folders"), in layers that import only
-// down: src/app/ over src/screens/ (one folder per screen, each apart from
-// the others) over src/features/ over the shared client layers
-// (src/ui/, src/domain/, src/render/, src/art/, src/audio/, src/input/,
-// src/platform/, which import each other freely) over src/world/ over
-// src/shared/. src/world/ is what the co-op room loads, so it reaches only
-// itself and src/shared/; src/shared/ reaches only itself. Both import only
-// the packages the room's bundle carries (Effect and Effect UI's root
-// module, for UiStruct and UiSchema) and the netcode package's types. Shipped code never
-// imports a test home (src/test/) or a test's folder (__tests__/). Tests
-// may import anything.
 const SRC_PATH = /(?:^|\/)src\/(.*)$/
 
 const LAYER_RANKS: Readonly<Record<string, number>> = {
@@ -846,13 +757,6 @@ const ROOM_PACKAGES = /^(effect(\/.*)?|@effect\/ui)$/
 
 const ROOM_TYPE_PACKAGES = /^@munch\/netcode$/
 
-// NOTE: the one way up: a type, never a value, of the root's one Model and
-// of its view aliases. A feature's rules and views, and the client layers'
-// drawing, read the root's Model, which is the World's fields beside the
-// client's own (src/app/model.ts); a view built with the root's `h`
-// (`ApplicationViewBuilder`, returning `ApplicationHtml`) sends the root's
-// Messages, and a Mount it places is the root's (`ApplicationMount`), all in
-// src/app/definition.ts. Each is a type, so it brings no module along.
 const ROOT_TYPES: Readonly<Record<string, ReadonlyArray<string>>> = {
   'app/model': ['Model'],
   'app/definition': [
@@ -862,17 +766,9 @@ const ROOT_TYPES: Readonly<Record<string, ReadonlyArray<string>>> = {
   ],
 }
 
-// NOTE: a feature never imports another, but for a parent component that
-// draws a child component (docs/EFFECT_UI_PORT.md "Children"): the parent
-// imports the child's contract, the component, its Model's Schemas, and
-// its Messages and events, and nothing more.
 const CHILD_BLOCKS: Readonly<Record<string, ReadonlyArray<string>>> = {
-  // NOTE: the single player lobby draws the hero picker from its hero card.
   lobby: ['heroes'],
-  // NOTE: co-op's lobby draws the same hero picker from its hero pill.
   coop: ['heroes'],
-  // NOTE: the Munchopedia draws the guide to the house's finds on its
-  // Finds page.
   munchopedia: ['guide'],
 }
 
@@ -881,8 +777,6 @@ const CONTRACT_FILES: ReadonlyArray<string> = ['block', 'model', 'message']
 const isTestPath = (path: string): boolean =>
   String.startsWith('test/')(path) || String.includes('__tests__/')(path)
 
-// NOTE: a relative import's path under src, from the importer's path under
-// src, or none when it leaves src.
 const resolveUnderSrc = (
   importer: string,
   spec: string,
@@ -908,16 +802,12 @@ const resolveUnderSrc = (
 const folderOf = (path: string): string =>
   Option.getOrElse(Array.head(String.split('/')(path)), () => '')
 
-// NOTE: the feature (or screen) a path under src/features/ (or src/screens/)
-// belongs to: its folder there.
 const featureOf = (path: string): string =>
   Option.getOrElse(Array.get(String.split('/')(path), 1), () => '')
 
 const withoutExtension = (path: string): string =>
   String.replace(/\.ts$/, '')(path)
 
-// NOTE: a file straight in a feature's folder that its parent may import:
-// `features/heroes/block`, not `features/heroes/view`.
 const isContractOf = (child: string, target: string): boolean => {
   const segments = String.split('/')(withoutExtension(target))
   return (
@@ -932,7 +822,6 @@ const isChildContract = (importer: string, target: string): boolean =>
     isContractOf(child, target),
   )
 
-// NOTE: a type-only import of exactly the root's types ROOT_TYPES lists.
 const isRootType = (
   target: string,
   isTypeOnly: boolean,
@@ -947,9 +836,6 @@ const isRootType = (
   )
 }
 
-// NOTE: the root's Message union is only the join of its groups, each in
-// the folder of the feature that sends it (AGENTS.md "Folders"), so code
-// below src/app/ builds and types its Messages from its own group.
 const ROOT_MESSAGE_PATH = 'app/message'
 
 const ROOT_MESSAGE_IMPORT_MESSAGE =
@@ -973,8 +859,6 @@ const FOLDER_IMPORTS_MESSAGE = (
     ' and ',
   )}${folder === 'world' ? ', since the co-op room loads it,' : ''} and Effect and Effect UI's root module (AGENTS.md "Folders").`
 
-// NOTE: the names a declaration imports: none for a bare or namespace
-// import, which the root's types never allow.
 const importedNamesOf = (
   node: ESTree.ImportDeclaration,
 ): ReadonlyArray<string> => {
@@ -1112,53 +996,28 @@ const folderImports = defineRule({
   },
 })
 
-// NOTE: a comment that silences a rule: oxlint's or the Effect language
-// service's.
-const SILENCER = /^\s*(oxlint-disable|@effect-diagnostics)/
-
-// NOTE: how far above a silencer its NOTE may sit, so a NOTE over a short
-// expression still covers the disable inside it.
-const NOTE_REACH_LINES = 6
-
-const disableNeedsReason = defineRule({
+const noComments = defineRule({
   meta: {
     type: 'suggestion',
     docs: {
       description:
-        'A comment that silences a rule says why: a NOTE just above it, or a reason after `--`.',
+        'No comments: code says what it does through its names and types, and a rule is never silenced in place.',
     },
   },
   create(context) {
     const sourceCode = context.sourceCode
     return {
       Program() {
-        const comments = sourceCode.getAllComments()
-        const noteEnds = Array.map(
-          Array.filter(comments, comment =>
-            String.startsWith('NOTE:')(String.trim(comment.value)),
-          ),
-          comment => sourceCode.getLoc(comment).end.line,
+        const comments = Array.filter(
+          sourceCode.getAllComments(),
+          comment => comment.type !== 'Shebang',
         )
-        Array.forEach(
-          Array.filter(
-            Array.filter(
-              Array.filter(comments, comment => SILENCER.test(comment.value)),
-              comment => !/\s--\s*\S/.test(comment.value),
-            ),
-            comment => {
-              const line = sourceCode.getLoc(comment).start.line
-              return !Array.some(
-                noteEnds,
-                end => end <= line && line - end <= NOTE_REACH_LINES,
-              )
-            },
-          ),
-          comment =>
-            context.report({
-              loc: sourceCode.getLoc(comment),
-              message:
-                'A silenced rule needs its reason: a // NOTE: just above, or `-- why` after the rule (AGENTS.md "Strictness").',
-            }),
+        Array.forEach(comments, comment =>
+          context.report({
+            loc: sourceCode.getLoc(comment),
+            message:
+              'Comments are not allowed: name the code so it reads on its own, and fix what a rule flags instead of silencing it (AGENTS.md "Strictness").',
+          }),
         )
       },
     }
@@ -1183,8 +1042,7 @@ export default definePlugin({
     'key-action-once': keyActionOnce,
     'stand-through-space': standThroughSpace,
     'no-dialog-field-write': noDialogFieldWrite,
-    'live-test-note': liveTestNote,
-    'disable-needs-reason': disableNeedsReason,
+    'no-comments': noComments,
     'folder-imports': folderImports,
     'no-append-in-reduce': noAppendInReduce,
     'no-deep-equal-per-frame': noDeepEqualPerFrame,

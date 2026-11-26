@@ -1,6 +1,3 @@
-// The logs a run of the balance bot fills as it plays, and the wave
-// timeline. What it reports is in results.ts, as Schemas.
-
 import {
   Array,
   Record as EffectRecord,
@@ -16,8 +13,6 @@ import { FRAME_MS, type Kind, type Model } from './basics'
 import type * as Results from './results'
 import type { BossBlame, EmptyStretch } from './results'
 
-// NOTE: the logs a run fills in place as it plays: the Schemas' types
-// (results.ts), made mutable.
 export type FridgeLog = Types.DeepMutable<Results.FridgeLog>
 export type NewKindLog = Types.DeepMutable<Results.NewKindLog>
 type BossFight = Types.DeepMutable<Results.BossFight>
@@ -167,7 +162,6 @@ export const recordTimeline: {
   },
 )
 
-// The longest stretch inside an empty stretch with nothing announced.
 export const quietPartMs = (stretch: EmptyStretch) =>
   stretch.ms - stretch.announcedMs
 

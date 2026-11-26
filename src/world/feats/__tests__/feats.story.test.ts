@@ -44,14 +44,8 @@ import { focusOf, maybePlayerAt, modifyFocus } from '../../party/party'
 import { Feat, freshTally } from '../../schema/worldSchema'
 import { goalOf, progressOf } from '../feats'
 
-// Feats (src/world/feats/feats.ts): each player's own tally, fed once a
-// tick from what the tick did: kills by who made them and with what, hearts
-// lost, a wave cleared, a room bought open, and the valve turned.
-
 const FRAME_MS = FIXED_STEP_MS
 
-// NOTE: a run with no cases, so a kill opens nothing and plays no sound
-// a test does not expect.
 const caseless = (model: Model): Model =>
   UiStruct.evolve(model, { cases: () => [] })
 
@@ -255,8 +249,6 @@ describe('exploring feats, one player', () => {
     expect(goalOf(Feat.LitFire())).toBe(1)
   })
 })
-
-// CO-OP
 
 const crewBullet = (id: number, shooter: number, x: number, y: number) =>
   ({

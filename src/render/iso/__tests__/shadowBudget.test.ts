@@ -3,10 +3,6 @@ import { describe, expect, test } from 'vitest'
 
 import { SHADOW_MAPS_A_FRAME, ShadowBudget } from '../shadowBudget'
 
-// How many room fills draw their shadow maps a frame (shadowBudget.ts): the
-// one nearest the player each frame it changes, the rest in turn, at most
-// two a frame, and no change lost.
-
 const FOUR_CASTING = [true, true, true, true]
 
 type Frame = Readonly<{
@@ -16,7 +12,6 @@ type Frame = Readonly<{
   isEvery?: boolean
 }>
 
-// NOTE: the fills drawn in one frame, by index.
 const drawnIndices = (
   picked: ReadonlyArray<boolean>,
 ): ReadonlyArray<number> => {
@@ -29,7 +24,6 @@ const drawnIndices = (
   return drawn
 }
 
-// NOTE: a budget past its first frame, where every fill draws its first map.
 const settled = (): ShadowBudget => {
   const budget = new ShadowBudget()
   budget.pick({
@@ -89,7 +83,6 @@ describe('the shadow budget', () => {
 
   test('a change is late, never lost', () => {
     const budget = settled()
-    // NOTE: three fills change once, then stand still.
     expect(pickOf(budget, { changed: [1, 2, 3], first: 0 })).toEqual([1, 2])
     expect(pickOf(budget, { changed: [], first: 0 })).toEqual([3])
     expect(pickOf(budget, { changed: [], first: 0 })).toEqual([])

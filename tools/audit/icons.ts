@@ -1,10 +1,3 @@
-// Draws every icon in public/ from the pixel maps below: the 16 pixel
-// favicon.svg for browser tabs, the 192 and 512 manifest icons, the 512
-// maskable icon with the head inside the safe circle, and the 180 Apple touch
-// icon. It also writes the same head into the loading splash in index.html,
-// between the splash-zombie markers, and a contact sheet of every size to
-// shots/icons.png.
-//   bun icons.ts
 import {
   Array,
   Console,
@@ -24,11 +17,6 @@ import { BIG_HEAD, PALETTE } from './zombieHead'
 
 const BACKGROUND = PALETTE['b'] ?? '#3b2160'
 
-// PIXEL MAPS
-
-// The tab favicon is its own map: at 16 pixels the big head turns to mush, so
-// this one keeps only what reads at a glance, the eyes, the teeth, and the
-// drip, on a purple tile with a dark rim for light and dark tab bars.
 const FAVICON: ReadonlyArray<string> = [
   '.HHHHHHHHHHHHHH.',
   'HHHooooooooooHHH',
@@ -48,8 +36,6 @@ const FAVICON: ReadonlyArray<string> = [
   '.HXHHHHHHHHHHHH.',
 ]
 
-// The big art is a 32 cell square: a purple glow of stepped rings behind the
-// head, with a few sparkles.
 const ART_SIZE = 32
 const HEAD_TOP = 4
 
@@ -89,8 +75,6 @@ const BIG_ART: ReadonlyArray<string> = globalThis.Array.from(
       '',
     ),
 )
-
-// SVG
 
 const assertSquare = (name: string, rows: ReadonlyArray<string>): void => {
   Array.forEach(rows, (row, y) => {
@@ -137,11 +121,6 @@ const BIG_SVG = svgFor(BIG_ART)
 const dataUrl = (svg: string): string =>
   `data:image/svg+xml,${encodeURIComponent(svg)}`
 
-// SPLASH
-
-// The loading splash shows the app icon's head on its own, without the glow,
-// inline in index.html so it paints before any request. One path per color
-// keeps it small.
 const SPLASH_HEAD = Array.filter(BIG_HEAD, row =>
   Array.some(globalThis.Array.from(row), cell => cell !== '.'),
 )
@@ -177,10 +156,6 @@ const splashSvg = (rows: ReadonlyArray<string>): string => {
   return `<svg class="splash-zombie" viewBox="0 0 ${width} ${rows.length}" aria-hidden="true">\n${Array.join(paths, '\n')}\n      </svg>`
 }
 
-// PNG ICONS
-
-// share is how much of the icon the 32 cell art spans. Each cell is a whole
-// number of pixels so the art stays sharp; the rest is background.
 type Icon = Readonly<{ file: string; size: number; share: number }>
 
 const ICONS: ReadonlyArray<Icon> = [
@@ -197,11 +172,6 @@ const iconPage = ({ size, share }: Icon): string => {
 <img style="width:${art}px;height:${art}px;image-rendering:pixelated" src="${dataUrl(BIG_SVG)}">
 </div></body></html>`
 }
-
-// CONTACT SHEET
-
-// The favicon at tab sizes on a light and a dark tab bar, each app icon with
-// a phone's rounded corner mask, and the maskable icon in its safe circle.
 
 const sheetOf = (publicDir: string): string => {
   const fileUrl = (file: string): string => `file://${publicDir}/${file}`
@@ -245,8 +215,6 @@ ${Array.join(
 <img style="width:72px;height:72px;clip-path:circle(50%)" src="${fileUrl('icon-maskable-512.png')}">
 </div></body></html>`
 }
-
-// WRITING
 
 const render = (
   browser: Browser,

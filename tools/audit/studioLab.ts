@@ -1,10 +1,3 @@
-// Munch Studio's 3D stage and light and color lab in Chrome, against a
-// running `bun dev` (STUDIO, default http://localhost:5173/tools/studio/):
-// a zombie carved on the stage in each preset, turned and at the game's
-// camera; a press on a block pins its sprite pixel; a lab slider changes the
-// stage and the live room; PROPOSE sends the note. Shots are
-// `studio-<TAG>-<scene>.png`; then `bun tools/studio/inbox.ts` shows the note.
-//   bun run heavy -- --shared bun tools/audit/studioLab.ts
 import { Config, Effect, Schema, String } from 'effect'
 
 import {
@@ -30,17 +23,11 @@ const VIEWPORT = {
   isPhone: false,
 }
 
-// NOTE: how long the stage or the live room takes to draw a change.
 const SETTLE_MS = 1500
 const LIVE_SETTLE_MS = 6000
 
 const Brightness = Schema.Finite
 
-// NOTE: the average brightness of a picture the Studio copies for a note
-// (`.stage-shot` or `.live-shot`), 0 to 255, read in the page; -1 with none.
-// The shot is a `bitmaprenderer` canvas, so it is read through WebGL2: taken
-// up as a texture on a framebuffer and read back with `readPixels`. It runs
-// inside the page, where Effect is not loaded.
 const readBrightness = (selector: string): number => {
   const canvas = document.querySelector(selector)
   if (!(canvas instanceof HTMLCanvasElement) || canvas.width === 0) {
@@ -106,7 +93,6 @@ runAudit(
     }
     yield* click('button.segment:has-text("Break")')
 
-    // NOTE: a turn by a drag, then back to the game's camera.
     const box = yield* attempt(() =>
       page.locator('.stage3d-marks').boundingBox(),
     )
@@ -125,7 +111,6 @@ runAudit(
     yield* click('button:has-text("Game camera")')
     yield* wait(SETTLE_MS)
 
-    // NOTE: a press on the zombie's middle pins its sprite pixel.
     yield* attempt(() => page.mouse.click(middle.x, middle.y))
     yield* wait(SETTLE_MS)
     const pin = yield* evaluateAs(
@@ -138,10 +123,8 @@ runAudit(
     }
     yield* shot(page, `studio-${tag}-stage-pinned`)
 
-    // NOTE: the lab: a slider moved changes the stage.
     yield* click('button:has-text("Light lab")')
     yield* wait(SETTLE_MS)
-    // NOTE: a group shows its sliders once opened.
     yield* click('details.lab-group > summary:text-is("Look")')
     yield* click('details.lab-group > summary:text-is("Dining")')
     const before = yield* brightness('.stage-shot')
@@ -166,7 +149,6 @@ runAudit(
     )
     yield* shot(page, `studio-${tag}-lab-proposed`)
 
-    // NOTE: the live room takes the same edits through the harness.
     yield* click('button:has-text("Rooms")')
     yield* attempt(() => page.waitForSelector('.live-frame'))
     yield* wait(LIVE_SETTLE_MS)

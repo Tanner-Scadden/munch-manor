@@ -14,9 +14,6 @@ import { tileCenter } from '../../../src/world/level/tileGrid'
 import type { Vector } from './basics'
 import { routeTo } from './route'
 
-// NOTE: the bot's way over the floor (route.ts) through the whole house:
-// the next point of each step is where it stands for the next, until it
-// reaches the goal or runs out of steps.
 const MAX_STEPS = 400
 
 const walk = (
@@ -58,8 +55,6 @@ describe('the bot finds its way', () => {
     expect(lastOf(walk(level, START_SPOT, PARLOUR))).toEqual(PARLOUR)
   })
 
-  // NOTE: by the level alone, in every house a run can roll: from the
-  // table onto each slot room's top aisle.
   test.each(ARRANGEMENTS)('into every slot room of %o', arrangement => {
     const level = levelFor(manorSpecFor(arrangement), [
       'Kitchen',

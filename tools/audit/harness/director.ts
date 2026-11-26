@@ -40,23 +40,8 @@ import {
   Room,
 } from '@munch/netcode'
 
-// THE DIRECTOR
-//
-// NOTE: the video tool's side of the harness (tools/video). With `director`
-// in the query the page never ticks on its own: the tool asks for frames
-// with `window.__director.step(n)`, and each of those n ticks is one fixed
-// 1/60 s, with the shot's scripted inputs applied first. The sounds and
-// music cues the game asks for are logged by tick instead of played, so the
-// tool renders the soundtrack offline from the same log. A shot is a seed,
-// a staged scene, and this script, so two renders are the same frames.
-
 const Point = Schema.Tuple([Schema.Finite, Schema.Finite])
 
-// NOTE: a stretch of ticks, from `from` up to before `to`: the keys held
-// (such as KeyW or Enter), the touch move stick's direction (x and y in
-// -1..1), where to aim (the nearest zombie on its feet, or an offset from
-// the player), and the trigger. `turn` bends the aim by degrees, so a
-// portrait shot shows the aim assist pulling it back on.
 const Segment = Schema.Struct({
   from: Schema.Finite,
   to: Schema.Finite,
@@ -68,17 +53,8 @@ const Segment = Schema.Struct({
 })
 type Segment = typeof Segment.Type
 
-// NOTE: a key pressed and let go on one tick.
 const Tap = Schema.Struct({ at: Schema.Finite, key: Schema.String })
 
-// NOTE: a co-op shot steps the room's World here, every seat played by a
-// bot, on the lobby's difficulty. `preroll` ticks play before the first
-// captured frame, so a later wave is under way when the shot starts.
-// NOTE: `revive` downs one seat on purpose at `at`, with `bleedMs` left on
-// its clock, and from `walkAt` sends a teammate to stand still beside it.
-// With `spot` the seat to be downed walks there first, so the camera knows
-// where to look;
-// `god` keeps every other seat at full hearts.
 const Revive = Schema.Struct({
   down: Schema.Finite,
   reviver: Schema.Finite,
@@ -97,8 +73,6 @@ const CoopPlan = Schema.Struct({
 })
 type CoopPlan = typeof CoopPlan.Type
 
-// NOTE: a pixel art card drawn over the game (cards.ts) from `from` up to
-// before `to`.
 const Card = Schema.Struct({
   from: Schema.Finite,
   to: Schema.Finite,
@@ -106,9 +80,6 @@ const Card = Schema.Struct({
 })
 export type Card = typeof Card.Type
 
-// NOTE: a lobby staged with its seats (such as `coop=host`) filling in on
-// cue: from `at`, the first `seats` members sit in it and the first
-// `ready` of them have pressed READY.
 const LobbyKey = Schema.Struct({
   at: Schema.Finite,
   seats: Schema.Finite,
@@ -126,8 +97,6 @@ export type Plan = typeof Plan.Type
 
 const decodePlanJson = Schema.decodeResult(Schema.fromJsonString(Plan))
 
-// NOTE: the plan the video tool hands `start`; a bad one throws, as it
-// should, since the tool wrote it.
 export const decodePlan = (plan: string): Plan =>
   Result.getOrThrow(decodePlanJson(plan))
 
@@ -146,7 +115,6 @@ export type AudioCue =
       stinger: string
     }>
 
-// NOTE: one Command the game's update gives back.
 type GameCommand = ReturnType<typeof update>['commands'][number]
 export type Return = Readonly<{
   model: Model
@@ -154,7 +122,6 @@ export type Return = Readonly<{
 }>
 type Step = (model: Model, message: Message) => Return
 
-// NOTE: the args the sound and music Commands carry, read back for the log.
 const soundArgsOption = Schema.decodeUnknownOption(
   Schema.Struct({ sound: Schema.String, variation: Schema.Finite }),
 )
@@ -182,15 +149,11 @@ let isShooting = false
 const scriptedKeys = new Set<string>()
 let maybeRoom: Option.Option<{ world: WorldState; nowMs: number }> =
   Option.none()
-// NOTE: the preroll plays before the shot's first tick, so the shot's own
-// script (a revive) waits for it to end.
 let isPrerolled = false
 
 export const audioLog = (): ReadonlyArray<AudioCue> => cues
 export const currentTick = (): number => tick
 
-// NOTE: the card showing on the tick the page last stepped to, with how
-// many ticks it has been up.
 export const cardNow = (): Option.Option<
   Readonly<{ card: Card['card']; age: number }>
 > =>
@@ -202,8 +165,6 @@ export const cardNow = (): Option.Option<
     card => ({ card: card.card, age: tick - card.from }),
   )
 
-// NOTE: where each seat stands on the screen, and the world's window on
-// it, in game pixels of the screen, for the split screen of devices.
 export const seatsOnScreen = (
   model: Model,
 ): Readonly<{
@@ -223,11 +184,6 @@ export const seatsOnScreen = (
   }),
 })
 
-// COMMANDS
-
-// NOTE: the sound and music Commands become log lines. The rest are the
-// pure update's (src/app/pureApp.ts), which the page's runtime cannot run, so a
-// shot's ticks give the runtime only their Model.
 const logAudio = (
   commands: ReadonlyArray<Readonly<{ name: string; args?: unknown }>>,
   atTick: number,
@@ -245,9 +201,6 @@ const logAudio = (
     }
   })
 
-// NOTE: a sound or music cue the page's runtime asks for during a shot,
-// from a Message between ticks such as a click on the shop, is heard with
-// the next tick (handlers.ts answers the runtime's audio Commands with these).
 export const logSound: {
   (variation: number): (sound: string) => void
   (sound: string, variation: number): void
@@ -265,10 +218,6 @@ export const logMusic = (
   }
 }
 
-// NOTE: the music the scene's phase plays, as the game cues it once the
-// audio engine runs: the music the update asks for when a muted engine
-// resumes on this Model (the music Step reads only the change). Only the
-// music is kept, not the start sound the same update may ask for.
 const musicCuesOf = (heard: Model) =>
   Array.filter(
     update(
@@ -278,8 +227,6 @@ const musicCuesOf = (heard: Model) =>
     command => command.name === Command.nameOf(CueMusic),
   )
 
-// NOTE: audible, so update asks for every sound and music change; the
-// Commands never reach the page's audio engine.
 const audible = (model: Model): Model =>
   UiStruct.evolve(model, {
     audio: () => AudioState.Ready(),
@@ -290,8 +237,6 @@ const audible = (model: Model): Model =>
     }),
   })
 
-// NOTE: starts a shot on the scene the query staged: the log restarts with
-// the music the scene's phase plays, and a co-op shot seats the room.
 export const startShot: {
   (next: Plan): (model: Model) => Return
   (model: Model, next: Plan): Return
@@ -318,8 +263,6 @@ export const startShot: {
   return Option.match(maybeCoop, {
     onNone: () => ({ model: heard }),
     onSome: coop => {
-      // NOTE: a room staged in its lobby (such as `coop=host`, four seats)
-      // starts playing here.
       let current = withRoomOf(heard, room => ({
         ...room,
         maybeLobby: Option.map(room.maybeLobby, lobby => ({
@@ -345,8 +288,6 @@ export const startShot: {
     },
   })
 })
-
-// SINGLE PLAYER
 
 const activeSegments = (atTick: number): ReadonlyArray<Segment> =>
   Array.filter(
@@ -403,8 +344,6 @@ const unit = (vector: Vector): Vector => {
   return length === 0 ? vector : { x: vector.x / length, y: vector.y / length }
 }
 
-// NOTE: a thumb on a stick at the lower left (move) or right (aim) of the
-// window, pushed to `reach` of its radius in a direction.
 const stickAt = (
   pointerId: number,
   originX: number,
@@ -420,8 +359,6 @@ const stickAt = (
     currentY: originY + direction.y * STICK_RADIUS_PX * reach,
   })
 
-// NOTE: only keys the script pressed are let go, so a key the scene holds
-// (`hold`) stays down.
 const withKeys = (
   model: Model,
   wanted: ReadonlyArray<string>,
@@ -512,8 +449,6 @@ const withAim = (model: Model, segments: ReadonlyArray<Segment>): Model => {
   })
 }
 
-// NOTE: the staged lobby's members as the scene seated them, so a lobby
-// script can seat them one by one.
 let stagedMembers: ReadonlyArray<LobbyMember> = []
 
 const withLobbyScript = (model: Model): Model =>
@@ -569,8 +504,6 @@ const soloTick = (unscripted: Model, step: Step): Return => {
   }
 }
 
-// CO-OP
-
 const roomOf = (model: Model): Option.Option<CoopModel.Room> =>
   model.coop.screen._tag === 'InRoom'
     ? Option.some(model.coop.screen.room)
@@ -604,18 +537,10 @@ const READY_CODE = actionCodeOf(SeatAction.Ready())
 const READY_EVERY_TICKS = 60
 const ORBIT_TICKS = 480
 const ORBIT_RADIUS = 44
-// NOTE: the middle of the dining room's hall runner, south of the start
-// spot, with open floor all round it.
 const RUG_CENTER = { x: 180, y: 158 }
 const FIRE_REACH = 72
 const KEEP_FRAMES = 12
 
-// NOTE: every seat plays itself: it presses READY again each second (the
-// room takes a press when the value changes), walks a slow circle round
-// the rug a quarter turn from the others, and fires at the zombie nearest
-// it.
-// NOTE: a reviver walks to the downed seat and stands still once beside
-// it; every other seat circles the rug.
 const REVIVE_STOP_PX = 7
 
 const spotFor = (
@@ -685,8 +610,6 @@ const botInput = (
           })),
         ),
       )
-      // NOTE: a bot holds its fire until a zombie is close, so the room
-      // fills up first.
       const target = Option.map(
         Option.filter(nearest, zombie => zombie.distance < FIRE_REACH ** 2),
         zombie => unit({ x: zombie.x - player.x, y: zombie.y - player.y }),
@@ -712,9 +635,6 @@ const botInput = (
 const isDownedOnPurpose = (coop: CoopPlan, slot: number): boolean =>
   coop.revive?.down === slot && isPrerolled && tick >= coop.revive.at
 
-// NOTE: the shot's own hand on the room before it steps: on `at` the
-// downed seat drops to zero hearts (the room downs it that tick), a tick
-// later its bleed out clock is set, and `god` keeps the rest standing.
 const scripted = (
   held: WorldState,
   maybeCoop: CoopPlan | undefined,
@@ -756,10 +676,6 @@ const scripted = (
   return world === held.world ? held : { ...held, world }
 }
 
-// NOTE: the room's World steps here, as the GameRoom would, and arrives as
-// the newest of the frames the client holds, with the room's clock set so
-// the client draws exactly that tick. Then the client's own frame runs, as
-// an online run's does.
 const coopTick = (model: Model, isCaptured: boolean): Return =>
   Option.match(Option.all([maybeRoom, roomOf(model)]), {
     onNone: () => ({ model }),
@@ -792,14 +708,10 @@ const coopTick = (model: Model, isCaptured: boolean): Return =>
           }),
         },
       }))
-      // NOTE: the game's own handler for the room's frame, as an online
-      // run gets it (src/app/update/coop.ts).
       const drawn = update(staged, Message.TickedRoomFrame({ nowMs }))
       return isCaptured ? drawn : { model: drawn.model }
     },
   })
-
-// STEPPING
 
 export const stepShot: {
   (ticks: number, step: Step): (model: Model) => Return

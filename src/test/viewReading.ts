@@ -1,6 +1,3 @@
-// NOTE: reading what a view draws in tests: a canvas shape tree's Rects
-// and Images, and a rendered view's elements.
-
 import { Array, Function, Match } from 'effect'
 
 import { Locator } from '@effect/ui/testing'
@@ -16,7 +13,6 @@ type Edges = Readonly<{
   bottom: number
 }>
 
-// NOTE: every Rect in a shape tree, moved by its Groups' translations.
 export const rectsOf: {
   (
     offset: Readonly<{ x: number; y: number }>,
@@ -47,8 +43,6 @@ export const rectsOf: {
     ),
 )
 
-// NOTE: every Image and Rect a shape tree draws, as its edges on the canvas,
-// through its Groups' translations and scales.
 type Placing = Readonly<{ x: number; y: number; scale: number }>
 
 const drawnBoxesAt = (
@@ -80,7 +74,6 @@ export const drawnBoxesOf = (
   shapes: ReadonlyArray<Draw.Shape>,
 ): ReadonlyArray<Edges> => drawnBoxesAt(shapes, { x: 0, y: 0, scale: 1 })
 
-// NOTE: whether two boxes overlap, edges touching not counted.
 export const isOverBox =
   (box: Edges) =>
   (other: Edges): boolean =>
@@ -100,11 +93,7 @@ export const imagesIn = (
     ),
   )
 
-// NOTE: a rendered view's elements, as a Scene's `root` and Effect UI's
-// locators read them (`Locator.Node`: tag, attrs, props, text, children).
 export type ViewNode = Locator.Node
 
-// NOTE: a rendered view and every element under it, depth first, the root
-// included.
 export const nodesOf = (root: ViewNode): ReadonlyArray<ViewNode> =>
   Locator.elements(root)

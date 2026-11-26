@@ -27,13 +27,6 @@ import { isInsideRoomAt } from '../../level/tileQueries'
 import { modifyFocus } from '../../party/party'
 import { ZOMBIE_KINDS } from '../zombies'
 
-// NOTE: seed 31677's wave 10 with the fridge on, as the balance bot left it
-// at its 20 minute cap: the kitchen open, a Plank Pile on the west door, the
-// player in the parlour, and a Tank, a wide walker like the boss, with twenty Groaners out in the
-// yard's top right, at x 305 to 334 and y -170 to -117. Their way in is the
-// parlour's north door, at the yard's foot. They paced there forever: out of
-// the yard because the planks sent them around, then back in toward the
-// north door.
 const FRAME_MS = FIXED_STEP_MS
 const SECONDS = 40
 

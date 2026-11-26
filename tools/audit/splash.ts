@@ -12,28 +12,14 @@ import {
 } from 'effect'
 import type { BrowserContext } from 'playwright-core'
 
-// Loads the production build in headless Chrome on a slow network and a slow
-// CPU and times the loading splash: the first paint (which must be the
-// splash, not a blank or unstyled page), when the game's canvas appears, when
-// the game hides the splash, and when the splash leaves the page, on a first
-// visit and on a returning player's repeat visit. It saves screenshots along
-// the way as `splash-<TAG>-<profile>-<visit>-<moment>.png`.
-// It also prints when each load step finished (the `load:<step>` marks from
-// src/platform/splash.ts), each move of the progress bar, the main thread's long
-// tasks, and with PROFILE=1 the functions that took the most CPU time before
-// the splash hid, and with NETWORK=1 every request the page and its workers
-// made, with when it started and finished. ONLY=<profile> runs one profile.
-// Under the heavy guard it yields the guard's turn between profiles, so
-// other jobs go in between instead of waiting for all three.
-//   BASE=http://localhost:4173/ bun splash.ts
 import * as NodeServices from '@effect/platform-node/NodeServices'
 
 import { yieldTurnAsync } from '../heavy/turn'
 import { encodeJson } from '../json'
+import { watchSplash } from './inPage/splash'
 import { GAME, nowMs, openBrowser, runAuditWith, wait } from './lib'
 import { attempt, evaluateAs } from './page'
 
-// NOTE: the variables this script reads (see the top of the file).
 const Settings = Config.all({
   base: Config.String('BASE').pipe(Config.withDefault(GAME)),
   tag: Config.String('TAG').pipe(Config.withDefault('after')),
@@ -49,10 +35,6 @@ const Settings = Config.all({
 })
 type Settings = Config.Success<typeof Settings>
 
-// NOTE: the first visit loads with the cache off and no save. The repeat
-// visit closes that page and opens a new one in the same browser context
-// with the cache on, so the assets come from the cache and the save from
-// OPFS, as when a returning player opens the app again.
 const VISITS = ['first', 'repeat'] as const
 
 type Profile = Readonly<{
@@ -300,57 +282,7 @@ runAuditWith(
           hasTouch: true,
         }),
       )
-      yield* attempt(() =>
-        context.addInitScript(() => {
-          const times: Record<string, number> = {}
-          const longTasks: Array<[number, number]> = []
-          window.__splashTimes = times
-          window.__longTasks = longTasks
-          new PerformanceObserver(list => {
-            for (const entry of list.getEntries()) {
-              longTasks.push([entry.startTime, entry.duration])
-            }
-          }).observe({ type: 'longtask', buffered: true })
-          new PerformanceObserver(list => {
-            for (const entry of list.getEntries()) {
-              // NOTE: runs in the page, which has no Effect.
-              // @effect-diagnostics-next-line preferEffectString:off
-              if (entry.name.startsWith('load:')) {
-                times[entry.name] ??= entry.startTime
-              }
-            }
-          }).observe({ type: 'mark', buffered: true })
-          new PerformanceObserver(list => {
-            for (const entry of list.getEntries()) {
-              times[entry.name] ??= entry.startTime
-            }
-          }).observe({ type: 'paint', buffered: true })
-          new MutationObserver(() => {
-            const splash = document.getElementById('splash')
-            if (splash !== null) {
-              times['splash in DOM'] ??= performance.now()
-              const share = splash.style.getPropertyValue('--splash-progress')
-              if (share !== '') {
-                times[`bar at ${Math.round(Number(share) * 100)}%`] ??=
-                  performance.now()
-              }
-            }
-            if (splash?.classList.contains('is-gone') === true) {
-              times['splash hiding'] ??= performance.now()
-            }
-            if (splash === null && times['splash in DOM'] !== undefined) {
-              times['splash removed'] ??= performance.now()
-            }
-            if (document.querySelector('.world-view') !== null) {
-              times['game canvas'] ??= performance.now()
-            }
-          }).observe(document, {
-            subtree: true,
-            childList: true,
-            attributes: true,
-          })
-        }),
-      )
+      yield* attempt(() => context.addInitScript(watchSplash))
 
       for (const name of VISITS) {
         yield* measureVisit({ name, context, profile }, settings)

@@ -16,9 +16,6 @@ import {
   SkinTone,
 } from '../shared/playerData'
 
-// A look's parts, and how a chosen word lands on each: the Profile's Look
-// tab picks with them, and the end card dresses a gift a rank up opens.
-
 export const LookPart = Schema.Literals([
   'Body',
   'HairStyle',
@@ -37,8 +34,6 @@ const readAs =
   (value: string): Option.Option<A> =>
     Schema.decodeUnknownOption(schema)(value)
 
-// NOTE: how a chosen word lands in the look. A word that is not one of the
-// part's options leaves the look as it was.
 const CHOICES: Readonly<
   Record<LookPart, (appearance: Appearance, value: string) => Appearance>
 > = {
@@ -94,7 +89,6 @@ const CHOICES: Readonly<
     }),
 }
 
-// NOTE: the part of the look each kind of earned look sits on.
 export const PART_OF_KIND: Readonly<Record<CosmeticKind, LookPart>> = {
   Hat: 'Hat',
   Shirt: 'ShirtColor',

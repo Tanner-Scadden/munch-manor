@@ -22,18 +22,11 @@ import {
 import { decodeJson } from '../json'
 import { SpriteKeys } from './manifest'
 
-// NOTE: the atlas holds what ./build.ts finds: every sprite built
-// as the modules load, and the ones src/art/spritePrecompile.ts builds. A sprite
-// first built while drawing a scene would miss the atlas and be encoded on
-// the main thread mid-game, so these scenes must draw only sprites the
-// generator found. The generator runs in its own process, so the keys it
-// lists do not depend on what other tests built.
 class GeneratorKeys extends Context.Service<
   GeneratorKeys,
   ReadonlySet<string>
 >()('munch-manor/tools/sprites/atlas.test/GeneratorKeys') {}
 
-// NOTE: a failed run prints nothing, so its keys fail to decode.
 const GeneratorKeysLayer = Layer.effect(
   GeneratorKeys,
   Effect.gen(function* () {
@@ -60,7 +53,6 @@ const measured = (model: Model): Model =>
 
 const HEALTH_SHARES: ReadonlyArray<number> = [1, 0.7, 0.4, 0.15]
 
-// NOTE: every kind at every wear stage, standing in the room.
 const everyKindWorn: Model = withActors(
   measured(fighting),
   Array.flatMap(ZOMBIE_KIND_ORDER, (kind, kindIndex) =>

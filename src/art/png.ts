@@ -1,8 +1,6 @@
 import { Array, Function, Option, String, pipe } from 'effect'
 import { Base64 } from 'effect/encoding'
 
-// COLOR
-
 export type Rgba = Readonly<{ r: number; g: number; b: number; a: number }>
 
 const hexByte = (hex: string): number => Number.parseInt(hex, 16)
@@ -49,8 +47,6 @@ export const parseColor = (color: string): Option.Option<Rgba> =>
     ? fromHex(String.slice(1)(color))
     : fromFunctional(color)
 
-// NOTE: the same source over blend a canvas uses when a later rectangle
-// covers an earlier one, on straight (not premultiplied) color.
 const blend = (under: Rgba, over: Rgba): Rgba => {
   if (over.a === 255 || under.a === 0) {
     return over
@@ -69,8 +65,6 @@ const blend = (under: Rgba, over: Rgba): Rgba => {
   }
 }
 
-// RASTER
-
 export type Fill = Readonly<{
   x: number
   y: number
@@ -84,9 +78,6 @@ const BYTES_PER_PIXEL = 4
 
 const rowLength = (width: number): number => 1 + width * BYTES_PER_PIXEL
 
-// NOTE: plain loops over the byte buffer, since this runs for every pixel of
-// every sprite as the game loads, behind the splash. A callback per pixel
-// cost several times more.
 const paintFill =
   (lines: Uint8Array, width: number, height: number) =>
   (fill: Fill): void => {
@@ -125,10 +116,6 @@ const paintFill =
     }
   }
 
-// NOTE: the scanlines are painted into one local byte buffer in place, one
-// fill after another, the way a canvas paints the same rectangles. Every
-// scanline starts with PNG's "no filter" byte, which a new buffer already
-// holds as zero.
 const scanlinesOf = (
   width: number,
   height: number,
@@ -142,8 +129,6 @@ const scanlinesOf = (
   return lines
 }
 
-// NOTE: the RGBA pixels the PNG holds, row after row with no filter bytes,
-// for tests and the atlas generator to read without a PNG decoder.
 export const rasterOf: {
   (height: number, fills: ReadonlyArray<Fill>): (width: number) => Uint8Array
   (width: number, height: number, fills: ReadonlyArray<Fill>): Uint8Array
@@ -163,8 +148,6 @@ export const rasterOf: {
   },
 )
 
-// PNG
-
 const CRC_TABLE: ReadonlyArray<number> = Array.makeBy(256, byte =>
   Array.reduce(
     Array.makeBy(8, () => 0),
@@ -183,8 +166,6 @@ const crc32 = (bytes: Uint8Array): number => {
 
 const ADLER_MOD = 65521
 
-// NOTE: the largest run of bytes whose sums cannot pass 2^32 before the
-// modulo, as in zlib, so the loop takes the modulo once per run.
 const ADLER_RUN = 5552
 
 const adler32 = (bytes: Uint8Array): number => {
@@ -239,9 +220,6 @@ const chunk = (type: string, data: Uint8Array): Uint8Array => {
 
 const STORED_BLOCK_MAX = 65535
 
-// NOTE: the image data goes in uncompressed (stored) deflate blocks. A
-// sprite is a few hundred bytes, so compressing it would save little, and
-// stored blocks keep the encoder small and exactly deterministic.
 const zlibStored = (data: Uint8Array): Uint8Array => {
   const blockCount = Math.max(1, Math.ceil(data.length / STORED_BLOCK_MAX))
   const blocks = Array.makeBy(blockCount, index => {

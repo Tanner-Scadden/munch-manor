@@ -17,24 +17,9 @@ import { roundWave } from '../world/waves/waves'
 import { RunId } from './recordingApi'
 import { type TickInputs, encodeChunk, lineOfTick } from './recordingCodec'
 
-// A recorded run, for the bot that learns to play like a person
-// (docs/BOT_PLAN.md, Track B). A run records the World it starts from, each
-// 60 Hz tick's intent for every seat, the seat actions pressed between
-// ticks, and any other change the client made to the World between ticks,
-// so a replay (tools/learn/replay.ts) plays it back exactly and checks the
-// hash of its last World. It records the intent the client derived, not the
-// raw input, since aim goes through the camera only the client knows.
-//
-// Recording only reads: it never writes the World, so a recorded run plays
-// exactly as one that is not. Its state is the client's `recorder` field.
-
-// NOTE: a World with every field optional: the fields the client changed
-// between two ticks, each with its new value.
 const WorldPatch = World.mapFields(Struct.map(Schema.optionalKey))
 type WorldPatch = typeof WorldPatch.Type
 
-// NOTE: what happened before a tick's step, in order: a seat's press as its
-// action, then the other changes as one patch.
 export const TickEdit = UiSchema.TaggedEnum({
   Pressed: { slot: PlayerSlot, action: SeatAction },
   Patched: { fields: WorldPatch },
@@ -50,8 +35,6 @@ const DeviceChange = Schema.Struct({
 })
 type DeviceChange = typeof DeviceChange.Type
 
-// NOTE: every setting that shapes the run, for training to sort runs by.
-// The start World holds them all; these are the same values, easy to read.
 const RunSettings = Schema.Struct({
   seed: Schema.Finite,
   mode: World.fields.mode,
@@ -100,7 +83,6 @@ export const RunRecorder = UiSchema.TaggedEnum({
 export type RunRecorder = typeof RunRecorder.Type
 type Recording = typeof RunRecorder.cases.Recording.Type
 
-// NOTE: the upload, one finished run. Version 1.
 export const RunRecording = Schema.Struct({
   format: Schema.Literal(1),
   runId: RunId,
@@ -118,8 +100,6 @@ export type RunRecording = typeof RunRecording.Type
 export const RunRecordingJson = Schema.fromJsonString(
   Schema.toCodecJson(RunRecording),
 )
-
-// START
 
 const HEX = 16
 const SEED_DIGITS = 8
@@ -180,10 +160,6 @@ export const beginRecording = (start: RecordingStart): RunRecorder => {
   )
 }
 
-// PRESSES
-
-// NOTE: a seat's press between ticks, applied to the World by its own rule;
-// the next tick's edits start with it.
 export const notePress: {
   (slot: PlayerSlot, action: SeatAction): (recorder: RunRecorder) => RunRecorder
   (recorder: RunRecorder, slot: PlayerSlot, action: SeatAction): RunRecorder
@@ -197,20 +173,11 @@ export const notePress: {
       : recorder,
 )
 
-// TICKS
-
-// NOTE: a tick clears the last tick's events before it reads them
-// (advanceTick in src/world/step/simulation.ts), and the frame clears them
-// too, so a cleared list is a flag on the tick rather than a patch.
 const PATCHED_FIELDS: ReadonlyArray<keyof World> = Array.filter(
   Struct.keys(World.fields),
   field => field !== 'frameEvents' && field !== 'practice',
 )
 
-// NOTE: the client's own tallies of a frame, which no step reads: how far
-// the player walked and aimed for the practice gate, and the frames and
-// time the run has been active. They change on every frame, so a recording
-// keeps none of them and its hash leaves them out.
 const withoutTallies = (world: World): World => ({
   ...world,
   practice: noPractice,
@@ -221,7 +188,6 @@ const withoutTallies = (world: World): World => ({
   }),
 })
 
-// NOTE: the hash a recording ends on, and a replay checks.
 export const recordedHashOf = (world: World): number =>
   hashWorld(withoutTallies(world))
 
@@ -250,9 +216,6 @@ const pressedOn = (world: World, presses: ReadonlyArray<PendingPress>): World =>
     applySeatAction(current, slot, action),
   )
 
-// NOTE: the client writes the first seat's intent from its input between
-// ticks, and the tick writes it again from the recorded intent, so what it
-// held before is no change.
 const withFocusIntentOf = (baseline: World, current: World): World =>
   focusOf(baseline).intent === focusOf(current).intent
     ? baseline
@@ -260,8 +223,6 @@ const withFocusIntentOf = (baseline: World, current: World): World =>
 
 const CHUNK_TICKS = 600
 
-// NOTE: what the client did between the last tick and this one: the
-// presses, then any field still unlike what the presses alone would make.
 const editsBefore = (
   recording: Recording,
   current: World,
@@ -301,10 +262,6 @@ export type NotedTick = Readonly<{
   device: InputDevice
 }>
 
-// NOTE: one tick: the World before the client's intent went in, every
-// seat's intent, and the World the step made. A teammate bot's intent is
-// left out: its brain reads only the World (botInputs in
-// src/features/bots/teammateBot.ts), so a replay asks it again.
 export const noteTick: {
   (tick: NotedTick): (recorder: RunRecorder) => RunRecorder
   (recorder: RunRecorder, tick: NotedTick): RunRecorder
@@ -351,8 +308,6 @@ export const noteTick: {
   ),
 )
 
-// END
-
 export const outcomeOf = (world: World): RunEnd['outcome'] =>
   Phase.matchOrElse(
     world.phase,
@@ -364,9 +319,6 @@ export const outcomeOf = (world: World): RunEnd['outcome'] =>
     (): RunEnd['outcome'] => 'Quit',
   )
 
-// NOTE: the run as it ended, with the hash of its last ticked World, or
-// nothing when no run was recorded. Its device is the one it started on,
-// and `devices` lists each change after.
 export const finishRecording = (
   recorder: RunRecorder,
 ): Option.Option<RunRecording> =>

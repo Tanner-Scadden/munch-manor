@@ -1,8 +1,3 @@
-// The quality tier on the 3D renderer: the governor (quality.ts) fed each
-// frame's times (frameProbe.ts), and its tier applied to the view (the
-// shadow maps, the bloom) and to the canvas's step (space.ts). Render state
-// only: the scene holds one, and nothing of it reaches the Model.
-
 import { Option } from 'effect'
 import type { Application } from 'pixi.js'
 
@@ -23,8 +18,6 @@ import {
 } from './quality'
 import { canvasStepOf, scaledStepOf } from './space'
 
-// NOTE: the bloom at a tier's resolution, or none. Its resolution is fixed
-// when it is made, so a tier change makes a new one.
 const bloomPassesOf = (spec: TierSpec): ReadonlyArray<CheapBloomEffect> =>
   Option.match(spec.bloomResolution, {
     onNone: () => [],
@@ -38,8 +31,6 @@ const glOf = (app: Application): Option.Option<WebGL2RenderingContext> => {
     : Option.none()
 }
 
-// NOTE: mutable on purpose: it keeps the last frame it was handed, to read
-// the gap to the next.
 export class WorldQuality {
   private readonly governor: QualityGovernor
   private readonly probe: FrameProbe
@@ -54,8 +45,6 @@ export class WorldQuality {
         isAutomated: navigator.webdriver,
       }),
     )
-    // NOTE: a pinned tier asks the GPU for no timings, so a pinned audit
-    // draws exactly as before.
     this.probe = new FrameProbe(
       this.governor.isPinned ? Option.none() : glOf(app),
     )
@@ -65,7 +54,6 @@ export class WorldQuality {
     return this.governor.tier
   }
 
-  // NOTE: the view's options for the tier it starts at.
   get viewOptions(): Readonly<{
     shadowQuality: ReturnType<typeof shadowQualityOf>
     passes: ReadonlyArray<CheapBloomEffect>
@@ -76,7 +64,6 @@ export class WorldQuality {
     }
   }
 
-  // NOTE: the play camera's canvas step at this tier.
   playStepOf(
     input: Readonly<{ devicePerGamePixel: number; ratio: number }>,
   ): number {
@@ -86,20 +73,14 @@ export class WorldQuality {
     })
   }
 
-  // NOTE: a draw begins; the page's clock at its start.
   begin(): number {
     return this.probe.begin()
   }
 
-  // NOTE: a change on screen (a level built, the canvas resized).
   hold(atMs: number): void {
     this.governor.holdFrom(atMs)
   }
 
-  // NOTE: the frame just drawn handed to the governor, and its tier applied
-  // when it steps. Only play counts, with the world's clock running and no
-  // cine on: the title's diorama draws at its own pace, and a paused game
-  // draws nothing new.
   end(frame: IsoFrame, view: View3D): void {
     const probed = this.probe.end()
     if (this.governor.isPinned) {
@@ -110,8 +91,6 @@ export class WorldQuality {
       Play: () => true,
       Diorama: () => false,
     })
-    // NOTE: play drawn again with the world's clock where it was (a second
-    // render in a frame, a paused game) is neither judged nor a change.
     if (isPlay && model.elapsedMs === this.lastElapsedMs) {
       return
     }

@@ -1,19 +1,3 @@
-// A carved piece (src/art/carve.ts) as the geometry the 3D house stands
-// once per level: a face for every side of a block that meets no other,
-// colored by its block's view for that face, placed in the world where the
-// piece stands. Its grid lies as a sprite's blocks do (voxelShape.ts): its
-// columns east, its rows down the lens's up, and its depth north along the
-// floor, so its fronts face the lens and its tops lie flat, and from the
-// lens its front is exactly the art it was carved from.
-//
-// A piece set upright in a wall (the library's secret shelf) stands
-// square to the wall instead, facing the room (`uprightMeshOf`).
-//
-// The glowing colors (a candle's flame) go in a geometry of their own, drawn
-// unlit, so a flame burns in any light.
-//
-// Plain data, no pixi.
-
 import { Option } from 'effect'
 
 import {
@@ -34,8 +18,6 @@ import {
 } from './space'
 import { DEPTH_BACK, STRAIGHT_DOWN } from './voxelShape'
 
-// NOTE: a geometry's arrays, its colors four floats a corner, 0 to 1 as
-// drawn (sRGB): the renderer turns them to linear light.
 export type CarvedMeshData = Readonly<{
   positions: Float32Array
   normals: Float32Array
@@ -43,9 +25,6 @@ export type CarvedMeshData = Readonly<{
   indices: Uint32Array
 }>
 
-// NOTE: where the piece stands, in game pixels: its grid's first column's
-// x, the floor point its front stands on, and its first row's top over the
-// floor there, along the lens's up.
 export type CarvedPlacement = Readonly<{
   left: number
   footY: number
@@ -59,8 +38,6 @@ const BOTTOM: Point = STRAIGHT_DOWN
 const FRONT: Point = [TOWARD_CAMERA.x, TOWARD_CAMERA.y, TOWARD_CAMERA.z]
 const BACK: Point = [-TOWARD_CAMERA.x, -TOWARD_CAMERA.y, -TOWARD_CAMERA.z]
 
-// NOTE: each face: its normal in the world, the neighbor that hides it, and
-// its four corners as offsets in the grid.
 type FaceSpec = Readonly<{
   face: Face
   normal: Point
@@ -137,9 +114,6 @@ const FACES: ReadonlyArray<FaceSpec> = [
   },
 ]
 
-// NOTE: a corner of the grid in the world: east by its column, up the
-// lens's up by its row and depth, and back along the lens by its depth, so
-// a step of depth is a game pixel north along the floor.
 const worldPointOf = (placement: CarvedPlacement, [x, y, z]: Point): Point => {
   const at = standingPointOf({
     x: placement.left + x,
@@ -150,16 +124,12 @@ const worldPointOf = (placement: CarvedPlacement, [x, y, z]: Point): Point => {
   return [at.x, at.y, at.z]
 }
 
-// NOTE: mutable on purpose: the arrays are filled once, as the geometry is
-// built.
 class ColoredBuilder {
   readonly positions: Array<number> = []
   readonly normals: Array<number> = []
   readonly colors: Array<number> = []
   readonly indices: Array<number> = []
 
-  // NOTE: one face, wound counterclockwise seen from its outside, as the
-  // renderer culls the rest.
   face(
     corners: readonly [Point, Point, Point, Point],
     normal: Point,
@@ -201,8 +171,6 @@ const channelsOf = (color: string): readonly [number, number, number] =>
     onSome: ({ r, g, b }) => [r / 255, g / 255, b / 255],
   })
 
-// NOTE: a model's faces in the world, those of a glowing color apart: a
-// corner of the grid at `pointOf`, each face facing `normalOf`.
 const facesOf = ({
   model,
   pointOf,
@@ -216,8 +184,6 @@ const facesOf = ({
 }>): Readonly<{ lit: CarvedMeshData; glowing: CarvedMeshData }> => {
   const lit = new ColoredBuilder()
   const glowing = new ColoredBuilder()
-  // NOTE: every front first, then the tops and sides, as a sprite's blocks
-  // are built (voxelShape.ts).
   for (const spec of FACES) {
     const normal = normalOf(spec)
     for (const voxel of voxelsOf(model)) {
@@ -245,7 +211,6 @@ const facesOf = ({
   return { lit: lit.data(), glowing: glowing.data() }
 }
 
-// NOTE: the piece's faces in the world, leaned along the lens.
 export const carvedMeshOf = ({
   model,
   placement,
@@ -262,13 +227,6 @@ export const carvedMeshOf = ({
     isGlowing,
   })
 
-// NOTE: a piece set upright in a side wall, facing the room east or west of
-// it, in game pixels: the wall's face's x, the floor row its grid's first
-// column stands at (its south end facing east, its north end facing west,
-// so it reads left to right from the room), and how many pixels its first
-// row's top stands over the floor, in rows of a wall's face. Its rows go
-// down the plumb line a screen pixel each, as a wall's face does
-// (space.ts `WALL_ROW`), and its depth into the wall.
 export type UprightPlacement = Readonly<{
   face: number
   end: number
@@ -287,8 +245,6 @@ export const uprightMeshOf = ({
 }>): Readonly<{ lit: CarvedMeshData; glowing: CarvedMeshData }> => {
   const { face, end, height, facing } = placement
   const out = facing === 'East' ? 1 : -1
-  // NOTE: a step along the grid's columns is a floor row south facing
-  // west, north facing east.
   const along = -out
   const normals: Readonly<Record<Face, Point>> = {
     Front: [out, 0, 0],

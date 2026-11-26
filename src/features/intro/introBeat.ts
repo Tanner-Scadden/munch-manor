@@ -5,15 +5,6 @@ import type { SoundEffect } from '../../shared/soundEffect'
 import { ARRIVAL_MS, slamAtMs } from '../../world/run/arrival'
 import { type IntroCut, Phase } from '../../world/schema/worldSchema'
 
-// The intro as beats (LORE.md, "The intro: this feels really off"), read
-// from the World's arrival clock (src/world/run/arrival.ts) as the end
-// card's beat is read from its screen clock, so it is a pure function of
-// the Model. Your friends drive you up at night, the drive full of other
-// daredevils' cars, a party hat and a flashlight on the steps, knock knock
-// and one knock back, the doors open on the coat check and a bony hand
-// waves, HELLO? over a feast still steaming, and the doors slam. The
-// shorter cut, after the first time, is the knock and the slam.
-
 export type IntroBeat =
   | 'Drive'
   | 'Driveway'
@@ -25,8 +16,6 @@ export type IntroBeat =
 
 type BeatSpan = Readonly<{ beat: IntroBeat; startMs: number }>
 
-// NOTE: each beat's start; a beat runs to the next one's, and the slam to
-// the end of the cut.
 const BEATS: Readonly<Record<IntroCut, Array.NonEmptyReadonlyArray<BeatSpan>>> =
   {
     Full: [
@@ -44,13 +33,9 @@ const BEATS: Readonly<Record<IntroCut, Array.NonEmptyReadonlyArray<BeatSpan>>> =
     ],
   }
 
-// NOTE: inside the knock beat: knock, knock, a beat of silence, then one
-// knock back from inside.
 export const KNOCKS_MS: ReadonlyArray<number> = [250, 560]
 export const KNOCK_BACK_MS = 1_700
 
-// NOTE: where a co-op player who skipped waits for the room's slam: at the
-// door, after the knock back.
 const KNOCK_WAIT_MS = 2_300
 
 const beatStartOf = (cut: IntroCut, beat: IntroBeat): number =>
@@ -62,10 +47,8 @@ const beatStartOf = (cut: IntroCut, beat: IntroBeat): number =>
 export type IntroFrame = Readonly<{
   cut: IntroCut
   beat: IntroBeat
-  // NOTE: time into the beat, and how far through it, 0 to 1.
   beatMs: number
   progress: number
-  // NOTE: time into the whole cut, as drawn.
   ms: number
 }>
 
@@ -104,10 +87,6 @@ const maybeArrivalOf = (phase: Phase): Option.Option<ArrivalClock> =>
     () => Option.none(),
   )
 
-// NOTE: the time the intro is drawn at. In single player a skip moves the
-// World's clock to the slam (src/app/update/intro.ts); in co-op it moves
-// only this drawing, to the door after the knock back, until the room's
-// clock reaches the slam.
 const drawnMsOf = (model: Model, { cut, elapsedMs }: ArrivalClock): number =>
   model.introSkip === 'Skipped' && elapsedMs < slamAtMs(cut)
     ? beatStartOf(cut, 'Knock') + KNOCK_WAIT_MS
@@ -118,15 +97,12 @@ export const maybeIntroFrameOf = (model: Model): Option.Option<IntroFrame> =>
     introFrameAt(clock.cut, drawnMsOf(model, clock)),
   )
 
-// NOTE: a press skips while there is something left before the slam.
 export const isSkippable = (model: Model): boolean =>
   Option.exists(
     maybeArrivalOf(model.phase),
     ({ cut, elapsedMs }) =>
       model.introSkip === 'Watching' && elapsedMs < slamAtMs(cut),
   )
-
-// SOUNDS
 
 type Cue = Readonly<{ atMs: number; sound: SoundEffect }>
 
@@ -141,8 +117,6 @@ const knockCues = (cut: IntroCut): ReadonlyArray<Cue> => {
   ]
 }
 
-// NOTE: the radio in the car, then the house's creaks, then nothing on
-// HELLO?, then the slam (the run's music comes in on it, src/app/update/music.ts).
 const CUES: Readonly<Record<IntroCut, ReadonlyArray<Cue>>> = {
   Full: [
     { atMs: 0, sound: 'CarEngine' },
@@ -166,8 +140,6 @@ const clockEndOf = (phase: Phase, cut: IntroCut): number =>
     onSome: ({ elapsedMs }) => elapsedMs,
   })
 
-// NOTE: the cues the arrival clock passed from `before` to `after`, each
-// once: [from, to). A co-op player who skipped hears only the slam.
 export const introSounds: {
   (after: Model): (before: Model) => ReadonlyArray<SoundEffect>
   (before: Model, after: Model): ReadonlyArray<SoundEffect>

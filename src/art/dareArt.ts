@@ -4,15 +4,6 @@ import type { DareKind } from '../world/dare/dareSchema'
 import { pixelIconUrl } from './icons'
 import { type Palette, type Sprite, TOP_LEFT, spriteShapes } from './sprite'
 
-// The dare's things as 7 by 7 pixel icons, for the dare card on the HUD and
-// for the things themselves in the house: the silver spoon, the family
-// portrait, a page of the guest book, Grandma Munch's recipe, the music box,
-// the butler's bell, and the four a player's milestones open
-// (src/world/dare/milestones.ts): Uncle Chunk's chewed napkin ring,
-// Rattles' dare note from 1924, Grandma's false teeth in their jar, and
-// the party's invitation. Each has a light
-// silhouette too, for a slot on the HUD's pocket still empty.
-
 export const DARE_ICON_SIZE = 7
 
 const DARE_PIXELS: Readonly<Record<DareKind, ReadonlyArray<string>>> = {
@@ -128,11 +119,6 @@ const DARE_PALETTE: Palette = {
   e: '#e9c7d8',
 }
 
-// NOTE: a thing still to find is a light silhouette that keeps its inner
-// detail: each color of the thing takes a lavender of about its own
-// lightness, so the spoon's bowl, the portrait's face, and the bell's shine
-// still read on the slot's dark fill. One flat grey on a dark slot read as
-// a blur on a phone (owner, 2026-11-10).
 const SILHOUETTE_PALETTE: Palette = {
   S: '#a89cba',
   W: '#e2dbec',
@@ -158,9 +144,6 @@ export const DARE_ICONS: Readonly<Record<DareKind, Sprite>> = Record.map(
   pixels => spriteShapes(pixels, DARE_PALETTE, TOP_LEFT),
 )
 
-// NOTE: the things as SVG for HTML, crisp at any size: in color, and as
-// the silhouette for one not found yet (the pause screen's list,
-// src/features/menus/pauseProgress.ts).
 export const DARE_ICON_URLS: Readonly<Record<DareKind, string>> = Record.map(
   DARE_PIXELS,
   pixels => pixelIconUrl(pixels, DARE_PALETTE),
@@ -169,10 +152,6 @@ export const DARE_ICON_URLS: Readonly<Record<DareKind, string>> = Record.map(
 export const DARE_SILHOUETTE_URLS: Readonly<Record<DareKind, string>> =
   Record.map(DARE_PIXELS, pixels => pixelIconUrl(pixels, SILHOUETTE_PALETTE))
 
-// NOTE: a dare slot on the HUD's pocket, one sprite: the thing at twice its
-// size, so a spoon reads as a spoon on a phone, on a dark fill inside a rim
-// one pixel wide. An empty slot has a dim rim and the silhouette; a found
-// one a gold rim and the thing in color, with a green check (DARE_CHECK) on its corner.
 const SLOT_SCALE = 2
 export const DARE_SLOT_SIZE = DARE_ICON_SIZE * SLOT_SCALE + 2
 
@@ -232,8 +211,6 @@ export const DARE_FOUND_SLOTS: Readonly<Record<DareKind, Sprite>> = slotSprites(
   () => FOUND_RIM,
 )
 
-// NOTE: the check on a found slot's bottom right corner, hanging a little
-// past it like a sticker.
 export const DARE_CHECK_SIZE = 9
 
 export const DARE_CHECK: Sprite = spriteShapes(
@@ -252,8 +229,6 @@ export const DARE_CHECK: Sprite = spriteShapes(
   TOP_LEFT,
 )
 
-// NOTE: the dare card itself, folded in your pocket: a slip of paper with
-// three lines of scrawl, on the pocket's chip and its open list.
 export const DARE_CARD_WIDTH = 7
 export const DARE_CARD_HEIGHT = 9
 
@@ -273,10 +248,6 @@ export const DARE_CARD_ICON: Sprite = spriteShapes(
   TOP_LEFT,
 )
 
-// NOTE: a thing at twice its size inside a dark outline one pixel wide, so
-// it reads on any floor and in Rattles' bubble: what lies in an open room
-// on Dare and Double Dare (src/features/dare/dareView.ts), and the thing a
-// hint is about (src/screens/game/stallBubble.ts).
 export const DARE_BIG_ICON_SIZE = DARE_ICON_SIZE * SLOT_SCALE + 2
 
 const OUTLINE = 'O'
@@ -328,12 +299,6 @@ export const DARE_BIG_ICONS: Readonly<Record<DareKind, Sprite>> = Record.map(
     ),
 )
 
-// THE DARE JOURNAL
-
-// NOTE: the Dare Journal itself, a brown book with a gold J and its pages'
-// edge: a story page opened on the end card's unlock card
-// (src/features/end/rankStripView.ts), big and outlined as the things are,
-// and the journal's Story tab (src/features/munchopedia/view.ts).
 const JOURNAL_PIXELS: ReadonlyArray<string> = [
   'BBBBBBp',
   'BbGGGbp',
@@ -359,12 +324,6 @@ export const JOURNAL_BIG_ICON: Sprite = spriteShapes(
   TOP_LEFT,
 )
 
-// THE SATCHEL
-
-// NOTE: the satchel at the foot of the dare card opened from the HUD
-// (src/features/dare/pocketCardView.ts), drawn at twice its size: its back
-// wall, behind the things found, and its front, a buckled leather flap
-// with a pocket, in front of them, so each thing pokes out of the top.
 export const SATCHEL_SCALE = 2
 export const SATCHEL_WIDTH = 42
 export const SATCHEL_BACK_HEIGHT = 4
@@ -416,20 +375,12 @@ export const SATCHEL_FRONT: Sprite = spriteShapes(
   TOP_LEFT,
 )
 
-// NOTE: under a missing thing's outline on the opened card, beside its
-// room's icon, on Dare and Double Dare: an eye with a gold glint, for a
-// thing that lies in plain sight there.
 export const PLAIN_SIGHT: Sprite = spriteShapes(
   ['..ooo..', '.owwwo.', 'owwkwwo', '.owwwo.', '..ooo..'],
   { o: '#4a4038', w: '#ffe066', k: '#140c10' },
   TOP_LEFT,
 )
 
-// THE BIG KEY
-
-// NOTE: Uncle Chunk's big skeleton key, twice a house key's size, gold with
-// a dark outline: in flight to the front door (src/features/dare/dareView.ts)
-// and hung on the Proof Shelf once he is felled (src/features/proof/).
 export const BIG_KEY_PALETTE: Palette = {
   k: '#140c10',
   Y: '#ffd23f',

@@ -43,8 +43,6 @@ const openNightmare = HtmlLocator.role('button', {
   name: 'Triple Dog Dare: No backing out. Bring snacks',
 })
 
-// NOTE: PLAY on a first run opens the difficulty card in the menu panel's
-// Dialog, shown as its own Mount would show it.
 const openCard = steps(
   measureSurface,
   s => s.click(playButton),

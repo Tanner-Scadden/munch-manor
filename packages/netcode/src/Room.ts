@@ -27,25 +27,6 @@ import {
 import { repeat, writeAll } from './Wire'
 import { MAX_VIEW_LAG_TICKS, type PlayerTick, type World } from './World'
 
-// NOTE: the GameRoom's game, as pure functions over plain data, apart from
-// the Durable Object that runs them (infra/worker/gameRoom.ts) so tests
-// can drive every rule with a fake clock. Each function takes the room and
-// the time and returns the next room and what to send, close, or record.
-//
-// - The tick is a fixed 60 Hz, counted from the start time: `advance` runs
-//   as many ticks as the clock owes, at most MAX_CATCH_UP_TICKS at once, so
-//   a stalled loop loses time instead of spinning to catch up.
-// - Inputs land by tick: each sample becomes a change point, and a player's
-//   input on tick T is the newest change point at or before T. A late one
-//   takes effect on the next tick, for that player only.
-// - About 20 times a second (every TICKS_PER_SEND ticks) every linked
-//   player gets a Delta from the world it was last sent, with the newest
-//   Input seq the room applied for it. One diff is written and shared.
-// - A player who links gets Welcome and a Snapshot of the last world sent,
-//   so the next shared Delta applies to it.
-// - No word from a linked player for AWAY_AFTER_MS, or its socket closing,
-//   makes it Away. Away for FREE_SEAT_AFTER_MS frees its seat.
-
 export const TICK_HZ = 60
 export const TICK_MS = 1000 / TICK_HZ
 export const TICKS_PER_SEND = 3
@@ -190,8 +171,6 @@ const snapshotFrame = <W, Own>(
     world: writeAll(writer => world.snapshot(writer, room.sentWorld)),
   })
 
-// START
-
 export const startRoom: {
   <W, Own>(
     members: ReadonlyArray<Member>,
@@ -254,13 +233,6 @@ export const startRoom: {
   },
 )
 
-// RESTORE
-
-// NOTE: a room the object lost to a restart (a deploy), put back from a
-// checkpoint: the World as it was at `tick`, with every seat Away since
-// `nowMs` and no socket linked. Each player who reconnects within
-// FREE_SEAT_AFTER_MS links as in any rejoin and gets a Snapshot of this
-// World. The clock starts as if the room had run to `tick` just now.
 export const restoreRoom: {
   <W>(
     tick: number,
@@ -293,8 +265,6 @@ export const restoreRoom: {
       ack: 0,
       rttMs: 0,
       viewLagTicks: 0,
-      // NOTE: every player linked before the restart, so linking again
-      // counts as a reconnect.
       net: emptySeatNet(1),
     })),
     world: restored,
@@ -306,11 +276,6 @@ export const restoreRoom: {
   }),
 )
 
-// LINKS
-
-// NOTE: a player's game socket said Hello. A newer socket replaces an older
-// one (a reload, or a second tab), which is closed. The input queue and the
-// seq count start over, since a new socket starts its seqs from 1.
 export const link: {
   <W, Own>(
     room: Room<W>,
@@ -380,7 +345,6 @@ const awayOut = (
     () => ServerFrame.cases.Away.make({ slot }),
   )
 
-// NOTE: a socket closed. Its player is Away at once.
 export const unlink: {
   <W>(socket: SocketId, nowMs: number): (room: Room<W>) => Stepped<W>
   <W>(room: Room<W>, socket: SocketId, nowMs: number): Stepped<W>
@@ -409,8 +373,6 @@ export const unlink: {
     }),
 )
 
-// SEATS
-
 const removeSeat = <W, Own>(
   world: World<W, Own>,
   room: Room<W>,
@@ -421,7 +383,6 @@ const removeSeat = <W, Own>(
   world: world.removePlayer(room.world, seat.slot),
 })
 
-// NOTE: the host kicked a player, or they left the room from the lobby.
 export const dropPlayer: {
   <W, Own>(
     room: Room<W>,
@@ -457,8 +418,6 @@ export const dropPlayer: {
     }),
 )
 
-// INPUTS
-
 const changesOf = (
   frame: InputFrame,
   firstTick: number,
@@ -473,13 +432,6 @@ const changesOf = (
   })
 }
 
-// NOTE: each sample keeps its own tick. Samples for ticks the room already
-// ran are late: the newest of them takes effect on the next tick, with any
-// button the others pressed, and the rest are dropped, so one slow message
-// (a resend holding the socket up) never shifts the ticks of the ones
-// on time. A message claiming ticks too far ahead is pulled back whole.
-// The new change points replace queued ones at or after their first tick:
-// they are newer word about the same ticks.
 const framePointsOf = (
   frame: InputFrame,
   tick: number,
@@ -514,9 +466,6 @@ const pointsOf = (
       const rest = Option.isSome(maybeNextOnTime)
         ? Array.drop(onTime, 1)
         : onTime
-      // NOTE: a button pressed and let go inside the late samples (a quick
-      // click held up behind a resend) is pressed for the next tick alone,
-      // so a late shot fires late instead of not at all.
       const extra =
         Array.reduce(late, 0, (bits, point) => bits | point.input.buttons) &
         ~next.buttons
@@ -582,8 +531,6 @@ const enqueue = (
   }
 }
 
-// NOTE: any frame from a linked player is word from them, and brings an
-// Away player back.
 const heard = <W>(room: Room<W>, seat: Seat, nowMs: number): Stepped<W> => {
   const seats = updateSeat(room.seats, seat.slot, current => ({
     ...current,
@@ -673,8 +620,6 @@ export const receive: {
     }),
 )
 
-// TICKS
-
 const inputAt = (seat: Seat, tick: number): Seat => {
   const due = Array.filter(seat.queued, change => change.tick <= tick)
   return Option.match(Array.last(due), {
@@ -707,8 +652,6 @@ const tickOf = (seat: Seat): PlayerTick => ({
   rttMs: seat.rttMs,
 })
 
-// NOTE: everyone's round trip rides in a Delta about every 2 seconds, for
-// the ping bars; it costs nothing billed, since only what players send is.
 export const PINGS_EVERY_TICKS = 120
 
 const pingsOf = (room: Room<unknown>) =>
@@ -793,9 +736,6 @@ const checkPresence = <W, Own>(
   )
 }
 
-// NOTE: the game is over. Everyone linked hears why; `Ended` carries the
-// scores by player for the room's result. Sockets stay open for the next
-// game in the same room.
 export const endRoom: {
   <W, Own>(
     room: Room<W>,
@@ -839,7 +779,6 @@ export const endRoom: {
 export const isEnded = (out: ReadonlyArray<Out>): boolean =>
   Array.some(out, item => item._tag === 'Ended')
 
-// NOTE: a hair of slack, so 1000 ms is 60 ticks and not 59.999.
 const TICK_SLACK = 1e-6
 
 export const ticksDue: {
@@ -852,7 +791,6 @@ export const ticksDue: {
   ),
 )
 
-// NOTE: a wake that owed more than two sends' ticks woke late.
 const LATE_WAKE_TICKS = 2 * TICKS_PER_SEND
 
 const laggedBy = (lag: RoomLag, owed: number): RoomLag => ({
@@ -862,10 +800,6 @@ const laggedBy = (lag: RoomLag, owed: number): RoomLag => ({
   lostTicks: lag.lostTicks + Math.max(0, owed - MAX_CATCH_UP_TICKS),
 })
 
-// NOTE: one wake of the room's loop: the ticks the clock owes, one message
-// to everyone if a send tick passed, then presence, then the end of the
-// game, which first sends the last world if it is not out yet, so every
-// player sees how the run ended. After an `Ended` out the room is done.
 export const advance: {
   <W, Own>(room: Room<W>, nowMs: number): (world: World<W, Own>) => Stepped<W>
   <W, Own>(world: World<W, Own>, room: Room<W>, nowMs: number): Stepped<W>
@@ -915,7 +849,6 @@ export const advance: {
   },
 )
 
-// NOTE: when the loop should wake next: the next send tick.
 export const nextWakeMs = (room: Room<unknown>): number => {
   const nextSendTick =
     (Math.floor(room.tick / TICKS_PER_SEND) + 1) * TICKS_PER_SEND
@@ -925,9 +858,6 @@ export const nextWakeMs = (room: Room<unknown>): number => {
 export const linkedSockets = (room: Room<unknown>): ReadonlyArray<SocketId> =>
   Array.getSomes(Array.map(room.seats, seat => seat.socket))
 
-// NOTE: how each seat's link and the room's own loop did over the run, for
-// the room's end-of-game log (infra/worker/gameRoom.ts, finish). A seat that
-// left before the end is not in it.
 export interface NetReport {
   readonly seats: ReadonlyArray<SeatNetReport & { readonly slot: number }>
   readonly lag: RoomLag

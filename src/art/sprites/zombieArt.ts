@@ -11,14 +11,8 @@ import {
   wornThrough,
 } from './wear'
 
-// PIXEL MAPS
-
 export const FRENZY_EYE = '#ff2b2b'
 
-// NOTE: the Groaner is a party guest a hundred years late to leave: a
-// tattered tailcoat over a white shirt front, a black bow tie, and a dinner
-// napkin still tucked in at the collar. The coat's tails flap behind his
-// legs as he shambles.
 export const ZOMBIE_PALETTE: Palette = {
   G: '#8ed65e',
   F: '#5fa83f',
@@ -116,9 +110,6 @@ export const groanerWalkPixels = (stage: number): FramePixels => {
   ]
 }
 
-// NOTE: the Groaner's walk carved into real volumes (src/art/carve.ts),
-// each frame the default form off its own art, carved on first use. The
-// 3D batch does not stand them yet.
 export const groanerWalkForms = (
   stage: number,
 ): Array.NonEmptyReadonlyArray<CarvedModel> =>
@@ -126,9 +117,6 @@ export const groanerWalkForms = (
     carveSprite({ pixels, palette: ZOMBIE_PALETTE }),
   )
 
-// NOTE: the Hotfoot was the fastest kid in school, dared to run straight
-// through the house in 1984: a red sweatband, a gold track singlet with a
-// red stripe, blue running shorts, and white tube socks to the shorts.
 export const RUNNER_PALETTE: Palette = {
   H: '#3a2418',
   S: '#dcee7a',
@@ -202,14 +190,6 @@ export const runnerWalkPixels = (stage: number): FramePixels =>
     applyPatches(RUNNER_HEAD, wornThrough(RUNNER_HEAD_WEAR, stage)),
   )
 
-// NOTE: the Big Lug is the Glutton, a party guest who ate everything: a big
-// round green belly bursting out of a red waistcoat, a napkin bib tucked in
-// at the collar, and the kitchen worn for armor, a stock pot on his head
-// with its handles and knob and a frying pan held up as a shield. His green
-// skin sits apart from the grey metal so the armor reads off him. His wear
-// stages knock the armor off one piece at a time, the pan, then the pot,
-// until only the bald guest in his waistcoat and bib is left. The armor is
-// laid over his bare frames, so each walk frame keeps its arms and legs.
 export const TANK_PALETTE: Palette = {
   s: '#9fbf6a',
   f: '#6e8f45',
@@ -252,8 +232,6 @@ const TANK_BELLY: ReadonlyArray<string> = [
   '...RRfssssssfRR...',
 ]
 
-// NOTE: the forearms are laid over the belly; one swung forward is drawn
-// short, its hand up at the waist.
 const TANK_FOREARMS_LOW: ReadonlyArray<string> = [
   '',
   '',
@@ -382,12 +360,6 @@ export const tankWalkPixels = (stage: number): FramePixels => [
   armored(tankFrame(TANK_FOREARMS_RIGHT_UP, TANK_LEGS_RIGHT_UP), stage),
 ]
 
-// NOTE: the Kaboomer is the kid who brought fireworks to scare everyone: a
-// grinning zombie kid in a striped tee with a big round firework shell
-// strapped on his back like a backpack, its fuse in the cap on top. The fuse
-// and its sparks are drawn over the sprite each frame in zombieView.ts, since
-// they shorten as he closes in. His lit frames turn the shell red-hot for the
-// last moments before it goes off.
 export const EXPLODER_PALETTE: Palette = {
   G: '#c4f08a',
   g: '#8cc85e',
@@ -458,13 +430,6 @@ export const exploderWalkPixels = (stage: number): FramePixels => {
 
 export const EXPLODER_FUSE_BASE = { x: 2, y: 1 }
 
-// BIG LEAGUER
-
-// NOTE: the Big Leaguer is the jock who took the dare to prove a point: a
-// lanky zombie in a blue letterman jacket with cream ribbing and a big gold
-// letter, jeans, and a red cap on backwards. His long arms drag his knuckles along the floor. His
-// wind-up holds a Groaner overhead with a high leg kick, and after a throw he
-// pumps his fist.
 export const CHUCKER_PALETTE: Palette = {
   C: '#80dcb4',
   c: '#4fae8c',
@@ -651,18 +616,11 @@ export const chuckerWalkPixels = (stage: number): FramePixels =>
 export const chuckerHeftPixels = (stage: number): ReadonlyArray<string> =>
   applyPatches(CHUCKER_HEFT, wornThrough(CHUCKER_HEFT_WEAR, stage))
 
-// NOTE: with his throwing arm hanging limp he cannot pump his fist, so his
-// taunt is just his standing frame.
 export const chuckerTauntPixels = (stage: number): ReadonlyArray<string> =>
   stage >= CHUCKER_WALK_WEAR.length
     ? firstFrame(stage, chuckerWalkPixels)
     : applyPatches(CHUCKER_TAUNT, wornThrough(CHUCKER_TAUNT_WEAR, stage))
 
-// ANKLE BITER
-
-// NOTE: a zombie spider seen from above, facing right: a rotting abdomen
-// with a bone skull on its back, four sick yellow eyes, red fangs, lime ooze
-// dripping off it, and eight legs that skitter between the walk frames.
 export const CRAWLER_PALETTE: Palette = {
   b: '#2c4423',
   g: '#6c9a47',
@@ -741,7 +699,6 @@ const CRAWLER_FRAMES: Array.NonEmptyReadonlyArray<ReadonlyArray<string>> = [
   ]),
 ]
 
-// NOTE: hurt, the skull on its back cracks open in a pink gash.
 export const CRAWLER_WEAR: ReadonlyArray<ReadonlyArray<Patch>> = [
   [patch(3, 4, 'N'), patch(4, 4, 'J'), patch(4, 5, 'M'), patch(3, 6, 'J')],
 ]

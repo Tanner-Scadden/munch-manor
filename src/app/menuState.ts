@@ -10,11 +10,6 @@ import { tabOf } from '../features/profile/profile'
 import { RESTART_GRACE_MS } from '../shared/constants'
 import { type Model, Phase } from './model'
 
-// NOTE: what the player is looking at, derived from the Model and never
-// stored. Update's gates and the view both read it, so "is a menu open"
-// has one answer. The dialogs come first, top to bottom, then the hero
-// picker over the single player lobby, the lobby, co-op's own screens, and the phase. Only this module reads a dialog's `isOpen` or `model.coop.screen`
-// (munch/no-menu-field).
 export const MenuState = UiSchema.TaggedEnum({
   Profile: { tab: ProfileTab },
   Panel: { panel: MenuPanel },
@@ -31,8 +26,6 @@ export const MenuState = UiSchema.TaggedEnum({
 })
 export type MenuState = typeof MenuState.Type
 
-// NOTE: an end screen ignores taps and keys for a moment, so a shot fired
-// as the run ends does not press a button.
 export const isPastRestartGrace = (model: Model): boolean =>
   model.screenMs >= RESTART_GRACE_MS
 
@@ -73,12 +66,9 @@ export const menuState = (model: Model): MenuState => {
   }
 }
 
-// NOTE: the bare home menu, nothing over it: its focus moves, its keys
-// work, and its buttons open panels, the hand, the Profile, and co-op.
 export const isOnHomeMenu = (model: Model): boolean =>
   MenuState.isAnyOf(['Home'])(menuState(model))
 
-// NOTE: the lobby is on screen, whatever dialog is over it (the hero picker).
 export const isLobbyUp = (model: Model): boolean => isLobbyShown(model.lobby)
 
 export const isLobbyOpen = (model: Model): boolean =>

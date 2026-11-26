@@ -1,7 +1,3 @@
-// Shared Scene steps and locators: what a Scene does to the root through
-// its view, its Subscriptions, and its Mounts, and the elements it looks
-// for. Story steps and builders live in `testing.ts`.
-
 import { Array, Function, Match, Option, Record, Result, String } from 'effect'
 
 import { Dialog, type DialogDismissReason, DialogEvents } from '@effect/ui-kit'
@@ -34,9 +30,6 @@ import {
   steps,
 } from './testing'
 
-// NOTE: a Message from one of the root's Subscriptions, by its key's name:
-// `fromSubscription('Keyboard', Message.PressedKey({ code }))`. A keyed one
-// (the frame, keyed by its pace) is found by its name before the colon.
 export const fromSubscription: {
   (message: Message): (name: string) => RootStep
   (name: string, message: Message): RootStep
@@ -57,8 +50,6 @@ export const fromSubscription: {
 export const emitPressedKey = (code: string): RootStep =>
   fromSubscription('Keyboard', Message.PressedKey({ code }))
 
-// NOTE: one animation frame of `deltaTime`, through the root's frame
-// Subscription (`Frame:"Play"` in a round, `Frame:"Menu"` on the title).
 export const emitFrame = (deltaTime: number = MAX_FRAME_DELTA_MS): RootStep =>
   fromSubscription('Frame', Message.TickedFrame({ deltaTime }))
 
@@ -71,8 +62,6 @@ const framesInScene =
     return s
   }
 
-// NOTE: the game surface's Mount: its place on the page, and a press on it
-// (each a value of its Stream), and the touch tap listener acknowledged.
 export const measureSurfaceAs =
   (
     surface: Readonly<{
@@ -89,8 +78,6 @@ export const measureSurfaceAs =
 
 export const measureSurface = measureSurfaceAs(SURFACE)
 
-// NOTE: each gun slot's press Mount on the HUD (PressHudSlot), acknowledged
-// running, for a Scene whose round shows the gun slots.
 const HUD_SLOTS = ['First', 'Second', 'Melee'] as const
 
 export const ackHudSlots: SceneStep = s =>
@@ -102,11 +89,8 @@ export const ackHudSlots: SceneStep = s =>
       : current,
   )
 
-// NOTE: the surface measured and the HUD's Mounts running.
 export const measureHud: SceneStep = s => s.pipe(measureSurface, ackHudSlots)
 
-// NOTE: a press on a gun slot, as its Mount reports a pointerdown: a mouse
-// press mid-wave is a shot through it, a touch keeps the tap.
 export const pressHudSlot =
   ({
     slot,
@@ -122,8 +106,6 @@ export const pressHudSlot =
       InputMessage.PressedHudSlot({ ...press, clientX: 0, clientY: 0 }),
     )
 
-// NOTE: a finger or the mouse pressing the game surface, as its Mount
-// reports a pointerdown.
 export const pressSurface =
   (
     press: Readonly<{
@@ -148,8 +130,6 @@ export const throughIntroInScene: SceneStep = steps(
   framesInScene(SLAM_FRAMES),
 )
 
-// NOTE: the dare card read in a Scene, by its frames and a key. A Scene
-// cannot look first, so only a run with a list (not Endless) takes it.
 export const readDareCardInScene: SceneStep = steps(
   framesInScene(GATE_FRAMES),
   emitPressedKey('Escape'),
@@ -165,31 +145,23 @@ export const throughIntroByTapInScene: SceneStep = steps(
   framesInScene(SLAM_FRAMES),
 )
 
-// NOTE: SHARE on an end screen carries a Mount (ShareFromClick) that
-// reports how each tap's share ended.
 export const shareMountSettles =
   (outcome: ShareOutcome): SceneStep =>
   s =>
     s.mounted(ShareFromClick, Message.SettledShare({ outcome }))
 
-// NOTE: SHARE's Mount acknowledged as running, with no share yet.
 const shareMountRuns: SceneStep = s => s.expectMount(ShareFromClick({}))
 
-// NOTE: a Scene given an end screen with its buttons up acknowledges
-// SHARE's Mount; any other Model has no SHARE.
 export const settleEndShareOf =
   (model: Model): SceneStep =>
   s =>
     endOffer(model) === 'MenuAndModes' ? shareMountRuns(s) : s
 
-// NOTE: PLAY opens the lobby, which focuses START; START starts the run.
 export const openLobbyInScene: SceneStep = steps(
   s => s.click(HtmlLocator.role('button', { name: 'Play' })),
   resolveFocusLobby(),
 )
 
-// NOTE: START opens the run on its intro; `startRunInScene` goes on past it.
-// The lobby is a child, a leaf in the root's Scene, so START is its event.
 export const startIntoIntroInScene: SceneStep = steps(openLobbyInScene, s =>
   s.childEmit(Lobby, 'lobby', LobbyEvents.RequestedStart()),
 )
@@ -200,11 +172,6 @@ export const startRunInScene: SceneStep = steps(
   readDareCardInScene,
 )
 
-// LOCATORS
-
-// NOTE: elements wearing a class, the old `Scene.selector('.name')`, and
-// what a locator finds that also wears the given attributes
-// (`withAttrs({ 'data-mode': 'Endless' })(byClass('home-play'))`).
 const classesOf = (node: Locator.Node): ReadonlyArray<string> =>
   String.split(node.attrs?.['class'] ?? '', /\s+/)
 
@@ -232,8 +199,6 @@ export const withAttrs =
       ),
   })
 
-// NOTE: an element's attribute in a Scene, `undefined` when it must not be
-// there: the old `toHaveAttr` and `not.toHaveAttr`.
 export const expectAttr: {
   (
     name: string,
@@ -262,8 +227,6 @@ export const expectAttr: {
       }),
 )
 
-// NOTE: one property of an element's inline style in a Scene, the old
-// `toHaveStyle`: `expectStyle(cluster, 'left', '25%')`.
 const styleOf = (node: Locator.Node): Readonly<Record<string, string>> =>
   Record.fromEntries(
     Array.filterMap(String.split(node.attrs?.['style'] ?? '', ';'), entry =>
@@ -295,7 +258,6 @@ export const expectStyle: {
       }),
 )
 
-// NOTE: an element wearing a class in a Scene, the old `toHaveClass`.
 export const expectClass: {
   (name: string): (locator: Locator.Locator) => SceneStep
   (locator: Locator.Locator, name: string): SceneStep
@@ -314,18 +276,11 @@ export const manorButton = HtmlLocator.role('button', { name: /^More:/ })
 
 export const pauseButton = HtmlLocator.role('button', { name: 'Pause' })
 
-// NOTE: the corner's pause button tapped: the pause screen's press on the
-// surface (PressGameSurface) acknowledged running.
 export const pauseByButton: SceneStep = s =>
   s.click(pauseButton).expectMount(PressGameSurface())
 
-// NOTE: the pause screen's help card takes a press as the surface does
-// (PressGameSurface): its Mount acknowledged running.
 export const pausePressRuns: SceneStep = s => s.expectMount(PressGameSurface())
 
-// NOTE: a click, or a finger's tap: src/input/touchTaps.ts makes a tap a
-// click on the button, as it does for a second finger while another holds
-// the move stick.
 export const clickOn =
   (locator: Locator.Locator): SceneStep =>
   s =>
@@ -333,7 +288,6 @@ export const clickOn =
 
 type ViewNode = AppScene['view']
 
-// NOTE: every child component the view draws, outside any other child.
 export const childrenOf = (node: ViewNode): ReadonlyArray<ViewNode> =>
   Match.value(node).pipe(
     Match.tag('Element', element =>
@@ -343,22 +297,13 @@ export const childrenOf = (node: ViewNode): ReadonlyArray<ViewNode> =>
     Match.orElse(() => []),
   )
 
-// NOTE: the first of several matches, for a locator that matches more than
-// one element where a test means the first (the root's two status lines).
 export const firstOf = (locator: Locator.Locator): Locator.Locator => ({
   description: `the first ${locator.description}`,
   all: root => Array.take(locator.all(root), 1),
 })
 
-// NOTE: the root's status line, before the polite live region that also
-// wears role status.
 export const statusLine = firstOf(HtmlLocator.role('status'))
 
-// NOTE: ui-kit's Dialog shows its portal once its own TrackDialog mount
-// reports it shown, which a Scene never runs. This gives the root's Dialog
-// at `id` (`PROFILE_DIALOG_ID`, `HOME_SCREEN_STEPS_ID`, ...) the Model it
-// has once shown, so what is inside it is in the accessibility tree. Open
-// the dialog first (its `DialogState` field, by a click or a Message).
 export const dialogModel = (isShown: boolean) => ({
   mounted: isShown,
   started: isShown,
@@ -374,11 +319,6 @@ export const showDialog =
   s =>
     s.givenChild(Dialog, id, dialogModel(true))
 
-// NOTE: the root's Dialog at `id` asking to close, as its close button,
-// Escape, or a press outside would make it ask: a Scene doesn't run the
-// Dialog's own update, so the event stands in for the press. The root
-// answers with ClosedDialog, and the Dialog is given the Model it has once
-// its exit has played (a dialog still open stays shown on its prop).
 export const requestDialogClose: {
   (reason: DialogDismissReason): (id: string) => SceneStep
   (id: string, reason: DialogDismissReason): SceneStep
@@ -415,7 +355,6 @@ export const lobbyBackButton = HtmlLocator.role('button', {
   name: 'Chicken out',
 })
 
-// NOTE: a button by its accessible name.
 export const button = (name: string | RegExp) =>
   HtmlLocator.role('button', { name })
 
@@ -429,7 +368,6 @@ export const playEndlessButton = withAttrs({ 'data-mode': 'Endless' })(
   byClass('home-play'),
 )
 
-// NOTE: KEEP GOING is gone (an escape ends the run); tests check it stays so.
 export const keepGoingButton = withAttrs({ 'data-look': 'KeepGoing' })(
   byClass('end-button'),
 )
@@ -447,18 +385,13 @@ export const updateChip = HtmlLocator.role('button', {
   name: 'Update ready: tap to get it',
 })
 
-// NOTE: deals the MANOR hand on the home menu: its dialog opens on the
-// Model, with no Command to resolve.
 export const openHandInScene: SceneStep = s => s.click(manorButton)
 
-// NOTE: a card puts the hand away and opens its own dialog.
 export const pickCardInScene =
   (name: string | RegExp): SceneStep =>
   s =>
     s.click(HtmlLocator.role('button', { name }))
 
-// NOTE: the Look tab's radio groups in a Scene: a group by its label, an
-// option in it by name, and its little tabs.
 export const lookGroup = (name: string) =>
   HtmlLocator.role('radiogroup', { name })
 

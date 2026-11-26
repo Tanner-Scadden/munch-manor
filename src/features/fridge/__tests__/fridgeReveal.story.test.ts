@@ -37,10 +37,6 @@ import {
   revealStageAt,
 } from '../fridgeReveal'
 
-// The Mystery Leftovers reveal (src/features/fridge/fridgeReveal.ts): which look and sting
-// each prize lands with, the spin that lands on it, and the weapon's flight
-// into its HUD slot once taken.
-
 const FRAME_MS = FIXED_STEP_MS
 const audibleAtFridge = (balance: number): Model =>
   UiStruct.evolve(atFridge(balance), {
@@ -51,8 +47,6 @@ const audibleAtFridge = (balance: number): Model =>
     }),
   })
 
-// NOTE: the Model after each Message of a pull and the sounds its Commands
-// ask for, so a test can say on which frame a sound plays.
 type Step = Readonly<{ model: Model; sounds: ReadonlyArray<SoundEffect> }>
 
 const pullMessages: ReadonlyArray<Message> = [
@@ -65,9 +59,6 @@ const pullMessages: ReadonlyArray<Message> = [
   ),
 ]
 
-// NOTE: a Story of the pull from `start` that keeps each Message's Step,
-// playing its sounds before the next. The Steps are a timeline no one
-// Model holds, so each is kept as it goes by.
 const pull = (start: Model) =>
   Effect.gen(function* () {
     const steps: Array<Step> = []

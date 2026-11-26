@@ -1,8 +1,3 @@
-// The manor's small lives: moths circling every lit flame, the candles',
-// the chandelier's, and the cellar's bulb, fluttering in and out of the
-// light. Each is read off the World's clock and the level alone, with no
-// state, so every player in a co-op room sees the same moths.
-
 import { Array } from 'effect'
 
 import { unitOf } from '../../shared/prng'
@@ -11,9 +6,6 @@ import type { World } from '../../world/schema/worldSchema'
 import type { Mote } from './air'
 import { type FlameKind, flameSpecsOf, isFlameLit } from './lightSpecs'
 
-// NOTE: how many moths each kind of flame draws, how wide they circle it,
-// and how high its light hangs over its spot on screen, in game pixels. A
-// candle draws one only now and then.
 const MOTHS: Readonly<
   Record<FlameKind, Readonly<{ count: number; reach: number; lift: number }>>
 > = {
@@ -25,12 +17,9 @@ const MOTHS: Readonly<
   Oven: { count: 0, reach: 0, lift: 0 },
 }
 
-// NOTE: the share of candles a moth finds.
 const CANDLE_SHARE = 0.4
 
 const MOTH_COLOR = 0xe8dcc0
-// NOTE: a moth stands this far in front of its flame and that much higher,
-// the same spot on screen, so it never passes behind the stand it circles.
 const MOTH_FORWARD = 10
 
 const rollOf = (flame: number, moth: number, use: number): number =>
@@ -52,8 +41,6 @@ export const crittersOf = ({
       const speed =
         (2.4 + rollOf(flame, moth, 1) * 2.2) * (moth % 2 === 0 ? 1 : -1)
       const phase = rollOf(flame, moth, 2) * Math.PI * 2
-      // NOTE: an erratic loop: the angle lurches and the circle breathes,
-      // now and then a dart out past the light.
       const angle = seconds * speed + Math.sin(seconds * 3.1 + phase) * 0.9
       const dart = Math.max(0, Math.sin(seconds * 0.7 + phase)) ** 6
       const radius =
@@ -66,7 +53,6 @@ export const crittersOf = ({
           MOTH_FORWARD +
           Math.sin(angle) * radius * 0.6 +
           Math.sin(seconds * 7 + phase) * 1.5,
-        // NOTE: its wings beat, two pixels open and one shut.
         width: Math.sin(seconds * 31 + phase * 5) > 0 ? 2 : 1,
         color: MOTH_COLOR,
         alpha: 1,

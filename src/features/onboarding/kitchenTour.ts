@@ -13,20 +13,6 @@ import { isFridgeTried, isKitchenTourOn } from '../../world/run/tutorialRules'
 import { withWorld } from '../../world/schema/world'
 import { FridgeDoor, type Vector } from '../../world/schema/worldSchema'
 
-// NOTE: chapter 2 of the guided tutorial, from the owner (2026-10-30): in a
-// new save's first timed break, when the kitchen's boards first go on
-// sale, the break clock holds still and the game walks the player through
-// the kitchen and the Mystery Leftovers fridge, each step at its spot. Buy
-// the boards (free), pull the fridge (free, and always a weapon), then take
-// the prize or leave it. Once the fridge has been tried the clock runs on,
-// the tracker ticks off and fades. The rules that change the game (the held
-// clock, the free boards and pull, the weapon) are the World's, in
-// src/world/run/tutorialRules.ts; this is the client's tracker and markers.
-//
-// It runs once per save: it is on only while the timed breaks lesson is
-// pending, which is learned when that break ends and saved, so a tutorial
-// reset brings it back. Never in co-op. The tracker's skip button learns
-// the lesson at once, which ends it and lets the clock run.
 export type KitchenStep = 'Boards' | 'Fridge' | 'Choose'
 
 const KITCHEN_DONE_MS = 2600
@@ -74,15 +60,11 @@ export const advanceKitchenTour: {
   }),
 )
 
-// NOTE: skipping learns the timed breaks lesson, which ends the tour's
-// rules in the World: the clock runs and prices are back.
 export const skipKitchenTour = (model: Model): Model =>
   UiStruct.evolve(withWorld(model, learnTimedBreaks), {
     kitchenTour: () => Tour.Over(),
   })
 
-// NOTE: where the step's marker points: the boards, then the fridge. While
-// the prize floats the TAKE ring and the choice bubble do the teaching.
 export const maybeKitchenMark = (model: Model): Option.Option<Vector> =>
   Option.flatMap(kitchenStepOf(model), step => {
     const level = levelOf(model)

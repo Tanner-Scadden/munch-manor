@@ -71,19 +71,9 @@ import {
   TrapNotice,
 } from './model'
 
-// The client's frame: the display's time becomes whole 60 Hz ticks of the
-// world, each fed the intent the client derives from its own input and
-// camera, and the frame's cosmetics follow from the events of its ticks.
-
 export const clampFrameDelta = (deltaTime: number): number =>
   clamp(deltaTime, 0, MAX_FRAME_DELTA_MS)
 
-// NOTE: on a touch phone, upright or on its side, and on a controller, a
-// held trigger's aim bends onto the zombie it is almost on, each device at
-// its own strength (src/input/aimAssist.ts). The last input decides, as it
-// does the phone's zoom, so a mouse never gets it. It is part of the
-// intent, so the world steps the same with or without it, given the same
-// intent.
 const assistStrengthOf = (model: Model): Option.Option<AimAssistStrength> => {
   if (model.lastDevice === 'Touch') {
     return Option.some(AIM_ASSIST.Touch)
@@ -114,8 +104,6 @@ const withAimAssist = (model: Model, intent: Intent): Intent =>
         : intent,
   })
 
-// NOTE: the client turns raw input into intent: aim goes through the
-// camera, which only this device knows.
 const intentOf = (model: Model): Intent =>
   withAimAssist(
     model,
@@ -125,9 +113,6 @@ const intentOf = (model: Model): Intent =>
 export const refreshIntent = (model: Model): Model =>
   modifyFocus(model, { intent: () => intentOf(model) })
 
-// NOTE: a recorded run (src/platform/recording.ts) notes each tick: the
-// World before the client's intent went in, every seat's intent, and the
-// World the step made. It reads only; the World is the same either way.
 const recordedTick = (
   model: Model,
   before: Model,
@@ -146,18 +131,11 @@ const recordedTick = (
 
 type Ticks = Readonly<{ count: number; carryMs: number }>
 
-// NOTE: the intent is left as the tick saw it; the next tick's refresh
-// reads the trigger without the press.
 export const withFirePressSeen = (model: Model): Model =>
   model.input.firePress === 'Seen'
     ? model
     : UiStruct.evolve(model, { input: seeFirePress })
 
-// NOTE: every seat's intent for a tick: the human's from the client, the
-// couch players' from their keys, and each teammate bot's from its brain
-// (src/features/bots/teammateBot.ts). Single player reads only the World
-// the intent went into, so it builds no Model for the tick; a couch or a
-// bot crew reads the Model, with that World in it.
 const inputsOf = (model: Model, intended: World): InputsByPlayer => {
   if (!isCouchPlay(model) && !isBotCrew(model)) {
     return soloInputs(focusOf(intended).intent)
@@ -171,10 +149,6 @@ const inputsOf = (model: Model, intended: World): InputsByPlayer => {
     : players
 }
 
-// NOTE: the World a tick steps: the client's intent in its own seat, then
-// the bots' presses as their seats' own actions (a reload in a lull,
-// buying at the stall, READY). It changes the World alone, a far narrower
-// copy than the Model.
 const intendedWorldOf = (model: Model): World => {
   const intended = modifyFocus(worldOf(model), {
     intent: intent => keptIntent(intent, intentOf(model)),
@@ -184,8 +158,6 @@ const intendedWorldOf = (model: Model): World => {
     : intended
 }
 
-// NOTE: a 60 Hz frame on an empty carry is exactly one tick and leaves
-// exactly zero, so a 60 Hz display steps as it did before the fixed step.
 const ticksIn = (carryMs: number, count = 0): Ticks =>
   carryMs >= FIXED_STEP_MS - STEP_EPSILON_MS
     ? ticksIn(carryMs - FIXED_STEP_MS, count + 1)
@@ -197,16 +169,9 @@ type Stepped = Readonly<{
   worldMs: number
 }>
 
-// NOTE: the slam ends the frame's ticks, so the first break starts on a
-// frame of its own.
 const hasSlammed = (before: Phase, after: Phase): boolean =>
   isArriving(before) && !isArriving(after)
 
-// NOTE: a tick that ends the round ends the frame's ticks. The intro's
-// ticks run its clock (src/world/run/arrival.ts).
-// A tick sees a fire press waiting for one (FirePress in
-// src/input/inputSchema.ts), and a frame with no run under way lets go of
-// one, so it never fires the next run's first tick.
 const runTicks = (stepped: Stepped, count: number): Stepped => {
   if (!isRunUnderway(stepped.model.phase)) {
     return { ...stepped, model: withFirePressSeen(stepped.model) }
@@ -232,7 +197,6 @@ const runTicks = (stepped: Stepped, count: number): Stepped => {
     : runTicks(next, count - 1)
 }
 
-// NOTE: a refused placement's notice fades on world time, on the client.
 const ageTrapNotice = (notice: TrapNotice, worldMs: number): TrapNotice =>
   TrapNotice.match(notice, {
     Quiet: () => notice,
@@ -261,9 +225,6 @@ const ageCallouts = (
           : Result.failVoid,
       )
 
-// NOTE: a kind is explained once, ever: the save keeps the kinds seen, so a
-// returning player only sees the name pop. The list keeps its reference
-// when nothing new is seen, so the save check sees nothing changed.
 const calloutFor = (model: Model, kind: PickupKind): Model => {
   const isSeen = Array.contains(model.seenPowerUps, kind)
   const callout: Callout = {
@@ -282,8 +243,6 @@ const calloutFor = (model: Model, kind: PickupKind): Model => {
   })
 }
 
-// NOTE: the player's own gun reaching a new tier pops its new name and
-// what changed. A teammate's level up only sparkles and rings.
 const levelCalloutFor = (model: Model, event: GunLeveled): Model =>
   event.slot === focusOf(model).seat.slot
     ? UiStruct.evolve(model, {
@@ -320,9 +279,6 @@ const ageLevelCallouts = (
           : Result.failVoid,
       )
 
-// NOTE: a cosmetic, made after the step from the frame's grabs and level
-// ups. Callouts hold still while the shop is open, as the pickups do. The
-// trap notice and both callout lists age in one write of the cosmetics.
 const advanceCallouts = (model: Model, worldMs: number): Model => {
   const called = Array.reduce(model.frameEvents, model, (current, event) =>
     GameEvent.matchOrElse(
@@ -343,9 +299,6 @@ const advanceCallouts = (model: Model, worldMs: number): Model => {
   })
 }
 
-// NOTE: what the frame looks like once its ticks ran: the camera lean,
-// particles, the walking dust, callouts, and the juice, all from the
-// frame's events and the cosmetic stream, so they never touch the World.
 const advanceFlourishes = (
   model: Model,
   frameMs: number,
@@ -379,20 +332,12 @@ const advanceFlourishes = (
     frameMs,
   )
 
-// NOTE: the first trap a player finds in a crate brings up the hint for
-// placing it.
 const noticeFoundTrap = (model: Model): Model =>
   TrapHint.isAnyOf(['Unseen'])(model.trapHint) &&
   Array.some(TRAP_KIND_ORDER, kind => focusOf(model).trapStock[kind] > 0)
     ? UiStruct.evolve(model, { trapHint: () => TrapHint.Showing() })
     : model
 
-// NOTE: the blow that clears a wave starts the camera's glide to it, aged
-// on the display's clock and let go once the glide is over (src/render/
-// cine.ts).
-// NOTE: the wave's last blow, where the camera glides as it clears: the
-// frame's last kill, or where the clear was noted when no kill made it (a
-// wave cleared by a pack wiped some other way).
 const noteFinisher = (model: Model, frameMs: number): Model => {
   const cleared = Array.findFirst(
     model.frameEvents,
@@ -434,8 +379,6 @@ export const advanceCosmetics: {
   ),
 )
 
-// NOTE: the camera's lean toward the aim and its glide toward the big
-// moments, eased on the display's own time.
 export const leanFor: {
   (frameMs: number): (model: Model) => Model
   (model: Model, frameMs: number): Model
@@ -479,9 +422,6 @@ const recordBestWave = (
       )
     : model
 
-// NOTE: the client's half of a round ending on a tick: the end screen's
-// clock starts, and a lost endless run records its best wave, under the
-// difficulty it was played on (an online co-op run's is the room's).
 export const endRoundOnClient: {
   (after: Model, played?: Difficulty): (before: Model) => Model
   (before: Model, after: Model, played?: Difficulty): Model
@@ -505,24 +445,15 @@ export const endRoundOnClient: {
   },
 )
 
-// NOTE: the client's half of what the ticks did to the round: a wave that
-// started raises the new zombie card, and a round that ended starts its
-// end screen.
 const followRound = (before: Model, after: Model): Model =>
   endRoundOnClient(before, raiseDebutCardFrom(before, after))
 
-// NOTE: a frame runs the whole ticks its time owes and carries the rest,
-// then makes its cosmetics. Its `frameEvents` are every tick's events in
-// order, so the cosmetics, sounds, stats, and lessons see each one.
 export const advanceGame: {
   (deltaTime: number): (model: Model) => Model
   (model: Model, deltaTime: number): Model
 } = Function.dual(2, (model: Model, deltaTime: number): Model => {
   const frameMs = clampFrameDelta(deltaTime)
   const ticks = ticksIn(model.stepCarryMs + frameMs)
-  // NOTE: each tick clears the World's events as it starts, so the frame
-  // need not; a recording notes the World before its first tick with them
-  // cleared, as it always has (src/platform/recording.ts).
   const stepped = runTicks(
     {
       model: RunRecorder.isAnyOf(['Recording'])(model.recorder)

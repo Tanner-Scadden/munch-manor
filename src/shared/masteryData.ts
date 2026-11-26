@@ -1,21 +1,8 @@
 import { Array, Function, Option, Record, Schema } from 'effect'
 
-// Hero and gun mastery's data (docs/PROGRESSION_PLAN.md, pillar D): the
-// mastery points each hero's runs have earned, by calling, and the kills
-// each gun has made, by weapon kind, across every run. Both only ever add,
-// so two devices that play offline at once both keep what they did. Keys
-// are text, so a device that does not know a hero or a gun yet keeps its
-// count untouched. What a level or a count opens is the client's
-// (src/domain/mastery.ts). Shared with the sync Worker, like the scope
-// (src/platform/masteryScope.ts), so it imports only `effect`.
-
-// NOTE: a gun's mastery skin (src/domain/mastery.ts): Gilded at 1,000
-// lifetime kills with that gun, Diamond at 2,500. Worn by that gun in the
-// player's own hands over the look's skin; never part of the look.
 export const MasterySkin = Schema.Literals(['Gilded', 'Diamond'])
 export type MasterySkin = typeof MasterySkin.Type
 
-// NOTE: a count by key, a hero's points or a gun's kills.
 type Counts = Readonly<Record<string, number>>
 
 export const SavedMastery = Schema.Struct({
@@ -41,9 +28,6 @@ const countsAdded = (before: Counts, after: Counts): Counts =>
     count => count > 0,
   )
 
-// NOTE: two masteries of the same player merged (a synced save over the
-// Model's): the larger count of each, since the store's already holds every
-// device's runs that reached it.
 export const mergeMastery: {
   (reached: SavedMastery): (kept: SavedMastery) => SavedMastery
   (kept: SavedMastery, reached: SavedMastery): SavedMastery
@@ -55,8 +39,6 @@ export const mergeMastery: {
   }),
 )
 
-// NOTE: what `after` holds past `before`, as an increment, or nothing at
-// all when the two are the same.
 export const masteryAdded: {
   (after: SavedMastery): (before: SavedMastery) => ReadonlyArray<SavedMastery>
   (before: SavedMastery, after: SavedMastery): ReadonlyArray<SavedMastery>
@@ -74,7 +56,6 @@ export const masteryAdded: {
   },
 )
 
-// NOTE: an increment added to a mastery: the scope's rule and the client's.
 export const addToMastery: {
   (added: SavedMastery): (mastery: SavedMastery) => SavedMastery
   (mastery: SavedMastery, added: SavedMastery): SavedMastery
@@ -86,7 +67,6 @@ export const addToMastery: {
   }),
 )
 
-// NOTE: a hero's mastery points, or a gun's kills, 0 for none yet.
 export const heroPointsOf: {
   (calling: string): (mastery: SavedMastery) => number
   (mastery: SavedMastery, calling: string): number
@@ -101,7 +81,6 @@ export const gunKillsOf: {
   countIn(mastery.guns, kind),
 )
 
-// NOTE: the rows the scope's two tables hold, one per hero and one per gun.
 export const masteryRowsOf = (
   counts: Counts,
 ): ReadonlyArray<readonly [string, number]> =>

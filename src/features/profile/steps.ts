@@ -7,11 +7,6 @@ import { cleanName } from '../../domain/playerName'
 import type { ClosetCueKind, ProfileFx } from './blocks/look/model'
 import type { LookOutcome, Model, ProfileTab } from './model'
 
-// NOTE: the Profile panel's own transitions on its state, the root's
-// `profile` field, for the root's Steps (src/app/update/profile.ts).
-
-// NOTE: plays an effect in the Profile. The count moves on every time, so
-// the view swaps the element and the CSS animation starts over.
 export const withFx: {
   (fx: ProfileFx): (model: Model) => Model
   (model: Model, fx: ProfileFx): Model
@@ -19,7 +14,6 @@ export const withFx: {
   UiStruct.evolve(model, { fx: () => fx, fxCount: count => count + 1 }),
 )
 
-// NOTE: the try-on ends: the figure goes back to what is worn.
 export const withoutPreview = (model: Model): Model =>
   UiStruct.evolve(model, { maybePreview: () => Option.none() })
 
@@ -34,7 +28,6 @@ const withCue: {
     }),
 )
 
-// NOTE: the name as it is kept: the draft cleaned.
 export const keptName = (model: Model): string => cleanName(model.nameDraft)
 
 export const withNameKept = (model: Model): Model =>
@@ -52,7 +45,6 @@ export const showTab: {
   }),
 )
 
-// NOTE: the Profile as it opens on a tab, with the name kept to edit.
 export const opened: {
   (tab: ProfileTab, name: string): (model: Model) => Model
   (model: Model, tab: ProfileTab, name: string): Model
@@ -60,9 +52,6 @@ export const opened: {
   UiStruct.evolve(showTab(model, tab), { nameDraft: () => name }),
 )
 
-// NOTE: a name kept on another device replaces the draft unless the player
-// has typed their own over it here. A stale draft would be kept again on
-// close and undo the other device's name.
 export const withSyncedName: {
   (was: string, name: string): (model: Model) => Model
   (model: Model, was: string, name: string): Model
@@ -74,9 +63,6 @@ export const withSyncedName: {
 
 type OutcomeShown = (model: Model, part: LookPart, value: string) => Model
 
-// NOTE: what each outcome of a Look tab pick plays. A pick that is worn,
-// tried on, or refused ends an earlier try-on; too few Bones keeps it, so
-// BUY stays for when there are enough.
 const OUTCOMES: Readonly<Record<LookOutcome, OutcomeShown>> = {
   Stay: model => withoutPreview(model),
   Wear: model => withFx(withoutPreview(model), 'Poof'),

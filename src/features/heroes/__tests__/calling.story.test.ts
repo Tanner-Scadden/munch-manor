@@ -35,9 +35,6 @@ import {
 import { woundPlayer } from '../../../world/step/combat'
 import { isHeroPickerUp } from '../../lobby/model'
 
-// Callings (src/world/heroes/calling.ts): the pick on the home menu, a run starting with
-// it, and each quirk playing out in the World.
-
 const ranked = (rank: number, calling: Calling): Model =>
   UiStruct.evolve(readyAfterRead, {
     rank: current => ({ ...current, earnedPoints: pointsForRank(rank) }),
@@ -47,8 +44,6 @@ const ranked = (rank: number, calling: Calling): Model =>
 
 const clickStart: StoryStep = send(LobbyMessage.RequestedStartFromLobby())
 
-// NOTE: the hero card opens the picker, which marks the heroes this rank
-// has reached as seen, and a card is tapped in it.
 const pickInPicker = (calling: Calling): StoryStep =>
   steps(
     send(LobbyMessage.RequestedLobbyHeroPicker()),
@@ -56,7 +51,6 @@ const pickInPicker = (calling: Calling): StoryStep =>
     tapLobbyHero(calling),
   )
 
-// NOTE: the run a player of this rank and calling starts from the lobby.
 const startedAs = (rank: number, calling: Calling): Effect.Effect<Model> =>
   modelAfter(ranked(rank, calling), steps(openLobbyByTap, clickStart))
 
@@ -157,7 +151,6 @@ describe('the quirks in play', () => {
     expect(gun.loaded).toBe(29)
   })
 
-  // NOTE: a Big Lug drops two keys whole, so no roll comes into it.
   test("the Penny Pincher's kills drop half again as many keys", () => {
     const keysFrom = (calling: Calling): number =>
       dropKeys(

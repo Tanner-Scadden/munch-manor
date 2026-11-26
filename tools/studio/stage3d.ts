@@ -1,13 +1,3 @@
-// The 3D stage's element, `<studio-stage>`: the picked sprite carved into
-// blocks and stood on the manor's own floor, in the light of a preset
-// (./stagePresets.ts), through the game's own renderer parts: its textures
-// and look pass, its carve and batch of blocks (src/render/iso/voxels.ts),
-// its floor layer, and its house lights. The camera turns round the thing
-// (a drag, or a spin), or stands where the game's camera stands (49° down).
-// A press on a block is followed back along the camera's ray through the
-// very blocks the game builds, to the sprite pixel the block was carved
-// from, so a pin here reads as a pin on the flat picture. The light and
-// color lab's edits (`tuning`) reach this page's renderer as they move.
 import { Array, Effect, Option, Schema } from 'effect'
 import { Application } from 'pixi.js'
 
@@ -60,7 +50,6 @@ const Subject = Schema.Struct({
   facing: FacingChoice,
   tone: Tone,
   clockMs: Schema.Finite,
-  // NOTE: the most blocks deep it is carved, as the game carves its kind.
   most: Schema.Finite,
 })
 type Subject = typeof Subject.Type
@@ -79,16 +68,12 @@ export const studioStage = Html.customElement({
     preset: StagePreset,
     house: Schema.Finite,
     isAutoSpin: Schema.Boolean,
-    // NOTE: a count the view raises to stand the camera where the game's
-    // stands again.
     cameraResets: Schema.Finite,
     tuning: LabEdits,
     pins: Schema.Array(StagePin),
   },
   events: { 'press-block': Pin },
 })
-
-// THE CAMERA
 
 type Vector3 = readonly [number, number, number]
 
@@ -114,9 +99,6 @@ const normal = (a: Vector3): Vector3 => {
   return [a[0] / length, a[1] / length, a[2] / length]
 }
 
-// NOTE: the camera as the stage last drew with it: where it stands, its
-// right, up, and forward, and how far it sees from its middle, in world
-// units.
 type Lens = Readonly<{
   position: Vector3
   right: Vector3
@@ -131,13 +113,9 @@ type Lens = Readonly<{
 const CAMERA_DISTANCE = 80
 const MIN_PITCH = (12 * Math.PI) / 180
 const MAX_PITCH = (88 * Math.PI) / 180
-// NOTE: radians a CSS pixel of drag turns, and a second of spin.
 const DRAG_TURN = 0.01
 const SPIN_SPEED = 0.6
-// NOTE: a press that moves less than this, in CSS pixels, is a pin.
 const PRESS_SLOP = 4
-// NOTE: the thing fills about this share of the stage's height, at a whole
-// number of CSS pixels a game pixel.
 const FILL_SHARE = 0.6
 const MIN_ZOOM = 2
 const MAX_ZOOM = 12
@@ -175,7 +153,6 @@ const lensOf = (
   }
 }
 
-// NOTE: a point in the world on the stage, in CSS pixels.
 const screenOf = (lens: Lens, point: Vector3) => {
   const offset = sub(point, lens.position)
   return {
@@ -184,12 +161,8 @@ const screenOf = (lens: Lens, point: Vector3) => {
   }
 }
 
-// THE PRESS
-
-// NOTE: a leaf as the game stands it, and its blocks' placement.
 type Stood = Readonly<{ leaf: Leaf; placement: VoxelPlacement }>
 
-// NOTE: a matrix of sixteen numbers, column by column, on a point.
 const transformed = (elements: ReadonlyArray<number>, point: Vector3) => {
   const at = (index: number): number => elements[index] ?? 0
   return [
@@ -199,7 +172,6 @@ const transformed = (elements: ReadonlyArray<number>, point: Vector3) => {
   ] as const
 }
 
-// NOTE: a ray against a triangle (Möller and Trumbore), its distance or none.
 const EPSILON = 1e-7
 const hitDistance = (
   origin: Vector3,
@@ -230,9 +202,6 @@ const hitDistance = (
   return distance > EPSILON ? distance : undefined
 }
 
-// NOTE: a placement's blocks as the game carves them, each face's corners
-// carrying the pixel it shows (its column in the art, unmirrored, and its
-// row), at its hand set depth too, kept for each carve.
 const meshes = new WeakMap<VoxelPlacement['carved'], VoxelMeshData>()
 
 const pickMeshOf = (placement: VoxelPlacement, most: number): VoxelMeshData => {
@@ -264,8 +233,6 @@ const pickMeshOf = (placement: VoxelPlacement, most: number): VoxelMeshData => {
   return mesh
 }
 
-// NOTE: the sprite pixel a texel of a leaf's art is, by the leaf's box and
-// matrix, as the flat picture's pins count them.
 const spritePixelOf = (
   { leaf, placement }: Stood,
   column: number,
@@ -286,8 +253,6 @@ const spritePixelOf = (
   }
 }
 
-// NOTE: the nearest block under a point on the stage, as the sprite pixel it
-// was carved from.
 const pickAt = (
   input: Readonly<{
     lens: Lens
@@ -340,8 +305,6 @@ const pickAt = (
   return found
 }
 
-// NOTE: where a sprite pixel shows on the stage: on the face of its leaf's
-// blocks nearest the lens, or none off every leaf.
 const pinPointOf = (
   lens: Lens,
   stood: ReadonlyArray<Stood>,
@@ -362,8 +325,6 @@ const pinPointOf = (
       }),
   )
 
-// NOTE: the texel of a leaf's art a sprite pixel falls on, through the
-// leaf's matrix turned back.
 const texelOf = (
   { leaf, placement }: Stood,
   pin: Pin,
@@ -392,10 +353,6 @@ const texelOf = (
     : Option.none()
 }
 
-// THE RENDERER
-
-// NOTE: mutable on purpose: pixi's own objects, built once and changed each
-// frame, as the game's scene holds them.
 class StageRenderer {
   private readonly app: Application
   private readonly textures: Textures
@@ -464,8 +421,6 @@ class StageRenderer {
       level,
       holder,
       floor,
-      // NOTE: a watch never ended keeps every fill drawing its shadow each
-      // frame, as the studio's lab moves the light.
       lights: houseLightsOf({
         level,
         parent: holder,
@@ -485,8 +440,6 @@ class StageRenderer {
     }
   }
 
-  // NOTE: one frame: the thing stood in its preset's light, seen by `lens`,
-  // and its leaves as they stood, for a press.
   draw(
     input: Readonly<{
       level: Level
@@ -606,8 +559,6 @@ const startRenderer = (host: HTMLElement) =>
     return new StageRenderer(app)
   })
 
-// THE ELEMENT
-
 const NO_SUBJECT: Subject = {
   id: '',
   facing: 'Right',
@@ -616,14 +567,8 @@ const NO_SUBJECT: Subject = {
   most: 16,
 }
 
-// NOTE: how often the picture a note sends is copied from the stage, in
-// animation frames.
 const SHOT_FRAMES = 15
 
-// NOTE: mutable on purpose: a custom element is the browser's own mutable
-// object, holding the renderer, the camera's turn, and a drag while it is on
-// the page. Built only when it is defined, since HTMLElement exists only in a
-// browser.
 const studioStageClass = () =>
   class StudioStageElement extends HTMLElement {
     subject: Subject = NO_SUBJECT
@@ -650,7 +595,6 @@ const studioStageClass = () =>
     private readonly host = document.createElement('div')
     private readonly marks = document.createElement('div')
     private readonly shot = document.createElement('canvas')
-    // NOTE: the pins' own elements, one a pin, kept from frame to frame.
     private readonly pinMarks: Array<HTMLSpanElement> = []
     private shotToken = 0
 
@@ -716,8 +660,6 @@ const studioStageClass = () =>
       Option.map(renderer, live => {
         live.destroy()
       })
-      // NOTE: the Studio's own page reads the tables as shipped once the
-      // stage is gone, as the game would.
       tuneTables(tablesOf({}))
       this.isTuneDue = true
     }
@@ -863,10 +805,6 @@ const studioStageClass = () =>
       this.drawPins(lens, stood)
     }
 
-    // NOTE: the frame just drawn, copied off the WebGL canvas in the same
-    // task (before the browser clears it) as an ImageBitmap, and shown on the
-    // shot's `bitmaprenderer` canvas: a note's before picture and the lab
-    // audit read it. No 2D canvas.
     private takeShot(source: HTMLCanvasElement): void {
       this.shotToken += 1
       const token = this.shotToken
@@ -892,8 +830,6 @@ const studioStageClass = () =>
       )
     }
 
-    // NOTE: each pin an element over the stage, at its block's place in
-    // CSS pixels, shown or hidden as the camera sees it.
     private drawPins(lens: Lens, stood: ReadonlyArray<Stood>): void {
       while (this.pinMarks.length < this.pins.length) {
         const mark = document.createElement('span')

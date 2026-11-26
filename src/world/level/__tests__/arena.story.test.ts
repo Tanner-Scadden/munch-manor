@@ -47,10 +47,6 @@ const ARMCHAIR_ROW_Y = 50
 const COUCH_X = 160
 const COUCH_BOTTOM = 130
 
-// NOTE: these tests are about the parlour's own furniture and walls, so
-// they play on the parlour-only level (PARLOUR), where its map sits at the
-// origin as it always did, rather than the manor that starts in the dining
-// room.
 const parlourWave = (): Model =>
   UiStruct.evolve(quietWave(1), {
     level: level => ({ ...level, id: 'Parlour' }),

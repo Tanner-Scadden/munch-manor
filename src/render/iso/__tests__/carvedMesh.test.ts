@@ -3,10 +3,6 @@ import { describe, expect, test } from 'vitest'
 import { carve } from '../../../art/carve'
 import { carvedMeshOf } from '../carvedMesh'
 
-// A carved piece as the 3D house's geometry (src/render/iso/carvedMesh.ts):
-// a face for every side of a block that meets no other, wound to face out,
-// and the glowing colors apart.
-
 const PALETTE = { a: '#ff0000', f: '#ffd23f' }
 
 const piece = carve({
@@ -42,8 +38,6 @@ describe('carvedMeshOf', () => {
       placement: PLACEMENT,
       isGlowing: color => color === PALETTE.f,
     })
-    // NOTE: the flame's block shows its front, top, bottom, and back; its
-    // east face wears the side view's red, so it is lit.
     expect(lit.indices).toHaveLength(6 * 6)
     expect(glowing.indices).toHaveLength(4 * 6)
     expect(Array.from(glowing.colors.slice(0, 4))).toEqual(

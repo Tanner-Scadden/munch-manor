@@ -29,9 +29,6 @@ const NARROW_LEVEL = makeLevel(
   Array.map(ROOM_MAP, line => String.slice(0, 16)(line)),
 )
 
-// NOTE: a room one screen tall sits still on its rows, a little south of
-// the flat window's: the lens shows more floor above the view's middle,
-// far off, than below it, near.
 const ONE_SCREEN_Y = cameraFor(PARLOUR, { x: 160, y: 90 }).y
 
 const playingModel: Model = UiStruct.evolve(initialModel, {
@@ -66,7 +63,6 @@ describe('camera', () => {
         })
       },
     )
-    // NOTE: the whole room in view, its top wall to its front wall.
     const seen = floorSeenOf(cameraFor(PARLOUR, { x: 160, y: 90 }))
     expect(seen.top).toBeLessThanOrEqual(PARLOUR.bounds.top)
     expect(seen.bottom).toBeGreaterThanOrEqual(PARLOUR.bounds.bottom)
@@ -95,8 +91,6 @@ describe('camera', () => {
   })
 
   test('keeps the followed player in the middle of the view between the edges', () => {
-    // NOTE: on the view's middle row, where the lens shows a game pixel as
-    // one on the screen; a room one screen tall holds it still there.
     const player = { x: 333, y: ONE_SCREEN_Y + VIEW_HEIGHT / 2 }
     const camera = cameraFor(WIDE_LEVEL, player)
     const onScreen = worldToView(camera, player)

@@ -1,15 +1,9 @@
 import { Duration, Effect, Function, Ref, Schedule, pipe } from 'effect'
 
-// NOTE: how a socket's connection ended. `Stopped` stops reconnecting (a
-// final refusal, a kick, a leave). `Heard` dropped after the server spoke,
-// so the next try comes soon and the backoff starts over; `Unheard` never
-// got that far, so the tries back off.
 export type Ended = 'Stopped' | 'Heard' | 'Unheard'
 
 const FIRST_BACKOFF_MS = 250
 
-// NOTE: a quarter second, doubling, never more than `maxMs` apart, with
-// jitter so a room's players do not all reconnect in step after an outage.
 export const backoffUpTo = (maxMs: number): Schedule.Schedule<unknown> =>
   Schedule.jittered(
     Schedule.min([
@@ -22,10 +16,6 @@ const AFTER_HEARD: Schedule.Schedule<unknown> = Schedule.jittered(
   Schedule.spaced(Duration.millis(FIRST_BACKOFF_MS)),
 )
 
-// NOTE: runs `connect` again and again, with its attempt number, until it
-// ends `Stopped`. Tries that never heard the server wait by `backoff`; a
-// connection that did resets the attempts and the backoff, so one dropped
-// socket in a long session does not wait as if every try had failed.
 export const reconnecting: {
   (
     backoff: Schedule.Schedule<unknown>,

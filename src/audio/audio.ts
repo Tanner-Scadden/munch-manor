@@ -31,8 +31,6 @@ import type {
   ToneLayer,
 } from './soundRecipe'
 
-// SOUND
-
 export { SoundEffect } from '../shared/soundEffect'
 
 export const Playback = Schema.Literals(['Running', 'Suspended'])
@@ -44,8 +42,6 @@ export const PlayOutcome = Schema.Literals([
   'DroppedWhileSuspended',
 ])
 export type PlayOutcome = typeof PlayOutcome.Type
-
-// ENGINE
 
 type Engine = Readonly<{
   context: AudioContext
@@ -129,13 +125,6 @@ const releaseAudioEngine = (engine: Engine): Effect.Effect<void> =>
     Effect.ignore,
   )
 
-// SERVICE
-
-// NOTE: the audio engine as one service, built on its first use and closed
-// with the runtime. The first tap unlocks audio (src/app/update/sound.ts),
-// which asks for it through the AcquireAudioEngine Command, so no
-// AudioContext starts before a gesture; every later sound, tune, and resume
-// reuses the one engine, and a failed build stays failed.
 export class AudioEngine extends Context.Service<
   AudioEngine,
   { readonly engine: Effect.Effect<Engine, AudioEngineError> }
@@ -175,8 +164,6 @@ export const resumeAudio = (
         Effect.timeoutOption(RESUME_TIMEOUT),
         Effect.map(() => currentPlayback(engine)),
       )
-
-// SYNTHESIS
 
 type Chain = Readonly<{
   source: AudioScheduledSourceNode
@@ -268,8 +255,6 @@ const noiseChain = (
   }
 }
 
-// NOTE: where a voice plays: straight into the mix, or through its own
-// gain and stereo pan, for a sound placed in the room.
 type Placement = Readonly<{ volume: number; pan: number }>
 
 const destinationOf = (
@@ -367,8 +352,6 @@ export const playSound: {
     playVoice(engine, sound, variation, Option.none()),
 )
 
-// NOTE: a sound placed in the room: `volume` from 0 to 1 and `pan` from -1
-// (left) to 1 (right), by where it is from the listener.
 export const playSoundAt: {
   (
     sound: SoundEffect,
@@ -389,8 +372,6 @@ export const playSoundAt: {
     playVoice(engine, sound, 0, Option.some(placement)),
 )
 
-// MUSIC
-
 export const playMusic: {
   (cue: MusicCue): (engine: Engine) => Effect.Effect<void, AudioEngineError>
   (engine: Engine, cue: MusicCue): Effect.Effect<void, AudioEngineError>
@@ -402,8 +383,6 @@ export const playMusic: {
       catch: error => AudioEngineError.make({ reason: describeError(error) }),
     }),
 )
-
-// VARIATION
 
 const VARIATION_STEPS = 9
 const X_MIXER = 73

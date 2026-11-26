@@ -23,12 +23,6 @@ import { type InputsByPlayer, applySeatAction } from '../world/step/stepWorld'
 import { isRoundActive } from '../world/waves/waves'
 import { type ActionKeys, keyActionOf } from './keyActions'
 
-// Local co-op for testing (MULTIPLAYER.md, Phase 1): with a dev-only
-// `?local=N` link, players 2 to 4 share the keyboard with player 1, who
-// keeps WASD, the mouse, and every usual key. Each other player has a
-// block of keys of their own; they aim where they walk. Their READY key is
-// their interact key too: held at a purchasable, it buys.
-
 type CouchKeys = ActionKeys &
   Readonly<{
     up: string
@@ -101,8 +95,6 @@ const couchSlots = (model: Model): ReadonlyArray<PlayerSlot> =>
     slot => COUCH_KEYS.has(slot),
   )
 
-// INTENT
-
 const axis = (
   keys: ReadonlyArray<string>,
   negative: string,
@@ -131,8 +123,6 @@ const intentOf = (model: Model, couch: CouchKeys): Intent => {
   }
 }
 
-// NOTE: every player's intent for a tick: player 1's from the client's own
-// input and camera, the rest from their keys.
 export const couchInputs: {
   (leadIntent: Intent): (model: Model) => InputsByPlayer
   (model: Model, leadIntent: Intent): InputsByPlayer
@@ -150,8 +140,6 @@ export const couchInputs: {
       ),
     ]),
 )
-
-// PRESSES
 
 type CouchPress = Readonly<{ slot: PlayerSlot; couch: CouchKeys }>
 
@@ -196,8 +184,6 @@ const fieldPress = (
       ),
   })
 
-// NOTE: a couch player's key, held for their intent and applied as their
-// seat's action.
 export const pressCouchKey: {
   (code: string): (model: Model) => Model
   (model: Model, code: string): Model
@@ -208,10 +194,6 @@ export const pressCouchKey: {
   }),
 )
 
-// CAMERA
-
-// NOTE: one screen for everyone at the keyboard: the camera follows the
-// middle of every player still in the fight, in the house.
 export const couchFocus = (model: Model): Option.Option<Vector> => {
   if (!isCouchPlay(model)) {
     return Option.none()

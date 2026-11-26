@@ -8,10 +8,6 @@ import { ackHudSlots, measureHud } from '../../../test/sceneTesting'
 import { sceneOf } from '../../../test/testing'
 import { DareThingState } from '../../../world/dare/dareSchema'
 
-// The HUD's dare list as a button (src/screens/game/dareListButton.ts): a
-// click or tap opens the dare card again, and the same button, renamed,
-// puts it away.
-
 const hunting = withDareThings(quietWave(3), [
   {
     id: 0,

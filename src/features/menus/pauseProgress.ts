@@ -21,18 +21,6 @@ import { DARE_NAMES } from '../../world/names'
 import { focusOf } from '../../world/party/party'
 import type { CarriedGun } from '../../world/schema/entitySchema'
 
-// The pause screen's progress (owner, 2026-11-10: "The pause menu should
-// show my progress as well!"): the dare's things, each in color with a
-// check once found and a silhouette until then; then the
-// crew's skeleton keys and the rooms opened of the rooms on the map. The
-// wave is the canvas's line under PAUSED. Never where a thing is. Its own
-// view, apart from the HUD's dare card, with the same pixel art drawn big.
-// Endless has no list, so only the keys and rooms show.
-// Then each gun carried (owner, 2026-11-10: "I am also very confused on how
-// I do the upgrades for the weapon now."): its picture at its tier, its
-// name, its tier pips, and its kills toward its next level on a bar, MAX at
-// its top.
-
 type Thing = Readonly<{ kind: DareKind; isFound: boolean }>
 
 const thingLabel = ({ kind, isFound }: Thing): string =>
@@ -86,8 +74,6 @@ const tallyView = (
         .attr('aria-hidden', 'true')
         .children(text),
     )
-
-// GUNS
 
 const MAX_LABEL = 'MAX'
 
@@ -169,8 +155,6 @@ const gunView = (
     )
 }
 
-// NOTE: a gun with no levels (Brain Freeze) is not listed: it has nothing
-// to climb.
 const gunsView = (model: Model, h: ApplicationViewBuilder): ApplicationHtml =>
   h.ul
     .class('pause-guns')

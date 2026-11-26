@@ -25,10 +25,6 @@ import {
   defineScope,
 } from '../src/index'
 
-// A small scope for the tests: a profile row, a tally per kind, and slots
-// that only one player can claim, so the server has something to refuse.
-
-/** @stability unstable */
 export const Renamed = defineMutation({
   name: 'Renamed',
   version: 1,
@@ -46,7 +42,6 @@ export const Renamed = defineMutation({
 
 const MAX_COUNT = 100
 
-/** @stability unstable */
 export const Counted = defineMutation({
   name: 'Counted',
   version: 1,
@@ -65,7 +60,6 @@ export const Counted = defineMutation({
     }),
 })
 
-/** @stability unstable */
 export const Claimed = defineMutation({
   name: 'Claimed',
   version: 1,
@@ -84,7 +78,6 @@ export const Claimed = defineMutation({
     }),
 })
 
-/** @stability unstable */
 export const Stamped = defineMutation({
   name: 'Stamped',
   version: 1,
@@ -100,7 +93,6 @@ export const Stamped = defineMutation({
     }),
 })
 
-/** @stability unstable */
 export const Notes = defineScope({
   kind: 'notes',
   tables: ['profile', 'tally', 'slots'],
@@ -131,8 +123,6 @@ export const Notes = defineScope({
 export const PLAYER = 'ada'
 export const SCOPE = `notes:${PLAYER}`
 
-// NOTE: the tests' tokens are `<deviceId>:<playerId>`; real hosts verify a
-// signed token instead.
 export const authenticate: {
   (
     address: ScopeAddress,
@@ -154,7 +144,6 @@ export const authenticate: {
   },
 )
 
-/** @stability unstable */
 export const openServerDatabase: Effect.Effect<
   SqlClient.SqlClient,
   never,
@@ -165,7 +154,6 @@ export const openServerDatabase: Effect.Effect<
   return Context.get(context, SqlClient.SqlClient)
 })
 
-/** @stability unstable */
 export const openClientDatabase: Effect.Effect<
   LocalDatabase,
   never,
@@ -181,7 +169,6 @@ export const openClientDatabase: Effect.Effect<
   }
 })
 
-// NOTE: a sync engine's clocks sped up for tests.
 export const FAST_TIMING = {
   heartbeat: '40 millis',
   silence: '250 millis',

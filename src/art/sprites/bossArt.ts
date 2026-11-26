@@ -9,11 +9,6 @@ import {
   wornThrough,
 } from './wear'
 
-// BOSS
-
-// NOTE: Uncle Chunk is the host: his party hat, a tuxedo jacket far too
-// small to close over his belly, the shirt straining at its studs, and a
-// dinner napkin tucked in as a bib, its corners checked red.
 export const BOSS_PALETTE: Palette = {
   P: '#b49ab0',
   Q: '#86708a',
@@ -38,8 +33,6 @@ export const BOSS_PALETTE: Palette = {
   V: '#9be36a',
 }
 
-// NOTE: an enraged boss draws as his "lit" frames: flushed red skin and a
-// hot yellow stare.
 export const BOSS_ENRAGED_PALETTE: Palette = {
   ...BOSS_PALETTE,
   P: '#d9707a',
@@ -74,11 +67,6 @@ const BOSS_UPPER: ReadonlyArray<string> = [
   '.QQQ..BBBBBBBBBBBBBB..QQQ.',
 ]
 
-// NOTE: how deep Uncle Chunk is carved, a digit a pixel over his upper
-// body (his legs keep the round default): his belly the deepest, bulging
-// toward its middle and down to his belt, his jacket round it, his head a
-// little shallower, his arms and hands thin at his sides. Even both ways,
-// so either facing reads it the same.
 export const BOSS_DEPTH: SpriteDepth = {
   rows: [
     '............2.............',

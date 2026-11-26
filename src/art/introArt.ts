@@ -3,11 +3,6 @@ import { Array } from 'effect'
 import * as Draw from '../render/draw'
 import { type Sprite, TOP_LEFT, bakeShapes, spriteShapes } from './sprite'
 
-// The intro's pictures (src/features/intro/introView.ts): each beat is a
-// fixed backdrop on a 160 by 90 picture, baked once into a sprite, and a
-// few small sprites the view moves over it. Goofy first, scary second: the
-// night is purple, not black, and every wrong detail is half a joke.
-
 export const PICTURE_WIDTH = 160
 export const PICTURE_HEIGHT = 90
 
@@ -73,9 +68,6 @@ const SKY: ReadonlyArray<Rect> = [
   ...MOON_RECTS,
 ]
 
-// THE DRIVE
-
-// NOTE: the road at night: hills, the verge, the road with its dashes.
 export const DRIVE_BACKDROP: Sprite = bakeShapes(
   rects([
     ...SKY,
@@ -90,7 +82,6 @@ export const DRIVE_BACKDROP: Sprite = bakeShapes(
 
 export const ROAD_DASH: Sprite = bakeShapes(rects([[0, 0, 8, 1, ROAD_LINE]]))
 
-// NOTE: your friends' car, a red hatchback with the crew in the windows.
 const CAR_PIXELS: ReadonlyArray<string> = [
   '.........RRRRRRRRRR.........',
   '........RWWWRWWWRWWR........',
@@ -120,8 +111,6 @@ export const FRIENDS_CAR: Sprite = spriteShapes(
   TOP_LEFT,
 )
 
-// NOTE: the road sign to the manor: an arrow and a little house, and
-// something has chewed its corner. No words: the only one is HELLO?.
 const SIGN_PIXELS: ReadonlyArray<string> = [
   'GGGGGGGGGGGGGGGGGGGGGGGG..',
   'GWWWWWWWWWWWWWWWWWWWWWWG..',
@@ -149,15 +138,12 @@ export const MANOR_SIGN: Sprite = spriteShapes(
   TOP_LEFT,
 )
 
-// NOTE: the car's radio antenna, raked back off its roof, where the
-// static crackles.
 export const ANTENNA: Sprite = spriteShapes(
   ['S....', '.S...', '..S..', '...S.', '....S'],
   { S: '#b8c0c8' },
   TOP_LEFT,
 )
 
-// NOTE: the radio drifting into static: a crackle off the antenna's tip.
 const STATIC_PIXELS: ReadonlyArray<ReadonlyArray<string>> = [
   ['W.W..W', '.W.WW.', 'W..W.W'],
   ['.W..W.', 'W.WW.W', '.W..W.'],
@@ -168,9 +154,6 @@ export const RADIO_STATIC: ReadonlyArray<Sprite> = Array.map(
   pixels => spriteShapes(pixels, { W: '#c9d3c0' }, TOP_LEFT),
 )
 
-// THE DRIVEWAY
-
-// NOTE: the manor on its hill, a few windows lit, over a gravel drive.
 export const DRIVEWAY_BACKDROP: Sprite = bakeShapes(
   rects([
     ...SKY,
@@ -190,8 +173,6 @@ export const DRIVEWAY_BACKDROP: Sprite = bakeShapes(
   ]),
 )
 
-// NOTE: other daredevils' cars from every decade, parked and dusty: a
-// fifties coupe with fins, a nineties minivan, and a bike.
 export const COUPE: Sprite = spriteShapes(
   [
     '.....TTTTTTTT..........',
@@ -232,9 +213,6 @@ export const BIKE: Sprite = spriteShapes(
   TOP_LEFT,
 )
 
-// THE STEPS
-
-// NOTE: the front steps up close, the door's foot at the top.
 export const STEPS_BACKDROP: Sprite = bakeShapes(
   rects([
     [0, 0, PICTURE_WIDTH, PICTURE_HEIGHT, NIGHT],
@@ -250,7 +228,6 @@ export const STEPS_BACKDROP: Sprite = bakeShapes(
   ]),
 )
 
-// NOTE: a party hat, trampled flat. Uncle Chunk's, the run says later.
 export const PARTY_HAT: Sprite = spriteShapes(
   [
     '.....Y......',
@@ -269,9 +246,6 @@ export const FLASHLIGHT: Sprite = spriteShapes(
   TOP_LEFT,
 )
 
-// NOTE: the flashlight's beam on the stone, still on: a cone of light out
-// of the lens, widening and fading as it goes, brighter down its middle,
-// with a pool where it lands.
 const BEAM_LENGTH = 28
 const BEAM_CENTER_ROW = 1
 
@@ -295,7 +269,6 @@ export const BEAM: Sprite = bakeShapes(
   ]),
 )
 
-// NOTE: footprints that go in, and none that come out.
 export const FOOTPRINT: Sprite = bakeShapes(
   rects([
     [0, 0, 2, 3, '#1c1820'],
@@ -303,10 +276,6 @@ export const FOOTPRINT: Sprite = bakeShapes(
   ]),
 )
 
-// THE DOOR
-
-// NOTE: the front doors, closed, with the knocker; the view shakes them on
-// each knock.
 export const DOOR_FRAME: Sprite = bakeShapes(
   rects([
     [0, 0, PICTURE_WIDTH, PICTURE_HEIGHT, NIGHT],
@@ -340,7 +309,6 @@ const doorHalf = (isLeft: boolean): Sprite => {
 export const DOOR_LEFT: Sprite = doorHalf(true)
 export const DOOR_RIGHT: Sprite = doorHalf(false)
 
-// NOTE: your knuckles, from below the picture.
 export const FIST: Sprite = spriteShapes(
   ['.HHHH.', 'HHHHHH', 'HHHHHH', '.HHHH.', '..SS..', '..SS..', '..SS..'],
   { H: '#f2c49b', S: '#3e6b9a' },
@@ -349,10 +317,6 @@ export const FIST: Sprite = spriteShapes(
 
 export const DUST: Sprite = bakeShapes(rects([[0, 0, 1, 1, '#8a8494']]))
 
-// THE COAT CHECK
-
-// NOTE: inside the doors: the coat check, a hundred years of coats nobody
-// came back for, on hooks along the wall.
 const COAT_COLORS: ReadonlyArray<string> = [
   '#5a3424',
   '#3e6b3a',
@@ -398,7 +362,6 @@ export const COAT_CHECK: Sprite = bakeShapes(
   ]),
 )
 
-// NOTE: a bony hand waving from between the coats, in two frames.
 const HAND_PIXELS: ReadonlyArray<ReadonlyArray<string>> = [
   ['B.B.B.', 'B.B.B.', 'BBBBB.', 'BBBBBB', '.BBBB.', '..BB..', '..BB..'],
   ['.B.B.B', '.B.B.B', '.BBBBB', 'BBBBBB', '.BBBB.', '..BB..', '..BB..'],
@@ -408,13 +371,6 @@ export const BONY_HAND: ReadonlyArray<Sprite> = Array.map(HAND_PIXELS, pixels =>
   spriteShapes(pixels, { B: '#f4f1de' }, TOP_LEFT),
 )
 
-// THE DINING ROOM
-
-// NOTE: the dining room as the run finds it (src/render/room/diningArt.ts):
-// oxblood damask over the parquet, the long party table split by its gap,
-// the chandelier hung over the gap, and the feast a hundred years old and
-// still steaming: a cake gone green, plates, silver, the red runner. Your
-// place card waits at the gap, where the run starts (the `@` spot).
 const DAMASK = '#4a1f2a'
 const DAMASK_STRIPE = '#55242f'
 const DAMASK_MOTIF = '#6e3340'
@@ -432,7 +388,6 @@ const CHAIR = '#3a2214'
 const CHAIR_SEAT = '#6a1e2e'
 const BRASS = '#b8892a'
 
-// NOTE: the table's two halves, left and right of the gap.
 const TABLE_HALVES: ReadonlyArray<Readonly<[x: number, width: number]>> = [
   [10, 62],
   [88, 62],
@@ -514,15 +469,11 @@ export const STEAM: Sprite = bakeShapes(
   ]),
 )
 
-// NOTE: the place card at your seat, with your name on it: the house's
-// joke. Its scrawl is a squiggle, not a word.
 export const PLACE_CARD: Sprite = spriteShapes(
   ['.WWWWWWWWWW.', 'WWKKK.KKKKWW', 'WWWWWWWWWWWW', 'SSSSSSSSSSSS'],
   { W: '#f4f1de', K: '#2a1418', S: '#c4b89c' },
   TOP_LEFT,
 )
-
-// THE SLAM
 
 export const IRON_BOLT: Sprite = bakeShapes(
   rects([
@@ -532,9 +483,6 @@ export const IRON_BOLT: Sprite = bakeShapes(
   ]),
 )
 
-// NOTE: a speech bubble, white with a tail down to whoever speaks, as wide
-// as its words need: HELLO?, and your friends in the car. The tail sits
-// `tailX` in from the bubble's left.
 export const BUBBLE_HEIGHT = 12
 export const BUBBLE_TAIL = 4
 

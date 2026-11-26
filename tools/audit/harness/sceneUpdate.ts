@@ -1,9 +1,3 @@
-// NOTE: what the harness adds to the game's update: what a scene keeps after
-// every update (`god`, `gasroom`), the Message log, and the scene's first
-// Model with the Profile, a hold, or a melee set up. Freezing, `tick`, and
-// the other scene settings that change what reaches update are in
-// handlers.ts.
-
 import { Array, Function, Option } from 'effect'
 
 import { UiStruct } from '@effect/ui'
@@ -21,14 +15,9 @@ import { modifyFocus } from '@game/world/party/party'
 import { CALM, ROAMING } from './room'
 import type { SceneSettings } from './settings'
 
-// NOTE: `hold` holds the interact key (on touch, a finger on the hold
-// button) from the first frame, so `tick=N` shows the ring N frames in.
 const HOLD_POINTER_ID = 99
 const STAB_POINTER_ID = 98
 
-// NOTE: `gasroom=N` keeps N Kaboomers in the room: when shots and chain bursts
-// pop them, new ones walk in at the doors, so a measurement window stays full
-// of fusing, bursting, and spawning Kaboomers.
 const GASBAG_DOORS: ReadonlyArray<readonly [number, number]> = [
   [160, 8],
   [312, 90],
@@ -69,7 +58,6 @@ const topUpGasbags = (gasbagRoom: number, model: Model): Model => {
   })
 }
 
-// NOTE: any dispatch's tag.
 type TaggedMessage = Readonly<{ _tag: string }>
 
 const QUIET_MESSAGES = new Set([
@@ -82,8 +70,6 @@ const QUIET_MESSAGES = new Set([
   'FailedPlaySound',
 ])
 
-// NOTE: what the harness adds after every update: full health with `god`,
-// and fresh Kaboomers at the doors with `gasroom`. It reads only the tag.
 export const keepScene: {
   (model: Model, message: TaggedMessage): (settings: SceneSettings) => Model
   (settings: SceneSettings, model: Model, message: TaggedMessage): Model
@@ -100,11 +86,6 @@ export const keepScene: {
   },
 )
 
-// NOTE: every Message the root's update takes, as its tag, for the tap and
-// close audits. A child component's own Messages stay in the child; what
-// reaches the root is the root's Message for the child's event (a dialog's
-// close is `ClosedDialog`). A Message that carries another (`message`) logs
-// the chain, `Tag:InnerTag`.
 export const logMessage = (incoming: unknown) => {
   const chain = (message: unknown): Array<string> =>
     typeof message === 'object' &&
@@ -119,9 +100,6 @@ export const logMessage = (incoming: unknown) => {
   }
 }
 
-// NOTE: the Profile open on a tab, as openProfile (src/app/update/profile.ts)
-// opens it, without its menu check: the tab and the name draft, the input
-// let go, and its dialog open.
 const preparedProfile = (model: Model, tab: ProfileTab): Model =>
   withInput(
     UiStruct.evolve(tab === 'Look' ? markLooksSeen(model) : model, {
@@ -137,9 +115,6 @@ const preparedProfile = (model: Model, tab: ProfileTab): Model =>
     releaseAll,
   )
 
-// NOTE: a scene's first Model, and the Look tab's little tab it picks once
-// the scene is drawn (`looksection`): the Look tab keeps its little tab in
-// its own component, so the page taps it (entry.ts).
 export type Scene = Readonly<{
   model: Model
   maybeLookSection: Option.Option<string>
@@ -164,10 +139,6 @@ const profileTabOf = (settings: SceneSettings): Option.Option<ProfileTab> => {
   )
 }
 
-// NOTE: the scene's Model from the current config: seeded when it is frozen
-// or given a seed, with the Profile opened by `picker` or `profile`. The
-// `tick` frames it plays ahead come through the frame Subscription
-// (entry.ts), so the Commands they give run as they would frame by frame.
 export const sceneOf: {
   (model: Model): (settings: SceneSettings) => Scene
   (settings: SceneSettings, model: Model): Scene

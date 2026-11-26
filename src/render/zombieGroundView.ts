@@ -22,13 +22,9 @@ import * as Draw from './draw'
 import { footShadow, tellAlpha } from './drawing'
 import { bakeDiscs, bakeRings, pixelDisc, pixelRing } from './pixelCircle'
 
-// DEPTH AND SHADOW
-
 const CARRIED_DEPTH_PX = 2
 const FLYING_DEPTH_PX = 1000
 
-// NOTE: a Groaner held overhead draws just after its Big Leaguer, and one in the
-// air draws after everything standing, since it flies over their heads.
 export const zombieFootY = (zombie: Zombie): number =>
   zombie.y +
   statsOf(zombie).footOffset +
@@ -91,15 +87,11 @@ export const zombieShadow = (zombie: Zombie): Result.Result<Draw.Shape, void> =>
     },
   })
 
-// FLOOR TELLS
-
 const TELL_EDGE_COLOR = '#ff4a4f'
 const TELL_SWEEP_COLOR = '#ffe066'
 
 const TELL_FILL_COLOR = 'rgb(255, 58, 63)'
 
-// NOTE: the tell's fill under its edge, fainter to stronger as it fills, an
-// opacity rather than a color so one baked disc serves every step.
 const tellFillOpacity = (progress: number): number =>
   tellAlpha(0.1, 0.3, progress)
 
@@ -168,8 +160,6 @@ const landingShapes = (zombie: Zombie): ReadonlyArray<Draw.Shape> => {
   )
 }
 
-// NOTE: every tell's rings baked as the module loads: the Kaboomer's blast
-// and the Big Leaguer's landing, each with its fill and its sweep.
 const TELL_RADII: ReadonlyArray<number> = [
   ...Array.filterMap(Record.values(ZOMBIE_KINDS), ({ behavior }) =>
     Behavior.match(behavior, {
@@ -213,9 +203,6 @@ const CRACKS: ReadonlyArray<Crack> = [
   { dx: 0, dy: -1, length: 4 },
 ]
 
-// NOTE: the floor tells where an Ankle Biter is coming up: a ring of dust
-// spreads, pale cracks split the boards, a hole opens, and a leg pokes
-// through just before the spider climbs out over its middle.
 const crackShapes = (
   zombie: Zombie,
   elapsedMs: number,

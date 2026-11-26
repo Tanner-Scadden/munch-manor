@@ -3,9 +3,6 @@ import { describe, expect, test } from 'vitest'
 
 import { type Box, nearestInDirection } from '../padFocus'
 
-// The stick's focus step on the page: the nearest control the way it
-// points, a control off the line paying for the step sideways.
-
 const boxAt = (left: number, top: number): Box => ({
   left,
   top,
@@ -13,8 +10,6 @@ const boxAt = (left: number, top: number): Box => ({
   height: 20,
 })
 
-// NOTE: a menu of two rows: PLAY and CO-OP side by side, MORE under PLAY,
-// and the gear far off to the right of the second row.
 const PLAY = boxAt(0, 0)
 const COOP = boxAt(60, 0)
 const MORE = boxAt(0, 40)

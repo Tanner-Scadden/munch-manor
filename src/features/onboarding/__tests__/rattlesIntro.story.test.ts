@@ -36,15 +36,10 @@ import {
   maybeRattlesLine,
 } from '../rattlesIntro'
 
-// NOTE: meeting Rattles (src/features/onboarding/rattlesIntro.ts): the first
-// break after the practice wave, he says hello from his trunk by the front
-// door, once per save, and then the guided first break begins.
-
 const LINE_FRAMES = Math.ceil(RATTLES_LINE_MS / FIXED_STEP_MS)
 
 const firstLine = RATTLES_INTRO_LINES[0]
 
-// NOTE: the break before wave 2, in a new save whose zombies are all met.
 const meetingBreak = (base: Model): Model =>
   UiStruct.evolve(base, {
     phase: () => WAVE_2_BREAK,
@@ -53,8 +48,6 @@ const meetingBreak = (base: Model): Model =>
 
 const newSave = meetingBreak(newPlayerCardSeen)
 
-// NOTE: a player from before the escape: every lesson of the old game
-// learned, the dare's and Rattles' still to come.
 const returning = meetingBreak(
   UiStruct.evolve(asTutorialDone(asVeteran(newPlayerCardSeen)), {
     lessons: lessons =>
@@ -188,9 +181,6 @@ describe("Rattles' hello", () => {
   )
 })
 
-// NOTE: he waits by the front door, close beside it but never in the way:
-// a player passes between his trunk and the doorway, and the finale's sill
-// and Uncle Chunk's way in stay clear.
 describe("Rattles' spot", () => {
   it('sits beside the front door, clear of the doorway', () => {
     const door = START_LEVEL.thresholds.Front.box

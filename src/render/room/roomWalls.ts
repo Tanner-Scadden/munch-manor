@@ -59,10 +59,6 @@ import {
   roll,
 } from './roomPalette'
 
-// WALLS
-
-// NOTE: a closed exit is wall with a boarded door in it, so the wall runs
-// on across it.
 const closedExitSymbols = (level: Level): ReadonlyArray<string> =>
   Array.map(closedExits(level), ({ symbol }) => symbol)
 
@@ -77,9 +73,6 @@ const isWall = (level: Level, column: number, row: number): boolean =>
 const MARK = 'M'
 const BLANK = '.'
 
-// NOTE: the grid's lines are the map's lines, so a run's x and y count from
-// the map's first column and row. runLeft and runTop turn them back into a
-// world x and y.
 const markedGrid = (
   level: Level,
   isMarked: (column: number, row: number) => boolean,
@@ -137,8 +130,6 @@ const isWallFacing =
     isWall(level, column, row) &&
     isWalkableTile(level, column + stepColumn, row + stepRow)
 
-// NOTE: the north wall shows its face, papered and paneled, above any tile
-// that is not wall: the floor, the doorways, and the furniture against it.
 const isNorthFace =
   (level: Level) =>
   (column: number, row: number): boolean =>
@@ -149,8 +140,6 @@ const isNorthFace =
       Array.contains(Record.values(DOOR_SYMBOLS), symbol),
     )
 
-// NOTE: a stretch of the north wall's face: x and width across, y the face's
-// foot (the top of the floor row under it).
 export type Span = Readonly<{ x: number; y: number; width: number }>
 
 const northFaceSpans = (level: Level): ReadonlyArray<Span> =>
@@ -165,8 +154,6 @@ const northFaceSpans = (level: Level): ReadonlyArray<Span> =>
     }),
   )
 
-// NOTE: the north wall faces in one room's block, for the art a room lays
-// over its own walls.
 export const spansWithin: {
   (room: Box): (level: Level) => ReadonlyArray<Span>
   (level: Level, room: Box): ReadonlyArray<Span>
@@ -311,8 +298,6 @@ export const wallShadowShapes = (level: Level): ReadonlyArray<Draw.Shape> => [
   ),
 ]
 
-// WALL DECOR
-
 const PORTRAIT_PIXELS: ReadonlyArray<string> = [
   'FFFFFFFFFFFFFF',
   'FffffffffffffF',
@@ -359,8 +344,6 @@ const SKULL_OVAL_PALETTE: Palette = {
   '.': '#1c1622',
 }
 
-// NOTE: the night that shows between the parlour window's boards, in the
-// parlour's own block, where the storm flashes (src/render/iso/storm.ts).
 export const PARLOUR_WINDOW_GAPS: ReadonlyArray<Box> = [
   { x: 238, y: 7, width: 13, height: 1 },
   { x: 238, y: 12, width: 13, height: 1 },
@@ -383,7 +366,6 @@ const BOARDED_WINDOW: ReadonlyArray<Draw.Shape> = [
   rect(253, 9, 1, 1, NAIL_COLOR),
   rect(235, 14, 1, 1, NAIL_COLOR),
   rect(253, 14, 1, 1, NAIL_COLOR),
-  // NOTE: green fingers curl over the top board from outside.
   rect(240, 7, 1, 2, ZOMBIE_SKIN_COLOR),
   rect(242, 7, 1, 2, ZOMBIE_SKIN_COLOR),
   rect(244, 7, 1, 2, ZOMBIE_SKIN_COLOR),
@@ -441,20 +423,14 @@ const kitchenExitShapes = (exit: Box): ReadonlyArray<Draw.Shape> => {
     rect(right + 1, top + 3, 1, 1, NAIL_COLOR),
     rect(x - 2, bottom - 5, 1, 1, NAIL_COLOR),
     rect(right + 1, bottom - 5, 1, 1, NAIL_COLOR),
-    // NOTE: a sign with a fork and a knife says what is through here.
     ...pixelArt(middle - 6, top + 3, KITCHEN_SIGN_PIXELS, KITCHEN_SIGN_PALETTE),
-    // NOTE: warm light leaks through the cracks and out under the boards.
     ...leakSpillShapes(exit),
   ]
 }
 
-// EXITS
-
 const EXIT_BOARD_PX = 3
 const EXIT_BOARD_STEP_PX = 5
 
-// NOTE: a closed exit is a doorway nailed shut: the dark gap with boards
-// across it the long way. An open exit draws nothing, so the floor shows.
 const boardedShapes = (box: Box): ReadonlyArray<Draw.Shape> => {
   const isAcross = box.width >= box.height
   const span = isAcross ? box.height : box.width
@@ -503,8 +479,6 @@ const boardedShapes = (box: Box): ReadonlyArray<Draw.Shape> => {
   ]
 }
 
-// NOTE: an exit in the top wall shows its face, so it gets a boarded double
-// door with a sign. One anywhere else is the plain boarded gap.
 const exitShapes = (exit: Exit): ReadonlyArray<Draw.Shape> => {
   if (!Array.isReadonlyArrayNonEmpty(exit.tiles)) {
     return []
@@ -513,23 +487,17 @@ const exitShapes = (exit: Exit): ReadonlyArray<Draw.Shape> => {
   return isFacedExit(box) ? kitchenExitShapes(box) : boardedShapes(box)
 }
 
-// NOTE: the library's secret shelf is drawn by its own art (libraryArt.ts),
-// never as boards.
 export const closedExitShapes = (level: Level): ReadonlyArray<Draw.Shape> =>
   Array.flatMap(
     Array.filter(closedExits(level), ({ opener }) => opener === 'Boards'),
     exitShapes,
   )
 
-// NOTE: the portrait, the skull, and the window are placed by hand on the
-// parlour's north wall, in the gaps between its doors and furniture.
 export const PARLOUR_WALL_DECOR: ReadonlyArray<Draw.Shape> = [
   ...pixelArt(86, 5, PORTRAIT_PIXELS, PORTRAIT_PALETTE),
   ...pixelArt(47, 6, SKULL_OVAL_PIXELS, SKULL_OVAL_PALETTE),
   ...BOARDED_WINDOW,
 ]
-
-// DOORS
 
 export const doorBox: {
   (id: DoorId): (level: Level) => Box
@@ -556,12 +524,6 @@ const splinters = (
     )
   })
 
-// NOTE: drawn from the top of the door's two wall rows, y, so a north door
-// in a room lower on the plan draws at its own wall. The opening is the
-// doorway's floor, dark to the threshold: in 3D the walls stand round it
-// and a lintel spans it, so the casing runs down the walls on each side,
-// on their tops and down the jambs (house.ts), and nothing of a door seen
-// from the front (its head, its hanging leaf, a nail) lies on that floor.
 const northDoorShapes = ({ x, y, width }: Box): ReadonlyArray<Draw.Shape> => {
   const right = x + width
   const face = y + FACE_TOP
@@ -576,9 +538,6 @@ const northDoorShapes = ({ x, y, width }: Box): ReadonlyArray<Draw.Shape> => {
   ]
 }
 
-// NOTE: the side walls stand to the doorway's north and south in 3D, so its
-// casing is their ends, and the leaves' stumps a top-down door would show
-// are left out: on the doorway's floor they lay flat.
 const sideDoorShapes = (
   { x, y, width, height }: Box,
   facesEast: boolean,
@@ -603,10 +562,6 @@ const sideDoorShapes = (
   ]
 }
 
-// NOTE: drawn on the doorway's one wall row, y. As at a north door, the
-// low front wall stands on each side of the opening in 3D, so the casing
-// runs on its tops and down its jambs (house.ts), and the leaves' stumps a
-// front-on door would show are left out: on this floor they lay flat.
 const southDoorShapes = ({ x, y, width }: Box): ReadonlyArray<Draw.Shape> => {
   const right = x + width
   return [
@@ -635,8 +590,6 @@ const DOOR_DRAWINGS: Readonly<
   EastBottom: southDoorShapes,
   FarTop: northDoorShapes,
   FarBottom: southDoorShapes,
-  // NOTE: the front door is never a spawn door, so it never draws as a
-  // doorway: the dining room's art draws it chained shut (diningArt.ts).
   Front: southDoorShapes,
 }
 

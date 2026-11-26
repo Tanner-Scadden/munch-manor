@@ -33,8 +33,6 @@ export class LockTaken extends Schema.TaggedError<
 const hasErrorCode = (error: unknown, code: string): boolean =>
   Predicate.hasProperty(error, 'code') && error.code === code
 
-// NOTE: signal 0 checks that the pid exists without touching it. EPERM means
-// the process exists but belongs to another user, so it is still alive.
 export const isProcessAlive = (pid: number): boolean =>
   pipe(
     Result.try(() => process.kill(pid, 0)),
@@ -44,7 +42,6 @@ export const isProcessAlive = (pid: number): boolean =>
     }),
   )
 
-/** @stability unstable */
 export const readTextIfPresent = (
   path: string,
 ): Effect.Effect<Option.Option<string>, PlatformError, FileSystem.FileSystem> =>
@@ -56,9 +53,6 @@ export const readTextIfPresent = (
     )
   })
 
-// NOTE: the holder is written to a draft first and hard linked into place.
-// The link fails when the lock exists, so taking the lock is atomic and no
-// reader ever sees a half written lock file.
 const createLock = (
   path: string,
   holder: LockHolder,
@@ -75,9 +69,6 @@ const createLock = (
     )
   })
 
-// NOTE: removes the lock only while it still names this holder, so a
-// second release, or one after another guard took the file, does nothing.
-/** @stability unstable */
 export const releaseLock: {
   (
     holder: LockHolder,
@@ -101,9 +92,6 @@ export const releaseLock: {
     }).pipe(Effect.ignore),
 )
 
-// NOTE: rewrites the holder in place, for a renewed lease, only while the
-// file still names this holder. The rename replaces it atomically.
-/** @stability unstable */
 export const rewriteLock: {
   (
     holder: LockHolder,
@@ -130,7 +118,6 @@ export const rewriteLock: {
     }).pipe(Effect.ignore),
 )
 
-/** @stability unstable */
 export const acquireLock: {
   (
     holder: LockHolder,
@@ -164,8 +151,6 @@ export const acquireLock: {
     ),
 )
 
-// NOTE: the lock is removed only when it still holds the text that was judged
-// stale, so a guard that took the lock in the meantime keeps it.
 const clearStaleLock = (
   path: string,
   maybeStaleText: Option.Option<string>,
@@ -181,19 +166,6 @@ const clearStaleLock = (
     }
   })
 
-// THE LOCK DIRECTORY
-
-// NOTE: the solo lock keeps the old name, `munch-manor-heavy.lock`, beside
-// this directory, so a guard that predates classes still waits for a Timing
-// or CPU job. The directory holds:
-// - `shared-<n>.lock`, one per running Shared job.
-// - `exclusive-waiting-<pid>.json`, a Timing or CPU job waiting. The name
-//   is the one the two class guard reads, so it still yields to them.
-// - `waiting-<pid>.json`, a Shared job waiting.
-// - `tests-<pid>.json`, a `bun run test` run, counted in the budget.
-// - `held-<key>.json`, when a worktree's job last let go of a file, for the
-//   round robin by worktree.
-// - `turns-<pid>/`, where a running job asks its guard to yield (turn.ts).
 const HELD_TURN_FILE = /^held-[0-9a-f]+\.json$/
 const SHARED_SLOT_FILE = /^shared-(\d+)\.lock$/
 const WAITER_FILE = /^(?:exclusive-)?waiting-\d+\.json$/
@@ -230,7 +202,6 @@ const listDirectory = (
       )
   })
 
-/** @stability unstable */
 export const ensureLockDirectory = (
   directory: string,
 ): Effect.Effect<void, PlatformError, FileSystem.FileSystem> =>
@@ -247,7 +218,6 @@ const slotNumberOf = (name: string): ReadonlyArray<number> =>
     Option.toArray,
   )
 
-/** @stability unstable */
 export const readSharedSlots = (
   directory: string,
 ): Effect.Effect<
@@ -267,8 +237,6 @@ export const readSharedSlots = (
     )
   })
 
-// NOTE: a marker whose pid is gone is removed as it is found, so a process
-// killed while it waited or tested never counts.
 const readMarkers = (
   directory: string,
   pattern: RegExp,
@@ -299,17 +267,12 @@ const readMarkers = (
     )
   })
 
-/** @stability unstable */
 export const readWaiters = (directory: string) =>
   readMarkers(directory, WAITER_FILE)
 
-/** @stability unstable */
 export const readTestRuns = (directory: string) =>
   readMarkers(directory, TEST_RUN_FILE)
 
-// NOTE: the marker is written to a draft and renamed into place, so a
-// reader never sees half of it, and removed when `use` ends however it
-// ends.
 const withMarker = <A, E, R>(
   path: string,
   holder: LockHolder,
@@ -327,9 +290,6 @@ const withMarker = <A, E, R>(
     )
   })
 
-// NOTE: marks the job as waiting until it holds its file, gives up, or is
-// stopped.
-/** @stability unstable */
 export const whileWaiting: {
   <A, E, R>(
     holder: LockHolder,
@@ -352,9 +312,6 @@ export const whileWaiting: {
     withMarker(waiterPath(directory, holder), holder, wait),
 )
 
-// NOTE: marks a test run for as long as `run` lasts, so other test runs and
-// guards count its cost.
-/** @stability unstable */
 export const whileTesting: {
   <A, E, R>(
     holder: LockHolder,
@@ -377,10 +334,6 @@ export const whileTesting: {
     withMarker(testRunPath(directory, holder.pid), holder, run),
 )
 
-// NOTE: clears a lock or slot file only while it still reads as stale or
-// corrupt, and only that same text, so a live job that took it in the
-// meantime keeps it.
-/** @stability unstable */
 export const clearIfNotHeld = (
   path: string,
 ): Effect.Effect<void, PlatformError, FileSystem.FileSystem> =>
@@ -391,14 +344,9 @@ export const clearIfNotHeld = (
     }
   })
 
-// TURNS
-
 const heldTurnPath = (directory: string, cwd: string): string =>
   `${directory}/held-${turnFileKey(cwd)}.json`
 
-// NOTE: written to a draft and renamed into place, so a reader never sees
-// half of it. A lost write only costs one turn of round robin.
-/** @stability unstable */
 export const recordTurn: {
   (
     turn: HeldTurn,
@@ -422,7 +370,6 @@ export const recordTurn: {
     }).pipe(Effect.ignore),
 )
 
-/** @stability unstable */
 export const readTurns = (
   directory: string,
 ): Effect.Effect<

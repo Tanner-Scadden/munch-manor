@@ -8,14 +8,6 @@ import type * as Draw from '../draw'
 import { rect } from '../drawing'
 import { type Box, FACE_TOP, boundingBox } from './roomPalette'
 
-// NOTE: from the owner (2026-11-01), players were not finding the kitchen,
-// so the boarded door leaks what is behind it: a warm crack of light down
-// the middle, a glimpse of the kitchen floor under the boards, light on
-// the floor outside, and wisps of steam. The still pieces are part of the
-// room's baked image (leakStillShapes, drawn with the boards in
-// src/render/room/roomWalls.ts); only the light's flicker and the steam move
-// (kitchenLeakShapes), a few rectangles a frame. All of it goes with the
-// boards: an open exit draws the kitchen's own look.
 export const isFacedExit = (box: Box): boolean =>
   box.y === 0 && box.height === TILE_SIZE * 2
 
@@ -52,8 +44,6 @@ const checkRow = (
   )
 }
 
-// NOTE: laid on the door's dark fill and under its planks and sign, so
-// the light and the floor show only in the gaps they leave.
 export const leakStillShapes = (box: Box): ReadonlyArray<Draw.Shape> => {
   const middle = box.x + box.width / 2
   const bottom = box.y + box.height
@@ -69,7 +59,6 @@ export const leakStillShapes = (box: Box): ReadonlyArray<Draw.Shape> => {
   ]
 }
 
-// NOTE: the light on the floor just outside, three steps fading out.
 export const leakSpillShapes = (box: Box): ReadonlyArray<Draw.Shape> => {
   const bottom = box.y + box.height
   return [
@@ -81,8 +70,6 @@ export const leakSpillShapes = (box: Box): ReadonlyArray<Draw.Shape> => {
     rect(box.x + 4, bottom + 5, box.width - 8, 1, SPILL_FADE_COLOR),
   ]
 }
-
-// MOTION
 
 const STRIP_GAP_PX = 3
 const FLICKER_MS = 170
@@ -121,9 +108,6 @@ const closedKitchenBox = (level: Level): Option.Option<Box> =>
     isFacedExit,
   )
 
-// NOTE: the HUD strip along the top (src/screens/game/hud.ts) would dim the boards, which
-// sit right under it, so it leaves a gap over them: the boards' span in
-// world x on the row at their foot, while they are up.
 export const maybeLeakSpan = (
   model: World,
 ): Option.Option<Readonly<{ left: number; right: number; y: number }>> =>
@@ -133,8 +117,6 @@ export const maybeLeakSpan = (
     y: box.y + box.height,
   }))
 
-// NOTE: the light breathing and the steam rising, only while the boards are
-// up. A frame's cost is a handful of rectangles.
 export const kitchenLeakShapes = (model: World): ReadonlyArray<Draw.Shape> =>
   Option.match(closedKitchenBox(levelOf(model)), {
     onNone: () => [],

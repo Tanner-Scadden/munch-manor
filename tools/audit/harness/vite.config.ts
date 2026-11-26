@@ -8,8 +8,6 @@ import { spriteAtlas } from '../../sprites/vitePlugin.ts'
 
 const encodeString = encodeJson(Schema.String)
 
-// NOTE: where the game is, and whether this is the profiling build
-// (`PROFILE` set), read once as Vite loads the config.
 const settings = Effect.runSync(
   Effect.gen(function* () {
     const path = yield* Path.Path

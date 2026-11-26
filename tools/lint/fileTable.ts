@@ -1,12 +1,3 @@
-// NOTE: AGENTS.md "Where things are" is the map of `src`, so it must stay
-// true. Fails when a module or stylesheet in `src` is not named in the first
-// column of a file table, or when a table names a file that does not exist.
-// Each table sits under a `#### \`src/<folder>/\`` heading, and its paths are
-// under that folder. Tests and their fixtures are left out: each sits in a
-// `__tests__/` folder beside what it tests.
-//
-//   bun tools/lint/fileTable.ts [root]
-
 import { Glob } from 'bun'
 import {
   Array,
@@ -26,8 +17,6 @@ import * as NodeServices from '@effect/platform-node/NodeServices'
 const TABLE_START = '### Where things are'
 const TABLE_END = '### Elsewhere'
 
-// NOTE: the script has printed every problem, so the runtime reports
-// nothing more and exits with 1.
 class TableDrifted extends Schema.TaggedError<
   TableDrifted,
   { readonly brand: unique symbol }
@@ -42,8 +31,6 @@ class TableDrifted extends Schema.TaggedError<
 
 const FOLDER_HEADING = /^#### `src\/([^`]*)`/
 
-// NOTE: the files a row names, under `src`: every backticked path in its
-// first cell, under the folder of the heading above it.
 const namedIn = (table: string): ReadonlySet<string> =>
   new Set(
     Array.reduce(
@@ -76,7 +63,6 @@ const isMapped = (file: string): boolean =>
 const program = Effect.gen(function* () {
   const fs = yield* FileSystem.FileSystem
   const path = yield* Path.Path
-  // NOTE: the repository, or another checkout of it given as the argument.
   const root = Option.getOrElse(Array.get(process.argv, 2), () =>
     path.resolve(import.meta.dirname, '../..'),
   )

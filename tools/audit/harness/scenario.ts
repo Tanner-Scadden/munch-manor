@@ -1,7 +1,3 @@
-// NOTE: a scene's Model: the room (room.ts) with what the query adds
-// around it, from the home menu's state to the fridge, the planks, sync,
-// and the look, then co-op staged over it.
-
 import { Array, Option, Record, Result } from 'effect'
 
 import { UiStruct } from '@effect/ui'
@@ -67,12 +63,6 @@ import { withCoop } from './coopStage'
 import { CALM, ROAMING, roomModel } from './room'
 import { type SceneSettings } from './settings'
 
-// NOTE: Mystery Leftovers. `fridge=open|offering|slammed` with `fridgeMs` left sets
-// the fridge's door (`prize` names an open door's prize), `fridgeseed` sets
-// the fridge's own stream, so a real pull draws a chosen prize, `lobs` puts
-// three Pressure Cooker lids in the air ahead of the player (one landing a
-// few frames before `tick` runs out), and `iced=freeze|pan` stands zombies
-// in front of the player, frozen and chilled or reeling.
 const ICED_SPOTS: ReadonlyArray<
   Readonly<{
     dx: number
@@ -205,8 +195,6 @@ const QUEST_STAGES: {
   done: QuestTour.Done({ ageMs: 0 }),
 }
 
-// NOTE: the first `count` things of the dare card found, as a player who
-// walked onto them.
 const withDareFound = (model: Model, count: number): Model => {
   const kinds = Array.map(
     Array.take(dareCardOf(model), count),
@@ -222,8 +210,6 @@ const withDareFound = (model: Model, count: number): Model => {
   })
 }
 
-// NOTE: the player `gap` px south of the first thing still lying in an
-// open room, so a shot shows it in sight.
 const nearDareThing = (model: Model, gap: number): Model =>
   Option.match(
     Array.findFirst(model.dareThings, thing =>
@@ -238,8 +224,6 @@ const nearDareThing = (model: Model, gap: number): Model =>
     },
   )
 
-// NOTE: the dare list's first thing hidden on `room`'s first hiding spot,
-// `share` of its find's work done, the player `gap` px south of it.
 const atRoomFind = (
   model: Model,
   room: string,
@@ -276,9 +260,6 @@ const atRoomFind = (
   )
 }
 
-// NOTE: the Proof Shelf's sample: a lost run's finds on Normal, a Triple
-// Dare escape with a crew, the big key on Easy, and a week of mission
-// days, on a known day.
 const PROOF_DAY = '2026-11-13'
 
 const SAMPLE_PROOF: SavedProof = [
@@ -332,7 +313,6 @@ const PROOF_DAYS = [
   '2026-11-12',
 ]
 
-// NOTE: all of it seen before but the Triple Dare find, which wears NEW.
 const SEEN_PROOF = [
   ...Array.filterMap(SAMPLE_PROOF, entry =>
     entry.difficulty === 'Hard'
@@ -353,8 +333,6 @@ const withSampleProof = (model: Model): Model =>
     seenUnlocks: seen => Array.union(seen, SEEN_PROOF),
   })
 
-// NOTE: four milestones reached, the first two seen before and the last
-// two wearing NEW: the napkin ring and the dare note open on the list.
 const SAMPLE_MILESTONES = [
   'FirstFind',
   'EveryRoomOpened',
@@ -378,8 +356,6 @@ const withSampleJournal = (model: Model): Model =>
       ),
   })
 
-// NOTE: `count` shared out along `keys`, the last the whole and each
-// before it a share less, so the tracks stand at every stage at once.
 const stepped = (
   keys: ReadonlyArray<string>,
   count: number,
@@ -425,7 +401,6 @@ const EVERY_NEW_THING = thingsOpenedBy([
   'ChunkTripleDare',
 ])
 
-// NOTE: `beat`: the friend's dare the home card and the end card show.
 const FRIENDS_DARE: FriendsDare = {
   seed: 1234567,
   mode: 'Campaign',
@@ -589,7 +564,6 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
     model = modifyFocus(
       UiStruct.evolve(model, {
         calling: () => calling,
-        // NOTE: the hero is bought, as a run starts only with one the player owns.
         boughtCosmetics: bought =>
           calling === 'You' ? bought : Array.union(bought, [heroIdOf(calling)]),
       }),
@@ -820,7 +794,6 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
   }
   const chewers = config.chewers
   if (chewers > 0) {
-    // NOTE: just inside the dining room's West door, rows 2 and 3.
     const spots = [
       { x: 16, y: 24 },
       { x: 16, y: 36 },
@@ -848,10 +821,6 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
       ],
     })
   }
-  // NOTE: zombies mid-entry at every door, hurt so their bars show: two in
-  // the north doorway behind the lintel, one just inside the north wall, and
-  // one in each other doorway, and one in the kitchen's doorway when it is
-  // open.
   if (config.doorway) {
     const spots: ReadonlyArray<
       readonly ['Shambler' | 'Runner' | 'Tank', number, number]
@@ -887,8 +856,6 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
       ],
     })
   }
-  // NOTE: the scene stands in one house, never the one its run happened to
-  // roll, so a scenario draws the same rooms every time.
   const house = Option.getOrElse(Array.get(ARRANGEMENTS, config.house), () =>
     Array.headNonEmpty(ARRANGEMENTS),
   )

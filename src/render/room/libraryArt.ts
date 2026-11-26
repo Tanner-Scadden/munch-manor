@@ -33,14 +33,6 @@ import {
 } from './roomPalette'
 import { type Span, spansWithin } from './roomWalls'
 
-// NOTE: the library: a dark plank floor, green paper, stacks of shelves in
-// aisles, a reading desk with its lamps and chairs, a globe, a rolling
-// ladder, and the shelf in the side wall that swings open when its one
-// odd book is pulled. Everything but the swinging shelf is drawn once into
-// the room's image; the shelf is its own sprite, shut or open.
-
-// PALETTE
-
 const FLOOR_SHADE_COLOR = 'rgba(14, 8, 20, 0.38)'
 const PAPER_COLOR = '#1f3328'
 const PAPER_STRIPE_COLOR = '#243b2e'
@@ -70,9 +62,6 @@ const ODD_BOOK_COLOR = '#c8343c'
 const ODD_BOOK_LIGHT_COLOR = '#e05a5a'
 const DUST_COLOR = 'rgba(200, 190, 170, 0.22)'
 
-// FLOOR
-
-// NOTE: the parlour's planks under a dusk of shade, so the wood reads dark.
 export const libraryFloorShadeShapes = (
   room: Box,
 ): ReadonlyArray<Draw.Shape> => [
@@ -105,8 +94,6 @@ export const libraryRugShapes = (room: Box): ReadonlyArray<Draw.Shape> => {
   ]
 }
 
-// WALLS
-
 const paperShapes = ({ x, y, width }: Span): ReadonlyArray<Draw.Shape> => {
   const top = y - TILE_SIZE * 2 + FACE_TOP + 2
   const railY = y - TILE_SIZE * 2 + CHAIR_RAIL_Y
@@ -126,8 +113,6 @@ const paperShapes = ({ x, y, width }: Span): ReadonlyArray<Draw.Shape> => {
   ]
 }
 
-// NOTE: green paper with a fine stripe over the parlour's wainscot, on the
-// north wall faces in the library's own block.
 export const libraryWallShapes: {
   (room: Box): (level: Level) => ReadonlyArray<Draw.Shape>
   (level: Level, room: Box): ReadonlyArray<Draw.Shape>
@@ -206,17 +191,11 @@ const windowSpotOf = (room: Box): Readonly<{ x: number; y: number }> => ({
   y: room.y + 4,
 })
 
-// NOTE: the glass of the library's arched window, below its arch, where the
-// storm rains and flashes (src/render/iso/storm.ts).
 export const libraryWindowPaneOf = (room: Box): Box => {
   const { x, y } = windowSpotOf(room)
   return { x: x + 1, y: y + 2, width: 10, height: 13 }
 }
 
-// NOTE: a tall arched window with the moon in it, between two stretches of
-// paper; a clock stopped at the party's hour and a map with a red X, either
-// side of the rose window (roseWindowArt.ts); and a Munch who never looked
-// up from her book.
 export const libraryWallDecorShapes = (
   room: Box,
 ): ReadonlyArray<Draw.Shape> => {
@@ -237,12 +216,6 @@ export const libraryWallDecorShapes = (
   ]
 }
 
-// STACKS
-
-// NOTE: a freestanding stack of shelves, open on top so the books' tops
-// show in two rows either side of its spine, with its end panel to the
-// room and a brass label. Some carry a candle, a skull, or a pile of books
-// left lying on top.
 export const stackShapes = ({
   x,
   y,
@@ -313,8 +286,6 @@ export const stackShapes = ({
   ]
 }
 
-// NOTE: the rolling ladder, hooked on a stack's end and standing in the
-// aisle beside it (the stack nearest the nook), placed by hand on the map.
 export const ladderShapes = (room: Box): ReadonlyArray<Draw.Shape> => {
   const x = room.x + 173
   const top = room.y + 46
@@ -335,8 +306,6 @@ export const ladderShapes = (room: Box): ReadonlyArray<Draw.Shape> => {
     rect(x + 8, bottom - 1, 3, 2, '#2a2a30'),
   ]
 }
-
-// THE DESK
 
 const readingChair = (
   centerX: number,
@@ -365,10 +334,6 @@ const bankerLamp = (x: number, y: number): ReadonlyArray<Draw.Shape> => [
   rect(x - 1, y + 1, 6, 1, '#fff2b0'),
 ]
 
-// NOTE: the reading desk: green leather on its top, two banker's lamps, an
-// open book, papers, an inkwell and quill, a pile of books, drawers to the
-// front, and two wingback chairs pulled up behind it. Its west drawer is
-// open a crack.
 export const deskShapes = ({ x, y, width }: Box): ReadonlyArray<Draw.Shape> => {
   const right = x + width
   const middle = x + Math.floor(width / 2)
@@ -414,8 +379,6 @@ export const deskShapes = ({ x, y, width }: Box): ReadonlyArray<Draw.Shape> => {
   ]
 }
 
-// NOTE: a globe on a tripod, oceans and two continents, its brass
-// meridian, taller than the desk.
 export const globeShapes = ({ x, y }: Box): ReadonlyArray<Draw.Shape> => {
   const centerX = x + 5
   const centerY = y - 3
@@ -450,18 +413,12 @@ export const globeShapes = ({ x, y }: Box): ReadonlyArray<Draw.Shape> => {
   ]
 }
 
-// THE SECRET SHELF
-
 export type ShelfState = 'Shut' | 'Open'
 
-// NOTE: which side wall the shelf stands in: the west wall faces the room
-// to its east.
 export type ShelfWall = 'West' | 'East'
 
 const SHELF_LENGTH = TILE_SIZE * 2
 
-// NOTE: the shelf is drawn as if in the west wall, with x counting into the
-// room from the wall tile's left edge; the east wall's is the same flipped.
 const flipped = (
   shapes: ReadonlyArray<Draw.Shape>,
   wall: ShelfWall,
@@ -491,10 +448,6 @@ const bookTops = (seed: number): ReadonlyArray<Draw.Shape> =>
           ),
   )
 
-// NOTE: shut, the shelf is built into the wall, as tall as the wall it is
-// set in: its books' tops show from above, as any wall's top wears its art.
-// Its face, the red book sticking out of it, stands carved
-// (src/render/room/shelfCarve.ts).
 const shutShapes = (): ReadonlyArray<Draw.Shape> => [
   rect(0, -1, TILE_SIZE, SHELF_LENGTH + 2, SHELF_WOOD_COLOR),
   rect(1, 0, TILE_SIZE - 2, SHELF_LENGTH, SHELF_BACK_COLOR),
@@ -504,11 +457,6 @@ const shutShapes = (): ReadonlyArray<Draw.Shape> => [
   rect(TILE_SIZE - 3, 6, 3, 2, ODD_BOOK_COLOR),
 ]
 
-// NOTE: open, the shelf has swung into the room on its hinge at the north
-// end and stands across the floor with its books to the south (the swung
-// case, `SWUNG_SHELF_SPRITES`), its arc scraped in the dust and two books
-// shaken loose. The wall it stood in is a passage, planks running through
-// it from the room next door, the library's shade over its own half.
 const openShapes = (): ReadonlyArray<Draw.Shape> => [
   ...Array.flatMap(
     Array.makeBy(SHELF_LENGTH / PLANK_HEIGHT, row => row * PLANK_HEIGHT),
@@ -541,18 +489,12 @@ const openShapes = (): ReadonlyArray<Draw.Shape> => [
   rect(TILE_SIZE + 11, 15, 3, 2, '#b8813f'),
 ]
 
-// NOTE: the case seen square from its books' side, as long as the shelf and
-// as tall as the wall it is set in (a tall wall's rows of face,
-// src/render/iso/space.ts): its rim, two rows of books on a ledge, its
-// base, and the red book `oddBookX` from its left on the top row.
 export const SHELF_CASE_HEIGHT = WALL_FACE_ROWS
 
 export const SHELF_CASE_LENGTH = SHELF_LENGTH
 
 const CASE_BASE_COLOR = '#1a110a'
 
-// NOTE: how tall a book stands, the ledge between the two rows of books,
-// and each row's top.
 const BOOK_PX = 3
 const LEDGE_ROW = 1 + BOOK_PX
 const BOOK_ROWS: ReadonlyArray<number> = [1, LEDGE_ROW + 1]
@@ -588,8 +530,6 @@ export const shelfCaseShapes = (
   rect(oddBookX, 1, 2, BOOK_PX, ODD_BOOK_COLOR),
 ]
 
-// NOTE: the colors of the case's frame: its wood, rim, ledges, and base,
-// which stand a pixel prouder than its books where it is carved.
 export const SHELF_FRAME_COLORS: ReadonlySet<string> = new Set([
   SHELF_WOOD_COLOR,
   SHELF_EDGE_COLOR,
@@ -613,10 +553,6 @@ const shifted = (
       : shape,
   )
 
-// NOTE: swung open, the case stands across the floor east of the west
-// wall's tile, its books to the south and its hinge at the wall, its foot
-// 7 pixels below the shelf's top: drawn as if in the west wall, flipped for
-// the east, as the shelf's own art is.
 export const SWUNG_SHELF_FOOT_PX = 7
 
 const swungShapes = (): ReadonlyArray<Draw.Shape> =>
@@ -626,9 +562,6 @@ const swungShapes = (): ReadonlyArray<Draw.Shape> =>
     SWUNG_SHELF_FOOT_PX - SHELF_CASE_HEIGHT,
   )
 
-// NOTE: each state's pixels on each wall as rectangles, drawn at the top
-// left corner of the shelf's two wall tiles, for a room image that bakes
-// the shelf in with everything else (the studio's preview).
 export const SHELF_SHAPES: Readonly<
   Record<ShelfWall, Readonly<Record<ShelfState, ReadonlyArray<Draw.Shape>>>>
 > = {
@@ -639,8 +572,6 @@ export const SHELF_SHAPES: Readonly<
   },
 }
 
-// NOTE: the swung case on each wall, built once: it stands carved in the
-// room (src/render/room/tallCover.ts).
 export const SWUNG_SHELF_SPRITES: Readonly<
   Record<ShelfWall, ReadonlyArray<Draw.Shape>>
 > = {
@@ -648,7 +579,6 @@ export const SWUNG_SHELF_SPRITES: Readonly<
   East: bakeShapes(flipped(swungShapes(), 'East')),
 }
 
-// NOTE: each state's sprite on each wall, built once.
 export const SHELF_SPRITES: Readonly<
   Record<ShelfWall, Readonly<Record<ShelfState, ReadonlyArray<Draw.Shape>>>>
 > = {

@@ -1,8 +1,3 @@
-// Runs the API Worker (sync and co-op rooms, not analytics) in a local
-// workerd, the Durable Object runtime, with storage that starts empty. e2e.ts uses
-// it; on its own it serves until stopped, for the dev page:
-//   bun tools/mp-dev/local.ts            (API at http://127.0.0.1:8798)
-//   bun tools/mp-dev/serve.ts http://127.0.0.1:8798
 import {
   Config,
   Console,
@@ -21,7 +16,6 @@ import * as NodeServices from '@effect/platform-node/NodeServices'
 
 const here = import.meta.dirname
 
-// NOTE: MP_DEV_PORT moves it, so two worktrees can each run a local workerd.
 const localPort = Effect.map(
   Config.String('MP_DEV_PORT').pipe(Config.withDefault('8798')),
   Number,
@@ -30,8 +24,6 @@ const localPort = Effect.map(
 export const localOrigin: Effect.Effect<string, Config.ConfigError> =
   Effect.map(localPort, port => `http://127.0.0.1:${port}`)
 
-// NOTE: the Worker and the shared packages must meet one Effect, infra's,
-// as the alias in infra/alchemy.run.ts makes them in a deploy.
 const effectFromInfra = (infra: string) => ({
   name: 'effect-from-infra',
   setup(build: {
@@ -92,8 +84,6 @@ const dirsOf = Effect.gen(function* () {
   return {
     infra: path.resolve(here, '../../infra'),
     outdir,
-    // NOTE: SQLite-backed Durable Objects need disk storage in workerd;
-    // each run starts from an empty directory.
     storage: path.resolve(outdir, 'storage'),
   }
 })
@@ -146,14 +136,9 @@ const answersChallenge = (origin: string) =>
   )
 
 export interface Workerd {
-  // NOTE: stops workerd and starts it again on the same storage, as a deploy
-  // of new code does: every Durable Object loses its memory and every socket
-  // drops, and what the objects stored stays.
   readonly restart: Effect.Effect<void, WorkerdFailed>
 }
 
-// NOTE: workerd runs for as long as the Scope; closing it stops workerd.
-/** @stability unstable */
 export const startWorkerd: Effect.Effect<
   Workerd,
   WorkerdFailed,

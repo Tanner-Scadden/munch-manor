@@ -1,8 +1,3 @@
-// NOTE: the `coop=live` room in a Web Worker, off the page's main thread as
-// the real room is on the server. Seat 0 is the page, over postMessage
-// (liveNet.ts) with a fixed delay each way; the other seats are scripted
-// players, each with a Session of its own, as src/test/roomTesting.ts plays them.
-
 import { Array, Effect, Option, Result, Schedule, Schema } from 'effect'
 
 import { scriptedInput } from '@game/test/roomTesting'
@@ -139,8 +134,7 @@ const playRoom = (seats: number, zombies: number, fromPage: Array<InFlight>) =>
         deliver(advanced.out, nowMs)
       }
       Array.forEach(arrivedBy(state.toPage, nowMs), ({ bytes }) =>
-        // oxlint-disable-next-line unicorn/require-post-message-target-origin -- a Worker's postMessage takes no target origin
-        self.postMessage(bytes),
+        self.postMessage(bytes, { transfer: [] }),
       )
     })
     return yield* Effect.repeat(step, Schedule.spaced(STEP_MS))

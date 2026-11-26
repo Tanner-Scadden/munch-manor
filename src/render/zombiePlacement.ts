@@ -5,8 +5,6 @@ import { type Zombie, ZombieAction } from '../world/schema/entitySchema'
 import { CHUCKER_RULES, THROWER_KIND } from '../world/zombies/chucker'
 import { FULL_TURN, QUARTER_TURN } from './drawing'
 
-// ACTIONS
-
 const HEFT_TELL_SLOW_MS = 200
 const HEFT_TELL_FAST_MS = 60
 const CARRY_LIFT_PX = 28
@@ -24,9 +22,6 @@ const SQUIRM_RADIANS = 0.18
 const TAUNT_MS = 500
 export const TAUNT_PUMP_MS = 120
 
-// NOTE: right after a throw the Big Leaguer pumps his fist. His wind after a
-// throw is the only one long enough to start inside the taunt, so arriving
-// winded or cooling down from a shield never shows it.
 export const isTauntingAt = (zombie: Zombie): boolean =>
   zombie.kind === THROWER_KIND &&
   ZombieAction.isAnyOf(['Winded'])(zombie.action) &&
@@ -51,10 +46,6 @@ type Placement = Readonly<{
 }>
 
 const ON_FEET: Placement = { lift: 0, rotate: 0, nudgeX: 0, isStill: false }
-
-// NOTE: a Groaner held overhead hangs upside down by its ankles in the
-// Big Leaguer's raised hands, kicking. A half turn hangs its body below its feet,
-// so its feet are lifted above the Big Leaguer's head by its own height.
 
 export const placementOf: {
   (elapsedMs: number): (zombie: Zombie) => Placement

@@ -10,15 +10,6 @@ import { isGrounded } from '../zombies/zombies'
 import { creditStriker, isInArc, maybeNearest, strikeInMelee } from './melee'
 import { isWieldingKnife } from './weapons'
 
-// The knife (GAME_DESIGN.md, "The knife and two gun slots"): every player
-// starts a run with one in the melee slot, right of the guns. F or a tap on
-// the slot draws it (src/world/gear/weapons.ts, drawMelee), and then the trigger stabs
-// on repeat: a quick, weak jab at the one zombie nearest in a short arc in
-// front, with a small shove. It never runs out and never upgrades; the
-// Clang Pan from the fridge is the only melee upgrade, and takes its place
-// in the slot for the rest of the run. It strikes through src/world/gear/melee.ts, as
-// the Pan does.
-
 type KnifeRules = Readonly<{
   intervalMs: number
   reachPx: number
@@ -37,9 +28,6 @@ export const KNIFE_RULES: KnifeRules = {
   slashMs: 140,
 }
 
-// NOTE: how far through its slash the knife is, from 0 as it lands to 1 as
-// it is put away; none once the slash is over. Read from the cooldown, so
-// the slash needs no field of its own.
 export const maybeSlashShare = (player: Player): Option.Option<number> => {
   const sinceStabMs = KNIFE_RULES.intervalMs - player.knifeCooldownMs
   return player.knifeCooldownMs > 0 && sinceStabMs < KNIFE_RULES.slashMs
@@ -105,8 +93,6 @@ const stab = (world: World, slot: PlayerSlot): World => {
   return creditStriker(stabbed, slot, events)
 }
 
-// NOTE: one tick of the knife for the seat at `slot`: in hand, the held
-// trigger stabs. It rests while that player browses the shop.
 export const stabWithKnife: {
   (slot: PlayerSlot, deltaMs: number): (world: World) => World
   (world: World, slot: PlayerSlot, deltaMs: number): World

@@ -8,10 +8,6 @@ import { EVERY_LEVEL_SPEC } from '../plan'
 import { rugsOf } from '../rugs'
 import { isInsideRoom, symbolAt, tileIndex } from '../tileGrid'
 
-// The roof leaks' puddles (src/world/level/leaks.ts): a few seeded puddles
-// in every open room, on plain floor clear of cover, rugs, doorways, and
-// narrow ways, that slow the feet wading through them.
-
 const EVERY_EXIT = [
   'West',
   'East',

@@ -23,9 +23,6 @@ import { modifyFocus } from '../../party/party'
 import { EXIT_RULES } from '../exits'
 import { WAKE_RULES, isWakePack } from '../wakeUp'
 
-// A wake-up played out (src/world/level/wakeUp.ts): the kitchen bought open
-// mid-wave sends its whole rush in through its own doors within about 11 s.
-
 const fighting: Model = modifyFocus(
   UiStruct.evolve(
     withKeys(pastTimedBreaks(freshRunModel()), EXIT_RULES.kitchenKeys + 2),

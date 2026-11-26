@@ -1,9 +1,3 @@
-// The air in the manor: dust drifting in every open room, catching the
-// candlelight and the flashlight's beam, and embers rising off the hearths
-// and the ovens. Each mote is read off the World's clock and the level
-// alone, with no state, so it costs nothing to keep and every player in a
-// co-op room sees the same air.
-
 import { Array } from 'effect'
 
 import { unitOf } from '../../shared/prng'
@@ -15,33 +9,22 @@ import { type FlameKind, flameSpecsOf } from './lightSpecs'
 import { mixColor } from './mood'
 
 export type Mote = Readonly<{
-  // NOTE: the spot on the floor under it and its height over it, in game
-  // pixels.
   x: number
   y: number
   hover: number
-  // NOTE: how wide it is drawn, in game pixels: a mote is one, a moth's
-  // open wings two.
   width?: number
   color: number
   alpha: number
-  // NOTE: an ember glows of itself; dust is lit, so it shows only in light.
   isGlowing: boolean
 }>
 
-// DUST
-
-// NOTE: a room's dust: one mote for each patch of floor this many game
-// pixels square, up to a cap.
 const DUST_PATCH = 70
 const DUST_CAP = 28
 const DUST_COLOR = 0xf6e7c8
 
-// NOTE: a mote drifts this far each way from its home, in game pixels.
 const DRIFT_X = 14
 const DRIFT_Y = 9
 
-// NOTE: a whole number for each mote and use, for its rolls.
 const rollOf = (room: number, mote: number, use: number): number =>
   unitOf(room * 4099 + mote * 31 + use)
 
@@ -77,10 +60,6 @@ const dustIn = (
   })
 }
 
-// EMBERS
-
-// NOTE: how many embers each fire keeps in the air, and how wide it lets
-// them out, in game pixels. The candles, sconces, and lights give none.
 const EMBERS: Readonly<
   Record<FlameKind, Readonly<{ count: number; width: number }>>
 > = {
@@ -94,11 +73,7 @@ const EMBERS: Readonly<
 
 const EMBER_HOT = 0xffc25a
 const EMBER_COOL = 0xc8381c
-// NOTE: how high an ember climbs before it goes out, in game pixels.
 const EMBER_RISE = 36
-// NOTE: an ember stands this far in front of its fire and that much higher,
-// the same spot on screen, so its climb never passes behind the fire's own
-// art.
 const EMBER_FORWARD = 14
 
 const embersOf = (level: Level, ms: number): ReadonlyArray<Mote> =>
@@ -107,7 +82,6 @@ const embersOf = (level: Level, ms: number): ReadonlyArray<Mote> =>
       const lifeMs = 1500 + rollOf(fire, ember, 10) * 1200
       const age = (ms + rollOf(fire, ember, 11) * lifeMs) % lifeMs
       const share = age / lifeMs
-      // NOTE: each life of an ember starts from its own spot.
       const life = Math.floor((ms + rollOf(fire, ember, 11) * lifeMs) / lifeMs)
       const startX =
         spot.x +
@@ -123,11 +97,6 @@ const embersOf = (level: Level, ms: number): ReadonlyArray<Mote> =>
     }),
   )
 
-// SIFTING
-
-// NOTE: dust shaken off the ceiling as the house rattles: this many motes
-// at most, over this much floor round the viewer, each falling from the
-// ceiling in this long, thicker and brighter the harder it rattles.
 const SIFT_COUNT = 36
 const SIFT_REACH_X = 170
 const SIFT_REACH_Y = 110
@@ -142,7 +111,6 @@ const siftOf = (
   Array.makeBy(Math.round(SIFT_COUNT * rattle), mote => {
     const offset = rollOf(-1, mote, 20) * SIFT_FALL_MS
     const fall = (ms + offset) % SIFT_FALL_MS
-    // NOTE: each fall of a mote comes off its own spot of the ceiling.
     const drop = Math.floor((ms + offset) / SIFT_FALL_MS)
     return {
       x: viewer.x + (rollOf(drop, mote, 21) - 0.5) * 2 * SIFT_REACH_X,
@@ -154,8 +122,6 @@ const siftOf = (
     }
   })
 
-// NOTE: the air this frame. A hotter wave stirs the dust further, and a
-// rattle sifts more off the ceiling.
 export const airOf = ({
   world,
   level,

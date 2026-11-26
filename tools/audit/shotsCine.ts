@@ -1,7 +1,3 @@
-// The camera's big moments (src/render/cine.ts): the boss at a door, mid
-// glide with the letterbox bars in, beside the same spot with no moment,
-// as `cine-<TAG>-<viewport>-<scene>.png`.
-//   TAG=try bun run heavy -- --shared bun tools/audit/shotsCine.ts
 import { Effect } from 'effect'
 
 import { runHarnessAudit } from './harnessServer'

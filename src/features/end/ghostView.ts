@@ -11,17 +11,10 @@ import { isCoop } from '../../world/party/party'
 import { type BestRun, Phase, RunMode } from '../../world/schema/worldSchema'
 import { bestRunOf } from './endBeat'
 
-// The best run's ghost on a lost run's end card: a faint BEST and its wave,
-// then the things it found as pictures, on the wave's row of the tally, so
-// a player sees how far the best one got. Only a lone player's campaign
-// loss shows one, and only while the best is better than this run (a run
-// that just became the best has nothing to chase).
-
 const GHOST_OPACITY = 0.55
 const ICON_STRIDE = DARE_ICON_SIZE + 1
 const TEXT_GAP = 3
 
-// NOTE: the best run to show, read off the bests after the run's records.
 export const maybeGhostOf = (model: Model): Option.Option<BestRun> =>
   !isCoop(model) &&
   Phase.isAnyOf(['GameOver'])(model.phase) &&
@@ -32,7 +25,6 @@ export const maybeGhostOf = (model: Model): Option.Option<BestRun> =>
       )
     : Option.none()
 
-// NOTE: the ghost centered on `centerX` at the text's top `y`.
 export const ghostShapes: {
   (centerX: number, y: number): (best: BestRun) => Draw.Shape
   (best: BestRun, centerX: number, y: number): Draw.Shape

@@ -1,34 +1,3 @@
-// Plays co-op through the real game UI, in headless Chrome, two to three
-// players each in their own browser context (their own device key, so
-// their own player), against a build whose VITE_API_ORIGIN has the room
-// Worker and VITE_COOP=On: a local workerd (tools/mp-dev/local.ts) or a pull
-// request preview. Each page starts with a save that has finished the
-// tutorial. The first creates a room from the CO-OP tile; the rest join from
-// its `?room=` link; every seat shows; everyone presses READY and the run
-// opens as the game's own scene. Then the real game: everyone walks and
-// sees the others move, presses READY to start wave 1 early, and shoots
-// zombies with the mouse; the last player walks into the zombies until they
-// go down and the first walks over and stands still to revive them; the
-// wave is cleared, the next break opens the stall, and the first player
-// walks in and buys; everyone presses READY again. One page reloads and
-// rejoins its seat; one leaves. It reports each page's round trip, what came
-// down a second, and how far its own player was corrected. With QUICK=1, two
-// fresh pages then press QUICK PLAY, take the offer to start with two after
-// 45 s, and must land in one room. Screenshots go to
-// `tools/audit/shots/coop-e2e-*.png`. VIEWPORT=p390 or l844 shoots a phone
-// held upright or sideways instead of a desktop (the walking and shooting
-// use keys and the mouse either way). PICK=Endless,Hard has the host pick
-// that mode and difficulty in the lobby (after a guest's READY, which the
-// pick takes back) and checks every page plays it. NET=200,50,2 puts each
-// page behind a bad link: a 200 ms round trip, up to 50 ms of jitter, and
-// 2% of messages held a round trip more (at least 200 ms) as a lost TCP
-// segment's resend would be, order kept (the page's WebSockets are
-// wrapped; Chrome's own throttling leaves WebSockets alone). It reports
-// hit registration (the hits each page saw its own tracers make against
-// the hits the room confirmed), stalls (gaps of 200 ms or more with
-// nothing from the room), and resyncs (a message that would not apply).
-// Run it through the heavy guard, as a Shared job (one context per page):
-//   bun run heavy -- --shared bun tools/audit/coop.ts http://localhost:4398/ [players]
 import {
   Array,
   Clock,
@@ -71,20 +40,8 @@ import {
 } from './lib'
 import { attempt, evaluateAs, failWith } from './page'
 
-// HEROES
-
-// NOTE: each page plays a different hero, unlocked by the rank its save holds
-// (RANKS 6, 8, 10 reach the Handyman at 3, the Track Star at 6, the Penny
-// Pincher at 10) and bought with the Bones that rank's veteran grant pays (75,
-// 122, 180: the heroes cost 60, 100, 150). The host picks at home, through the
-// single player lobby's hero card and picker; each guest picks in the lobby,
-// through the lobby's own pill. A hero for sale is tried on by its card and
-// bought with the picker's BUY pill. Every page must then see the others' prop
-// icons in the lobby, and the room must seat each slot as its hero.
 const HEROES = ['Handyman', 'TrackStar', 'PennyPincher'] as const
 
-// NOTE: buys the hero just tried on when it is for sale, then closes the
-// picker if it is still open.
 const buyAndClose = (page: Page) =>
   Effect.gen(function* () {
     const buy = page.locator('.calling-buy:not([disabled])').first()
@@ -117,7 +74,6 @@ const pickInLobby = (page: Page, hero: string) =>
     yield* buyAndClose(page)
   })
 
-// NOTE: the hero each filled seat shows, in seat order; YOU shows none.
 const heroesSeenBy = (page: Page) =>
   evaluateAs(page, Schema.Array(Schema.String), () =>
     globalThis.Array.from(
@@ -162,8 +118,6 @@ const program = Effect.gen(function* () {
   const pickMode = config.pickMode
   const pickDifficulty = config.pickDifficulty
   const heroLine = Array.join(Array.take(HEROES, players), ',')
-
-  // ROOM BY CODE
 
   yield* Console.log(
     `Co-op through the game UI at ${config.base}, ${players} players, ${viewportNameValue}`,
@@ -344,11 +298,6 @@ const program = Effect.gen(function* () {
   yield* wait(400)
   yield* shot(host, 'countdown')
 
-  // THE INTRO
-
-  // NOTE: the room's first run opens on the whole intro
-  // (src/world/run/arrival.ts). A key skips each page's own drawing to the
-  // door, and the room's slam starts the first break for everyone at once.
   for (const page of everyone) {
     yield* attempt(() => page.keyboard.press('Escape'))
   }
@@ -365,8 +314,6 @@ const program = Effect.gen(function* () {
   const startNet = yield* netsOfEveryone
   const startedMs = yield* Clock.currentTimeMillis
 
-  // NOTE: the link is measured over the fight, while the room still sends,
-  // or until now on a phone, which only fights for its pictures.
   const linkNow = Effect.gen(function* () {
     const nets = yield* netsOfEveryone
     const atMs = yield* Clock.currentTimeMillis
@@ -374,11 +321,6 @@ const program = Effect.gen(function* () {
   })
   let linkAtEnd: Effect.Success<typeof linkNow> | undefined
 
-  // WALKING
-
-  // NOTE: everyone holds their key until the guest's page draws every player
-  // moved, not for a fixed time: on a slow link the others' steps come down
-  // late, and a reading taken after a fixed wait missed them.
   const before = yield* positionsOn(firstGuest)
   const walkKeyOf = (index: number) => (index % 2 === 0 ? 'KeyD' : 'KeyA')
   yield* Effect.forEach(
@@ -417,8 +359,6 @@ const program = Effect.gen(function* () {
   )
   yield* shot(firstGuest, 'walked')
 
-  // READY STARTS THE WAVE
-
   for (const page of everyone) {
     yield* attempt(() => page.keyboard.press('Enter'))
   }
@@ -428,10 +368,6 @@ const program = Effect.gen(function* () {
     4000,
   )
 
-  // NOTE: a phone draws the upright or sideways layout with its own camera,
-  // so the scripted mouse aim (which reads the desktop's still parlour) is
-  // off there: on a phone the players fight a while for the pictures, and
-  // the desktop run checks the kills, the revive, the break, and the shop.
   const isPhone = viewportNameValue !== 'd1280'
   const stopEveryone = Effect.forEach(
     everyone,
@@ -449,8 +385,6 @@ const program = Effect.gen(function* () {
       Effect.succeed(false),
       12_000,
     )
-    // NOTE: keys made each phone a keyboard; a tap makes it a touch screen
-    // again, which draws the phone's own layout and its touch controls.
     for (const [index, page] of everyone.entries()) {
       const held = yield* heldOf(helds, index)
       yield* stopAll(page, held)
@@ -462,8 +396,6 @@ const program = Effect.gen(function* () {
     yield* shot(host, 'wave')
     yield* shot(firstGuest, 'wave-guest')
   } else {
-    // THE FIGHT AND A REVIVE
-
     const killsOn = (page: Page) =>
       Effect.map(readoutOf(page), readout =>
         Array.reduce(
@@ -485,7 +417,6 @@ const program = Effect.gen(function* () {
       shotKills,
       'the players shoot zombies, each kill to its shooter',
     )
-    // NOTE: kept in case the run ends before the revive's reading below.
     linkAtEnd = yield* linkNow
     yield* shot(host, 'fight')
     yield* shot(firstGuest, 'fight-guest')
@@ -496,8 +427,6 @@ const program = Effect.gen(function* () {
       readoutOf(host),
       readout => seatOf(readout, feederSlot)?.life,
     )
-    // NOTE: the others guard meanwhile, firing only at what comes at them, or
-    // they shoot the zombies before any reaches the feeder.
     const downed = yield* playFor(
       everyone,
       helds,
@@ -529,12 +458,6 @@ const program = Effect.gen(function* () {
       linkAtEnd = linkAfterRevive
     }
 
-    // THE BREAK, THE STALL, AND READY
-
-    // NOTE: everyone clears the rest of the wave. A teammate left standing
-    // idle was eaten, and then the host alone, and the party wiped back to
-    // the lobby. The break's bonus pays for something at the stall. A wipe
-    // ends the step at once (no readout off the arena) and says so.
     const isBreak = (readout: Readout | undefined) =>
       readout?.phase === 'Preparation' && readout.wave === 2
     yield* playFor(
@@ -561,8 +484,6 @@ const program = Effect.gen(function* () {
     yield* stopEveryone
     yield* shot(host, 'break')
 
-    // NOTE: the shop is gone (docs/ESCAPE_PLAN.md, layer 7): the cleared
-    // wave put a key on the crew's one ring, which every page reads alike.
     const hostKeys = (yield* readoutOf(host))?.keys ?? 0
     const guestKeys = (yield* readoutOf(firstGuest))?.keys ?? -1
     yield* check(
@@ -582,8 +503,6 @@ const program = Effect.gen(function* () {
       6000,
     )
   }
-
-  // THE LINK
 
   const endNet = linkAtEnd ?? (yield* linkNow)
   const seconds = (endNet.atMs - startedMs) / 1000
@@ -606,8 +525,6 @@ const program = Effect.gen(function* () {
     yield* check(net.rttMs > 0, `player ${index + 1} measured a round trip`)
   }
 
-  // REJOIN
-
   const rejoiner = firstGuest
   const rejoinSlot = yield* slotOf(rejoiner)
   yield* attempt(() => rejoiner.reload())
@@ -623,8 +540,6 @@ const program = Effect.gen(function* () {
   )
   yield* shot(rejoiner, 'rejoined')
 
-  // LEAVE
-
   const leaver = lastGuest
   yield* attempt(() =>
     leaver.getByRole('button', { name: 'Leave the room' }).click(),
@@ -639,8 +554,6 @@ const program = Effect.gen(function* () {
     new URL(leaver.url()).searchParams.get('room') === null,
     'leaving clears the room from the address',
   )
-
-  // QUICK PLAY
 
   if (config.isQuick) {
     const quickOne = yield* openPlayer(browser, 'quick 1', 0)

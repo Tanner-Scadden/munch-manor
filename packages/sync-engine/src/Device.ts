@@ -26,11 +26,6 @@ import {
 } from './Identity'
 import { decodeRows } from './Rows'
 
-// NOTE: this device's identity on the client: its key pair and player id
-// in the sync_device table, and a session token kept in memory and renewed
-// a minute before it expires. The HTTP calls go through an IdentityApi, so
-// tests can point it straight at a Directory.
-
 export interface IdentityApi {
   readonly challenge: Effect.Effect<ChallengeResponse, IdentityRefused>
   readonly session: (
@@ -67,7 +62,6 @@ const DeviceRow = Schema.Struct({
 const unavailable = () =>
   IdentityRefused.make({ failure: IdentityFailure.cases.Unavailable.make({}) })
 
-/** @stability unstable */
 export const makeDeviceIdentity = (options: {
   readonly sql: SqlClient.SqlClient
   readonly api: IdentityApi
@@ -87,9 +81,6 @@ export const makeDeviceIdentity = (options: {
       rows => Effect.map(decodeRows(DeviceRow, rows), Array.head),
     )
 
-    // NOTE: made once, the first time this device syncs. Two tabs racing
-    // here both insert with ON CONFLICT DO NOTHING and both read back the
-    // one row that won.
     const stored = Effect.gen(function* () {
       const existing = yield* Effect.mapError(readRow, unavailable)
       if (Option.isSome(existing)) {

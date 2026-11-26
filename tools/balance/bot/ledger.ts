@@ -1,10 +1,3 @@
-// What the end report (tools/balance/endReport.ts) reads of a run's keys
-// and of the crowd's bites: where each key on the ring came from (kills,
-// a cleared wave, a wiped pack, the pantry, the fridge's Dud) and where it
-// went (boards, the fridge), the ring at each break, and each heart the
-// crowd took outside Uncle Chunk's fight, with what the bot was doing then
-// and how many zombies stood near.
-
 import { Array, Function } from 'effect'
 
 import { KEY_RULES } from '../../../src/world/keys/keys'
@@ -48,7 +41,6 @@ export const emptyLedger = (): Ledger => ({
   doingMs: [],
 })
 
-// NOTE: the ring as a break begins, before the bot spends.
 export const recordBreak: {
   (model: Model): (ledger: Ledger) => void
   (ledger: Ledger, model: Model): void
@@ -60,8 +52,6 @@ export const recordBreak: {
 const countOf = (model: Model, tag: string) =>
   Array.filter(model.frameEvents, event => event._tag === tag).length
 
-// Charges one frame's keys to their source and their spending to what
-// was bought. What no other source explains came from kills.
 export const recordKeys: {
   (before: Model, after: Model): (ledger: Ledger) => void
   (ledger: Ledger, before: Model, after: Model): void
@@ -96,7 +86,6 @@ export const recordKeys: {
   }
 })
 
-// NOTE: what the bot was doing on a frame of a wave.
 export const doingOf = ({
   model,
   isFetching,
@@ -123,8 +112,6 @@ const crowdAround = (model: Model) =>
       distance(focusOf(model).player, zombie) <= PRESSURE_PX,
   ).length
 
-// Adds one frame of a wave outside his fight: the time at what the bot was
-// doing, and the hearts the crowd took.
 export const recordCrowd = ({
   ledger,
   before,

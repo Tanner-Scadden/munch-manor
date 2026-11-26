@@ -18,11 +18,6 @@ import { ALL_THREE_TAG, MISSIONS_TITLE, MISSION_NAMES } from '../../world/names'
 import { MissionMessage } from './message'
 import { type MissionRow, isAllThreeDone, missionRowsOf } from './missions'
 
-// The day's missions on the home menu: a card of their three pictures with
-// a bar under each, which opens the panel of rows, each with its name, its
-// bar, its Bones, and the day's one reroll. Show, don't explain: the card
-// is pictures and bars, its words only for a screen reader.
-
 const rowLabel = (row: MissionRow): string =>
   row.isDone
     ? `${MISSION_NAMES[row.mission]}: done`
@@ -38,7 +33,6 @@ const barView = (row: MissionRow, h: ApplicationViewBuilder): ApplicationHtml =>
         .style({ width: percentOf(row.count, Math.max(1, row.goal)) }),
     )
 
-// NOTE: a mission's picture, a check over it once done.
 const pictureView = (
   row: MissionRow,
   className: string,
@@ -51,21 +45,14 @@ const pictureView = (
       ...(row.isDone ? [iconView('mission-check', MISSION_DONE_ICON, h)] : []),
     )
 
-// CARD
-
 const pipView = (row: MissionRow, h: ApplicationViewBuilder): ApplicationHtml =>
   h.span
     .class('mission-pip')
     .attr('data-done', row.isDone ? 'true' : 'false')
     .children(pictureView(row, 'mission-pip-picture', h), barView(row, h))
 
-// NOTE: the home card's button builder, concrete so its chain stays typed
-// (Effect UI's PartTarget types `attr` loosely).
 type CardButton = ReturnType<ApplicationViewBuilder['button']['attr']>
 
-// NOTE: the home card. The screen hands it the button's builder with what
-// every home button wears already on it (its id, key, and focus), as only
-// the home screen knows them.
 export const missionCardView: {
   (
     button: CardButton,
@@ -106,8 +93,6 @@ export const missionCardView: {
     }),
 )
 
-// PANEL
-
 export const missionsText = (
   model: Model,
 ): Readonly<{ title: string; blurb: string }> => ({
@@ -130,8 +115,6 @@ const bonesView = (
       h.span.class('sr-only').children(`${bones} Bones`),
     )
 
-// NOTE: the day's one reroll, on a mission not done yet. Once spent, every
-// dice greys out until tomorrow.
 const rerollView = (
   row: MissionRow,
   h: ApplicationViewBuilder,

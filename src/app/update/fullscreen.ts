@@ -7,9 +7,6 @@ import { DeviceMessage } from '../../platform/message'
 import { toBrowserError } from '../../shared/describeError'
 import { type UpdateStep, defineHandlers } from './step'
 
-// COMMAND
-
-// NOTE: the rotation lock is ApplyRotation's, issued once full screen is on.
 const enterFullscreen = Effect.tryPromise({
   try: () =>
     document.documentElement.requestFullscreen({ navigationUI: 'hide' }),
@@ -24,8 +21,6 @@ const exitFullscreen = Effect.tryPromise({
   catch: toBrowserError,
 })
 
-// NOTE: a refusal leaves the setting as it was, so it is logged and nothing
-// is reported.
 export const SetFullscreen = Command.make(
   'SetFullscreen',
   { args: { fullscreen: FullscreenSetting } },
@@ -44,8 +39,6 @@ export const SetFullscreen = Command.make(
     ),
 )
 
-// FULL SCREEN
-
 export const toggleFullscreen: UpdateStep = $ =>
   $.run(
     SetFullscreen.make({
@@ -53,8 +46,6 @@ export const toggleFullscreen: UpdateStep = $ =>
     }),
   )
 
-// NOTE: full screen, the screen's fit, and the rotation lock
-// (src/platform/message.ts).
 export const deviceHandlers = defineHandlers({
   ClickedFullscreenButton: toggleFullscreen,
 

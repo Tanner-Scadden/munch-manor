@@ -68,15 +68,9 @@ import {
   tierOf,
 } from '../weapons'
 
-// Guns level up with kills (src/world/gear/gunLevels.ts): each carried gun
-// counts its own kills and climbs Beefy, DELUXE, and 3000 at 40, 120, and
-// 250 of them, in single player and in a co-op room alike.
-
 const FRAME_MS = FIXED_STEP_MS
 const GRACE_TICK_MS = 50
 
-// NOTE: a shot from `weapon` about to land on a one-health zombie in front
-// of the player, fired by `shooter` in a co-op room.
 const shotWith = (
   weapon: WeaponKind,
   target: Zombie = doomed,

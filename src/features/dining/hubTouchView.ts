@@ -26,36 +26,6 @@ import type { Vector } from '../../world/schema/worldSchema'
 import { stationCenterOf } from '../../world/stations/stationSpots'
 import { distanceBetween } from '../../world/step/geometry'
 
-// The hub's touches (docs/ROOM_RESEARCH.md, "Decided", owner 2026-11-10:
-// "opening a room adds small touches to the hub"): each room opened leaves
-// a small sign of itself in the dining room, so the hub reads how far the
-// house has woken. Cosmetic only, read off which rooms stand open, so the
-// World and the wire carry nothing new.
-//
-// - The kitchen: the dumbwaiter's other end, a hatch in the sideboard with
-//   its tray up.
-// - The library: a stack of borrowed books on the sideboard.
-// - The parlour: its music, notes drifting off the gramophone and out
-//   through the parlour's doorway into the dining room, so the hub hears
-//   where it comes from.
-// - The cellar: a cold draft, a cobweb in the corner and dust drifting in
-//   from its side.
-//
-// Each stands carved in the 3D world, where it is: on the sideboard, high in
-// the corner, in the air.
-
-// NOTE: where the touches stand, in pixels from the dining room's top left
-// (src/world/level/plan.ts, DINING_MAP). The sideboard runs along the north
-// wall, columns 13 to 22 of row 2, its foot on row 3's top edge
-// (src/render/room/diningArt.ts): the hatch stands upright on its face
-// over its second door (`ON_FRONT_PX`), and the
-// borrowed books stand in a pile on the floor just past its east end, clear
-// of the silver on its top and Uncle Chunk's portrait over it. The cobweb
-// hangs high in the north-east corner, against the east wall: a standing
-// sprite's upper pixels lean back along the lens's ray, so its top row is
-// the highest the north wall's face shows (row 11), and its foot is far
-// enough south (row 33) that even that top row stands just in front of the
-// face. The cellar's dust comes in at its side's boards, in the air.
 const SIDEBOARD_FOOT_Y = 3 * TILE_SIZE
 const HATCH_SPOT = { x: 155, y: 19, footY: SIDEBOARD_FOOT_Y + ON_FRONT_PX }
 const BOOKS_HEIGHT = 11
@@ -68,24 +38,17 @@ const COBWEB_SPOT = { x: 35 * TILE_SIZE, y: 11, footY: 33 }
 const WEST_BOARDS = { column: 1, row: 13 }
 const EAST_BOARDS = { column: 35, row: 9 }
 
-// NOTE: a note leaves the gramophone on every beat and drifts along its
-// route at a slow walk, so a few are always on their way out.
 const NOTE_EVERY_MS = 1800
 const NOTE_PX_PER_MS = 0.024
-// NOTE: about head high, bobbing gently up and down and swaying side to
-// side as it goes.
 const NOTE_LIFT_PX = 13
 const NOTE_BOB_PX = 3
 const NOTE_SWAY_PX = 2.5
-// NOTE: faint, then dim, as a note leaves the gramophone; dim, then faint,
-// over its last stretch, a few tiles past the dining room's doorway.
 const NOTE_FADE_IN_PX = 14
 const NOTE_FADE_OUT_PX = 26
 const NOTE_HEIGHT = 8
 const NOTE_HALF_WIDTH = 3
 const MOTE_CYCLE_MS = 5200
 const MOTE_DRIFT_PX = 46
-// NOTE: the dust drifts in about knee high.
 const MOTE_LIFT_PX = 8
 
 const pointOf = (
@@ -96,12 +59,8 @@ const pointOf = (
   y: dining.y + tile.row * TILE_SIZE,
 })
 
-// NOTE: every touch stands carved, a block or so deep: the hatch flush on
-// the sideboard's face, the books a little box of a stack, the web, the
-// notes, and the dust a block thin.
 const HATCH: Sprite = deepSprite(
   bakeShapes([
-    // NOTE: the hatch's frame and its dark shaft, the tray up in it.
     rect(0, 1, 8, 8, '#3e2210'),
     rect(1, 2, 6, 6, '#120a05'),
     rect(1, 2, 6, 1, '#b8b8c0'),
@@ -112,7 +71,6 @@ const HATCH: Sprite = deepSprite(
   { most: 1, isUpright: true },
 )
 
-// NOTE: four library books piled crooked, their pages' edges showing.
 const PAGES_COLOR = '#efe2c0'
 
 const BOOKS: Sprite = deepSprite(
@@ -129,8 +87,6 @@ const BOOKS: Sprite = deepSprite(
   { most: 5, isBox: true },
 )
 
-// NOTE: solid strands, so every one carves (a pixel under half opacity
-// carves to nothing): the two long ones pale, the inner ones dimmer.
 const WEB_COLOR = '#c8c8d4'
 const WEB_DIM_COLOR = '#8e8e9c'
 
@@ -149,12 +105,6 @@ const COBWEB: Sprite = deepSprite(
   { most: 1 },
 )
 
-// NOTE: an eighth note and a quarter note in gold, glowing of themselves,
-// each a filled oval head tilted the way a written one is, with a pale
-// glint, a stem a pixel wide off its right side, and the eighth's flag
-// curling off the stem's top, so each reads as a note at a pixel a block.
-// Each comes bright, dim, and faint, for its fade in and out: a carved
-// pixel under half opacity carves to nothing, so a fade is a darker gold.
 const EIGHTH_NOTE = [
   '...G..',
   '...GGG',
@@ -201,7 +151,6 @@ const MOTES: Sprite = deepSprite(
   { most: 1 },
 )
 
-// NOTE: the same puff trailing the other way, for dust drifting west.
 const MOTES_WEST: Sprite = deepSprite(
   bakeShapes([
     rect(0, 0, 1, 1, MOTE_COLOR),
@@ -218,8 +167,6 @@ const maybeRoom = (level: Level, id: string) =>
 const isOpen = (level: Level, id: string): boolean =>
   Option.exists(maybeRoom(level, id), room => room.isOpen)
 
-// NOTE: a slot room's side of the dining room: its boards on the west wall
-// for the west slot, on the east wall for the east and far slots.
 const sideOf = (level: Level, id: string, dining: Vector): Vector =>
   pointOf(
     dining,
@@ -228,7 +175,6 @@ const sideOf = (level: Level, id: string, dining: Vector): Vector =>
       : EAST_BOARDS,
   )
 
-// NOTE: inward from a side, toward the middle of the dining room.
 const inwardOf = (side: Vector, dining: Vector): number =>
   side.x < dining.x + 18 * TILE_SIZE ? 1 : -1
 
@@ -242,18 +188,6 @@ const fixedAt = (
   shapes: [placeAt(dining.x + spot.x, dining.y + spot.y, sprite)],
 })
 
-// THE NOTES' ROUTE
-
-// NOTE: the notes' route after the gramophone, in tiles from the top left
-// of each room it crosses (src/world/level/plan.ts), through the middle of
-// every doorway on the way (a slot room's ports in rows 8 and 9, the dining
-// room's west boards in rows 12 and 13 and its east boards in rows 8 and
-// 9), round the furniture and clear of the walls: out of the parlour's
-// ring of furniture by its gap on the doorway's side, across the east room
-// when the parlour stands in the far slot (straight down the library's
-// corridor, or round the north side of the cellar's barrels), and a few
-// tiles into the dining room, clear of the display case by the west
-// boards, where they fade.
 type Leg = ReadonlyArray<Vector>
 
 const PARLOUR_TO_EAST: Leg = [
@@ -297,9 +231,6 @@ const inRoom = (room: Room, leg: Leg): ReadonlyArray<Vector> =>
     y: room.box.top + y * TILE_SIZE,
   }))
 
-// NOTE: the route's points after the gramophone, by where the parlour
-// stands: west of the dining room, just east of it, or in the far slot,
-// beyond the east room.
 const pointsAfterGramophone = (
   level: Level,
   parlour: Room,
@@ -352,8 +283,6 @@ const routeThrough = (
 
 const routes = new WeakMap<LevelSpec, Option.Option<NoteRoute>>()
 
-// NOTE: the route for the house a level stands in, built once per plan:
-// none on a level with no parlour or no dining room.
 export const noteRouteOf = (level: Level): Option.Option<NoteRoute> => {
   const cached = routes.get(level.spec)
   if (cached !== undefined) {
@@ -374,8 +303,6 @@ export const noteRouteOf = (level: Level): Option.Option<NoteRoute> => {
   return route
 }
 
-// NOTE: a note's place a distance along the route, swaying off it side to
-// side, and none once it has come to the route's end.
 const noteAlong = (
   route: NoteRoute,
   along: number,
@@ -411,12 +338,6 @@ const notesFor = (
       : NOTES
 }
 
-// NOTE: a note off the gramophone on every beat, an eighth then a quarter,
-// each drifting along the route off the World's clock, so every viewer
-// sees the same notes in the same places. Only the notes still on the way
-// are drawn: a handful, each one carved piece.
-// NOTE: only the notes the camera shows are drawn: a far parlour's route
-// runs most of a screen, and each note is a carve the 3D batch stands.
 const noteDrawables = (
   route: NoteRoute,
   elapsedMs: number,
@@ -457,8 +378,6 @@ const noteDrawables = (
   )
 }
 
-// NOTE: the dust as one baked puff of motes drifting in together, in the
-// air over the floor.
 const moteDrawables = (
   side: Vector,
   inward: number,
@@ -482,8 +401,6 @@ const moteDrawables = (
 
 type Shown = (point: Vector) => boolean
 
-// NOTE: standing in the depth sort: every touch of every room opened so
-// far, the parlour's notes only where the camera shows them.
 export const hubTouchDrawables: {
   (isShown: Shown): (model: Model) => ReadonlyArray<Drawable>
   (model: Model, isShown: Shown): ReadonlyArray<Drawable>

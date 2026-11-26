@@ -1,9 +1,3 @@
-// The props close up: every calling's prop on both bodies and every hair
-// style, standing and mid stride, drawn from the player's own pixel maps at
-// 12 pixels a pixel, as `s48-<TAG>-props.png`. It checks nothing but pixels,
-// so look at it: a prop should sit on the head with no gap and no head
-// showing through it.
-//   TAG=after bun run heavy -- --shared bun tools/audit/shotsProps.ts
 import { Array, Effect } from 'effect'
 
 import { type Appearance, defaultAppearance } from '@game/app/model'

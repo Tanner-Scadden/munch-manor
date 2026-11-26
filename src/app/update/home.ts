@@ -87,10 +87,6 @@ import {
   withInput,
 } from './step'
 
-// COMMANDS
-
-// NOTE: Chrome's install prompt is held by the InstallPrompt service
-// (src/platform/install.ts), so the Command is a service a test fakes.
 export class ShowInstallPrompt extends Command.Service<ShowInstallPrompt>()(
   'app/ShowInstallPrompt',
   { args: {}, success: InstallMessage },
@@ -106,18 +102,12 @@ export class ShowInstallPrompt extends Command.Service<ShowInstallPrompt>()(
   )
 }
 
-// NOTE: focus moves on the page once the render is committed; a button
-// not drawn is left be, and nothing is reported.
 export const FocusHomeButton = Command.make(
   'FocusHomeButton',
   { args: { button: HomeButton } },
   ({ button }) => Effect.as(focusById(homeButtonId(button)), Component.noop),
 )
 
-// NOTE: B buys Rattles a coffee from the keyboard. The coffee is a real
-// link, so the key clicks it, as SHARE's key does: the browser opens the
-// link from a click, which no popup blocker stops, and the click sends
-// ClickedSupportButton like a tap.
 export const ClickSupportLink = Command.make(
   'ClickSupportLink',
   { args: {} },
@@ -139,8 +129,6 @@ export const FocusEndMenuButton = Command.make(
   () => Effect.as(focusById(END_MENU_BUTTON_ID), Component.noop),
 )
 
-// NOTE: long enough for the gift's unwrap animation (src/features/home/menu.css) to
-// play out before the page goes.
 const UNWRAP_DURATION = Duration.millis(650)
 
 export const WaitForUnwrap = Command.make('WaitForUnwrap', { args: {} }, () =>
@@ -150,10 +138,6 @@ export const WaitForUnwrap = Command.make('WaitForUnwrap', { args: {} }, () =>
   ),
 )
 
-// NOTE: the new build's service worker takes over first, when there is one,
-// so the reload and any later offline start run the new build. A worker that
-// fails or is slow never stops the reload. A reload that goes leaves nothing
-// to report; one that fails wraps the gift again.
 export const ReloadPage = Command.make(
   'ReloadPage',
   { args: { build: Schema.String } },
@@ -169,10 +153,6 @@ export const ReloadPage = Command.make(
     ),
 )
 
-// MENU
-
-// NOTE: Leave Run opens over the pause menu, every other panel over the
-// bare home menu.
 const isPanelAllowed = (model: Model, panel: MenuPanel): boolean =>
   panel === 'LeaveRun'
     ? MenuState.isAnyOf(['Paused'])(menuState(model))
@@ -189,8 +169,6 @@ const showPanel = (panel: MenuPanel): UpdateStep =>
     ),
   )
 
-// NOTE: a How to play card shows its line once focused (a keyboard) or
-// tapped (touch), and keeps it until another card takes its place.
 const showHelpLine: {
   (card: HelpCard): (model: Model) => Model
   (model: Model, card: HelpCard): Model
@@ -204,7 +182,6 @@ const openPanel = (panel: MenuPanel): UpdateStep =>
     combine([showPanel(panel), openRootDialog('Panel')]),
   )
 
-// NOTE: the day's missions open from their card or U, once the card shows.
 export const openMissions: UpdateStep = stepWhen(
   isMissionCardShown,
   openPanel('Missions'),
@@ -229,16 +206,11 @@ const leaveFromMenu: UpdateStep = $ => {
   }
 }
 
-// NOTE: only from the open Leave Run panel: a LEAVE tapped as the panel
-// fades out after Back stays in the run.
 const leaveRun: UpdateStep = stepWhen(
   (model: Model) => isPaused(model.phase) && isPanelOpen(model, 'LeaveRun'),
   combine([closePanel, goHome]),
 )
 
-// NOTE: a controller with the leave panel up from pause: A leaves, B or
-// Start stays. The menus by controller come later (docs/INPUT_PLAN.md); this
-// is the one panel a run needs, so a pad player is never stuck in one.
 export const leaveRunFromPad =
   (code: string): UpdateStep =>
   $ => {
@@ -259,23 +231,16 @@ const isEndMenuKey = (model: Model, code: string): boolean =>
 export const menuFromKey = (code: string): UpdateStep =>
   stepWhen((model: Model) => isEndMenuKey(model, code), leaveFromMenu)
 
-// NOTE: the gear opens the Profile on its Settings tab, only from the menu
-// itself, as the gear is only there.
 const openSettingsFromGear: UpdateStep = stepWhen(
   isOnHomeMenu,
   openProfile('Settings'),
 )
-
-// THE MANOR HAND
 
 const openHand: UpdateStep = stepWhen(
   isOnHomeMenu,
   combine([releaseInput, openRootDialog('Hand')]),
 )
 
-// NOTE: a card puts the hand away before it opens its panel, so the
-// panel's Done or Esc lands back on the menu, not in the hand: a card's
-// handler runs closeHand, then the card's own Step.
 const closeHand: UpdateStep = stepWhen(isHandOpen, closeRootDialog('Hand'))
 
 const stepHandFocus =
@@ -306,17 +271,11 @@ export const homeFocusFromKey =
       },
     })
 
-// HOME MENU
-
 const openWhatsNew: UpdateStep = stepWhen(
   (model: Model) => isPanelAllowed(model, 'WhatsNew'),
   combine([modelStep(seeNews), openPanel('WhatsNew')]),
 )
 
-// NOTE: the Dare Journal (src/features/munchopedia/) opens afresh on the
-// page asked for, the root's `munchopediaPage`: the panel draws it anew as
-// it opens. Every milestone reached is seen: the card's NEW pip goes, and a
-// page new since keeps its NEW while the journal is up.
 const openMunchopedia = (page: MunchopediaPage): UpdateStep =>
   stepWhen(
     (model: Model) => isPanelAllowed(model, 'Munchopedia'),
@@ -329,9 +288,6 @@ const openMunchopedia = (page: MunchopediaPage): UpdateStep =>
     ]),
   )
 
-// NOTE: the Proof Shelf opens with nothing picked, as the panel mounts it
-// afresh, and everything on it is seen: the PROOF card's NEW pip goes, and
-// what was new keeps its own NEW while the shelf stays up.
 const openProof: UpdateStep = stepWhen(
   (model: Model) => isPanelAllowed(model, 'Proof'),
   combine([modelStep(markProofSeen), openPanel('Proof')]),
@@ -359,9 +315,6 @@ const openCard = (card: KeyedHandCard): UpdateStep => {
   }
 }
 
-// NOTE: C opens the character picker on every screen that offers it, so it
-// stays with characterFromKey and is left out here. The card keys work from
-// the menu without opening the hand first.
 export const homeFromKey =
   (code: string): UpdateStep =>
   $ => {
@@ -382,8 +335,6 @@ export const homeFromKey =
       })
     }
   }
-
-// DIFFICULTY
 
 export const isAskingDifficultyFirst = (model: Model): boolean =>
   DifficultyCard.isAnyOf(['Unseen'])(model.difficultyCard) &&
@@ -415,8 +366,6 @@ export const startOrAsk =
       ? $.combine(unlockAudio, askDifficulty(mode))
       : startWithMode(mode)($)
 
-// NOTE: SKIP IT starts the run as a returning player's, saved with the
-// pick (`skipTutorial`); TUTORIAL, the default, leaves the lessons be.
 const TUTORIAL_PICKS: Readonly<
   Record<TutorialChoice, (model: Model) => Model>
 > = {
@@ -437,8 +386,6 @@ const chooseFromCard = (
     ),
   )
 
-// NOTE: the first-run card's TUTORIAL or SKIP IT, held until a difficulty
-// is picked. Only while the card asks.
 const pickTutorialChoice =
   (choice: TutorialChoice): UpdateStep =>
   $ =>
@@ -459,8 +406,6 @@ const pickTutorialChoice =
             ]))($),
     })
 
-// NOTE: the difficulty panel opens only to ask a new player before a first
-// run. Every later pick is in the single player lobby (src/features/lobby/update.ts).
 const pickFromCard =
   (difficulty: Difficulty): UpdateStep =>
   $ =>
@@ -477,12 +422,6 @@ const pickFromCard =
             ]))($),
     })
 
-// TUTORIAL
-
-// NOTE: PLAY TUTORIAL on How to play: the tutorial forgotten, as Settings'
-// Reset tutorial does (`forgetTutorial`), and a practice run started at
-// once, as a new player's first: the whole intro, alone, with no
-// modifiers. Rank, Bones, looks, bests, and the Munchopedia stay.
 const asNewPlayer = (model: Model): Model =>
   UiStruct.evolve(forgetTutorial(model), {
     home: home => UiStruct.evolve(home, { bots: () => [] }),
@@ -510,8 +449,6 @@ export const unlockNightmareFrom = (before: Model): UpdateStep =>
     combine([modelStep(unlockNightmare), playSounds([uiCue('PowerUp')])]),
   )
 
-// INSTALL
-
 const dismissHomeScreenTip = (model: Model): Model =>
   model.homeScreenTip === 'Dismissed'
     ? model
@@ -525,9 +462,6 @@ const openHomeScreenSteps: UpdateStep = stepWhen(
 const promptInstall: UpdateStep = $ =>
   $.set(dismissHomeScreenTip($.model)).run(ShowInstallPrompt.make())
 
-// NOTE: the install tile pulses until its first tap. Chrome's own prompt
-// comes first where the browser offered one; an iPhone gets the picture
-// guide, since Safari has no prompt to show.
 const pressInstall: UpdateStep = $ => {
   if (!isInstallTileShown($.model)) {
     return $.model
@@ -548,8 +482,6 @@ const settleInstallPrompt: {
     }),
   }),
 )
-
-// UPDATE GIFT
 
 export const unwrapUpdateGift: UpdateStep = stepWhen(
   (model: Model) =>
@@ -574,11 +506,6 @@ export const reloadOntoNewerBuild: UpdateStep = $ =>
     onSome: build => $.run(ReloadPage.make({ build })),
   })
 
-// UPDATE GREETING
-
-// NOTE: the page just reloaded from the gift onto the build it unwrapped,
-// so the home menu throws a little party, once. A room link read at the
-// same boot may already have co-op open: the party goes over it.
 export const greetUpdate = (isDue: boolean): UpdateStep =>
   stepWhen(
     (model: Model) =>
@@ -593,8 +520,6 @@ export const newsFromGreeting: UpdateStep = combine([
   openWhatsNew,
 ])
 
-// END SCREENS
-
 const isOfferingOnlyMenu = (model: Model): boolean =>
   endOffer(model) === 'MenuOnly'
 
@@ -605,11 +530,6 @@ export const focusEndMenuFrom =
       ? $.run(FocusEndMenuButton.make())
       : $.model
 
-// NOTE: the home menu, the MANOR hand, the panels, the pause MENU pill,
-// How to play's cards, What's New's pages, and the install tile
-// (src/features/home/message.ts, src/features/menus/message.ts,
-// src/features/whatsNew/message.ts, src/platform/message.ts). PLAY and
-// CO-OP have their handlers in src/app/update/lobby.ts and coop.ts.
 export const homeHandlers = defineHandlers({
   ClickedCampaignButton: startOrAsk(RunMode.Campaign()),
 
@@ -629,8 +549,6 @@ export const homeHandlers = defineHandlers({
 
   ClickedSettingsButton: combine([unlockAudio, tapSound, openSettingsFromGear]),
 
-  // NOTE: the coffee is a real link, so the browser opens it; this only
-  // plays the tap.
   ClickedSupportButton: combine([unlockAudio, tapSound]),
 
   ClickedMenuButton: combine([unlockAudio, leaveFromMenu]),

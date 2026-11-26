@@ -58,11 +58,6 @@ import { isPending } from '../../../world/run/lessons'
 import { isKitchenTourOn } from '../../../world/run/tutorialRules'
 import { type KitchenStep, kitchenStepOf } from '../kitchenTour'
 
-// NOTE: chapter 2 of the guided tutorial (src/features/onboarding/kitchenTour.ts and
-// src/world/run/tutorialRules.ts): in a new save's first timed break the clock holds
-// still, the kitchen and the first fridge pull are free, the pull is a
-// weapon, and the clock runs again once the fridge has been tried.
-
 const FRAME_MS = FIXED_STEP_MS
 const OFFER_FRAMES = Math.ceil(FRIDGE_RULES.offerMs / FRAME_MS) + 2
 const BREAK_MS = 15_000
@@ -79,7 +74,6 @@ const remainingOf = (current: Model): number =>
     GameOver: () => 0,
   })
 
-// NOTE: one key on the ring, short of the boards and a pull.
 const timedBreak = (current: Model): Model =>
   withKeys(
     UiStruct.evolve(current, {
@@ -95,7 +89,6 @@ const timedBreak = (current: Model): Model =>
     1,
   )
 
-// NOTE: a new save in the break before wave 3, at the kitchen's boards.
 const atBoards = (): Model =>
   timedBreak(
     modifyFocus(freshRunModel(), {
@@ -107,8 +100,6 @@ const atBoards = (): Model =>
     }),
   )
 
-// NOTE: the same break with the kitchen open, at the fridge, its stream
-// set so the next draw would be `prize` without the tour's rig.
 const atOpenFridge = (prize: FridgePrize): Model => {
   const opened = timedBreak(atFridgeOnWave(3, 5))
   const seed = Option.getOrThrow(
@@ -144,15 +135,11 @@ const walkAway = (current: Model): Model =>
       }),
   })
 
-// NOTE: the Model `steps` leave from `start`, for a test that changes it
-// in a way no Message does before it goes on.
 const after = (start: Model, ...each: ReadonlyArray<StoryStep>) =>
   modelAfter(start, steps(...each))
 
 const frames = (count: number): StoryStep => ticks(count, FRAME_MS)
 
-// NOTE: a Story from `start` through `each`, for a test that reads the
-// Model between them.
 const storyFrom = (start: Model, ...each: ReadonlyArray<StoryStep>) =>
   Effect.gen(function* () {
     const s = yield* storyOf(start)
@@ -216,7 +203,6 @@ describe('the kitchen tour', () => {
       }),
   )
 
-  // NOTE: the free pull made and its door open on the prize.
   const offering = steps(frames(1), holdToBuy, frames(FRIDGE_OPEN_TICKS))
 
   it.effect('taking the prize ends it, and the clock runs', () =>
@@ -319,9 +305,6 @@ describe('the kitchen tour', () => {
     ),
   )
 
-  // NOTE: a run saved before every break counted (2026-11-10) may hold the
-  // break before wave 3 waiting for READY, with no clock to run out, so the
-  // wave started is what ends the tour for good.
   it.effect(
     'in a break that waits, starting the wave learns it for the next run',
     () => {

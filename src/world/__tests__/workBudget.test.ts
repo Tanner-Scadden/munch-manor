@@ -1,7 +1,3 @@
-// The frame's costly passes held to a budget by count, not by time: a flow
-// field search, a scan of the whole map. A cache that stops hitting, or a
-// pass moved into a loop, fails here at once, long before the frame time
-// moves by a percent (src/shared/workCount.ts).
 import { Effect } from 'effect'
 
 import { describe, expect, it } from '@effect/vitest'
@@ -27,16 +23,12 @@ describe('the work budget', () => {
   it.effect('a crowd chasing a player who keeps still lays out one field', () =>
     Effect.gen(function* () {
       const start = crowdOf(quietWave(3), CROWD)
-      // NOTE: the first frame builds what a level keeps (its maps, its
-      // graphs), so the count starts after it.
       const warm = yield* modelAfter(start, ticks(1, FRAME_MS))
       resetWorkCounts()
       yield* modelAfter(warm, ticks(FRAMES, FRAME_MS))
       const counts = workCounts()
       expect(counts.MapScan).toBe(0)
       expect(counts.FlowField).toBeLessThanOrEqual(1)
-      // NOTE: the exits for sale and the stations open are read off the
-      // level once, never again while it stands.
       expect(counts.LevelTable).toBe(0)
     }),
   )

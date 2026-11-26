@@ -12,12 +12,6 @@ import { encodeJson } from '../json'
 import { desktop, openBrowser, runAudit, wait } from './lib'
 import { attempt } from './page'
 
-// Plays the shortest real run end against a deployed copy, from the menu to a
-// quit through the pause MENU, and checks that the game posts its run summary
-// to the analytics Worker and the Worker accepts it. Run it through the heavy guard:
-//
-//   bun run heavy -- bun tools/audit/beacon-check.ts https://munch-manor-pr-42.tanner-scadden.workers.dev/
-
 const RUNS_PATH = '/api/runs'
 const BEACON_WAIT_MS = 10_000
 const ACCEPTED = 202
@@ -37,9 +31,6 @@ const check = (url: string) =>
     const errors: Array<string> = []
     page.on('pageerror', error => errors.push(`pageerror: ${error.message}`))
 
-    // NOTE: listens from here on, with no time limit of its own: the race
-    // below gives up after BEACON_WAIT_MS, and a page that closes first never
-    // posted.
     const beacon = yield* attempt(() =>
       page.waitForRequest(
         request =>
@@ -72,9 +63,6 @@ const check = (url: string) =>
       Effect.map(Option.flatten),
     )
 
-    // NOTE: Chrome does not hand a beacon's Blob body to Playwright, so the
-    // check reads the Worker's answer. `bun tools/analytics/report.ts` shows
-    // the row.
     const response = yield* Option.match(request, {
       onNone: () => Effect.succeed(null),
       onSome: sent => attempt(() => sent.response()),

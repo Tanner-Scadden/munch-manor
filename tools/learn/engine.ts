@@ -1,9 +1,3 @@
-// One recorded run played back in the engine that runs this file, its end
-// printed as JSON: Bun (JavaScriptCore) runs it as it is, Node (V8) from
-// the bundle replay.ts builds. replay.ts runs it; it takes the path of the
-// recording's plain JSON.
-//   node tools/learn/out/engine.js <recording.json>
-
 import '../determinism/globals'
 import { Array, Console, Effect, FileSystem, Result, Schema } from 'effect'
 

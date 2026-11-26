@@ -19,14 +19,6 @@ import { hitEvent, killEvent, strikeZombie } from '../step/combat'
 import { directionBetween } from '../step/geometry'
 import { bodyRadiusOf, isRoamingAction } from '../zombies/zombies'
 
-// Melee: a blow in front of the player at the zombies within reach, with no
-// bullet. The knife every player carries (src/world/gear/knife.ts) and the Clang Pan
-// from the fridge (src/world/fridge/fridgeWeapons.ts) both strike through here, so a
-// stab and a swing find their targets, hurt, shove, pay, and credit the
-// same way.
-
-// NOTE: the kinds a blow can daze (and Brain Freeze freezes solid). The
-// rest, the Big Lug and Uncle Chunk, are too big: only slowed, only shoved.
 const SMALL_KINDS: ReadonlyArray<ZombieKind> = [
   'Shambler',
   'Runner',
@@ -47,9 +39,6 @@ const angleBetween = (facing: Vector, to: Vector): number => {
   return DetMath.acos(Math.max(-1, Math.min(1, dot)))
 }
 
-// NOTE: whether a zombie's body is within `reachPx` of the player's edge
-// and inside the arc either side of the facing. One pressed against the
-// player counts from any side.
 export const isInArc: {
   (
     reachPx: number,
@@ -74,8 +63,6 @@ export const isInArc: {
     },
 )
 
-// NOTE: one blow's weight. `maybeDazeMs` dazes a small zombie that was
-// roaming; `struck` is the event the views and sounds read for a hit.
 export type Blow = Readonly<{
   damage: number
   knockback: number
@@ -88,8 +75,6 @@ export type Struck = Readonly<{
   events: ReadonlyArray<GameEvent>
 }>
 
-// NOTE: one zombie met by a blow: hurt, shoved away from the player, maybe
-// dazed, and killed if that was its last heart.
 export const strikeInMelee: {
   (zombie: Zombie, blow: Blow): (player: Player) => Struck
   (player: Player, zombie: Zombie, blow: Blow): Struck
@@ -128,15 +113,12 @@ export const strikeInMelee: {
   }
 })
 
-// NOTE: what a swing or a stab did: the zombies after it, its events (the
-// blow itself first), and whether it met anything.
 export type Swing = Readonly<{
   zombies: ReadonlyArray<Zombie>
   events: ReadonlyArray<GameEvent>
   connected: boolean
 }>
 
-// NOTE: a blow at each zombie `strikeOne` picks out; the rest are left be.
 export const swingAt: {
   (
     strikeOne: (zombie: Zombie) => Option.Option<Struck>,
@@ -171,8 +153,6 @@ export const swingAt: {
   },
 )
 
-// NOTE: the zombie nearest the player among those a test picks out, for a
-// blow that meets only one.
 export const maybeNearest: {
   (
     zombies: ReadonlyArray<Zombie>,
@@ -212,7 +192,6 @@ export const countKills = (events: ReadonlyArray<GameEvent>): number =>
     GameEvent.isAnyOf(['ZombieKilled'])(event) ? sum + 1 : sum,
   )
 
-// NOTE: a seat's own strike credits it the kills.
 export const creditStriker: {
   (slot: PlayerSlot, events: ReadonlyArray<GameEvent>): (world: World) => World
   (world: World, slot: PlayerSlot, events: ReadonlyArray<GameEvent>): World

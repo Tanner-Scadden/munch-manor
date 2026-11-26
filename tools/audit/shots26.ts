@@ -11,20 +11,6 @@ import {
 import { ChildProcess, ChildProcessSpawner } from 'effect/process'
 import type { Page } from 'playwright-core'
 
-// The update chip, in two parts, as `s26-<TAG>-...png`.
-//
-// PART=layout (the default) puts a newer build in the harness Model and
-// shoots the title, the iPhone tip, Game Over, Victory, both breaks, pause,
-// and a wave (which must show no chip) on 667x375, 844x390, and 1280x720. It
-// prints the chip's box and any button or panel it overlaps.
-//   TAG=after bun shots26.ts
-//
-// PART=e2e drives the real production build end to end. It builds with
-// BUILD_ID=e2e-one, serves dist on 4186 with vite preview, opens the game,
-// rebuilds with BUILD_ID=e2e-two while the page stays open, fires
-// visibilitychange, waits for the chip, taps it, and checks the reloaded
-// page runs the new build. Run it from tools/audit:
-//   PART=e2e bun shots26.ts
 import * as NodeServices from '@effect/platform-node/NodeServices'
 
 import { runHarnessAuditWith } from './harnessServer'
@@ -322,8 +308,6 @@ const e2e = (tag: string) =>
     yield* Console.log(`greeting after another reload: ${greetingsAfterReload}`)
   })
 
-// NOTE: the harness is served for both parts, though only `layout` shoots
-// it.
 runHarnessAuditWith(
   Effect.gen(function* () {
     const part = yield* Config.String('PART').pipe(Config.withDefault('layout'))

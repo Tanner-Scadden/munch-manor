@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest'
 
 import { problemOf } from './folderRules'
 
-// NOTE: AGENTS.md "Folders": where a file of src may sit.
 describe('a file in src', () => {
   it('is fine in its folder, and a test in __tests__/ beside it', () => {
     expect(Option.isNone(problemOf('world/step/firing.ts'))).toBe(true)

@@ -1,10 +1,3 @@
-// A controller in a run, end to end in headless Chrome: a stand-in for
-// `navigator.getGamepads` (the standard layout) drives the game's own
-// gamepad Subscription. A resting pad changes nothing, the left stick
-// walks, the right stick and trigger fire, Start pauses and resumes, and
-// unplugging it mid-wave pauses. Screenshots of the pad firing and of its
-// pause go to `pad-<TAG>-<viewport>-<step>.png`.
-//   TAG=after bun run heavy -- --shared bun tools/audit/pad.ts
 import { Array, Effect, Schema } from 'effect'
 import type { Page } from 'playwright-core'
 

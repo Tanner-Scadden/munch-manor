@@ -24,10 +24,6 @@ import { focusOf, modifyFocus } from '../../../world/party/party'
 import { Arsenal, Melee, Reload } from '../../../world/schema/worldSchema'
 import type { Model } from '../../model'
 
-// The number keys (GAME_DESIGN.md, "One key per action"): 1 and 2 draw
-// that gun slot, 3 the melee slot, through the same seat actions as a tap
-// on a HUD slot (src/input/keyActions.ts).
-
 const bothGuns = withArsenal(quietWave(3), holdingFirst(SHOTGUN))
 
 const withPan = (base: Model): Model =>
@@ -38,7 +34,6 @@ const withPan = (base: Model): Model =>
       }),
   })
 
-// NOTE: the pistol in hand halfway through a reload, with two rounds in.
 const reloadingPistol = modifyFocus(bothGuns, {
   player: player =>
     UiStruct.evolve(player, {

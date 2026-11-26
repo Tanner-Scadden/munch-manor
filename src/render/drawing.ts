@@ -14,14 +14,11 @@ import type { Vector } from '../world/schema/entitySchema'
 import { clamp } from '../world/step/geometry'
 import * as Draw from './draw'
 
-// SHARED SHAPE HELPERS
-
 export const UNIT_SCALE: Vector = { x: 1, y: 1 }
 export const QUARTER_TURN = Math.PI / 2
 export const FULL_TURN = Math.PI * 2
 export const AIMING_UP = -0.35
 
-// NOTE: an alpha from faint to strong as a tell fills, to two places.
 export const tellAlpha: {
   (strong: number, progress: number): (faint: number) => number
   (faint: number, strong: number, progress: number): number
@@ -65,15 +62,11 @@ export const rect: {
   ): Draw.Shape => Draw.Rect({ x, y, width, height, fill }),
 )
 
-// NOTE: a small four-pointed glint that winks on something worth taking:
-// the pantry's goodie, a display case's prize.
 export const GLINT: Sprite = bakeShapes([
   rect(0, -2, 1, 5, '#fff7d0'),
   rect(-2, 0, 5, 1, '#fff7d0'),
 ])
 
-// NOTE: the little shadow under something lying on the floor to take: the
-// pantry's goodie, the guided first break's key.
 export const GOODIE_SHADOW: Sprite = bakeShapes([
   rect(-3, 0, 7, 1, 'rgba(0, 0, 0, 0.35)'),
   rect(-2, 1, 5, 1, 'rgba(0, 0, 0, 0.2)'),
@@ -111,8 +104,6 @@ export const centeredRect: {
     }),
 )
 
-// NOTE: a pixel map's rectangles with its top left corner at (x, y). Fixed
-// art that is drawn as it is goes through `spriteShapes` instead.
 export const pixelArt: {
   (
     y: number,
@@ -146,8 +137,6 @@ export const centeredGlyphs: {
   (text: string, tone: TextTone): ReadonlyArray<Draw.Shape> =>
     textShapes(text, tone, 0, GLYPHS_TOP, 'Center'),
 )
-
-// MOTION
 
 export const footPosition: {
   (footOffset: number): (position: Vector) => Vector
@@ -220,12 +209,8 @@ export const footShadow: {
   },
 )
 
-// RINGS
-
 export type RingPixel = Readonly<{ x: number; y: number; turn: number }>
 
-// NOTE: the ring's pixels around a middle, each with how far round
-// it sits from the top, clockwise, as a fraction of a turn.
 export const ringPixels = (radius: number): ReadonlyArray<RingPixel> =>
   pipe(
     Array.makeBy((radius + 1) * 2 + 1, row => row - radius - 1),
@@ -246,8 +231,6 @@ export const ringPixels = (radius: number): ReadonlyArray<RingPixel> =>
       ),
     ),
   )
-
-// BARS
 
 export const HEALTH_BAR_BACK_COLOR = '#140c10'
 export const HEALTH_BAR_GAP = 3

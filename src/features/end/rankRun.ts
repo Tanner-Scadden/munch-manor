@@ -23,20 +23,6 @@ import { killTotal } from '../../world/run/stats'
 import { Phase } from '../../world/schema/worldSchema'
 import { awardsOf, crewOf } from './crewAwards'
 
-// Reading a run into the rank it pays (src/world/heroes/rank.ts has the numbers). A run
-// pays when it ends, at Game Over or an escape, and when the player leaves it
-// for the menu, once each way: the same moments the run is counted in the
-// bests (countRunFrom in src/screens/home/home.ts).
-
-// NOTE: awards and revives pay only in a crew of people (isHumanCrew in
-// src/domain/bots.ts): a run with bots pays as a single player run does.
-
-// NOTE: what a run, as the Model holds it, has earned beyond what it was
-// paid already (`rankPaid`): the waves cleared and bosses felled after the
-// last payout, so a win that keeps going into endless pays only the
-// endless part when it ends again. In an online co-op run the Model's lead
-// seat is the player's own, so its revives and awards are theirs. Awards
-// are the crew board's, which only a run that ended has.
 const payInputOf = (run: Model, isEnded: boolean): RunPayInput => {
   const seat = leadSeatOf(run)
   const awards =
@@ -69,7 +55,6 @@ const payInputOf = (run: Model, isEnded: boolean): RunPayInput => {
   }
 }
 
-// NOTE: the player's own seat's numbers so far, to remember as paid.
 const paidBy = (
   run: Model,
   isEnded: boolean,
@@ -84,10 +69,6 @@ const paidBy = (
   revivesPaid: isHumanCrew(run) ? leadSeatOf(run).revives : 0,
 })
 
-// NOTE: pays the run that just ended, or that the player just left, into
-// the saved rank. At the end screen it also sets what the end card's rank
-// strip shows; leaving shows no card. A run that paid nothing because it
-// was guided shows no strip.
 export const earnRank: {
   (after: Model): (before: Model) => Model
   (before: Model, after: Model): Model
@@ -150,15 +131,9 @@ export const earnRank: {
     : paid
 })
 
-// NOTE: the first escape on a difficulty pays its bonus once: the
-// difficulties escaped on since the bonus came in are saved and synced.
 const isFirstEscapeOn = (model: Model, input: RunPayInput): boolean =>
   !Array.contains(model.bonuses.escapedOn, input.difficulty)
 
-// NOTE: a save from before rank is granted its veteran start once, when
-// it is first read (loadSave in src/app/update/save.ts), from the kills it
-// holds. A new player, with no save, is granted 0 there too, so the kills
-// they make later never become a grant.
 export const grantVeteran = (model: Model): Model =>
   model.rank.isVeteranGranted
     ? model
@@ -166,13 +141,6 @@ export const grantVeteran = (model: Model): Model =>
         rank: rank => grantedVeteran(rank, killTotal(model.bests.killsByKind)),
       })
 
-// NOTE: every rank's Bones purse the player's rank has reached and not been
-// paid (src/shared/rankCurve.ts), paid once into the earned Bones, the rank
-// kept in `bonuses.purses` so the player scope pays it once across devices
-// (PaidRankPurse). A run's rank up pays its purses in the after-message
-// steps, and a save read pays any its rank reached before (loadSave in
-// src/app/update/save.ts), the front-loaded curve's new ranks too. The
-// same Model comes back when nothing is due.
 export const payPurses = (model: Model): Model => {
   const due = Array.filter(
     purseRanksBetween(0, rankOf(totalPointsOf(model.rank))),
@@ -199,9 +167,6 @@ export const payPurses = (model: Model): Model => {
       })
 }
 
-// NOTE: a rank up this device made (a run's pay, a mission's) pays its
-// purses at once. A synced save's rank up is the other device's to pay,
-// and any it left is paid at the next load.
 export const payPursesFrom: {
   (after: Model, saveWrite: 'Write' | 'Synced'): (before: Model) => Model
   (before: Model, after: Model, saveWrite: 'Write' | 'Synced'): Model

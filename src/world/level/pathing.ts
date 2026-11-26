@@ -39,11 +39,6 @@ import {
   tileIndexAt,
 } from './tileQueries'
 
-// PER LEVEL
-
-// NOTE: what pathing derives from a level is built the first time that
-// level is asked for and kept beside it. A frame never rebuilds it, and a
-// level with another exit open is another Level, so it gets its own.
 const perLevel = <A>(build: (level: Level) => A): ((level: Level) => A) => {
   const built = new WeakMap<Level, A>()
   return level => {
@@ -57,30 +52,18 @@ const perLevel = <A>(build: (level: Level) => A): ((level: Level) => A) => {
   }
 }
 
-// FLOW FIELD
-
 export type Clearance = 'Narrow' | 'Wide'
 
 export const UNREACHED_DISTANCE = Number.MAX_SAFE_INTEGER
 
-// NOTE: what a field stores for a tile it never reached. Readers get
-// UNREACHED_DISTANCE through distanceAt, so every comparison and sum made on
-// a distance is the one it always was.
 const UNREACHED_TILE = 0x7fffffff
 
-// NOTE: every tile's distance, in whole tile steps and tolls, to the nearest
-// origin. originIndex is the tile the field flows to. In co-op the field
-// flows to every living player at once: the other players' tiles are
-// moreOrigins. A field is asked for where it is read, on the frame, from
-// the players' tiles and the traps' tolls, and kept by them (fieldFrom).
 export type FlowField = Readonly<{
   originIndex: number
   moreOrigins: ReadonlyArray<number>
   distances: Int32Array
 }>
 
-// NOTE: the eight steps a zombie may take, the four straight ones first.
-// The flow field spreads over the straight ones only.
 const STEP_COUNT = 8
 const STRAIGHT_STEP_COUNT = 4
 const STEP_COLUMNS = Int8Array.of(1, -1, 0, 0, 1, 1, -1, -1)
@@ -131,37 +114,12 @@ const isClearanceStepOpen = (
     ? isWideStepOpen(level, column, row, stepColumn, stepRow)
     : isNarrowStepOpen(level, column, row, stepColumn, stepRow)
 
-// NOTE: the flow field covers every walkable tile of the open house and the
-// yard within YARD_FIELD_TILES of it, so a zombie in the yard reads it on the
-// way to the door the yard leads to. The yard meets the house only at its
-// doors, so the house's own distances are the same as a field over the house
-// alone. A zombie past the map's edge has no tile, and one in the yard
-// farther out (round a room still boarded shut, past the house's far end)
-// has none in the field: both walk around the house instead (see OUTSIDE).
-// The whole house is 132 by 37 tiles, so a field over all of its yard with
-// only the dining room open cost twice what it did.
-//
-// The yard is one way: a step from the house into the yard is left out, so
-// a zombie in the house never walks back out a door to take the yard round
-// to another, and the field reaches no house tile by way of the yard.
-// Without it a zombie that came in at the kitchen window walked straight
-// back out, round the yard, and in at the dining room's west door, out of
-// sight, nearer the player.
-//
-// A level's walks are fixed, so each is laid out once with the level, in
-// compressed rows: the tiles one step from a tile are
-// adjacent[start[tile]] up to adjacent[start[tile + 1]]. The search spreads
-// from a tile to those, so each is a tile a zombie walks from onto it.
 type WalkGraph = Readonly<{ start: Int32Array; adjacent: Int32Array }>
 
-// NOTE: whether a zombie may step from tile `from` to tile `to`, by the
-// yard's one way rule: never from the house out into the yard.
 const isStepIntoTheHouse = (level: Level, from: number, to: number): boolean =>
   hasTileFlag(level, from, TILE_OUTSIDE) ||
   !hasTileFlag(level, to, TILE_OUTSIDE)
 
-// NOTE: past the loop's line round the open house (ZOMBIE_SPAWN_MARGIN out),
-// with a tile to spare.
 const YARD_FIELD_TILES = Math.ceil(ZOMBIE_SPAWN_MARGIN / TILE_SIZE) + 2
 
 export const isFieldTile: {
@@ -182,10 +140,6 @@ export const isFieldTile: {
   )
 })
 
-// NOTE: laid out in one pass over the level's flag bytes, with each tile's
-// neighbors found by index, so a new level (an exit opened, the chandelier
-// dropped mid-wave) costs a fraction of a frame. The walks are the straight
-// steps alone (STRAIGHT_STEP_COUNT), the ones the field spreads over.
 const walkGraphFor = (level: Level, clearance: Clearance): WalkGraph => {
   const { columns, rows, tileCount, tileFlags } = level
   const flagsAt = (column: number, row: number): number =>
@@ -237,9 +191,6 @@ const walkGraphFor = (level: Level, clearance: Clearance): WalkGraph => {
         continue
       }
       const neighbor = (row + stepRow) * columns + column + stepColumn
-      // NOTE: the yard's one way rule (isStepIntoTheHouse): a zombie walks
-      // from the neighbor onto this tile, never from the house out into
-      // the yard.
       if (
         isInField[neighbor] === 1 &&
         (((tileFlags[neighbor] ?? 0) & TILE_OUTSIDE) !== 0 || !isOutside)
@@ -269,12 +220,6 @@ export const distanceAt: {
     : distance
 })
 
-// NOTE: the field is a shortest path search with whole tile steps, so it
-// settles tiles one distance at a time. A tile stepped onto at a shorter
-// distance than it was reached by before waits in a bucket for that
-// distance, a list in two queue arrays. A step adds at most the largest toll
-// plus one, so a ring of one more buckets than that holds every distance in
-// flight. The order within a bucket never changes a distance.
 const spread = (
   level: Level,
   origins: ReadonlyArray<number>,
@@ -349,12 +294,6 @@ const spread = (
   return distances
 }
 
-// NOTE: a field is a pure result of its level, clearance, origins, and
-// tolls, and it is read only, never written. The players' tiles and the
-// traps change far less often than every tick (a walker crosses a tile every
-// several), so the last few fields of each level are kept by those inputs
-// and handed back while they hold, rather than spread over every tile again.
-// The key keeps the inputs' order, since a later toll on a tile wins.
 const FIELDS_KEPT = 24
 
 const keptFieldsOf = perLevel((): Map<string, FlowField> => new Map())
@@ -424,9 +363,6 @@ export const flowFieldToward: {
     fieldFrom(level, [tileIndexAt(level, target)], clearance, tolls),
 )
 
-// NOTE: in co-op the field flows to every living player at once, one pass
-// from all their tiles, so each zombie walks downhill to whoever is nearest.
-// One target is flowFieldToward exactly.
 export const flowFieldTowardAll: {
   (
     targets: Array.NonEmptyReadonlyArray<Vector>,
@@ -455,7 +391,6 @@ export const flowFieldTowardAll: {
     ),
 )
 
-// NOTE: both clearances laid out from the same tiles and tolls.
 export const flowFieldsToward: {
   (
     targets: Array.NonEmptyReadonlyArray<Vector>,
@@ -483,13 +418,6 @@ const isOriginOf = (flowField: FlowField, index: number): boolean =>
   (Array.isReadonlyArrayNonEmpty(flowField.moreOrigins) &&
     Array.contains(flowField.moreOrigins, index))
 
-// STEERING
-
-// NOTE: the step off each tile, read the first time a walker of a
-// clearance stands on it and kept beside its field: it depends on the tile,
-// the field, and the clearance alone, and a crowd stands on few tiles. Each
-// entry is the tile stepped to plus 2 (so -1, no step, is 1), or 0 when not
-// yet read. A field is dropped with its level, and its steps with it.
 const downhillSteps = new WeakMap<FlowField, Map<Clearance, Int32Array>>()
 
 const downhillStepsOf = (
@@ -511,7 +439,6 @@ const downhillStepsOf = (
   return made
 }
 
-// NOTE: the step off one tile, worked out (see downhillTile).
 const downhillFrom = (
   level: Level,
   flowField: FlowField,
@@ -548,9 +475,6 @@ const downhillFrom = (
   return best
 }
 
-// NOTE: the tile a zombie at this position steps to, the neighbor with the
-// shortest distance when that is shorter than its own, or -1. The first of
-// the eight steps wins a tie.
 const downhillTile = (
   level: Level,
   flowField: FlowField,
@@ -571,9 +495,6 @@ const downhillTile = (
   return best
 }
 
-// NOTE: a wide walker cannot reach the middle of a tile beside a wall, so it
-// aims at the nearest spot its body fits. Aiming at the tile's middle pins it
-// on the corner of a crate it is trying to round.
 const waypointFor = (
   level: Level,
   index: number,
@@ -644,8 +565,6 @@ const insideSteering = (
   )
 }
 
-// BAIT
-
 type BaitFields = Readonly<Record<Clearance, FlowField>>
 
 const baitFieldsFor = (level: Level, door: DoorId): BaitFields =>
@@ -660,10 +579,6 @@ const baitFieldsFor = (level: Level, door: DoorId): BaitFields =>
     }),
   })
 
-// NOTE: a barricade never moves, so each doorway's field toward its inner
-// face is built once per level. A zombie drawn to a Plank Pile reads the
-// field of that doorway, and nothing is recomputed when planks go up or
-// break.
 const baitFieldsOf = perLevel((level): Readonly<Record<DoorId, BaitFields>> =>
   byDoor(door => baitFieldsFor(level, door)),
 )
@@ -766,18 +681,12 @@ export const steerToBait: {
     ),
 )
 
-// OUTSIDE
-
 const CORNER_REACHED_PX = 1
 
 type LoopMark = Readonly<{ at: number; point: Vector }>
 
 type LoopSide = Readonly<{ gap: number; at: number }>
 
-// NOTE: the loop is the path just outside a level's walls that a zombie
-// walks around to reach an open door. It is the open part of the level, its
-// bounds, plus the spawn margin on every side, so it hugs the parlour while
-// the kitchen is shut.
 type LoopBounds = Readonly<{
   left: number
   top: number
@@ -887,8 +796,6 @@ const nextWaypoint = (
 
 type DoorOffset = Readonly<{ outwardness: number; sideways: number }>
 
-// NOTE: where `position` stands from `from` (a point on a door's line): how
-// far out the way the door faces, and how far to its side.
 const doorOffset = (
   outward: Vector,
   from: Vector,
@@ -970,17 +877,12 @@ const isWithinBounds = (level: Level, { x, y }: Vector): boolean =>
   y > level.bounds.top &&
   y < level.bounds.bottom
 
-// NOTE: the doors the yard leads to: those whose spawn point stands in the
-// yard, like the parlour's north door in the manor.
 const yardDoorsOf = perLevel((level): ReadonlyArray<DoorId> =>
   Array.filter(level.doorIds, id =>
     isInYardAt(level, doorSpawnPoint(level, id, 0)),
   ),
 )
 
-// NOTE: a zombie in the yard is inside the manor's bounds, where the loop's
-// corners lie across the kitchen roof. It walks back out the way its nearest
-// door faces until it is past the bounds, then takes the loop.
 const leaveYard = (level: Level, position: Vector): Vector =>
   nearestDoor(level, position).outward
 
@@ -1007,11 +909,6 @@ const routeAround = (
   )
 }
 
-// NOTE: outside the house, a zombie at a door that is not boarded walks in;
-// anywhere else it walks the loop around the house to its best way in. It
-// used to head straight for the nearest door when nothing was boarded,
-// which, knocked past the map's edge (by the Clang Pan, say), walked it into
-// the house's corner and stuck it there.
 const outsideSteering = (
   level: Level,
   flowField: FlowField,
@@ -1030,15 +927,6 @@ const outsideSteering = (
   })
 }
 
-// NOTE: a zombie in the yard follows the flow field to the yard's door when
-// that is its way in: always while no door is boarded, or when its best
-// entry is a yard door. Otherwise it leaves the yard and walks around. The
-// yard used to be steered by the outside rules alone, which walk straight
-// lines and leave the yard's walls out: a zombie whose way in was the north
-// door was sent out of the yard, then back toward the door, forever. One
-// already at a yard door with no planks takes the yard too: the parlour's
-// north door sits halfway down the house's bounds, where the loop's nearest
-// side, and so the best entry, flipped with every step.
 const YARD_DOOR_REACH_PX = TILE_SIZE * 2
 
 const isByOpenYardDoor = (
@@ -1069,13 +957,6 @@ const takesTheYard = (
     isByOpenYardDoor(level, position, barricaded) ||
     Array.contains(yardDoorsOf(level), bestEntry(level, flowField, position)))
 
-// NOTE: a zombie in the yard right outside a door that is not boarded, in
-// the doorway's lane no farther out than where it spawns (ZOMBIE_SPAWN_MARGIN
-// past the door's outer face, and a tile of give for a shove), walks straight
-// in through that door. The flow field alone once walked it around the house
-// in the yard, out of sight, whenever the way through its own door cost more
-// (a turret's toll by the door, a teammate nearer another door), so it came
-// in through a door nearer the player than the one it was due at.
 const DOORWAY_LANE_OUT_PX = ZOMBIE_SPAWN_MARGIN + TILE_SIZE
 const DOORWAY_LANE_HALF_WIDTH_PX = DOOR_HALF_WIDTH_PX + TILE_SIZE / 2
 

@@ -23,30 +23,7 @@ import { TICK_MS } from './Room'
 import { type WireError, readAll } from './Wire'
 import type { World } from './World'
 
-// NOTE: a player's side of the room, as pure functions over plain data, so
-// it is tested without a socket and fits an Effect UI Model: the shell feeds
-// it what arrives (`receive`) and, once a frame, the local input
-// (`tickInput`), sends what it returns, and draws `render`.
-//
-// - Clock. The room's tick now is estimated from the newest message's tick,
-//   the time it arrived, and half the round trip.
-// - Input. The local input runs on "input ticks", ahead of the room's tick
-//   by half a round trip and a margin, so a sample reaches the room in time
-//   for its tick. Samples collect as runs of one input and go out as an
-//   Input when the input changes (at most every INPUT_INTERVAL_MS) or as a
-//   heartbeat every HEARTBEAT_MS.
-// - Prediction. Your own player runs at once from local input. Each message
-//   from the room carries your authoritative player as of its tick; the
-//   session puts that back, replays the inputs of later ticks on top, and
-//   the shown copy eases to the result, or snaps when far off.
-// - Interpolation. Everyone else is drawn INTERPOLATION_MS behind the
-//   room's clock, between the two messages around that moment.
-
 export const INTERPOLATION_MS = 100
-// NOTE: how far behind everyone else is drawn adapts to how unevenly the
-// room's messages arrive: a steady link draws as little as MIN behind,
-// a jittery one up to MAX, so a late message rarely leaves nothing to
-// draw (MULTIPLAYER.md, "Latency").
 export const MIN_INTERPOLATION_MS = 70
 export const MAX_INTERPOLATION_MS = 200
 const SEND_INTERVAL_MS = 50
@@ -60,7 +37,6 @@ export const INPUT_MARGIN_MS = 2 * TICK_MS
 export const SNAP_DISTANCE = 48
 export const EASE_MS = 80
 export const KEEP_FRAMES_MS = 1000
-// NOTE: the room sends 20 times a second, so a gap this long is a stall.
 export const STALL_MS = 200
 export const MAX_PREDICTED_TICKS = 30
 
@@ -97,18 +73,10 @@ export interface Stats {
   readonly corrections: number
   readonly lastCorrectionPx: number
   readonly maxCorrectionPx: number
-  // NOTE: times a message could not be applied (a Delta with no world for
-  // its base, or one that did not decode), so the session asked the room
-  // for a fresh Snapshot.
   readonly resyncs: number
-  // NOTE: gaps with nothing from the room for at least STALL_MS, such as
-  // a lost TCP segment's resend holding everything behind it, and the
-  // longest of them.
   readonly stalls: number
   readonly longestStallMs: number
   readonly sinceMs: number
-  // NOTE: the run's network numbers for its summary, started afresh by
-  // `startRunTally` when a run starts in the room.
   readonly net: ClientNet
 }
 
@@ -143,9 +111,6 @@ export interface Session<W, Own> {
   readonly pings: ReadonlyArray<Ping>
   readonly nextNonce: number
   readonly pingedMs: number
-  // NOTE: a message did not apply, so every Delta after it would not
-  // either. Until a Snapshot comes (the shell reconnects for one), Deltas
-  // are set aside instead of failing one by one.
   readonly isResyncing: boolean
   readonly heardMs: number
   readonly stats: Stats
@@ -197,9 +162,6 @@ export const makeSession = <W, Own>(nowMs: number): Session<W, Own> => ({
   },
 })
 
-// NOTE: a new socket. What it learns starts over; the counters do not. A
-// link that had been made and dropped is a reconnect; another try while
-// still connecting is not.
 export const reconnecting: {
   <W, Own>(nowMs: number): (session: Session<W, Own>) => Session<W, Own>
   <W, Own>(session: Session<W, Own>, nowMs: number): Session<W, Own>
@@ -221,17 +183,12 @@ export const reconnecting: {
   }),
 )
 
-// NOTE: a run starts in the room (its Welcome at tick 0), so its network
-// numbers start from nothing: the lobby's pings and an earlier run in the
-// same room are not this run's.
 export const startRunTally = <W, Own>(
   session: Session<W, Own>,
 ): Session<W, Own> => ({
   ...session,
   stats: { ...session.stats, net: emptyClientNet },
 })
-
-// CLOCK
 
 export const roomTickAt: {
   (nowMs: number): (session: Session<unknown, unknown>) => number
@@ -245,13 +202,6 @@ export const roomTickAt: {
     }),
 )
 
-// NOTE: a message with tick T arriving now says the room is at about T plus
-// half a round trip. Small differences are eased in so the clock does not
-// jitter with the network. A message far ahead of the clock jumps it
-// forward. One far behind is only late (a lost segment's resend held it
-// and everything behind it), so it is eased in like a small one: jumping
-// back would rewind everyone drawn and stop your own inputs until the
-// clock passed them again. Only a clock a long way ahead jumps back.
 const JUMP_TICKS = 6
 const JUMP_BACK_TICKS = 60
 const EASE_CLOCK = 0.1
@@ -286,8 +236,6 @@ export const inputTickAt: {
     ),
 )
 
-// RECEIVING
-
 const keepRecent = <W>(
   frames: ReadonlyArray<Received<W>>,
 ): ReadonlyArray<Received<W>> =>
@@ -300,11 +248,8 @@ const keepRecent = <W>(
       ),
   })
 
-// NOTE: a move this small is rounding, not a correction.
 const CORRECTION_PX = 0.5
 
-// NOTE: the room's word on your player as of `tick`, with your inputs of
-// later ticks replayed on top.
 const reconcile = <W, Own>(
   world: World<W, Own>,
   session: Session<W, Own>,
@@ -382,10 +327,6 @@ const counted = <W, Own>(
   }
 }
 
-// NOTE: a message that cannot apply. Over TCP every Delta follows its
-// base, so this is a bug or a corrupt frame, not the network: the session
-// sets Deltas aside and the shell reconnects for a Snapshot, instead of
-// the picture freezing for the rest of the run.
 const needsResync = <W, Own>(session: Session<W, Own>): Session<W, Own> =>
   session.isResyncing
     ? session
@@ -565,8 +506,6 @@ export const receive: {
   },
 )
 
-// SENDING
-
 const appendSample = (
   samples: ReadonlyArray<Sample>,
   input: PlayerInput,
@@ -593,9 +532,6 @@ export interface Ticked<W, Own> {
   readonly outgoing: ReadonlyArray<ClientFrame>
 }
 
-// NOTE: once a frame, with the input the player holds now. It runs your
-// player forward to the input tick due now, records the samples, and says
-// what to send. Nothing runs or goes out unless a game is on.
 export const tickInput: {
   <W, Own>(
     session: Session<W, Own>,
@@ -635,7 +571,6 @@ export const tickInput: {
         Option.map(newest, latest => world.own.step(own, input, latest)),
       ),
     }))
-    // NOTE: the history grows by the due ticks at once, not one copy a tick.
     const stepped = Array.isReadonlyArrayEmpty(due)
       ? predictedThrough
       : {
@@ -683,9 +618,6 @@ const withRttSample = (stats: Stats, sampleMs: number): Stats => ({
   net: { ...stats.net, rtt: recordSample(stats.net.rtt, sampleMs) },
 })
 
-// NOTE: the round trip comes from the socket's free ping (a text ping the
-// room's Durable Object answers by itself, never billed and never waking
-// it), not from a message the room is billed for. `sentMs` is when it went.
 export const heardPong: {
   <W, Own>(
     sentMs: number,
@@ -713,8 +645,6 @@ export const heardPong: {
   },
 )
 
-// NOTE: a message's arrival against when its tick says it should arrive:
-// the spread is the jitter, and the delay to draw behind eases toward it.
 const arrived = <W, Own>(
   session: Session<W, Own>,
   tick: number,
@@ -752,7 +682,6 @@ const arrived = <W, Own>(
     },
   })
 
-// NOTE: the room tick this client draws everyone else at now.
 export const viewTickAt: {
   (nowMs: number): (session: Session<unknown, unknown>) => number
   (session: Session<unknown, unknown>, nowMs: number): number
@@ -777,8 +706,6 @@ export const countSent: {
   }),
 )
 
-// RENDERING
-
 export interface Rendered<W, Own> {
   readonly session: Session<W, Own>
   readonly world: Option.Option<W>
@@ -794,9 +721,6 @@ const bracket = <W>(
     Array.findFirst(([from, to]) => from.tick <= tick && tick <= to.tick),
   )
 
-// NOTE: the world to draw now: everyone INTERPOLATION_MS behind the room's
-// clock (held at the newest message if the next is late), with your own
-// player where you predicted it, eased.
 export const render: {
   <W, Own>(
     session: Session<W, Own>,

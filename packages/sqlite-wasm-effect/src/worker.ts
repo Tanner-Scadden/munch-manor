@@ -5,10 +5,6 @@ import { openEngine, warmEngine } from './Engine'
 import { decodeRequest, encodeResponse } from './Protocol'
 import { makeServer } from './Server'
 
-// WORKER
-
-// NOTE: the slice of a dedicated worker's global scope this needs. A
-// `DedicatedWorkerGlobalScope` fits it, and so does a test double.
 export interface WorkerScope {
   readonly postMessage: (message: unknown) => void
   readonly addEventListener: (
@@ -45,8 +41,6 @@ export const serveWorker: {
             pipe(
               encodeResponse(response),
               Effect.flatMap(encoded =>
-                // NOTE: a worker scope's postMessage takes no targetOrigin.
-                // oxlint-disable-next-line unicorn/require-post-message-target-origin
                 Effect.sync(() => scope.postMessage(encoded)),
               ),
               Effect.ignore,
@@ -63,10 +57,6 @@ export const serveWorker: {
     ),
 )
 
-// NOTE: a request posted to a worker before its script has run is handed
-// to whatever listens when the script's first run ends. The server's own
-// listener goes on later, once its fiber gets that far, so this one goes on
-// at once and holds anything that comes first until the server listens.
 export const holdEarlyMessages = (scope: WorkerScope): WorkerScope => {
   const held: Array<MessageEvent> = []
   const listeners: Array<(event: MessageEvent) => void> = []
@@ -78,8 +68,6 @@ export const holdEarlyMessages = (scope: WorkerScope): WorkerScope => {
     }
   })
   return {
-    // NOTE: a worker scope's postMessage takes no targetOrigin.
-    // oxlint-disable-next-line unicorn/require-post-message-target-origin
     postMessage: message => scope.postMessage(message),
     addEventListener: (_type, listener) => {
       listeners.push(listener)
@@ -88,9 +76,6 @@ export const holdEarlyMessages = (scope: WorkerScope): WorkerScope => {
   }
 }
 
-// NOTE: the one line a worker entry file needs. See the README. It starts
-// loading the wasm at once, so a worker started ahead of its first request
-// has SQLite ready when the request comes.
 export const runWorker = (options: WorkerOptions = {}): void => {
   const scope = holdEarlyMessages(self)
   warmEngine()

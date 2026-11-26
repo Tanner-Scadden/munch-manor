@@ -1,34 +1,3 @@
-// NOTE: AGENTS.md "Code shape": helpers are shared, not copied. Fails when
-// two files of one kind declare the same top-level helper: the same body,
-// laid out any way, where every top-level name the body reads (a constant or
-// type of its own file, or an import) also means the same thing. So two
-// `ticksFor`s that divide by a FRAME_MS of 16 and of 50 are different
-// helpers, and two that divide by the same one are a copy. The name is no
-// part of it: a copy under a new name (`NO_PUSH` beside `ZERO_VECTOR`, a
-// function that calls itself by its own name) is a copy too, reported with
-// both names.
-//
-// A helper here is a function, or a constant built from something: an object,
-// an array, or a call (a Model, a spawn, a locator, a vector). Plain numbers,
-// strings, and arithmetic on names (`FRAME_MS = 50`, `CENTER_X =
-// PARLOUR.width / 2`) are a file's own tuning and may repeat, and so may a
-// `let` and a fresh cache (`createLazy()`), which are each file's own state.
-//
-// Two kinds of file are checked apart:
-//
-// - Test files, against each other and the shared test homes
-//   (`src/test/testing.ts`, `src/test/model.fixture.ts` and the other `*.fixture.ts`
-//   files, a package's `test/fixtures.ts`, infra's `worker/testing.ts`), so a
-//   copy of what is already shared fails as well.
-// - Game modules, the rest of `src`, each package's `src`, and infra's
-//   Worker: a canvas helper belongs in `src/render/drawing.ts`, a menu helper in
-//   `src/ui/menuParts.ts`, and anything else in the module it is about.
-//
-// Files are compared within one code base: `src` and `tools` together, each
-// package under `packages/`, and `infra`.
-//
-//   bun tools/lint/duplicateHelpers.ts [root]
-
 import { Glob } from 'bun'
 import {
   Array,
@@ -48,7 +17,6 @@ import { parseSync } from 'oxc-parser'
 import * as NodeRuntime from '@effect/platform-node/NodeRuntime'
 import * as NodeServices from '@effect/platform-node/NodeServices'
 
-// NOTE: test support that is no test file but is shared like one.
 const TEST_HOMES: ReadonlyArray<string> = [
   'src/test/testing.ts',
   'src/**/*.fixture.ts',
@@ -100,7 +68,6 @@ const KINDS: ReadonlyArray<Kind> = [
   },
 ]
 
-// NOTE: copies left on purpose, each with its reason. Keep this list short.
 const ALLOWED: ReadonlyArray<
   Readonly<{ file: string; name: string; reason: string }>
 > = [
@@ -195,11 +162,9 @@ const isNode = (value: unknown): value is Node =>
   'type' in value &&
   typeof value.type === 'string'
 
-// NOTE: the nodes in a field that holds a list of them, or none.
 const nodesIn = (value: unknown): ReadonlyArray<Node> =>
   Array.isArray(value) ? Array.filter(value, isNode) : []
 
-// NOTE: the name of an identifier node, or '' for anything else.
 const nameOf = (value: unknown): string =>
   isNode(value) && typeof value['name'] === 'string' ? value['name'] : ''
 
@@ -212,14 +177,12 @@ const childrenOf = (node: Node): ReadonlyArray<Node> =>
         : [],
   )
 
-// NOTE: every identifier that reads a binding, never a property name.
 const readsIn = (node: Node): ReadonlyArray<Node> => {
   const reads: Array<Node> = []
   const visit = (current: Node): void => {
     if (current.type === 'Identifier' && typeof current['name'] === 'string') {
       reads.push(current)
     }
-    // NOTE: `x.name` and `{ name: x }` do not read a binding called `name`.
     const skipped =
       (current.type === 'MemberExpression' && current['computed'] !== true) ||
       (current.type === 'Property' &&
@@ -239,12 +202,8 @@ const readsIn = (node: Node): ReadonlyArray<Node> => {
 const namesIn = (node: Node): ReadonlySet<string> =>
   new Set(Array.map(readsIn(node), nameOf))
 
-// NOTE: a declaration's text with its own name taken out: a function
-// declaration's name and the places it calls itself, so a copy under a new
-// name has the same body.
 const bodyOf = (text: string, node: Node, name: string): string => {
   const own = Array.filter(readsIn(node), read => nameOf(read) === name)
-  // NOTE: from the end, so each cut leaves the offsets before it in place.
   return String.replace(
     /,([)\]}>])/g,
     '$1',
@@ -263,8 +222,6 @@ const bodyOf = (text: string, node: Node, name: string): string => {
   )
 }
 
-// NOTE: a value with no structure of its own: a literal, a name, a member of
-// a name, or arithmetic on those.
 const isPlain = (node: Node): boolean => {
   switch (node.type) {
     case 'Literal':
@@ -293,11 +250,6 @@ const isPlain = (node: Node): boolean => {
   }
 }
 
-// NOTE: a value that is its own file's, never a copy: what a script awaits
-// (its browser, its page), an empty list, object, or `new` to fill as it
-// runs, a fresh cache from a `create` call with no arguments (`createLazy()`),
-// or anything read from `import.meta` (its own path), its arguments, its
-// environment, or its clock. A helper built on one is the file's own too.
 const OWN_READS =
   /import\.meta|process\.(argv|env)|performance\.now\(\)|nowMs\(\)/
 
@@ -337,8 +289,6 @@ type Helper = Readonly<{
   key: string
 }>
 
-// NOTE: a relative import as a path from the root, so `./zombies` in src and
-// `../../src/world/zombies/zombies` in tools name the same module.
 const moduleOf = (path: Path.Path, file: string, source: string): string =>
   String.startsWith('.')(source)
     ? String.replace(
@@ -356,8 +306,6 @@ const helpersOf = (
   text: string,
 ): ReadonlyArray<Helper> => {
   const { program } = parseSync(file, text)
-  // NOTE: a name may be both a value and a type (`const Message` and
-  // `type Message`). A helper is its value; a name it reads means both.
   const values = new Map<string, Declaration>()
   const types = new Map<string, Declaration>()
   const helperNames = new Set<string>()
@@ -394,7 +342,6 @@ const helpersOf = (
         )
       }
     }
-    // NOTE: a type a helper names is part of what it means, but no helper.
     if (
       (statement.type === 'TSTypeAliasDeclaration' ||
         statement.type === 'TSInterfaceDeclaration') &&
@@ -408,7 +355,6 @@ const helpersOf = (
       helperNames.add(name)
     }
     if (statement.type === 'VariableDeclaration') {
-      // NOTE: a `let` is reassigned as the file runs: its own state.
       const isReassigned = statement['kind'] !== 'const'
       for (const declarator of nodesIn(statement['declarations'])) {
         const id = declarator['id']
@@ -487,7 +433,6 @@ const helpersOf = (
   })
 }
 
-// NOTE: the files a pattern matches under the root, outside node_modules.
 const filesMatching = (root: string, pattern: string): ReadonlyArray<string> =>
   Array.filter(
     Array.fromIterable(new Glob(pattern).scanSync({ cwd: root })),
@@ -514,10 +459,8 @@ const copiesOf = (root: string, kind: Kind) =>
           if (isAllowed(file, helper.name)) {
             continue
           }
-          // NOTE: the key alone, so a copy under a new name is a copy too.
           const at = `${groupOf(file)}\n${helper.key}`
           const list = copies.get(at) ?? []
-          // NOTE: a file two patterns both match is read once.
           if (!Array.some(list, other => other.file === file)) {
             copies.set(at, [...list, helper])
           }
@@ -549,7 +492,6 @@ const copiesOf = (root: string, kind: Kind) =>
     return repeated.length
   })
 
-// NOTE: the names a module exports from its own declarations.
 const exportedNames = (file: string, text: string): ReadonlyArray<string> =>
   Array.filter(
     Array.flatMap(
@@ -572,12 +514,6 @@ const exportedNames = (file: string, text: string): ReadonlyArray<string> =>
     name => name !== '',
   )
 
-// NOTE: two shared test homes of one code base that export the same name,
-// as `readyModel` once meant one Model in src/test/model.fixture.ts and another
-// in src/features/shop/__tests__/shop.fixture.ts, and `FRAME_MS` 16.7 ms in src/test/testing.ts and 50
-// in src/features/shop/__tests__/shop.fixture.ts. A test that imports the name gets whichever file
-// it happened to name, so each shared name lives in one home, and a
-// different value gets a name that says which.
 const sharedNameClashes = (root: string) =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
@@ -610,8 +546,6 @@ const sharedNameClashes = (root: string) =>
     return clashes.length
   })
 
-// NOTE: the script has printed every copy, so the runtime reports nothing
-// more and exits with 1.
 class CopiesFound extends Schema.TaggedError<
   CopiesFound,
   { readonly brand: unique symbol }
@@ -626,7 +560,6 @@ class CopiesFound extends Schema.TaggedError<
 
 const program = Effect.gen(function* () {
   const path = yield* Path.Path
-  // NOTE: the repository, or another checkout of it given as the argument.
   const root = path.join(
     Option.getOrElse(Array.get(process.argv, 2), () =>
       path.resolve(import.meta.dirname, '../..'),
@@ -637,8 +570,6 @@ const program = Effect.gen(function* () {
   for (const kind of KINDS) {
     total += yield* copiesOf(root, kind)
   }
-  // NOTE: an allowed copy that is gone is dropped from ALLOWED, so the list
-  // never hides a new copy under an old name.
   for (const { file, name } of ALLOWED) {
     if (!allowedSeen.has(`${file}#${name}`)) {
       yield* Console.error(

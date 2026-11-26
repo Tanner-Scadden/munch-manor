@@ -2,14 +2,9 @@ import { describe, expect, test } from 'vitest'
 
 import { normalPixelsOf } from '../normalMap'
 
-// A sprite sheet's normal map (src/art/normalMap.ts): a shape's edge
-// faces out of it, its middle faces the viewer, and a clear pixel faces
-// straight out.
-
 const SIZE = 9
 const GREY = 160
 
-// NOTE: a sheet of one opaque grey square, one clear pixel all round.
 const square = (): Uint8ClampedArray => {
   const pixels = new Uint8ClampedArray(SIZE * SIZE * 4)
   for (let y = 1; y < SIZE - 1; y += 1) {
@@ -60,12 +55,10 @@ describe('a sprite sheet normal map', () => {
     const [, bottomY = 0] = normalAt(normals, middle, SIZE - 2)
     expect(leftX).toBeLessThan(128)
     expect(rightX).toBeGreaterThan(128)
-    // NOTE: green is up, as glTF reads it.
     expect(topY).toBeGreaterThan(128)
     expect(bottomY).toBeLessThan(128)
   })
 
-  // NOTE: so the slope beside a dark pixel runs down to it, and faces it.
   test('a dark pixel sits lower than a light one beside it', () => {
     const pixels = square()
     const dark = (middle * SIZE + middle + 1) * 4

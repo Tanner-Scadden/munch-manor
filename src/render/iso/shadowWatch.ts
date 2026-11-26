@@ -1,23 +1,8 @@
-// Which room lights' shadow maps changed this frame. A fill's shadow map is
-// 2048 pixels a side and holds every caster in its cone, so drawing it again
-// each frame costs a phone more fill than the screen itself (four of them in
-// a busy view, about 17 million depth pixels a frame: `tools/audit/gpuWork.ts`).
-// Most frames nothing in a room's cone moved: the furniture stands still, and
-// in a break only the players walk. So each fill keeps its map
-// (`shadow.update = 'manual'`) and draws it again only on a frame its casters
-// changed, as a game engine caches a static light's shadow.
-// Every caster drawn this frame is summed into each cone it can reach: its
-// shape and the matrix it stands at, hashed, so the sum is the same for the
-// same casters in any order. A cone whose sum moved draws again. What casts
-// outside the voxel batch and changes with the frame (the chandelier's sway,
-// a fern's or a carve's caster culled in or out) is noted for every cone.
-
 import { Array } from 'effect'
 
 export type ShadowCone = Readonly<{
   from: Readonly<{ x: number; y: number; z: number }>
   to: Readonly<{ x: number; y: number; z: number }>
-  // NOTE: the outer half angle, in degrees, as a SpotLight's `coneAngle`.
   coneAngle: number
   range: number
 }>
@@ -35,7 +20,6 @@ type Cone = Readonly<{
   range: number
 }>
 
-// NOTE: a little past the cone, for the penumbra's edge and rounding.
 const SPARE_RADIANS = (2 * Math.PI) / 180
 
 const coneOf = ({ from, to, coneAngle, range }: ShadowCone): Cone => {
@@ -58,14 +42,6 @@ const coneOf = ({ from, to, coneAngle, range }: ShadowCone): Cone => {
   }
 }
 
-// NOTE: whether a sphere at `x, y, z` of `radius` reaches into the cone: a
-// point a light lights lies inside its cone, and so does anything between
-// the light and that point, so a caster outside the cone never shows in its
-// shadow. The sphere reaches in when the angle off the axis is at most the
-// half angle and the angle the sphere fills, `asin(radius / distance)`. Each
-// caster is tested against every cone every frame, so this compares cosines
-// (`cos(a + b) = cos a cos b - sin a sin b`, the half angle's read once per
-// level) and squared distances rather than calling acos, asin, and hypot.
 const isInCone = (
   cone: Cone,
   x: number,
@@ -87,8 +63,6 @@ const isInCone = (
   const distance = Math.sqrt(squared)
   const along = dx * cone.axisX + dy * cone.axisY + dz * cone.axisZ
   const filled = radius / distance
-  // NOTE: past a straight angle the cosine no longer orders the angles,
-  // which only a cone wider than a right angle reaches; no fill's is.
   if (
     cone.halfAngle >= Math.PI / 2 &&
     cone.halfAngle + Math.asin(filled) >= Math.PI
@@ -99,15 +73,11 @@ const isInCone = (
   return along >= distance * (cone.cosHalf * cosFilled - cone.sinHalf * filled)
 }
 
-// NOTE: the matrix's turn, lean, and scale, without its move.
 const LINEAR = [0, 1, 2, 4, 5, 6, 8, 9, 10]
 
-// NOTE: the last caster's matrix as float32s, read as its words to hash it
-// and as its numbers to place its sphere.
 const bits = new Float32Array(16)
 const words = new Int32Array(bits.buffer)
 
-// NOTE: one 32 bit hash of a caster's shape and its matrix's floats.
 const casterHash = (id: number, elements: ArrayLike<number>): number => {
   for (let index = 0; index < 16; index += 1) {
     bits[index] = elements[index] ?? 0
@@ -130,8 +100,6 @@ export class ShadowWatch {
   private readonly ids = new WeakMap<object, number>()
   private nextId = 1
 
-  // NOTE: the cones of a new level's fills, in their order; each draws its
-  // map the first frame after.
   watch(cones: ReadonlyArray<ShadowCone>): void {
     this.cones = Array.map(cones, coneOf)
     this.sums = new Int32Array(cones.length)
@@ -144,11 +112,6 @@ export class ShadowWatch {
     this.shared = 0
   }
 
-  // NOTE: a caster drawn this frame: its shape (any object, known by
-  // identity), the column-major matrix it stands at, and its bounding
-  // sphere in its own space. The sphere goes through the matrix, its radius
-  // grown by the matrix's whole size, so a lean or a stretch never shrinks
-  // it.
   cast(
     input: Readonly<{
       shape: object
@@ -168,7 +131,6 @@ export class ShadowWatch {
       squares += e(index) * e(index)
     }
     const radius = input.radius * Math.sqrt(squares)
-    // NOTE: a level has a fill per room, at most about eight.
     for (let index = 0; index < this.cones.length; index += 1) {
       const cone = this.cones[index]
       if (cone !== undefined && isInCone(cone, x, y, z, radius)) {
@@ -177,8 +139,6 @@ export class ShadowWatch {
     }
   }
 
-  // NOTE: something that casts in every cone changed with this key: the
-  // chandelier's sway, which casters are culled in.
   note(key: number): void {
     this.shared = Math.imul(this.shared ^ (key | 0), 0x01000193) ^ 0x2f
   }
@@ -193,8 +153,6 @@ export class ShadowWatch {
     this.lastSums.set(this.sums)
   }
 
-  // NOTE: whether the cone at `index` saw its casters change in the frame
-  // `end` closed.
   isChanged(index: number): boolean {
     return this.changed[index] ?? true
   }

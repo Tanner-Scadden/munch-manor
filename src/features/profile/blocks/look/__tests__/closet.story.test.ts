@@ -54,11 +54,6 @@ import {
 import { focusOf } from '../../../../../world/party/party'
 import { pickLook, rollLookDice } from '../../../__tests__/profile.fixture'
 
-// The earned looks (src/domain/closet.ts, src/app/update/profile.ts): hats,
-// shirt colors, prints, and gun skins are worn, bought with Bones, or gifted
-// by rank, picked in the Look tab's rows (a look for sale is tried on
-// first), and a worn hat shows over a calling's prop.
-
 const HATS = [...GiftHat.literals, ...SoldHat.literals]
 
 const closetWith = (
@@ -78,8 +73,6 @@ const rankPoints = (rank: number): Partial<SavedRank> => ({
   earnedPoints: pointsForRank(rank),
 })
 
-// NOTE: the root's Story from `model` through `each`, its end check run as
-// the Story's scope closes.
 const story = (model: Model, ...each: ReadonlyArray<StoryStep>) =>
   Effect.asVoid(modelAfter(model, steps(...each)))
 
@@ -90,8 +83,6 @@ const withLook = (look: Partial<Appearance>): Appearance => ({
 
 const withHat = (hat: Appearance['hat']) => withLook({ hat })
 
-// NOTE: one sold look of each kind: the part it sits on, its name, the
-// field it wears, and its price.
 const SOLD = [
   { id: 'Fez', part: 'Hat', name: 'Fez', field: 'hat', price: 50 },
   {
@@ -117,11 +108,9 @@ const SOLD = [
   },
 ] as const
 
-// NOTE: the BUY pill on the look being tried on, as the root hears it.
 const buy = (part: LookPart, value: string): StoryStep =>
   send(Message.ClickedBuyProfileLook({ part, value }))
 
-// NOTE: focus moves to the look just bought, its BUY pill gone.
 const focusedBought = (part: LookPart, value: string): StoryStep =>
   steps(
     s =>
@@ -585,7 +574,6 @@ describe('the standing of an option', () => {
   })
 })
 
-// NOTE: the blank row and the six rows of the face, over the torso.
 const HEAD_ROWS_OVER_BODY = 7
 
 describe('the hat on the sprite', () => {
@@ -634,7 +622,6 @@ describe('the hat on the sprite', () => {
       expect(rowsOverFace).toBeLessThanOrEqual(EYES_ROW - 1)
       const bare = playerPixels(withHat('None')).idle[0]
       const hatted = playerPixels(withHat(hat)).idle[0]
-      // NOTE: the idle frame has one blank row over the face.
       expect(hatted[art.above + 1 + EYES_ROW]).toEqual(bare[1 + EYES_ROW])
     })
   })

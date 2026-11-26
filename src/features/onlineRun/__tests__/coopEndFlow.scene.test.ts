@@ -16,15 +16,6 @@ import { freshRoom } from '../../coop/roomState'
 import { CODE, lobbyOf, memberOf, playingSession } from '../../coop/testing'
 import { OWN_SLOT, coopScreen, graduated, roomWorld } from './onlineRun.fixture'
 
-// The end of an online co-op run as a client sees it. The room ends the run,
-// sends its last World, then RoomClosed on the game's socket, and puts its
-// lobby back with the result on the lobby's own socket. This client draws
-// the room 100 ms behind, so both can come before the frame that ends the
-// run is drawn: the end card must still come straight up, with no lobby
-// between the last frame of play and the card.
-
-// NOTE: the end frame is this many ticks after the last frame of play, so a
-// frame at 100 ms draws play and one at 400 ms draws the end.
 const END_TICK = 6
 
 const fighting: RoomWorld = {
@@ -44,8 +35,6 @@ const members = [memberOf(0, 'Ana'), memberOf(OWN_SLOT, 'Bo')]
 
 const playingLobby: Lobby = lobbyOf(members, 'Playing')
 
-// NOTE: the lobby as RecordedRoomResult leaves it: back in Lobby, the run's
-// result on it.
 const resultLobby: Lobby = {
   ...lobbyOf(members, 'Lobby'),
   result: Option.some({
@@ -62,8 +51,6 @@ type Heard = Readonly<{
   isClosed: boolean
 }>
 
-// NOTE: the room as this client holds it: its lobby, the frames it has
-// heard (anchored at tick 0 on the clock's 0), and whether RoomClosed came.
 const hearing = (model: Model, { lobby, frames, isClosed }: Heard): Model =>
   UiStruct.evolve(model, {
     coop: coop =>
@@ -97,7 +84,6 @@ const hearing = (model: Model, { lobby, frames, isClosed }: Heard): Model =>
 const roomFrame = (nowMs: number) =>
   fromSubscription('RoomFrame', Message.TickedRoomFrame({ nowMs }))
 
-// NOTE: a wave under way, drawn from the room once.
 const midRun = modelAfter(
   hearing(graduated, {
     lobby: playingLobby,

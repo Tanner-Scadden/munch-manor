@@ -30,8 +30,6 @@ import {
   type WeaponKind,
 } from '../schema/worldSchema'
 
-// STATS
-
 export type MuzzleFlash = 'Flicker' | 'Pop' | 'Blast'
 
 export type WeaponStats = Readonly<{
@@ -132,8 +130,6 @@ export const WEAPONS: Readonly<Record<WeaponKind, WeaponStats>> = {
     name: GUN_NAMES.Peashooter,
     roundsLabel: 'peas',
     fireIntervalMs: 1000,
-    // NOTE: The Grumpy Gnome fires on its own cooldown and never reloads, so
-    // nothing reads its magazine.
     magazine: 1,
     reloadMs: 0,
     damage: 1,
@@ -153,11 +149,6 @@ export const WEAPONS: Readonly<Record<WeaponKind, WeaponStats>> = {
     maybeSpentClip: Option.none(),
     sound: 'TurretShot',
   },
-  // NOTE: the fridge weapons (src/world/fridge/fridgeWeapons.ts) fire no bullets, so
-  // only their magazine, reload, and name are read here. The Cooker's
-  // magazine is its lids; the Pan's is its dent meter (dents left before it
-  // is fully dented, never reloaded, banged flat each break); Brain
-  // Freeze's is its charges, reloaded like any magazine.
   Cooker: {
     name: GUN_NAMES.Cooker,
     roundsLabel: 'lids',
@@ -227,11 +218,6 @@ export const WEAPONS: Readonly<Record<WeaponKind, WeaponStats>> = {
     maybeSpentClip: Option.none(),
     sound: 'PowerDown',
   },
-  // NOTE: the old manor's two guns, only out of the display cases
-  // (src/world/feats/cases.ts), and never out of ammo. Old Thunder, the
-  // trophy room's hunting rifle, is slow and heavy and each shot runs through
-  // a line of zombies (GUN_PIERCE below). The Big Blunder from over the
-  // mantel is a wide, short spray of pellets with a big shove.
   Rifle: {
     name: GUN_NAMES.Rifle,
     roundsLabel: 'rounds',
@@ -280,8 +266,6 @@ export const WEAPONS: Readonly<Record<WeaponKind, WeaponStats>> = {
   },
 }
 
-// NOTE: the zombies a gun's own shot runs through after the first, on top of
-// Hat Pins and a Crispy perk. Only Old Thunder pierces by itself.
 const GUN_PIERCE: Readonly<Partial<Record<WeaponKind, number>>> = {
   Rifle: 3,
 }
@@ -289,8 +273,6 @@ const GUN_PIERCE: Readonly<Partial<Record<WeaponKind, number>>> = {
 export const gunPierce = (kind: WeaponKind): number => GUN_PIERCE[kind] ?? 0
 
 export const SIDEARM: WeaponKind = 'Pistol'
-
-// UPGRADE TIERS
 
 type TierBoost = Readonly<{
   damage: number
@@ -312,9 +294,6 @@ const noBoost: TierBoost = {
   knockback: 0,
 }
 
-// NOTE: a gun's tiers are earned, not bought (docs/ESCAPE_PLAN.md, "Gun
-// levels"): Beefy at 40 kills with that gun, DELUXE at 120, 3000 at 250,
-// the same for every gun with tiers. A fridge weapon levels the same way.
 export const TIER_KILLS: Array.NonEmptyReadonlyArray<number> = [40, 120, 250]
 
 const killsFor = (tier: number): number =>
@@ -443,9 +422,6 @@ export const UPGRADE_TIERS: Readonly<
     },
   ],
   Peashooter: [],
-  // NOTE: the Cooker's and the Pan's other tier gains (a bigger blast, a
-  // faster charge, a wider arc, the ground smash) are in
-  // src/world/fridge/fridgeWeapons.ts; only their magazines grow here.
   Cooker: [
     { kills: killsFor(0), boost: noBoost },
     { kills: killsFor(1), boost: noBoost },
@@ -539,8 +515,6 @@ export const maybeNextTier: {
     Array.get(UPGRADE_TIERS[kind], tier),
 )
 
-// NOTE: the names, and the tier word ladder every gun shares, are in
-// `src/world/names.ts`.
 export const tierName: {
   (tier: number): (kind: WeaponKind) => string
   (kind: WeaponKind, tier: number): string
@@ -548,26 +522,18 @@ export const tierName: {
   gunTierName(kind, clampTier(kind, tier)),
 )
 
-// PERKS
-
 type PerkRules = Readonly<{
   spicyDamageScale: number
   crispyPierce: number
   heartyMagazineScale: number
 }>
 
-// NOTE: the perks the kitchen's stove cooks into a gun (src/world/kitchen/stove.ts),
-// decided with the owner on 2026-11-02. Spicy's damage is not rounded, so
-// a 1 damage bullet hits for 1.3 and a zombie's health goes down in
-// fractions, as a boss's wound scale already makes it.
 export const PERK_RULES: PerkRules = {
   spicyDamageScale: 1.3,
   crispyPierce: 1,
   heartyMagazineScale: 1.25,
 }
 
-// NOTE: the guns Rattles sells. These and the display cases' two cook at
-// the stove; the knife, the Clang Pan, and the fridge's weapons do not.
 export const SHOP_GUNS: ReadonlyArray<WeaponKind> = ['Pistol', 'Shotgun', 'Smg']
 
 const COOKABLE_GUNS: ReadonlyArray<WeaponKind> = [
@@ -589,11 +555,6 @@ export const perkDamage: {
 export const perkPierce = (gun: CarriedGun): number =>
   gun.perk === 'Crispy' ? PERK_RULES.crispyPierce : 0
 
-// ARSENAL
-
-// NOTE: no gun ever runs out (docs/ESCAPE_PLAN.md, "Endless ammo"): only
-// its magazine counts, and a reload always fills it.
-
 export const magazineOf: {
   (tier: number): (kind: WeaponKind) => number
   (kind: WeaponKind, tier: number): number
@@ -602,9 +563,6 @@ export const magazineOf: {
   (kind: WeaponKind, tier: number): number => statsAt(kind, tier).magazine,
 )
 
-// NOTE: the magazine a player's gun holds: the gun's own, smaller for the
-// Track Star (src/world/heroes/calling.ts). The Pan's dents and Brain Freeze's charges
-// are not magazines a hand reloads, so a calling leaves them whole.
 const magazineWith = (
   calling: Calling,
   kind: WeaponKind,
@@ -614,8 +572,6 @@ const magazineWith = (
     ? magazineFor(calling, magazineOf(kind, tier))
     : magazineOf(kind, tier)
 
-// NOTE: a Hearty gun from the stove (src/world/kitchen/stove.ts) holds a quarter more,
-// rounded, on top of its tier and the player's calling.
 export const carriedMagazine: {
   (gun: CarriedGun): (calling: Calling) => number
   (calling: Calling, gun: CarriedGun): number
@@ -628,13 +584,10 @@ export const carriedMagazine: {
     : magazineWith(calling, gun.kind, gun.tier),
 )
 
-// NOTE: a gun as it comes: tier 0 and no kills. It levels on its own kills
-// (src/world/gear/gunLevels.ts).
 export const freshGun: {
   (calling?: Calling): (kind: WeaponKind) => CarriedGun
   (kind: WeaponKind, calling?: Calling): CarriedGun
 } = Function.dual(
-  // NOTE: data-first starts with a weapon kind; data-last with a calling or nothing.
   (args: IArguments): boolean =>
     typeof args[0] === 'string' && args[0] in WEAPONS,
   (kind: WeaponKind, calling: Calling = 'You'): CarriedGun => ({
@@ -652,7 +605,6 @@ export const heldGun = (arsenal: Arsenal): CarriedGun =>
     HoldingSecond: ({ second }) => second,
   })
 
-// NOTE: the gun in the slot the player is not holding, if both are filled.
 export const maybeOtherGun = (arsenal: Arsenal): Option.Option<CarriedGun> =>
   Arsenal.match(arsenal, {
     OneGun: () => Option.none(),
@@ -660,7 +612,6 @@ export const maybeOtherGun = (arsenal: Arsenal): Option.Option<CarriedGun> =>
     HoldingSecond: ({ first }) => Option.some(first),
   })
 
-// NOTE: the guns in slot order, the first slot first.
 export const gunsOf = (
   arsenal: Arsenal,
 ): Array.NonEmptyReadonlyArray<CarriedGun> =>
@@ -682,8 +633,6 @@ export const heldSlotOf = (arsenal: Arsenal): GunSlot =>
 export const heldWeapon = (arsenal: Arsenal): WeaponKind =>
   heldGun(arsenal).kind
 
-// NOTE: what the player carries: the guns in slot order, then the Pan in
-// the melee slot, if they have one.
 export const carriedOf = (player: Player): ReadonlyArray<CarriedGun> => [
   ...gunsOf(player.arsenal),
   ...Option.toArray(maybePanOf(player)),
@@ -752,10 +701,6 @@ export const swapWeapon = (arsenal: Arsenal): Arsenal =>
       Arsenal.HoldingFirst({ first, second }),
   })
 
-// NOTE: a new gun goes in the player's hands. It fills an empty second
-// slot; with both slots full it replaces the gun the player holds (with the
-// knife out, the last gun held), kills and levels and all (GAME_DESIGN.md, "The
-// knife and two gun slots").
 export const takeGun: {
   (gun: CarriedGun): (arsenal: Arsenal) => Arsenal
   (arsenal: Arsenal, gun: CarriedGun): Arsenal
@@ -767,8 +712,6 @@ export const takeGun: {
   }),
 )
 
-// NOTE: the gun a new one would replace: none while the second slot is
-// empty, else the one in the player's hands.
 export const maybeReplacedGun = (
   arsenal: Arsenal,
 ): Option.Option<CarriedGun> =>
@@ -791,16 +734,12 @@ export const tierOf: {
 export const heldStats = (player: Player): WeaponStats =>
   statsAt(heldWeapon(player.arsenal), heldTier(player))
 
-// MAGAZINES
-
 export const heldLoaded = (player: Player): number =>
   heldGun(player.arsenal).loaded
 
 export const isReloading = (player: Player): boolean =>
   Reload.isAnyOf(['Reloading'])(player.reload)
 
-// NOTE: the Pan's dents are never reloaded: Rattles bangs it flat each
-// break (src/world/fridge/fridgeWeapons.ts, flattenPans).
 const UNLOADED_WEAPONS: ReadonlyArray<WeaponKind> = ['Pan']
 
 export const isReloadable = (kind: WeaponKind): boolean =>
@@ -823,9 +762,6 @@ export const beginReload = (player: Player): Player => {
   })
 }
 
-// NOTE: a gun just put in hand: a reload of the last one stops, and the
-// trigger's rest starts over, so the idle reload below Hard waits its full
-// time on the new gun.
 export const putGunInHand = (player: Player): Player =>
   UiStruct.evolve(player, {
     reload: () => Reload.Ready(),
@@ -849,19 +785,9 @@ export const spendRound = (player: Player): Player =>
       ),
   })
 
-// THE MELEE SLOT
-
-// NOTE: the third slot, right of the two guns (GAME_DESIGN.md, "The knife
-// and two gun slots"): the knife, or the Clang Pan once the fridge has
-// given one, which takes the knife's place for the rest of the run. The
-// arsenal keeps naming the last gun held, and a reload of that gun carries
-// on while the melee weapon is out, so a player can stab or swing
-// mid-reload and go back to a full magazine. Only changing guns stops a
-// reload.
 export const isWieldingMelee = (player: Player): boolean =>
   player.wield === 'Melee'
 
-// NOTE: the Clang Pan in the melee slot, if the fridge has given one.
 export const maybePanOf = (player: Player): Option.Option<CarriedGun> =>
   Melee.match(player.melee, {
     Knife: () => Option.none(),
@@ -874,7 +800,6 @@ export const hasPan = (player: Player): boolean =>
 export const isWieldingKnife = (player: Player): boolean =>
   isWieldingMelee(player) && !hasPan(player)
 
-// NOTE: the Pan in hand, for the trigger and the views.
 export const maybeWieldedPan = (player: Player): Option.Option<CarriedGun> =>
   isWieldingMelee(player) ? maybePanOf(player) : Option.none()
 
@@ -893,8 +818,6 @@ export const mapPan: {
     }),
 )
 
-// NOTE: every gun and the Pan, mapped alike: a level up, a refill, or
-// Rattles banging the Pan flat finds it in whichever slot it is.
 export const mapCarried: {
   (change: (gun: CarriedGun) => CarriedGun): (player: Player) => Player
   (player: Player, change: (gun: CarriedGun) => CarriedGun): Player
@@ -907,10 +830,6 @@ export const mapCarried: {
     ),
 )
 
-// NOTE: the Pan from the fridge goes in the melee slot, in hand, and both
-// guns stay. A second Pan never comes out of the fridge (the weapon a
-// player carries is never pulled again), so a Pan already there only gets
-// banged flat, its kills and level kept.
 export const takePan: {
   (fresh: CarriedGun): (player: Player) => Player
   (player: Player, fresh: CarriedGun): Player
@@ -930,8 +849,6 @@ export const takePan: {
   }),
 )
 
-// NOTE: the melee slot's name as a player reads it: the knife, or the Pan
-// with its tier word.
 export const meleeNameOf = (player: Player): string =>
   Option.match(maybePanOf(player), {
     onNone: () => KNIFE_NAME,
@@ -940,7 +857,6 @@ export const meleeNameOf = (player: Player): string =>
 
 export type InHand = WeaponKind | 'Knife'
 
-// NOTE: what the player holds: the knife, the Pan, or the held gun's kind.
 export const inHandOf = (player: Player): InHand => {
   if (!isWieldingMelee(player)) {
     return heldWeapon(player.arsenal)
@@ -953,8 +869,6 @@ export const drawMelee = (player: Player): Player =>
     ? player
     : UiStruct.evolve(player, { wield: () => 'Melee' })
 
-// NOTE: the gun in `slot` in hand. A slot with no gun leaves the arsenal
-// as it is, and a gun that changes stops a reload.
 export const drawSlot: {
   (slot: GunSlot): (player: Player) => Player
   (player: Player, slot: GunSlot): Player
@@ -972,12 +886,9 @@ export const drawSlot: {
     : putGunInHand(drawn)
 })
 
-// NOTE: Q. With the melee weapon out it goes back to the last gun held;
-// with a gun in hand it switches to the other gun.
 export const swapInHand = (player: Player): Player =>
   isWieldingMelee(player)
     ? UiStruct.evolve(player, { wield: () => 'Gun' })
     : drawSlot(player, heldSlotOf(swapWeapon(player.arsenal)))
 
-// NOTE: the Pop Pistol as a run starts with it, in the first slot.
 export const STARTING_PISTOL: CarriedGun = freshGun(SIDEARM)

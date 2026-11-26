@@ -1,12 +1,3 @@
-// The camera and depth sort guard: frozen, deterministic shots of the main
-// scenes on a desktop and a small landscape phone, as
-// `s17-<TAG>-<viewport>-<scene>.png`.
-//   TAG=before bun shots17.ts
-//   TAG=after COMPARE=before bun shots17.ts
-// COMPARE counts the pixels that differ from another tag's set and writes a
-// diff image, `s17-diff-<viewport>-<scene>.png`, for any scene that differs.
-// ONLY picks scenes by name, BASE points it at another harness port, and
-// COMPARE_ONLY=1 compares the sets already on disk without taking new shots.
 import {
   Array,
   Config,
@@ -109,9 +100,6 @@ const SCENES: ReadonlyArray<Scene> = [
       'wave=6&start=wave&god&gun=smg&fill&gasroom=16&aim=160,40&freeze=150',
   },
   { name: 'looks', query: 'looksheet&freeze=10' },
-  // NOTE: the ground's pulsing and moving parts: the boarded kitchen's
-  // light and steam in a break, the open kitchen's oven glow and soup in a
-  // wave, and the cellar in a break with every room open.
   { name: 'kitchen-shut', query: 'wave=2&prep=60000&freeze=40' },
   {
     name: 'kitchen-wave',

@@ -26,10 +26,6 @@ import {
 } from './gameRoomCore.ts'
 import { SyncCallFailed, tryCall } from './syncCore.ts'
 
-// NOTE: calls between the Worker, the GameRoom objects, and the
-// Matchmaker. Only the Worker and these objects can reach the internal
-// paths: the Worker forwards nothing else to them.
-
 export const MATCHMAKER_NAME = 'matchmaker'
 export const LISTING_PATH = '/internal/listing'
 
@@ -38,10 +34,6 @@ export interface Called {
   readonly text: string
 }
 
-// REGIONS
-
-// NOTE: the continent a request came from (Cloudflare's `request.cf`), to
-// queue QUICK PLAY by continent and to place a new room near its creator.
 export const REGION_HEADER = 'x-room-region'
 
 const CfContinent = Schema.Struct({ continent: Schema.String })
@@ -62,9 +54,6 @@ const LOCATION_HINTS: Readonly<Record<string, DurableObjectLocationHint>> = {
   OC: 'oc',
 }
 
-// NOTE: a hint only takes effect when the object is first made, so a
-// room lives near the player who created it; its lobby and its run share
-// the one object.
 const stubFor = (
   rooms: DurableObjectNamespace,
   code: string,
@@ -105,8 +94,6 @@ const encodeListing = Schema.encodeEffect(
   Schema.fromJsonString(Matchmaking.RoomListing),
 )
 
-// NOTE: a new room under a fresh code; a code already in use (409) draws
-// another, a few times.
 const createAttempt = (
   rooms: DurableObjectNamespace,
   playerId: string,
@@ -264,8 +251,6 @@ export const ticketOf = (
         ),
       )
 
-// NOTE: a public room tells the Matchmaker how it stands. A failure is
-// logged; the next change says it again, and a stale listing ages out.
 export const reportListing: {
   (
     listing: Matchmaking.RoomListing,

@@ -379,7 +379,6 @@ describe('pause', () => {
 })
 
 describe('wave plans', () => {
-  // NOTE: every Big Leaguer brings his Groaners along (src/world/waves/wavePacks.ts).
   const isChuckerGroup = (group: SpawnGroup): boolean =>
     Array.every(group.mix, ({ kind }) => kind === 'Thrower')
 
@@ -420,9 +419,6 @@ describe('wave plans', () => {
     )
   }
 
-  // NOTE: waves 8 and 9 are a breather and a test between the Ankle Biters
-  // and the finale, so health grows through wave 7 and the finale tops it,
-  // while speed grows every wave.
   test('there are ten waves that grow in speed, grow in health to wave 7, and peak at the finale', () => {
     expect(FINAL_WAVE).toBe(10)
     const totals = Array.makeBy(FINAL_WAVE, index => healthOf(index + 1))
@@ -448,9 +444,6 @@ describe('wave plans', () => {
     ).toBe(true)
   })
 
-  // NOTE: the tighter opening (owner, 2026-11-10, after the pacing
-  // report): wave 1 is 8 Groaners all in by about 11 s, and wave 2 fades
-  // at 12 s.
   test('wave 1 sends 8 Groaners in two quick squads, and wave 2 fades sooner', () => {
     const [, first] = rollSpawns(1234, 1)
     expect(first).toHaveLength(8)
@@ -462,9 +455,6 @@ describe('wave plans', () => {
     expect(Array.map(second.holds, ({ atMs }) => atMs)).toEqual([12_000])
   })
 
-  // NOTE: hotter waves (owner, 2026-11-10): from wave 3 the same zombies
-  // come at HEAT times their written times. Wave 4 was written with 66
-  // zombies, its first group at 0.6 s, and its fade at 25 s.
   test('from wave 3 the same zombies come packed tighter', () => {
     expect(HEAT).toBeLessThan(1)
     expect(totalOf(4)).toBe(66)

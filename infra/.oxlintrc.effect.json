@@ -11,7 +11,9 @@
   },
   "rules": {
     "effecttsgo/any-unknown-in-error-context": "error",
-    "effecttsgo/api-stability-leak": "error",
+    // NOTE: the API stability leak guards a published package's API, and
+    // the game, its tools, its private packages, and infra publish none.
+    "effecttsgo/api-stability-leak": "off",
     "effecttsgo/async-function": "error",
     "effecttsgo/crypto-random-uuid": "error",
     "effecttsgo/crypto-random-uuid-in-effect": "error",

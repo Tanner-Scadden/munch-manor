@@ -12,26 +12,9 @@ import {
 } from '../world/run/modifiers'
 import { Bot, HomeMode } from './clientSchema'
 
-// Beat my run's link (docs/PROGRESSION_PLAN.md, pillar G): SHARE's link carries a
-// lone player's run, everything that decides its house (the seed, the mode,
-// the difficulty, the modifiers, the dare mark, Dare's break clock, and the
-// things its list rolled from) and how it went (the outcome, the wave, the
-// things found, the run's time). A friend who opens the link gets BEAT MY
-// RUN on the home menu: the same house, the same list, the same rolls, with
-// the friend's result to beat on the end card. Determinism makes the house
-// the same; the play decides the rest. The rules on the root's Model are
-// in src/domain/beatMyRun.ts.
-
-// THE DARE
-
-// NOTE: how a run ended, as the end card names it (src/features/end/endBeat.ts,
-// EndKind): escaped, left early by the back door, or munched.
 export const DareOutcome = Schema.Literals(['Munched', 'Chicken', 'Won'])
 export type DareOutcome = typeof DareOutcome.Type
 
-// NOTE: a friend's run as its link carries it. `pool` is the things the
-// run's list rolled from beyond the house's six (the sharer's milestones),
-// so the list rolls the same for a friend who has not opened them.
 export const FriendsDare = Schema.Struct({
   seed: Schema.Finite,
   mode: HomeMode,
@@ -48,8 +31,6 @@ export const FriendsDare = Schema.Struct({
 })
 export type FriendsDare = typeof FriendsDare.Type
 
-// NOTE: the player's own lobby picks, kept while a friend's dare holds the
-// lobby, and handed back when it lets go.
 export const OwnPicks = Schema.Struct({
   mode: HomeMode,
   difficulty: Difficulty,
@@ -60,11 +41,6 @@ export const OwnPicks = Schema.Struct({
 })
 export type OwnPicks = typeof OwnPicks.Type
 
-// NOTE: where a friend's dare stands: none, offered on the home menu (a
-// link opened), or taken, holding the lobby's picks to the link's with the
-// player's own kept to hand back. Taken lasts through the run and its end
-// card, so RETRY plays the same house again; PLAY, CO-OP, or the card's x
-// hand the picks back.
 export const BeatMyRun = UiSchema.TaggedEnum({
   None: {},
   Offered: { dare: FriendsDare },
@@ -74,14 +50,8 @@ export type BeatMyRun = typeof BeatMyRun.Type
 
 export const noBeatMyRun: BeatMyRun = BeatMyRun.None()
 
-// THE LINK
-
-// NOTE: the query parameter the link carries the run in:
-// `https://munchmanor.com/?dare=...`.
 export const BEAT_PARAM = 'dare'
 
-// NOTE: the link's version. A link of another version (or none) is just
-// ignored, so a change to the wire bumps it.
 const LINK_VERSION = 1
 
 const MAX_SEED = 0xffffffff
@@ -96,9 +66,6 @@ const maskOf = (bits: number) => intUpTo(2 ** bits - 1)
 
 const OUTCOME_ORDER: ReadonlyArray<DareOutcome> = DareOutcome.literals
 
-// NOTE: the run as the link packs it: one small number each, in a fixed
-// order, so the link stays short. The lists are bit masks in their Schema's
-// order (DareKind, Modifier) and the picks are indexes into theirs.
 const DareWire = Schema.Tuple([
   Schema.Literal(LINK_VERSION),
   intUpTo(MAX_SEED),
@@ -191,8 +158,6 @@ const WireToDare = DareWire.pipe(
   }),
 )
 
-// NOTE: the link's code: the wire as JSON, in URL-safe base64, through
-// Schema both ways.
 const DareCode = Schema.StringFromBase64Url.pipe(
   Schema.decodeTo(Schema.fromJsonString(WireToDare)),
 )
@@ -203,17 +168,12 @@ export const dareCodeOf = (dare: FriendsDare): Option.Option<string> =>
 const dareOfCode = (code: string): Option.Option<FriendsDare> =>
   Schema.decodeOption(DareCode)(code)
 
-// NOTE: a `?dare=...` in the page's address, read once the splash is gone.
-// A bad, cut, or older link is nothing.
 export const readBeatLink = (search: string): Option.Option<FriendsDare> =>
   Option.flatMap(
     Option.fromNullishOr(new URLSearchParams(search).get(BEAT_PARAM)),
     dareOfCode,
   )
 
-// BEATING IT
-
-// NOTE: a run's result, the friend's or the player's.
 export type DareResult = Readonly<{
   outcome: DareOutcome
   wave: number
@@ -221,10 +181,6 @@ export type DareResult = Readonly<{
   runSeconds: number
 }>
 
-// NOTE: whether `mine` beats `theirs`: an escape beats any run that did
-// not get out, and two escapes go to the quicker. Otherwise the most things
-// found, then the furthest wave, then leaving alive over getting munched. A
-// tie beats nothing.
 export const isBeaten: {
   (theirs: DareResult): (mine: DareResult) => boolean
   (mine: DareResult, theirs: DareResult): boolean
@@ -244,8 +200,6 @@ export const isBeaten: {
   }
 })
 
-// NOTE: the address with its dare taken off and every other parameter kept,
-// for the address bar once the dare is read.
 export const addressWithoutDare = (href: string): string => {
   const url = new URL(href)
   url.searchParams.delete(BEAT_PARAM)

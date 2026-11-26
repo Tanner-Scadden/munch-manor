@@ -1,10 +1,3 @@
-// Yielding the heavy guard's turn between the parts of a long job. A job
-// the guard runs gets HEAVY_TURN_DIR and HEAVY_GUARD_PID. At each boundary
-// it calls `yieldTurn`: it writes a request into that directory and waits
-// for the guard's grant. The guard hands its file over when another job is
-// waiting and queues again (see `decideHandover` in decision.ts), or grants
-// at once when nobody is. The grant carries the WORKERS for the next part.
-// Outside the guard, `yieldTurn` does nothing.
 import {
   Array,
   Clock,
@@ -30,8 +23,6 @@ export const GUARD_PID_ENV = 'HEAVY_GUARD_PID'
 const CHUNK_RUNS_ENV = 'HEAVY_CHUNK_RUNS'
 
 const GRANT_POLL = Duration.millis(200)
-
-// PROTOCOL
 
 const TurnRequest = Schema.Struct({
   pid: Schema.Int,
@@ -67,9 +58,6 @@ const writeAtomically = (
 
 export type PendingRequest = Readonly<{ id: string; request: TurnRequest }>
 
-// NOTE: the guard's side: the requests waiting for a grant, oldest name
-// first. A request that does not decode is answered all the same.
-/** @stability unstable */
 export const readRequests = (
   directory: string,
 ): Effect.Effect<
@@ -111,7 +99,6 @@ export const readRequests = (
     )
   })
 
-/** @stability unstable */
 export const grantTurn: {
   (
     id: string,
@@ -141,10 +128,6 @@ export const grantTurn: {
     }),
 )
 
-// THE JOB'S SIDE
-
-// NOTE: waits for the grant, or gives up when the guard is gone, since a
-// guard that died can never answer.
 const awaitGrant = (
   path: string,
   guardPid: number,
@@ -164,10 +147,6 @@ const TurnConfig = Config.all({
   maybeGuardPid: Config.Int(GUARD_PID_ENV).pipe(Config.option),
 })
 
-// NOTE: yields the turn at a boundary between parts of a job. Returns the
-// WORKERS for the next part, or None outside the guard (or when anything
-// goes wrong, so a job never fails for yielding).
-/** @stability unstable */
 export const yieldTurn = (
   label: string,
 ): Effect.Effect<Option.Option<number>, never, FileSystem.FileSystem> =>
@@ -200,9 +179,6 @@ export const yieldTurn = (
     )
   }).pipe(Effect.orElseSucceed(() => Option.none()))
 
-// FOR PLAIN SCRIPTS
-
-// NOTE: whether a guard runs this process, so the job splits its work.
 export const isUnderGuard = (): boolean =>
   Effect.runSync(
     Config.String(TURN_DIR_ENV).pipe(
@@ -212,7 +188,6 @@ export const isUnderGuard = (): boolean =>
     ),
   )
 
-// NOTE: the runs a chunk of a balance batch plays with these workers.
 export const chunkRuns = (workers: number): number =>
   Effect.runSync(
     Config.Int(CHUNK_RUNS_ENV).pipe(
@@ -222,8 +197,6 @@ export const chunkRuns = (workers: number): number =>
     ),
   )
 
-// NOTE: `yieldTurn` for a script that is not an Effect program. Resolves
-// to the WORKERS for the next part, or `workers` when nothing changed.
 export const yieldTurnAsync: {
   (workers: number): (label: string) => Promise<number>
   (label: string, workers: number): Promise<number>

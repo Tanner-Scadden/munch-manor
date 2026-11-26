@@ -50,12 +50,6 @@ import { type MunchopediaProps, tabOfPage } from './model'
 type H = Html.H<Message>
 type Content = View.Content<Message>
 
-// The Dare Journal's tabs and its pages past the zombies
-// (src/features/munchopedia/journalPages.ts): the things, the rooms, the
-// story, and the heroes. Show, don't explain: a page not filled in yet is
-// a dim outline and ???, and a locked one wears the padlock and the few
-// words of the milestone that opens it.
-
 const UNKNOWN = '???'
 
 const newTagView = (h: H): Content =>
@@ -69,10 +63,6 @@ const lockView = (milestone: MilestoneId, h: H): Content =>
       MILESTONE_HINTS[milestone],
     )
 
-// THE TABS
-
-// NOTE: the Story tab opens on the first page new since the journal last
-// opened, so a page just reached is the one read first.
 const tabMessage = (tab: JournalTab, props: MunchopediaProps): Message =>
   tab === 'Story'
     ? Message.ClickedStoryPageButton({ page: firstStoryPage(props.fresh) })
@@ -99,8 +89,6 @@ const tabsView = (props: MunchopediaProps, h: H): Content => {
       ),
     )
 }
-
-// THINGS
 
 const thingTileView = (
   props: MunchopediaProps,
@@ -141,8 +129,6 @@ const thingsView = (props: MunchopediaProps, h: H): Content =>
     .attr('aria-label', 'Things')
     .children(Array.map(JOURNAL_THINGS, kind => thingTileView(props, kind, h)))
 
-// ROOMS
-
 const roomPictureView = (id: string, h: H): Content =>
   Option.match(Option.flatMap(maybeRoomIcon(id), spriteImage), {
     onNone: () => h.span.class('journal-card-icon'),
@@ -175,8 +161,6 @@ const roomsView = (props: MunchopediaProps, h: H): Content =>
           )
       }),
     )
-
-// STORY
 
 const pageButtonView = (
   props: MunchopediaProps,
@@ -247,8 +231,6 @@ const storyView = (
     storyPageView(props, shown, h),
   )
 
-// HEROES
-
 const heroesView = (props: MunchopediaProps, h: H): Content =>
   h.ul
     .class('journal-grid journal-heroes')
@@ -277,7 +259,6 @@ const heroesView = (props: MunchopediaProps, h: H): Content =>
       }),
     )
 
-// NOTE: the tab strip over every page, and the pages past the zombies.
 export const journalPageViews = {
   tabs: tabsView,
   things: thingsView,

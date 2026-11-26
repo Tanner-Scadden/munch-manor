@@ -37,15 +37,6 @@ import {
 } from './kitchenTour'
 import { OnboardingMessage } from './message'
 
-// NOTE: the guided tutorial's tracker, in the corner under the hearts: a
-// chapter's steps as icons, the current one lit with its one word, the done
-// ones ticked, and a skip button. Done, every step ticks, a little confetti
-// pops, and it fades. Chapter 1 is the first break: the key, the padlock,
-// the case, the dare card, and START WAVE
-// (src/features/onboarding/firstBreakQuest.ts),
-// chapter 2 the kitchen and the fridge (src/features/onboarding/kitchenTour.ts), which also
-// shows the break clock held.
-
 type StepLook = Readonly<{ icon: string; word: string; spoken: string }>
 
 type Chapter = Readonly<{
@@ -112,10 +103,6 @@ const kitchenChapter = (model: Model): Option.Option<Chapter> => {
       })
 }
 
-// NOTE: in landscape the tracker docks in the top corner away from what it
-// teaches, so it never covers the stall, the boards, or the fridge. In
-// portrait it always sits at the world's top left (CSS), under the hearts
-// and opposite the dare pocket.
 type Side = 'Left' | 'Right'
 
 const maybeTargetOf = (model: Model): Option.Option<Vector> =>

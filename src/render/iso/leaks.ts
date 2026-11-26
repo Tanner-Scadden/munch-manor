@@ -1,14 +1,4 @@
-// The roof leaks drawn: the World places each leak and its puddle and
-// slows whoever wades through it (src/world/level/leaks.ts); here a drop
-// falls from the ceiling in whole pixels, a small ring splashes out as it
-// lands, and the puddle darkens and cools the planks under it, a pale rim
-// on its far edge. It mirrors the flames near it and the lightning as a
-// cheap fake: no reflection is rendered, only short streaks of light across
-// the water, a flame's warm and the strike's a bright band along the far
-// edge. The drips are read off the World's clock, so every player in a
-// co-op room sees and hears the same leaks.
-
-import { Array, Option, Order } from 'effect'
+import { Array, Option, Order, pipe } from 'effect'
 
 import { TILE_SIZE } from '../../shared/constants'
 import { isCellarLit } from '../../world/cellar/bulb'
@@ -37,7 +27,6 @@ import {
 } from './lightSpecs'
 import { mixColor, strikeOf } from './mood'
 
-// NOTE: every tile a puddle lies on, a quad each, this high over the floor.
 export const leakTilesOf = ({
   level,
   lift,
@@ -63,18 +52,12 @@ export const leakTilesOf = ({
   return tiles
 }
 
-// THE DRIPS
-
-// NOTE: a drop falls from this high over the floor, in game pixels, in this
-// long, then splashes a ring out in three steps of this long.
 const DROP_HEIGHT = 34
 const FALL_MS = 420
 const RING_STEP_MS = 90
 const RING_STEPS = 3
 const DROP_COLOR = 0xb4d0ff
 
-// NOTE: a leak's drips' beat, and where in it the leak starts, rolled off
-// its tile.
 const periodOf = (leak: Leak): number =>
   1700 + Math.floor(leakRoll(leak, 5) * 1900)
 
@@ -91,7 +74,6 @@ const landingsBy = (leak: Leak, elapsedMs: number): number => {
   return Math.floor((elapsedMs + offsetOf(leak, periodMs) - FALL_MS) / periodMs)
 }
 
-// NOTE: the step of the ring a landed drop splashes, 1 to 3, or 0 for none.
 const ringStepOf = (leak: Leak, elapsedMs: number): number => {
   const since = sinceDrip(leak, elapsedMs) - FALL_MS
   return since >= 0 && since < RING_STEPS * RING_STEP_MS
@@ -99,8 +81,6 @@ const ringStepOf = (leak: Leak, elapsedMs: number): number => {
     : 0
 }
 
-// NOTE: the falling drops, two pixels tall, and the two beads a landing
-// throws up, lit as the dust is, so they show only in the light.
 export const dripsOf = ({
   world,
   level,
@@ -148,8 +128,6 @@ export const dripsOf = ({
     return []
   })
 
-// NOTE: where a drop landed between two readings of the World's clock that
-// the listener hears, the nearest, for the drip's sound.
 const DRIP_REACH_PX = 130
 const DRIP_PAN_PX = 110
 
@@ -185,21 +163,12 @@ export const maybeDripHeard = ({
   return heard
 }
 
-// THE PUDDLES
-
-// NOTE: the water is a cool blue-grey over the planks, see-through and
-// softer at its two ends, lit by the room as the floor is (leakLayer.ts), so
-// it shows in the light and is lost in the cellar's dark but for a beam; its
-// far edge is a pixel of pale rim, the sky off the wet.
 const WATER = 'rgba(112, 150, 196, 0.62)'
 const WATER_EDGE = 'rgba(112, 150, 196, 0.4)'
 const RIM = 'rgba(206, 228, 250, 0.8)'
 const RING = 'rgba(206, 228, 250, 0.7)'
 export const STRIKE_RGB = '232, 240, 255'
 
-// NOTE: how far from a puddle a flame still shows in it, in game pixels,
-// and how strongly each kind does. A point of light on water is a short
-// streak across it, longer and paler at its core the nearer the flame.
 export const MIRROR_REACH = 120
 const MIRROR_WEIGHT: Readonly<Record<FlameKind, number>> = {
   Candle: 1,
@@ -209,13 +178,9 @@ const MIRROR_WEIGHT: Readonly<Record<FlameKind, number>> = {
   Chandelier: 1.2,
   Bulb: 1.2,
 }
-// NOTE: a puddle shows the two nearest flames at most, a row apart.
 const MOST_MIRRORS = 2
 export const STRIKE_STEPS = 4
 
-// NOTE: a flame's mirror image as the camera sees it on the floor: as far
-// under the flame's foot on the screen as the flame stands over it, which
-// on the floor is as many game pixels south.
 export type Mirror = Readonly<{
   x: number
   y: number
@@ -245,7 +210,6 @@ const boxOfRows = (rows: Array.NonEmptyReadonlyArray<PuddleRow>) => ({
   bottom: Array.lastNonEmpty(rows).y,
 })
 
-// NOTE: how far a mirror image lies from a puddle's blob, in game pixels.
 const gapTo = (leak: Leak, mirror: Mirror): number => {
   const { top, bottom } = boxOfRows(leak.rows)
   const dy = Math.max(0, top - mirror.y, mirror.y - bottom)
@@ -254,29 +218,67 @@ const gapTo = (leak: Leak, mirror: Mirror): number => {
 
 const mirrorCache = new WeakMap<Level, ReadonlyArray<ReadonlyArray<Mirror>>>()
 
-// NOTE: each leak's flames near enough to show in its puddle, nearest first.
+type PlacedMirror = Readonly<{ mirror: Mirror; order: number }>
+
+type MirrorColumns = ReadonlyMap<number, ReadonlyArray<PlacedMirror>>
+
+const columnOf = (x: number): number => Math.floor(x / MIRROR_REACH)
+
+const mirrorColumnsOf = (mirrors: ReadonlyArray<Mirror>): MirrorColumns => {
+  const columns = new Map<number, Array<PlacedMirror>>()
+  Array.forEach(mirrors, (mirror, order) => {
+    const column = columnOf(mirror.x)
+    const placed = columns.get(column)
+    if (placed === undefined) {
+      columns.set(column, [{ mirror, order }])
+    } else {
+      placed.push({ mirror, order })
+    }
+  })
+  return columns
+}
+
+const mirrorsAround = (
+  columns: MirrorColumns,
+  x: number,
+): ReadonlyArray<PlacedMirror> => {
+  const column = columnOf(x)
+  return [
+    ...(columns.get(column - 1) ?? []),
+    ...(columns.get(column) ?? []),
+    ...(columns.get(column + 1) ?? []),
+  ]
+}
+
 const mirrorsOf = (level: Level): ReadonlyArray<ReadonlyArray<Mirror>> => {
   const cached = mirrorCache.get(level)
   if (cached !== undefined) {
     return cached
   }
-  const mirrors = Array.map(flameSpecsOf(level), spec => mirrorOf(spec))
-  // NOTE: once per level, the house's few dozen flames for its few dozen
-  // leaks.
+  const columns = mirrorColumnsOf(
+    Array.map(flameSpecsOf(level), spec => mirrorOf(spec)),
+  )
   const near = Array.map(leaksOf(level), leak =>
-    Array.sortWith(
-      // oxlint-disable-next-line munch/no-nested-scan
-      Array.filter(mirrors, mirror => gapTo(leak, mirror) < MIRROR_REACH),
-      (mirror: Mirror) => gapTo(leak, mirror),
-      Order.Number,
+    pipe(
+      Array.filter(
+        mirrorsAround(columns, leak.spot.x),
+        ({ mirror }) => gapTo(leak, mirror) < MIRROR_REACH,
+      ),
+      Array.sort(
+        Order.combine(
+          Order.mapInput(Order.Number, ({ mirror }: PlacedMirror) =>
+            gapTo(leak, mirror),
+          ),
+          Order.mapInput(Order.Number, ({ order }: PlacedMirror) => order),
+        ),
+      ),
+      Array.map(({ mirror }) => mirror),
     ),
   )
   mirrorCache.set(level, near)
   return near
 }
 
-// NOTE: the body of every puddle, which never changes: the water, softer
-// at each row's ends, and the pale rim along its far edge.
 export const puddlesOf = (level: Level): ReadonlyArray<Draw.Shape> => {
   const shapes: Array<Draw.Shape> = []
   Array.forEach(leaksOf(level), ({ rows }) => {
@@ -286,13 +288,9 @@ export const puddlesOf = (level: Level): ReadonlyArray<Draw.Shape> => {
         shapes.push(rect(left, y, right - left + 1, 1, RIM))
         return
       }
-      // NOTE: in the far half, what a row reaches past the row above it is
-      // the far edge too.
       const isFarHalf = index <= rows.length / 2
       const bodyLeft = isFarHalf ? Math.max(left, above.left) : left
       const bodyRight = isFarHalf ? Math.min(right, above.right) : right
-      // NOTE: a step out is rim at its outer pixel only, the diagonal edge
-      // a line of single pixels rather than a pale block.
       if (bodyLeft > left) {
         shapes.push(rect(left, y, 1, 1, RIM))
         if (bodyLeft - left > 1) {
@@ -321,10 +319,6 @@ export const puddlesOf = (level: Level): ReadonlyArray<Draw.Shape> => {
   return shapes
 }
 
-// NOTE: the ring a landing splashes, one pixel wide, wider each step: a
-// closed oval squashed as the floor is, each pixel touching the next (a
-// corner counts), as spans of [row, left, width] from the landing. A ring
-// of loose pixels at its first step read as four dots.
 type RingSpan = readonly [row: number, left: number, width: number]
 
 const RING_SPANS: ReadonlyArray<ReadonlyArray<RingSpan>> = [
@@ -360,7 +354,6 @@ const ringOf = (leak: Leak, step: number): ReadonlyArray<Draw.Shape> => {
   )
 }
 
-// NOTE: a horizontal streak of light on a row, held inside it.
 const streakOn = (
   row: PuddleRow,
   centerX: number,
@@ -380,9 +373,6 @@ const streakOn = (
   return [rect(left, row.y, width, 1, color)]
 }
 
-// NOTE: a flame in a puddle: a warm streak across the row its mirror image
-// falls on (the nearest edge row when it falls outside), longer the nearer,
-// a paler core in its middle, and a shorter shimmer a row nearer.
 const flameStreaksOf = (
   leak: Leak,
   mirror: Mirror,
@@ -417,8 +407,6 @@ const flameStreaksOf = (
   ]
 }
 
-// NOTE: the row a mirror image falls on, held off the far rim and kept a
-// row apart from a nearer flame's.
 const mirrorRowOf = (leak: Leak, mirror: Mirror, taken: number): number => {
   const { top } = boxOfRows(leak.rows)
   const last = leak.rows.length - 2
@@ -430,8 +418,6 @@ const mirrorRowOf = (leak: Leak, mirror: Mirror, taken: number): number => {
     : wanted
 }
 
-// NOTE: the lightning on a puddle: its far rim lit as a bright band, and
-// in the brightest steps a shorter band a row nearer.
 const strikeBandOf = (
   rows: ReadonlyArray<PuddleRow>,
   step: number,
@@ -460,10 +446,6 @@ const strikeBandOf = (
   ]
 }
 
-// NOTE: the flashlight in the cellar's dark (cellarDark.ts) catches a
-// puddle under its beam or in its pool round the feet: a cold white streak
-// across its middle with a brighter core, and its far rim lit, so the water
-// shows where nothing else does.
 const POOL_GLINT_PX = 34
 const BEAM_RGB = '226, 238, 255'
 
@@ -478,8 +460,6 @@ const isCaughtBy = (viewer: Viewer, { spot }: Leak): boolean => {
   )
 }
 
-// NOTE: whether the viewer stands in the cellar with its bulb out, their
-// flashlight on.
 const isInDarkAt = (world: World, level: Level, viewer: Viewer): boolean =>
   !isCellarLit(world) &&
   Array.some(
@@ -515,8 +495,6 @@ const beamGlintOf = (leak: Leak, viewer: Viewer): ReadonlyArray<Draw.Shape> => {
   ]
 }
 
-// NOTE: a puddle's glints: the nearest lit flames as warm streaks, and the
-// lightning's band along the far edge (none underground).
 const glintsOf = (
   leak: Leak,
   mirrors: ReadonlyArray<Mirror>,
@@ -539,8 +517,6 @@ const glintsOf = (
     : [...shapes, ...strikeBandOf(leak.rows, strikeStep)]
 }
 
-// NOTE: a leak this far from the viewer, each way, is off every screen the
-// game has, so its ring need not be drawn.
 const NEAR_X = 360
 const NEAR_Y = 260
 
@@ -562,8 +538,6 @@ export const litOf = (world: World): ReadonlySet<FlameKind> =>
 export const strikeStepOf = (world: World): number =>
   Math.round(strikeOf(world) * STRIKE_STEPS)
 
-// NOTE: what the puddles' glints and rings depend on: when it is the same
-// as last frame's, so is their picture, and it need not be painted again.
 export const puddleKeyOf = ({
   world,
   level,
@@ -581,8 +555,6 @@ export const puddleKeyOf = ({
   return `${isFlameLit(world, 'Chandelier') ? 1 : 0}${isFlameLit(world, 'Bulb') ? 1 : 0}|${strikeStepOf(world)}|${rings}|${beam}`
 }
 
-// NOTE: the puddles' glints and the near rings this frame, over their
-// bodies.
 export const puddleGlintsOf = ({
   world,
   level,

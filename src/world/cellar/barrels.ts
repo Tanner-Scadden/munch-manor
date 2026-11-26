@@ -12,22 +12,10 @@ import { TOOL_RULES, isToolActive, toolActiveMs } from '../stations/toolRules'
 import { bodyRadiusOf, isFree, isGrounded } from '../zombies/zombies'
 import { cellarBoxOf } from './bulb'
 
-// The cellar's barrels (docs/ROOM_RESEARCH.md, "The cellar: ROLL THE
-// BARREL"), a room tool. Worked (a still player at the barrel block's west
-// face, src/world/stations/stations.ts), one barrel rolls west down the
-// corridor like a bowling ball, knocking over every zombie on its feet that
-// it meets: hurt, knocked on along the lane, and dazed. It breaks on the
-// far wall in a splash of old wine. It rolls through players without a
-// bump. Where it is is read off its station's clock, so it needs no field of
-// its own on the wire.
-
 const RULES = TOOL_RULES.Barrels
 
 const WEST: Vector = { x: -1, y: 0 }
 
-// NOTE: the lane: where the barrel sets off (the station's middle, on the
-// line between the corridor's two rows), and where it breaks (the first
-// solid tile west in either row, or the cellar's west wall).
 export type Lane = Readonly<{ startX: number; endX: number; y: number }>
 
 const lanes = new WeakMap<Level, Option.Option<Lane>>()
@@ -54,7 +42,6 @@ const laneIn = (level: Level): Option.Option<Lane> =>
     }),
   )
 
-// NOTE: a level keeps its lane.
 const laneOf = (level: Level): Option.Option<Lane> => {
   const cached = lanes.get(level)
   if (cached !== undefined) {
@@ -68,8 +55,6 @@ const laneOf = (level: Level): Option.Option<Lane> => {
 const xAt = (lane: Lane, rolledMs: number): number =>
   Math.max(lane.endX, lane.startX - (RULES.rollSpeed * rolledMs) / 1000)
 
-// NOTE: the barrel while its tool is active: where it is, and whether it
-// still rolls or lies broken at the lane's end.
 export type Barrel = Readonly<{ x: number; y: number; isBroken: boolean }>
 
 export const barrelOf = (world: World): Option.Option<Barrel> =>
@@ -80,8 +65,6 @@ export const barrelOf = (world: World): Option.Option<Barrel> =>
       })
     : Option.none()
 
-// NOTE: one tick of a rolling barrel: every zombie on its feet that the
-// barrel swept past this tick is bowled over.
 export const rollBarrel: {
   (deltaMs: number): (world: World) => World
   (world: World, deltaMs: number): World

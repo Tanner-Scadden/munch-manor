@@ -11,24 +11,6 @@ import {
 } from 'effect'
 import type { Browser, Page } from 'playwright-core'
 
-// Checks player sync end to end against a deployed copy, in headless Chrome,
-// with two browser contexts as two devices:
-// 1. Device A starts from the live game's version 4 localStorage save (57
-//    zombies splatted, What's New seen, no sharing setting yet), opened
-//    with `?record=1`, syncs with sharing turned on, What's New still seen,
-//    and RECORD MY RUNS unlocked. It keeps a name, turns the music off,
-//    changes its shirt, and finishes a run (PLAY, SHAKE ON IT in the lobby,
-//    then leaving it from the pause MENU).
-// 2. A shows a link code, copied with a tap; device B types it under
-//    "Use a code".
-// 3. B then shows A's name, music off, RECORD MY RUNS, shirt, kills, and
-//    seen What's New, and says it is linked to 2 devices.
-// 4. B turns the music back on; A sees it after a reload (a new
-//    connection).
-// 5. A goes offline, turns screen shake off, says "Offline, will sync",
-//    comes back online, catches up, and B sees screen shake off.
-// Run it through the heavy guard:
-//   bun run heavy -- bun tools/audit/sync.ts https://munch-manor-pr-2.tanner-scadden.workers.dev/
 import * as NodeServices from '@effect/platform-node/NodeServices'
 
 import { encodeJson } from '../json'
@@ -38,8 +20,6 @@ import { attempt } from './page'
 const SAVE_KEY = 'munch-manor:save'
 const STARTING_KILLS = 57
 
-// NOTE: the newest What's New day, as the build reads it from CHANGELOG.md,
-// so a save that has seen it shows no dot on the What's New button.
 const newestNewsDay = Effect.gen(function* () {
   const fs = yield* FileSystem.FileSystem
   const path = yield* Path.Path
@@ -57,7 +37,6 @@ const newestNewsDay = Effect.gen(function* () {
   )
 })
 
-// NOTE: the live game's save, as it keeps it in localStorage today.
 const olderSave = (seenNewsDay: string) => ({
   version: 4,
   onboarding: {
@@ -109,8 +88,6 @@ const RECORD_LABEL = 'Record my runs'
 const toggleSelector = (label: string) =>
   `button[aria-label="${label}"][aria-pressed]`
 
-// NOTE: the gear opens the Profile on Settings. Sync, linking, and stats
-// sharing live on its Account tab.
 type ProfileTab = 'Look' | 'Name' | 'Account' | 'Settings'
 
 const openTab = (page: Page, tab: ProfileTab) =>
@@ -152,15 +129,12 @@ const flip = (page: Page, label: string) =>
     attempt(() => page.locator(toggleSelector(label)).click()),
   )
 
-// NOTE: whether a setting's tile shows at all (RECORD MY RUNS only once a
-// device of the player's opened `?record=1`).
 const hasSetting = (page: Page, label: string) =>
   Effect.andThen(
     openTab(page, tabOf(label)),
     attempt(() => page.locator(toggleSelector(label)).count()),
   ).pipe(Effect.map(count => count > 0))
 
-// NOTE: the Name tab keeps a name when its form is sent (Enter).
 const keepName = (page: Page, name: string) =>
   Effect.gen(function* () {
     yield* openTab(page, 'Name')
@@ -182,8 +156,6 @@ const syncLine = (page: Page) =>
     attempt(() => page.locator('.account-status').textContent()),
   ).pipe(Effect.map(line => line ?? ''))
 
-// NOTE: waits on the status line until it says what is expected, checking
-// twice a second. Returns the last thing it said.
 const waitForLine = (page: Page, expected: RegExp, timeoutMs: number) =>
   pollUntil(syncLine(page), line => expected.test(line), 500, timeoutMs).pipe(
     Effect.map(({ last }) => last),
@@ -198,9 +170,6 @@ const hasNewsDot = (page: Page) =>
     return String.includes("Something new in What's new")(label ?? '')
   })
 
-// NOTE: the home menu's bests badge names each best only for a screen
-// reader, beside its icon (bestView in src/screens/home/homeView.ts), so
-// the kills row is found by that hidden name.
 const splatted = (page: Page) =>
   Effect.gen(function* () {
     yield* closePanel(page)
@@ -250,10 +219,6 @@ const pickShirt = (page: Page, color: string) =>
     yield* closeLook(page)
   })
 
-// NOTE: the shortest real run end: PLAY opens the solo lobby, SHAKE ON IT
-// seals the dare and starts the run, a key skips the drive up to the door's
-// slam, Escape pauses once the run is in the house, the pause MENU asks
-// "Leave this run?", and Leave goes home. Leaving counts the run.
 const finishRun = (page: Page) =>
   Effect.gen(function* () {
     yield* closePanel(page)

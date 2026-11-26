@@ -15,11 +15,6 @@ import {
   shelfThingsFor,
 } from '../proof'
 
-// The Proof Shelf component on its own: a tapped slot is picked, the arrows
-// (its own Subscription) walk the shelf with wrapping, and a fresh mount
-// starts with nothing picked. What goes on the shelf is the root's
-// (proof.story.test.ts).
-
 type ShelfStory = Story.Steps<typeof ProofShelf>
 
 const HOUSE_SHELF = shelfThingsFor([])
@@ -38,12 +33,8 @@ const propsWith = (
 const shelfOf = (things = HOUSE_SHELF) =>
   Story.make(ProofShelf, propsWith(things))
 
-// NOTE: the key of the shelf's arrow keys, its one Subscription
-// (`HtmlSubscription.shortcuts`, on the document's keydown).
 const KEYS = '@effect/ui/html/document:"keydown"'
 
-// NOTE: an arrow from the shelf's own key Subscription picks the slot it
-// reaches, and focus moves onto it.
 const press =
   (code: string, spot: ShelfSpot) =>
   (s: ShelfStory): ShelfStory =>
@@ -102,8 +93,6 @@ describe('the Proof Shelf component', () => {
     }),
   )
 
-  // NOTE: the panel mounts the shelf afresh each time it opens on it
-  // (src/app/dialogs.ts), so opening again is a new mount, its init.
   it.effect('opening again puts the pick away', () =>
     Effect.gen(function* () {
       const opened = yield* shelfOf()

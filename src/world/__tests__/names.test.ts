@@ -6,8 +6,6 @@ import { PICKUPS } from '../gear/powerups'
 import { PICKUP_NAMES } from '../names'
 import { DIFFICULTIES, NIGHTMARE_LOCK_NOTE } from '../run/difficulty'
 
-// NOTE: the dare's names (ESCAPE_PLAN layer 1): players read these, while
-// the tags in saves, sync, analytics, and the wire stay as they were.
 describe('the names a player reads', () => {
   it('names the difficulties for the dare', () => {
     expect([

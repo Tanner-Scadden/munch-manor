@@ -87,7 +87,6 @@ const expectPanel = (panel: MenuPanel): StoryStep =>
     expect(current.panel).toBe(panel)
   })
 
-// NOTE: a Story of the root from `model` through `each` step in turn.
 const storyOver = (
   model: Model,
   ...each: ReadonlyArray<StoryStep>
@@ -416,8 +415,6 @@ describe('the Munchopedia', () => {
       return storyOver(
         fresh,
         send(Message.ClickedNewEntryButton({ kind: 'Runner' })),
-        // NOTE: the panel mounts the journal on the entry, and its init says
-        // the entry is opened (src/features/munchopedia/block.ts).
         send(Message.OpenedMunchopediaEntry({ kind: 'Runner' })),
         s => s.expectExact(WriteSave),
         writeSave,

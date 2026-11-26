@@ -7,7 +7,6 @@ import {
   envelope,
 } from './soundRecipe'
 
-// NOTE: one rap of knuckles on old wood: a dull knock and a short click.
 const KNOCK_RECIPE: Recipe = {
   variationCents: 60,
   tones: [
@@ -27,7 +26,6 @@ const KNOCK_RECIPE: Recipe = {
   ],
 }
 
-// NOTE: the radio between stations: hiss that swells and breaks off.
 const STATIC_HISS: NoiseLayer = {
   filter: 'bandpass',
   quality: 0.7,
@@ -35,8 +33,6 @@ const STATIC_HISS: NoiseLayer = {
   envelope: envelope(0.22, 0.06, 0.7),
 }
 
-// NOTE: the intro's sounds (src/features/intro/introBeat.ts), joined into
-// RECIPES: the car, its radio, the knocks, the door, and the slam.
 export const INTRO_RECIPES = {
   CarEngine: {
     variationCents: 0,
@@ -81,8 +77,6 @@ export const INTRO_RECIPES = {
     ],
   },
   Knock: KNOCK_RECIPE,
-  // NOTE: the one knock back, from somewhere deeper inside: lower, softer,
-  // and muffled.
   KnockBack: {
     variationCents: 0,
     tones: [

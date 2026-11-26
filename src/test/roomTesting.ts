@@ -33,18 +33,10 @@ import { Phase, type Vector, ZombieState } from '../world/schema/worldSchema'
 import { normalize } from '../world/step/geometry'
 import { SeatAction } from '../world/step/stepWorld'
 
-// Test helpers for a co-op room playing the real World: scripted players,
-// the room stepped tick by tick, and a room with clients over a fake
-// network, every frame through the real codecs.
-
-// NOTE: a room of two players from seed 7, in its first break.
 export const TWO_SEAT_ROOM = pastArrival(
   startRoomWorld([0, 1], 7, DEFAULT_ROOM_SETTINGS),
 )
 
-// NOTE: each scripted player walks a square of its own, out of step with
-// the others, aims at the nearest walking zombie and holds the trigger
-// when there is one, and presses READY in every break.
 const LEGS: ReadonlyArray<Vector> = [
   { x: 1, y: 0 },
   { x: 0, y: 1 },
@@ -118,9 +110,6 @@ export const scriptedTicks = (room: RoomWorld): ReadonlyArray<PlayerTick> =>
     rttMs: 0,
   }))
 
-// NOTE: the room alone, `ticks` ticks of scripted players, calling `each`
-// with every World it steps to.
-// Data first when a tick count follows the room; data last has `each` there.
 export const playRoom: {
   (
     ticks: number,
@@ -145,10 +134,6 @@ export const playRoom: {
     ),
 )
 
-// A ROOM OVER A FAKE NETWORK
-
-// NOTE: a room whose players start with this many hearts, so scripted
-// players last into the crowded waves a measurement wants.
 const withHearts = (hearts: number) => ({
   ...ROOM_WORLD,
   start: (slots: ReadonlyArray<number>, seed: number): RoomWorld => {
@@ -190,14 +175,8 @@ export type NetworkRun = Readonly<{
 const T0 = 5_000_000
 const CROWDED = 15
 
-// NOTE: each client draws every fourth frame, which keeps the run light
-// enough for CI; the input and prediction still run every frame.
 export const DRAW_EVERY = 4
 
-// NOTE: a room and a client per player, each message encoded to bytes and
-// decoded on the far side as the Durable Object and the browser do, over a
-// network with a fixed one-way delay. Every client plays the scripted
-// player from its own newest World and draws once a 60 Hz frame.
 export const simulateRoom = (
   options: Readonly<{
     players: number

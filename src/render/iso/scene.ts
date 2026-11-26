@@ -1,29 +1,3 @@
-// The game's world drawn in 3D with PixiJS 3D: the bird's-eye view, the
-// rooms' light, the cellar's dark, shadows, and wind. It reads each frame the
-// view hands it and never writes the Model, so the game plays the same.
-//
-// How the game's picture becomes 3D, with no art redrawn:
-// - The room's floor art (and the decals) paint into textures on a floor
-//   plane, through the same Canvas shapes the game builds.
-// - Each wall tile ('#') stands up as a toon block wearing the room's art
-//   on its top, its front, and the sides the lens sees.
-// - Every standing drawable (zombies, players, props) is made of shapes
-//   placed above its foot, so each Image stands up as a billboard at that
-//   foot, as tall as it is drawn.
-// - What lies on the floor (shadows, bullets, rings) paints into floor
-//   textures each frame.
-// - Light is new: each room's own, the flames, the lamp that follows the
-//   player, the muzzle flash, and glowing tracers.
-//
-// The camera looks through the game's lens (src/render/lens.ts), turned off
-// north with a slight perspective, on the game's own camera
-// (src/render/camera.ts): the aim, the touch controls, and the overlay's
-// markers place themselves through the same lens, so they line up.
-//
-// Everything that moves reads the Model: the wind and the flicker from its
-// clock, the flash from the gun's recoil, the camera from the game's. So the
-// same frame draws the same picture, as a screenshot or a video wants.
-
 import { Array, Effect, Option } from 'effect'
 import { Application, Texture } from 'pixi.js'
 
@@ -132,27 +106,15 @@ import { Textures, colorOf } from './textures'
 import { VoxelBatch, newReach } from './voxels'
 import { chandelierSwayAt, windClockOf } from './wind'
 
-// NOTE: the lightning's flash: a cold white, at its peak four times
-// the ambient light.
 export const STORM_COLOR = 0xdce6ff
 export const STORM_LIFT = AMBIENT * 3
 
-// NOTE: the void behind the house: black, as shut rooms and the yard draw.
 const BACKGROUND = 0x000000
-// NOTE: the ground's picture and its rectangles lie at 0.012, under the
-// puddles (0.013, leakLayer.ts).
 const GROUND_LIFT = 0.012
-// NOTE: the lens's depth range, in world units from the lens: it stands 36
-// to 46 tiles from the floor it looks at by the view's height
-// (src/render/lens.ts), and the house is about three screens wide.
 const LENS_NEAR = 4
 const LENS_FAR = 200
 const TRACER_RADIUS = 0.05
 
-// NOTE: what stands carved (voxels.ts), by its rank, and the most blocks
-// deep each is carved: a body as deep as it is wide, up to a big zombie's
-// belly; the house's pieces, the traps, and the pickups flatter, so a wide
-// table or a barricade does not swell into a ball.
 const MOST_DEPTH: Readonly<Partial<Record<Drawable['rank'], number>>> = {
   Zombie: 16,
   Player: 16,
@@ -161,73 +123,39 @@ const MOST_DEPTH: Readonly<Partial<Record<Drawable['rank'], number>>> = {
   Prop: 6,
 }
 
-// NOTE: a blast's flash of light: its color, its peak, and its reach, as
-// many times the blast's own radius.
 const BLAST_LIGHT_COLOR = 0xffa850
 const BLAST_LIGHT_PEAK = 60
 const BLAST_LIGHT_REACH = 2.5
 
-// NOTE: the lights that go with a body stand on its pixels
-// (`standingPointOf`), then this many world units toward the lens, so they
-// light its front: the player's lamp on the top of their head, the muzzle flash's on
-// the flash, and a blast's in its fireball's middle.
 const LAMP_OUT = 1.41
 const FLASH_OUT = 0.8
 const BLAST_OUT = 1.06
 
-// NOTE: a glow reaching past its body's foot stands this far under its own
-// bottom edge, so none of it sinks into the floor.
 const GLOW_FOOT_PX = 1
 
-// NOTE: whatever floats overhead stands this far over its own bottom edge,
-// so it never sinks into what it hangs over.
 const OVERHEAD_HOVER = 6
 
-// NOTE: the floor plane's coats over the room's art.
 const DECALS_COAT = 0
 const LANDED_COAT = 1
 
 type Built = Readonly<{
   level: Level
   holder: Container3D
-  // NOTE: the room's own art, which the walls' tops and faces wear too.
   room: FloorPicture
-  // NOTE: the one lit plane over the floor: the room's art, then the decals,
-  // then what has landed (casings, gibs, dust), lit as the floor is, so it
-  // sinks into the cellar's dark where the glows and rings do not. One plane
-  // and not three, since every pixel of a lit plane is shaded for every
-  // light that reaches it.
   floor: FloorLayer
-  // NOTE: what lies on the ground, unlit: its flat rectangles as quads
-  // (groundRects.ts), the rest (images, paths, rings) in a picture drawn
-  // again only when it changes.
   ground: FloorLayer
   groundRects: GroundRects
-  // NOTE: the storm at the windows (storm.ts), unlit, on its own quads over
-  // the glass and the floor it lights.
   storm: FloorPicture
-  // NOTE: the roof leaks' puddles (leaks.ts).
   leaks: LeakLayer
-  // NOTE: the kitchen's goop, the soup pot's puddle too (soup.ts).
   soup: SoupLayer
   floorArt: ReadonlyArray<Leaf>
   plants: ReadonlyArray<Plant>
-  // NOTE: the tall pieces, carved once for the level (furniture.ts).
   furniture: Furniture
   lights: HouseLights
-  // NOTE: the god rays and what glows in the dark (godRays.ts,
-  // emissives.ts).
   rays: GodRays
   glows: HouseGlows
-  // NOTE: the art quads whose wall tops fan from the lens's eye each frame
-  // (house.ts `ArtMesh`): the walls', the night behind them, the storm's,
-  // and the fanned walls' plain blocks drawn in the real blocks' place.
   fans: ReadonlyArray<ArtMesh>
-  // NOTE: the dining room's carved chandelier (showpieces.ts), where the
-  // level has one.
   chandelier: Option.Option<Chandelier>
-  // NOTE: the library's shut secret shelf carved in its wall
-  // (showpieces.ts), where the level has one shut.
   shelf: Option.Option<Shelf>
 }>
 
@@ -236,9 +164,6 @@ const bottomOf = ({ shape, matrix }: Leaf): number =>
     ? matrix.b * shape.x + matrix.d * (shape.y + shape.height) + matrix.f
     : 0
 
-// NOTE: a shut room's fill is put out (it draws black anyway) and an open
-// room's is turned down, so the flames and the lamp carry the picture
-// (src/render/iso/lookSpecs.ts).
 const lookLightsOf = (frame: LightsFrame, level: Level): LightsFrame => {
   const look = LOOK_TUNING.now
   return {
@@ -253,8 +178,6 @@ const lookLightsOf = (frame: LightsFrame, level: Level): LightsFrame => {
   }
 }
 
-// NOTE: whether a drawable is the 2D sprite of a carved showpiece the house
-// stands for it.
 const isCarved = (built: Built, drawable: Drawable): boolean => {
   const [first] = drawable.shapes
   return (
@@ -265,8 +188,6 @@ const isCarved = (built: Built, drawable: Drawable): boolean => {
   )
 }
 
-// NOTE: mutable on purpose: a renderer owns pixi's mutable scene and keeps
-// what it built until the level changes.
 export class IsoScene {
   private readonly app: Application
   private readonly textures: Textures
@@ -274,12 +195,9 @@ export class IsoScene {
   private readonly lamp: PointLight
   private readonly ambient: AmbientLight
   private readonly storm: AmbientLight
-  // NOTE: the mood's ambient color last set, so it is set only on a change.
   private ambientColor = 0xffffff
   private readonly flash: PointLight
   private readonly tracerMaterial: Material3D
-  // NOTE: a game pixel across: the glowing core of the bullet the floor
-  // draws, the bloom its glow (owner, 2026-11-14: bullets were massive).
   private readonly tracerGeometry = new SphereGeometry({
     radius: TRACER_RADIUS,
   })
@@ -289,27 +207,17 @@ export class IsoScene {
   private readonly glowing: BillboardPool
   private readonly rims: BillboardPool
   private readonly voxels: VoxelBatch
-  // NOTE: the newest blast's flash over the room.
   private readonly blastLight: PointLight
   private built: Built | undefined
   private casters: Container3D | undefined
   private plantCasters: ReadonlyArray<Caster> = []
-  // NOTE: which fills' shadow maps are drawn again this frame.
   private readonly shadowWatch = new ShadowWatch()
   private lastDecals: unknown
-  // NOTE: whether anything had landed on the floor last frame, so a frame
-  // with nothing there and nothing before draws the floor's picture again
-  // only when the decals change.
   private wasLanded = false
-  // NOTE: what the storm's layer was last painted for (storm.ts).
   private stormKey: string | undefined
   private lastPreload: ReadonlyArray<string> = []
   private lastLoaded = -1
-  // NOTE: the Munchopedia's plinths, drawn with this renderer (plinth.ts),
-  // built at the first one asked for.
   private plinth: PlinthStage | undefined
-  // NOTE: the quality tier (shadows, bloom, render scale) picked from this
-  // device's own frame times (qualityControl.ts).
   private readonly quality: WorldQuality
 
   constructor(app: Application, onLoaded: () => void) {
@@ -327,9 +235,7 @@ export class IsoScene {
     camera.mode = 'perspective'
     camera.near = LENS_NEAR
     camera.far = LENS_FAR
-    // NOTE: the rest of the light is each room's own (lights.ts).
     this.ambient = new AmbientLight({ color: 0xffffff, intensity: AMBIENT })
-    // NOTE: the storm's lightning, a cold flash over the whole house.
     this.storm = new AmbientLight({ color: STORM_COLOR, intensity: 0 })
     root.addChild(this.ambient, this.storm)
     this.lamp = new PointLight({ color: 0xffc27a, intensity: 6, range: 6 })
@@ -349,11 +255,6 @@ export class IsoScene {
       bands: 3,
       specularSize: 0,
       rimIntensity: 0.3,
-      // NOTE: no ink round the walls. The pass pushed their back faces out
-      // less than half a game pixel, and against the dark of a doorway and
-      // the black round the house that sliver of ink read as grey specks
-      // under every lintel and a grey line along every wall (owner,
-      // 2026-11-15). The walls' own art draws their edges.
       outline: false,
       ...this.textures.lookOptions('Toon'),
     })
@@ -391,12 +292,6 @@ export class IsoScene {
         this.textures.preload(src)
       })
     }
-    // NOTE: the renderer's size is in CSS pixels, fractions kept. Its canvas
-    // holds a canvas pixel for each square of `step` device pixels
-    // (canvasStepOf), so the page stretches it by exactly that, pixelated.
-    // A box whose device pixels the step does not divide is drawn a canvas
-    // pixel wider or taller, past its right and bottom edges, which the box
-    // clips: the view is anchored on its top left corner.
     const ratio = window.devicePixelRatio
     const devicePerGamePixel = (size.width * ratio) / Math.max(1, camera.width)
     const step = IsoLens.match(frame.lens, {
@@ -425,9 +320,6 @@ export class IsoScene {
     if (built !== wasBuilt) {
       this.quality.hold(atMs)
     }
-    // NOTE: the floor is painted again once what it waits on has loaded,
-    // not as each file comes in: a first visit loads a few dozen, and
-    // painting the whole floor for each held the splash in a hitch apiece.
     if (
       this.textures.loaded !== this.lastLoaded &&
       (this.textures.isSettled || this.lastLoaded < 0)
@@ -443,11 +335,6 @@ export class IsoScene {
       built.floor.picture.paintCoat(DECALS_COAT, flatten(decalShapes(decals)))
     }
 
-    // THE CAMERA
-    // NOTE: the lens (src/render/lens.ts) on the game's camera, less the
-    // shake, on this canvas (src/render/iso/lensCamera.ts): the same
-    // projection the overlay, the aim, and culling read. The title's
-    // diorama (diorama.ts) is a camera of its own, swinging round the house.
     const canvasSize = {
       width: this.app.canvas.width,
       height: this.app.canvas.height,
@@ -481,8 +368,6 @@ export class IsoScene {
       },
     })
 
-    // NOTE: the wall tops fan from the play lens's eye; the diorama's
-    // camera sees along parallel rays, so they lie as built under it.
     const fanEye = IsoLens.match(frame.lens, {
       Play: () => Option.some(lens.eye),
       Diorama: () => Option.none(),
@@ -495,9 +380,6 @@ export class IsoScene {
     const { player } = focusOf(model)
     const rattle = houseRattleOf(model.shake.trauma)
 
-    // THE FLOOR
-    // NOTE: what has landed is painted into the floor's own picture alone,
-    // never in the ground's strata, so the ground needs no sorting out.
     const landed = flatten(groundParticleShapes(model.cosmetics.particles))
     const isLanded = landed.length > 0
     if (isDecalsChanged || isLanded || this.wasLanded) {
@@ -534,7 +416,6 @@ export class IsoScene {
       isSpilled: Option.isSome(puddleOf(model)),
     })
 
-    // WHAT STANDS
     const flashLevel = muzzleFlashLevel(player)
     const lamp = { x: player.x, y: player.y, flash: flashLevel }
     const fades = new Map<TallCover, number>()
@@ -544,10 +425,6 @@ export class IsoScene {
     this.voxels.begin()
     this.shadowWatch.begin()
     for (const drawable of strata.standing) {
-      // NOTE: a muzzle flash glows on its body's own plane, so it sits on
-      // the gun's tip; it lights, casts, and takes no rim. Aimed down the
-      // screen it reaches past the body's foot, so there it stands on its
-      // own bottom edge instead, in front of the body, never under the floor.
       if (drawable.rank === 'Glow') {
         const glow = flatten(drawable.shapes)
         let footY = drawable.footY
@@ -574,9 +451,6 @@ export class IsoScene {
             most,
           })
         } else {
-          // NOTE: a hit flash glows white in any light, the cellar's dark
-          // too, so it stands with what glows of itself rather than what is
-          // lit.
           const lit: Array<Leaf> = []
           const flashing: Array<Leaf> = []
           for (const leaf of leaves) {
@@ -587,9 +461,6 @@ export class IsoScene {
           }
           this.billboards.standLeaves(lit, drawable.footY, 0, 1)
           this.glowing.standLeaves(flashing, drawable.footY, 0, 1)
-          // NOTE: only a flat billboard takes the lamp's rim: a body of
-          // blocks is lit on its sides by the room's own lights, and the
-          // rim's flat cutout would stand round it as a tan outline.
           rimUp({
             pool: this.rims,
             textures: this.textures,
@@ -600,12 +471,7 @@ export class IsoScene {
         }
       }
     }
-    // NOTE: the house's own pieces, built once for the level, shown only
-    // near the view (the rest of a house three screens wide would cost
-    // every pass, the shadows' too) and faded; which cast is noted.
     this.shadowWatch.note(built.furniture.apply({ fades, view }))
-    // NOTE: which ferns cast, culled to the view, noted as the voxels' own
-    // casters are (shadowWatch.ts).
     let plantsShown = 0
     for (const { mesh, box } of this.plantCasters) {
       mesh.visible = isNearView(box, view)
@@ -619,9 +485,6 @@ export class IsoScene {
       }
     }
 
-    // WHAT FLOATS
-    // NOTE: a rattle jolts the chandelier on its chain, a whole pixel at a
-    // time.
     const sway = chandelierSwayAt(t) + Math.round(Math.sin(t * 38) * rattle * 3)
     Option.map(built.chandelier, carved => {
       this.shadowWatch.note(carved.apply({ isDown, sway, view }))
@@ -629,11 +492,6 @@ export class IsoScene {
     Option.map(built.shelf, shelf => {
       shelf.apply(view)
     })
-    // NOTE: sparks, blood, and gibs in the air stand as cubes, lit as the
-    // bodies are, so they vanish into the cellar's dark with them; one with
-    // a see-through color (or with no cube left) stays a lit billboard. A
-    // wading splash keeps its own blue-white in any light. The
-    // scene reads them off the particles, never the overhead strata.
     for (const particle of airborneParticlesOf(model.cosmetics.particles)) {
       const { shape } = particle
       if (shape._tag !== 'Rect') {
@@ -664,8 +522,6 @@ export class IsoScene {
     this.standBlasts(model)
     for (const leaf of flatten(strata.overhead)) {
       const { shape, matrix, alpha } = leaf
-      // NOTE: the hung chandelier's sprite, known by its crop: the carved
-      // one stands in its place where the level has one.
       const isChandelier = shape._tag === 'Image' && isChandelierSprite(shape)
       if (isChandelier && Option.isSome(built.chandelier)) {
         continue
@@ -685,7 +541,6 @@ export class IsoScene {
       )
     }
 
-    // THE AIR
     for (const mote of [
       ...airOf({ world: model, level: built.level, viewer: player, rattle }),
       ...crittersOf({ world: model, level: built.level }),
@@ -712,7 +567,6 @@ export class IsoScene {
     this.voxels.end()
     this.shadowWatch.end()
 
-    // THE LIGHTS
     const lampAt = standingPointOf({
       x: player.x,
       footY: playerFootY(player),
@@ -757,7 +611,6 @@ export class IsoScene {
       this.ambientColor = ambientColor
       this.ambient.color.setValue(ambientColor)
     }
-    // NOTE: no lightning reaches the dark cellar's flashlight.
     this.storm.intensity = lights.isInDark ? 0 : STORM_LIFT * mood.strike
     const muzzle = muzzlePointOf(player)
     const flashAt = standingPointOf({
@@ -774,15 +627,10 @@ export class IsoScene {
     this.quality.end(frame, this.view)
   }
 
-  // NOTE: the tier the world draws at, for the page's `data-quality`.
   get tier(): QualityTier {
     return this.quality.tier
   }
 
-  // NOTE: what stands as its carved sprites, each part in front of the
-  // parts before it as the 2D game drew it over them; a hit flash's as
-  // glowing white blocks. A part that cannot stand carved stands as a
-  // billboard.
   private standBody(
     input: Readonly<{
       leaves: ReadonlyArray<Leaf>
@@ -833,7 +681,6 @@ export class IsoScene {
     }
   }
 
-  // NOTE: a boost's aura as blocks round the feet, the frame the game drew.
   private standAura(image: Draw.Image, matrix: Leaf['matrix']): void {
     Option.match(auraFrameOf(image), {
       onNone: () => undefined,
@@ -849,7 +696,6 @@ export class IsoScene {
     })
   }
 
-  // NOTE: a goodie's glow as a ring of lights on the floor under it.
   private standPickupRing(
     circle: Draw.Circle,
     matrix: Leaf['matrix'],
@@ -871,8 +717,6 @@ export class IsoScene {
     }
   }
 
-  // NOTE: every blast's blocks, and the newest one's flash of light over
-  // the room, the brightest while two go off together.
   private standBlasts(model: Model): void {
     let brightest = 0
     for (const blast of model.cosmetics.blasts) {
@@ -906,13 +750,10 @@ export class IsoScene {
     this.blastLight.intensity = BLAST_LIGHT_PEAK * brightest
   }
 
-  // NOTE: each bullet glows as a tracer over the floor's own drawing.
   private drawTracers(model: Model): void {
     Array.forEach(model.bullets, (bullet, index) => {
       const tracer = this.tracers[index] ?? this.newTracer()
       tracer.visible = true
-      // NOTE: on the floor, where the game draws the bullet: the 2D game's
-      // map already puts a shot at the gun's height.
       tracer.position.set(bullet.x * UNIT, TRACER_RADIUS, zOf(bullet.y))
     })
     for (
@@ -964,8 +805,6 @@ export class IsoScene {
       lift: GROUND_LIFT,
       isLit: false,
     })
-    // NOTE: the storm's picture shows only on its own quads, never on a
-    // plane over the whole level.
     const storm = new FloorPicture({ app, textures, level })
     const stormQuads = buildArtQuads({
       level,
@@ -1099,14 +938,10 @@ export class IsoScene {
     this.built = undefined
   }
 
-  // NOTE: whether the last frame drew with every sprite it asked for, so the
-  // splash can wait for a world that is all there.
   get isSettled(): boolean {
     return this.textures.isSettled
   }
 
-  // NOTE: a plinth's picture, or none before a level is built or while its
-  // sprite loads. It stands in the middle of the level's first open room.
   drawPlinth(
     pose: PlinthPose,
     options: Readonly<{ isStill: boolean }>,
@@ -1140,12 +975,6 @@ export class IsoScene {
   }
 }
 
-// NOTE: the renderer on a canvas in `host`, on WebGL2 everywhere. WebGPU
-// is left off: on an iPhone, Safari's WebGPU at times drew the manor with
-// red and blue swapped from its first frame (zombies, candles, furniture,
-// and the floating words all blue) until the page went away and came back
-// (owner, 2026-11-14), and every device the game supports has WebGL2. It never runs a ticker: the element draws each frame the
-// view hands it, and only then.
 export const createIsoScene = ({
   host,
   onLoaded,

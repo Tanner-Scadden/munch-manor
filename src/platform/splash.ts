@@ -2,10 +2,6 @@ import { Effect, Function, Option, Schedule, pipe } from 'effect'
 
 import { type BrowserError, toBrowserError } from '../shared/describeError'
 
-// NOTE: the splash is plain HTML and CSS in index.html, outside the Effect
-// UI root, so it paints before any script runs. These effects are its only
-// readers and writers, and run from Commands once the game reports progress.
-
 const SPLASH_ID = 'splash'
 const PROGRESS_PROPERTY = '--splash-progress'
 const GONE_CLASS = 'is-gone'
@@ -104,8 +100,6 @@ const decodeImage = (src: string) =>
     catch: toBrowserError,
   })
 
-// NOTE: an image that fails to decode still counts as done, so one bad
-// sprite never holds the game behind the splash.
 export const decodeImages = (
   sources: ReadonlyArray<string>,
 ): Effect.Effect<void> =>
@@ -121,8 +115,6 @@ export const loadFonts = Effect.asVoid(
   }),
 )
 
-// NOTE: a `load:<step>` performance mark as each load step finishes, which
-// tools/audit/splash.ts reads to time the steps behind the splash.
 export const markLoadStep = (step: string): Effect.Effect<void> =>
   Effect.ignore(
     Effect.try({

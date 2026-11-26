@@ -28,8 +28,6 @@ import { ZOMBIE_BLAST_TARGET } from '../step/combat'
 import { bodyRadiusOf, isFree, isGrounded, statsOf } from '../zombies/zombies'
 import { isInPuddle, puddleOf } from './soupPot'
 
-// OVENS
-
 type OvenRules = Readonly<{
   belchMs: number
   tickMs: number
@@ -73,8 +71,6 @@ const isOvenCorner =
 
 const ovenBoxesBuilt = new WeakMap<Level, ReadonlyArray<Box>>()
 
-// NOTE: each oven is a block of oven tiles on the map, in reading order. A
-// level keeps its list, so a frame only reads it.
 export const ovenBoxesOf = (level: Level): ReadonlyArray<Box> => {
   const cached = ovenBoxesBuilt.get(level)
   if (cached !== undefined) {
@@ -224,11 +220,6 @@ const heatUp = (oven: Oven, deltaMs: number): Heat =>
 
 const isIdle = Oven.isAnyOf(['Ready'])
 
-// NOTE: Array.makeBy makes at least one item, so the ticks due are picked
-// out of a full belch's ticks rather than made from their count.
-// A belch burns whatever stands in front of the oven once every tick,
-// so a zombie that walks into the flames late still gets singed, and one
-// that stands in them the whole time takes every tick.
 const tickOvens = (model: World, deltaMs: number): World => {
   if (Array.every(model.ovens, isIdle)) {
     return model
@@ -254,8 +245,6 @@ const tickOvens = (model: World, deltaMs: number): World => {
       ),
   )
 }
-
-// SOUP
 
 type SoupRules = Readonly<{
   slipMs: number
@@ -299,11 +288,6 @@ const slip = (zombie: Zombie, before: Vector): Zombie =>
     knockback: () => skidOf(zombie, before),
   })
 
-// NOTE: a zombie that steps onto spilled soup from dry floor loses its
-// footing: it skids on in the way it was walking and lies there dazed for a
-// moment. One that gets up in the soup walks out of it, so it never slips
-// forever. Big Lugs, Ankle Biters, and Uncle Chunk keep their feet. The
-// soup pot's fresh puddle (src/world/kitchen/soupPot.ts) is soup too.
 const slipOnSoup = (before: World, model: World): World => {
   const level = levelOf(model)
   const puddle = puddleOf(model)
@@ -350,8 +334,6 @@ const slipOnSoup = (before: World, model: World): World => {
   })
 }
 
-// NOTE: the player slides a little on soup: moving there builds up a skid
-// that carries on for a moment after the stick lets go.
 export const soupSkid: {
   (position: Vector, move: Vector, seconds: number): (level: Level) => Vector
   (level: Level, position: Vector, move: Vector, seconds: number): Vector
@@ -365,8 +347,6 @@ export const soupSkid: {
         }
       : { x: 0, y: 0 },
 )
-
-// FRAME
 
 export const advanceKitchen: {
   (model: World, deltaMs: number): (before: World) => World

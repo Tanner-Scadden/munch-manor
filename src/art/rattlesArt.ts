@@ -1,17 +1,7 @@
-// Rattles' pixel map, shared by the stall's sprite and the shop's portrait.
-
 import { glowingEyes } from './sprite'
-
-// MOOD
 
 export type Mood = 'Grinning' | 'Delighted' | 'Sad' | 'Shrugging'
 
-// LOOK
-
-// NOTE: Rattles is one pixel map: the stall draws it at the room's scale,
-// and the shop's portrait is the same map scaled up, cropped at his bow tie,
-// so the two never drift apart. A mood swaps only his eyes and mouth. His
-// green eyes glow in the dark (src/render/iso/voxels.ts).
 export const RATTLES_PALETTE: Readonly<Record<string, string>> = glowingEyes(
   {
     P: '#5b3f8c',
@@ -94,5 +84,4 @@ export const rattlesPixels = (face: RattlesFace): ReadonlyArray<string> => [
   ...RATTLES_SUIT,
 ]
 
-// NOTE: the portrait's rows: his hat down to the top of his suit.
 export const RATTLES_BUST_ROWS = RATTLES_HAT.length + 6

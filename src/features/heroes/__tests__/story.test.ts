@@ -8,12 +8,6 @@ import { defaultAppearance } from '../../../domain/clientSchema'
 import { HeroPicker, type HeroPickerProps } from '../block'
 import { Events, Message } from '../message'
 
-// The hero picker on its own: it holds no state, and each tap asks its
-// parent, which owns whether it is drawn, the hero tried on, and every rule.
-// The parents' sides are the solo lobby's
-// (src/features/lobby/__tests__/story.test.ts, heroBuy.story.test.ts) and
-// co-op's (src/features/coop/__tests__/lobbyEdits.story.test.ts).
-
 const PROPS: HeroPickerProps = {
   look: defaultAppearance,
   chosen: 'You',

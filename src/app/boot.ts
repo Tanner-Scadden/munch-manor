@@ -21,11 +21,6 @@ import { toBrowserError } from '../shared/describeError'
 import { Message } from './message'
 import { defaultAppearance } from './model'
 
-// NOTE: the Commands init starts, and only those. Every other Command sits
-// beside the update that returns it (AGENTS.md "Code shape").
-
-// COMMAND
-
 const UINT32_MAX = 0xffffffff
 
 export const GenerateSeed = Command.make('GenerateSeed', { args: {} }, () =>
@@ -36,11 +31,6 @@ export const GenerateSeed = Command.make('GenerateSeed', { args: {} }, () =>
 
 const COARSE_POINTER_QUERY = '(pointer: coarse)'
 
-// NOTE: `pointer` reads the primary pointer, so a touchscreen laptop (a
-// trackpad or mouse first) reads fine and keeps keyboard and mouse, while a
-// phone or a tablet reads coarse. Tablets once fell back to keyboard
-// controls by a screen size check, which left an iPad with no keyboard
-// unable to move. An iPad with a trackpad attached reads fine.
 const isTouchScreen = (): boolean =>
   window.matchMedia(COARSE_POINTER_QUERY).matches
 
@@ -66,11 +56,6 @@ const isInstalledApp = (): boolean =>
   window.matchMedia('(display-mode: standalone)').matches ||
   Reflect.get(navigator, 'standalone') === true
 
-// NOTE: no feature check tells whether a browser offers Add to Home Screen.
-// `navigator.standalone` exists only in Apple's WebKit, and every iPhone
-// browser runs on it and can add to the Home Screen from iOS 16.4, so its
-// presence is the narrowest honest check. Element full screen comes first, so
-// an iPad or an Android phone gets the full screen button instead.
 const canAddToHomeScreen = (): boolean =>
   Reflect.has(navigator, 'standalone') &&
   window.matchMedia(COARSE_POINTER_QUERY).matches
@@ -100,9 +85,6 @@ export const DetectScreenFit = Command.make(
     ),
 )
 
-// NOTE: screen.orientation.lock exists in Chromium on every device, but only
-// a phone or tablet can turn, and iPhones have no lock at all. WebKit's
-// navigator.standalone marks an Apple browser.
 const canLockOrientation = (): boolean =>
   Reflect.has(screen, 'orientation') &&
   typeof screen.orientation.lock === 'function' &&
@@ -128,9 +110,6 @@ export const DetectOrientationLock = Command.make(
     ),
 )
 
-// NOTE: `?local=2` to `?local=4` seats that many players at one keyboard,
-// for testing co-op offline (MULTIPLAYER.md, Phase 1). Dev builds only: a
-// shipped build always reads 1.
 const LOCAL_PLAYERS_PARAM = 'local'
 
 export const localPlayersIn = (search: string): number => {
@@ -201,9 +180,6 @@ export const AwaitFirstFrame = Command.make(
     ),
 )
 
-// NOTE: the world's renderer starts loading every sprite image on the
-// first frame (its `preload` list). This waits for that frame, then decodes the same sources, so
-// the splash stays up until the sprites are ready to draw.
 export const DecodeSprites = Command.make('DecodeSprites', { args: {} }, () =>
   pipe(
     awaitFirstFrame,
@@ -246,9 +222,6 @@ export const GenerateVisitId = Command.make(
     ),
 )
 
-// NOTE: run summaries that ended offline on an earlier visit are sent now, in
-// the background, spaced out, so the Command is done at once, and sends
-// nothing.
 export class StartSummaryQueue extends Command.Service<StartSummaryQueue>()(
   'app/StartSummaryQueue',
   { args: {}, success: Component.Noop },
@@ -267,10 +240,6 @@ export class StartSummaryQueue extends Command.Service<StartSummaryQueue>()(
   )
 }
 
-// NOTE: a device opened once with `?record=1` unlocks RECORD MY RUNS for
-// the player: the unlock goes into the save, which syncs it to every linked
-// device. A device that unlocked it before the unlock synced still holds
-// its own mark in the store, read here once more to carry it into the save.
 const RECORD_PARAM = 'record'
 
 const isRecordAsked: Effect.Effect<boolean> = Effect.orElseSucceed(
@@ -303,8 +272,6 @@ export class ReadRecordUnlock extends Command.Service<ReadRecordUnlock>()(
   )
 }
 
-// NOTE: recorded runs that ended offline are sent now, in the background,
-// like the summaries.
 export class StartRecordingQueue extends Command.Service<StartRecordingQueue>()(
   'app/StartRecordingQueue',
   { args: {}, success: Component.Noop },
@@ -323,10 +290,6 @@ export class StartRecordingQueue extends Command.Service<StartRecordingQueue>()(
   )
 }
 
-// BOOT
-
-// NOTE: a share sheet is there when the browser has navigator.share; only a
-// touch screen uses it (src/screens/game/menus.ts).
 export const DetectShareSheet = Command.make(
   'DetectShareSheet',
   { args: {} },
@@ -339,8 +302,6 @@ export const DetectShareSheet = Command.make(
     ),
 )
 
-// NOTE: every Command init starts, in this order. A new LoadStep joins
-// LOAD_STEPS with a Command here that loads it.
 export const bootCommands = () => [
   LoadSave.make(),
   GenerateSeed.make(),

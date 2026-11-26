@@ -1,7 +1,3 @@
-// Hit-stop: a tick's kills, hurts, and blasts freeze the world for a few
-// ticks, and the boss's fall slows it, so a hit lands. It is the World's: a
-// co-op room runs it too. The cosmetics a hit makes are in src/render/juice.ts.
-
 import { Array, Function } from 'effect'
 
 import { UiStruct } from '@effect/ui'
@@ -20,16 +16,11 @@ import {
 import type { World } from '../schema/world'
 import { GameEvent, HitStop } from '../schema/worldSchema'
 
-// HIT-STOP
-
 type Thaw = Readonly<{ hitStop: HitStop; worldMs: number }>
 
 const BOSS_SLOW_MOTION_MS = 1400
 const BOSS_SLOW_MOTION_RATE = 0.25
 
-// NOTE: hit-stop counts whole ticks. A frozen tick runs no world, and a
-// freeze lasts its length rounded to whole ticks. Slow motion runs one world
-// tick each time its scaled time adds up to a whole tick.
 export const thawTick: {
   (tickMs: number): (hitStop: HitStop) => Thaw
   (hitStop: HitStop, tickMs: number): Thaw
@@ -92,8 +83,6 @@ const triggerHitStop = (
           blasts > 0 && cooledMs <= 0 ? HIT_STOP_BLAST_MS : 0,
         ),
       )
-      // NOTE: a cooled hit-stop with nothing to freeze keeps its reference,
-      // so a quiet tick does not copy the World for it.
       if (freezeMs > 0) {
         return HitStop.Frozen({ remainingMs: freezeMs })
       }
@@ -103,8 +92,6 @@ const triggerHitStop = (
     },
   })
 
-// NOTE: the wave's last blow freezes the longest, whatever froze before it;
-// only the boss's slow motion outranks it.
 const clearingBlow = (hitStop: HitStop): HitStop =>
   HitStop.match(hitStop, {
     Running: () => HitStop.Frozen({ remainingMs: HIT_STOP_WAVE_CLEAR_MS }),
@@ -114,8 +101,6 @@ const clearingBlow = (hitStop: HitStop): HitStop =>
       }),
     Slowed: () => hitStop,
   })
-
-// HITS
 
 export const countWhere: {
   (
@@ -133,8 +118,6 @@ export const countWhere: {
   ): number => Array.filter(events, isMatch).length,
 )
 
-// NOTE: hit-stop is decided on each tick's own events, since it decides
-// how much world time the next ticks get.
 export const stopForHits: {
   (worldMs: number): (model: World) => World
   (model: World, worldMs: number): World

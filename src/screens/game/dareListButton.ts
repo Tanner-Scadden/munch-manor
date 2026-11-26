@@ -18,27 +18,13 @@ import { type Screen, screenOf } from '../../render/screen'
 import { percentOf } from '../../ui/menuParts'
 import { pocketOf } from './pocket'
 
-// NOTE: the HUD's dare list as a button (Demi and the owner, 2026-11-11):
-// a clear button over the pocket the canvas draws, shut or open, that
-// opens the dare card again with its satchel, and puts it away. It acts on
-// click, so a tap works with a thumb on a stick (src/input/touchTaps.ts),
-// and it never moves. Endless has no list, so no button; nor while
-// another card holds the round.
 const HIT_PAD = 2
 const TAP_PX = 48
 
-// NOTE: the corner's buttons end 54 px below the tap frame's top (6 px in
-// and 48 px tall, `.corner-buttons` in src/app/styles.css). The stage sits
-// centered in the frame, so in the stage that line is up by half the room
-// the frame has over the stage.
 const CORNER_BOTTOM = `calc(54px - (100cqh - var(--screen-h) * var(--hud-px)) / 2)`
 
 type Span = Readonly<{ top: string; height: string }>
 
-// NOTE: the button's height, never under a thumb's 48 px. On a phone on its
-// side it grows out from the list's middle. Upright, the list stands right
-// under the pause button, so the button starts at the list's top or the
-// corner's bottom, whichever is lower, and grows down from there.
 const verticalSpan = (
   layout: Screen['layout'],
   top: string,

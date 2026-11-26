@@ -11,11 +11,6 @@ import { seatLook } from '../../art/seatLooks'
 import { RoomRequest } from '../../domain/coopRoom'
 import { iconView } from '../../ui/menuParts'
 
-// NOTE: co-op's moving art, all of it aria-hidden pictures that move inside
-// boxes that stay put (src/app/__tests__/motion.test.ts): the request in flight, the
-// QUICK PLAY queue's rolling heads, and the dust where a player lands in a
-// seat or leaves it. The motion is the stylesheet's (src/features/coop/coop.css).
-
 const headView = (
   className: string,
   seat: number,
@@ -25,8 +20,6 @@ const headView = (
 
 const WALKERS = 3
 
-// NOTE: a new room: a door swings open and three heads hop to it and
-// through, one after another, and again until the room answers.
 const doorwayView = (h: ApplicationViewBuilder): ApplicationHtml =>
   h.span
     .class('coop-doorway')
@@ -43,8 +36,6 @@ const doorwayView = (h: ApplicationViewBuilder): ApplicationHtml =>
         ),
     )
 
-// NOTE: joining by code: the typed code's tiles light one after another as
-// if being checked, over the heads hopping in turn.
 const checkingView = (
   code: string,
   h: ApplicationViewBuilder,
@@ -99,9 +90,6 @@ export const askingView: {
     }),
 )
 
-// NOTE: an empty QUICK PLAY seat rolls through the four seat looks like a
-// slot machine, dimmed, while the queue looks for someone to fill it. The
-// strip ends on the look it starts with, so the loop has no seam.
 export const queueRollView = (h: ApplicationViewBuilder): ApplicationHtml =>
   h.span
     .class('coop-roll')
@@ -118,9 +106,6 @@ export const queueRollView = (h: ApplicationViewBuilder): ApplicationHtml =>
 
 type Poof = 'Arrive' | 'Leave'
 
-// NOTE: a puff of dust as a head lands in a seat (`Arrive`) or a seat empties
-// (`Leave`). A seat that is empty when the lobby first shows never puffs:
-// the seats' `--coop-settled` is 0 for their first moment (src/features/coop/coop.css).
 export const poofView: {
   (h: ApplicationViewBuilder): (kind: Poof) => ApplicationHtml
   (kind: Poof, h: ApplicationViewBuilder): ApplicationHtml

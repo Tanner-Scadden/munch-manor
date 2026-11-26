@@ -3,10 +3,6 @@ import { describe, expect, test } from 'vitest'
 
 import { canvasStepOf, isFrontWallAt, scaledStepOf } from '../space'
 
-// The house's walls in 3D (src/render/iso/space.ts): a wall with floor just
-// north of it is built low for good, so it never hides the room behind it
-// and never moves as the player walks by.
-
 const TILES: ReadonlyArray<string> = [
   ',,,,,,',
   '######',
@@ -42,9 +38,6 @@ describe('the walls', () => {
   })
 })
 
-// NOTE: two rooms side by side, each side wall with a doorway two rows tall
-// in it: the side wall under a doorway stays tall, so the two rooms' walls
-// meet at one height with no low stub.
 const SIDE_DOORS: ReadonlyArray<string> = [
   ',,,,,,,,',
   '########',
@@ -73,8 +66,6 @@ describe('a side wall with a doorway in it', () => {
   })
 })
 
-// NOTE: the world drawn at about one canvas pixel per CSS pixel, each game
-// pixel still a whole number of canvas pixels (src/render/iso/space.ts).
 describe('the canvas step', () => {
   test.each([
     { devicePerGamePixel: 6, ratio: 3, step: 3 },
@@ -95,10 +86,6 @@ describe('the canvas step', () => {
     },
   )
 
-  // NOTE: every ratio from 1 to 4 in eighths, every game pixel of 1 to 16
-  // device pixels: the step divides the game pixel, and at a ratio of 2 or
-  // more it is never 1 (a game pixel of 5 or 7 drew the world at the
-  // device's full resolution once).
   const ratios = Array.map(Array.range(8, 32), eighths => eighths / 8)
   const wholes = Array.range(1, 16)
   const pairs = Array.flatMap(ratios, ratio =>

@@ -26,11 +26,6 @@ import { type DareKind, DareThingState } from '../../../world/dare/dareSchema'
 import { BreakClock, Phase } from '../../../world/schema/worldSchema'
 import { type DarePocket, dareCardShapes, pocketBoxOf } from '../dareCard'
 
-// The dare pocket on the HUD (src/features/dare/dareCard.ts): shut through a
-// wave, a chip of the card and the count found; open in a break, one slot
-// per thing on the list, a silhouette until found, then in
-// color with a check.
-
 const LIST: ReadonlyArray<DareKind> = [
   'SilverSpoon',
   'FamilyPortrait',
@@ -50,7 +45,6 @@ const onTheHunt = (found: ReadonlyArray<DareKind>): Model =>
       })),
   })
 
-// NOTE: a break `msIn` ms in, its banner in the top band or the bottom one.
 const inBreak = (model: Model, msIn: number, band: Model['hintBand']): Model =>
   UiStruct.evolve(model, {
     phase: () =>
@@ -169,8 +163,6 @@ describe('the dare pocket', () => {
         }),
       ),
     ).toBe('Shut')
-    // NOTE: the card from the pocket folding opens it, a banner or not, so
-    // each picture flies into its own slot.
     expect(
       pocketOf(
         UiStruct.evolve(inBreak(hunting, 0, 'Top'), {
@@ -191,8 +183,6 @@ describe('the dare pocket', () => {
         expect(box.right).toBeLessThanOrEqual(screen.width)
         expect(box.top).toBeGreaterThanOrEqual(0)
       })
-      // NOTE: shut, in the top strip in landscape and in the band in
-      // portrait; open in portrait, under the band.
       const shutBottom =
         screen.layout === 'Landscape' ? HUD_STRIP_HEIGHT : screen.world.y
       expect(shut.bottom).toBeLessThanOrEqual(shutBottom)

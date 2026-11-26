@@ -87,31 +87,11 @@ import {
   writeWorldDiff,
 } from './worldCodec'
 
-// The game's World in a co-op room (MULTIPLAYER.md, Phase 2): the netcode
-// `World` (packages/netcode, World.ts) over `stepWorld`. The room seats
-// the lobby's players in a fresh run, turns each player's PlayerInput into
-// their intent and their presses into seat actions, and steps the World
-// 60 times a second; the wire is the binary codec in src/world/net/worldCodec.ts,
-// with the tick's events beside each diff. A client reads it back,
-// interpolates everyone else between two messages, and predicts its own
-// player's walk from its own input.
-//
-// This module is what a room runs, so it imports no UI, art, camera,
-// input, or store: `bun run world:check` bundles it and fails otherwise.
-
-// NOTE: a room's World: the game's World, the room's tick, and the events
-// of the last ticks by tick, so a diff carries every event since the one
-// before it. `pressed` is the room's memory of each player's last action,
-// to see a new press; a client's copy keeps it empty.
 type TickEvents = Readonly<{
   tick: number
   events: ReadonlyArray<GameEvent>
 }>
 
-// NOTE: `history` is where the zombies stood after each of the last
-// MAX_VIEW_LAG_TICKS ticks, newest last, for checking a lagging player's
-// shots against what they saw; it is the room's alone and never goes on
-// the wire, so a client's copy keeps it empty.
 type TickPositions = Readonly<{
   tick: number
   zombies: ReadonlyArray<ZombieAt>
@@ -125,18 +105,8 @@ export type RoomWorld = Readonly<{
   history: ReadonlyArray<TickPositions>
 }>
 
-// NOTE: your own part of the World, for prediction: your slot and player.
 export type OwnSeat = Readonly<{ slot: PlayerSlot; player: Player }>
 
-// NOTE: `modifiers` is the host's pick (src/world/run/modifiers.ts), and
-// `easyBreakSeconds` Dare's break clock, 0 for none, and `dareMark` the
-// dare ladder's mark (src/world/run/dareLadder.ts), 0 for none, which the
-// room holds to the host's own best as the run starts. `callings` is what
-// each seat brings, by slot (the lobby's members, Lobby.ts); a slot with none
-// plays YOU. `intro` is the cut the run opens on (introForRound). `things`
-// are the dare things the host's milestones open (thingsOpenedBy in
-// src/world/dare/milestones.ts), which the room reads from the host's own
-// scope as the run starts, as it reads their Nightmare unlock.
 export type RoomSettings = Readonly<{
   difficulty: Difficulty
   modifiers: Modifiers
@@ -148,8 +118,6 @@ export type RoomSettings = Readonly<{
   things: ReadonlyArray<DareKind>
 }>
 
-// NOTE: what the lobby picked (packages/netcode, Lobby.ts) as the run's
-// settings. KeepGoing, left from rooms before the escape, plays endless.
 export const roomSettingsOf: {
   (
     difficulty: RoomDifficulty,
@@ -167,7 +135,6 @@ export const roomSettingsOf: {
     dareMark?: number,
   ): RoomSettings
 } = Function.dual(
-  // NOTE: data-first has the difficulty second; data-last has the members there or nothing.
   (args: IArguments): boolean => typeof args[1] === 'string',
   (
     mode: RoomMode,
@@ -196,11 +163,6 @@ export const roomSettingsOf: {
   }),
 )
 
-// NOTE: the intro a room plays (src/world/run/arrival.ts): the whole drive
-// up on a room's first run when anyone in the crew has not watched it yet
-// (each lobby member's `hasSeenIntro`, from their save), else the knock and
-// the slam. Every run after the first (PLAY AGAIN) is short, so a crew's
-// rematch stays quick.
 export const introForRound: {
   (
     crew: ReadonlyArray<Readonly<{ hasSeenIntro: boolean }>>,
@@ -220,23 +182,10 @@ export const introForRound: {
       : 'Short',
 )
 
-// NOTE: the furthest back a shot is checked, 250 ms; the room caps each
-// player's view lag at the same (packages/netcode, World.ts), which this
-// module may not import at run time (`bun run world:check`).
 const MAX_VIEW_LAG_TICKS = 15
 
-// NOTE: events older than this many ticks are dropped from the room's
-// copy; a diff goes out every 3 ticks.
 const EVENT_TICKS = 60
 
-// INPUT
-
-// NOTE: a PlayerInput as the room reads it (packages/netcode, Protocol.ts):
-// move as whole 127ths, aim as a direction scaled to AIM_REACH and kept to
-// eighths (the wire's precision), the trigger as button bit FIRE_BUTTON,
-// the interact hold (src/world/shop/purchase.ts) as bit INTERACT_BUTTON, and a press
-// as `action`. Bit 4 held the knife until protocol version 11; the knife is
-// now drawn by a press (Knife) and stabs on the trigger, so it is unused.
 export const MOVE_SCALE = 127
 export const AIM_REACH = 1024
 export const FIRE_BUTTON = 1
@@ -280,17 +229,10 @@ export const intentOfInput = (input: PlayerInput): Intent => ({
   interact: (input.buttons & INTERACT_BUTTON) !== 0 ? 'Held' : 'Released',
 })
 
-// ACTIONS
-
-// NOTE: a press rides in the input's 16-bit `action` as a held value, so it
-// survives the room's one-input-per-tick rule: 12 bits name the action and
-// 4 bits count presses, so the same press twice in a row is still a change.
-// The room applies an action on the tick its value changes.
 const ACTION_BITS = 12
 const ACTION_SPAN = 2 ** ACTION_BITS
 const PRESS_COUNTS = 15
 
-// NOTE: the actions with no fields, in their wire codes' order (1 up).
 const SIMPLE_ACTIONS: ReadonlyArray<SeatAction> = [
   SeatAction.Swap(),
   SeatAction.Reload(),
@@ -300,16 +242,12 @@ const SIMPLE_ACTIONS: ReadonlyArray<SeatAction> = [
   SeatAction.Melee(),
 ]
 
-// NOTE: drawing a gun by its slot follows the simple actions' codes.
 const DRAW_BASE = SIMPLE_ACTIONS.length + 1
 const DRAW_SLOTS = GunSlot.literals
 
 const drawCode = (slot: GunSlot): number =>
   DRAW_BASE + (slot === 'First' ? 0 : 1)
 
-// NOTE: MEDIC! from a downed player (protocol version 19) follows the
-// draws. Protocol 20 dropped the ammo window's tap, the shop's buys, and
-// leaving its counter (docs/ESCAPE_PLAN.md, layers 2 and 7).
 const MEDIC_CODE = DRAW_BASE + DRAW_SLOTS.length
 
 const simpleCode = (tag: SeatAction['_tag']): number =>
@@ -330,7 +268,6 @@ export const actionCodeOf = (action: SeatAction): number =>
     CallMedic: () => MEDIC_CODE,
   })
 
-// NOTE: the held value for the `press`th press of an action: never zero.
 export const heldAction: {
   (press: number): (code: number) => number
   (code: number, press: number): number
@@ -359,10 +296,6 @@ export const seatActionOf: {
   },
 )
 
-// START
-
-// NOTE: a fresh run's World with nobody seated yet, as single player's run
-// reset starts one, with single player's gates settled.
 const freshWorld = (seed: number, settings: RoomSettings): World => ({
   phase: Phase.Ready(),
   pacing: calmPacing,
@@ -408,8 +341,6 @@ const freshWorld = (seed: number, settings: RoomSettings): World => ({
 const seatAt = (slot: PlayerSlot): Seat =>
   UiStruct.evolve(soloSeat, { slot: () => slot })
 
-// NOTE: the lobby's players by their room slots. Even one player plays as
-// a crew of one, by co-op's rules: no world pause, READY for the break.
 const seatSlots = (world: World, slots: ReadonlyArray<PlayerSlot>): World => {
   const ordered = Array.sort(Array.dedupe(slots), (a: number, b: number) =>
     a < b ? -1 : a > b ? 1 : 0,
@@ -430,8 +361,6 @@ const seatSlots = (world: World, slots: ReadonlyArray<PlayerSlot>): World => {
   })
 }
 
-// NOTE: each seat starts as its calling makes it, hearts and gun (the same
-// `seatedAs` single player's run reset uses); a slot with no calling plays YOU.
 const seatCallings = (
   world: World,
   callings: RoomSettings['callings'],
@@ -478,31 +407,21 @@ export const startRoomWorld: {
   }),
 )
 
-// NOTE: a room past its intro, in its first break, as the slam leaves it,
-// for a tool or a test that starts a room already playing.
 export const pastArrival = (room: RoomWorld): RoomWorld => ({
   ...room,
   world: endArrival(room.world),
 })
 
-// THE ESCAPE
-
-// NOTE: a won run is an escape: the crew out through the front door. Nobody
-// goes back in after it (docs/ESCAPE_PLAN.md): Endless is its own pick.
 const isWonRun = (world: World): boolean =>
   Phase.isAnyOf(['Escaped'])(world.phase) &&
   RunMode.isAnyOf(['Campaign'])(world.mode)
 
-// NOTE: how the room closes a run over: an escape won, a crew out the
-// kitchen's back door left early, and anything else lost.
 const endReasonOf = (world: World): RunEndReason =>
   isWonRun(world)
     ? 'Won'
     : Phase.isAnyOf(['LeftEarly'])(world.phase)
       ? 'LeftEarly'
       : 'GameOver'
-
-// STEP
 
 const syncPresence = (world: World, tick: PlayerTick): World =>
   presenceOf(world, tick.slot) === tick.presence
@@ -526,8 +445,6 @@ const pressOf = (room: RoomWorld, world: World, tick: PlayerTick): World =>
       })
     : world
 
-// NOTE: each seat's bite grace from its round trip (src/world/party/party.ts), set
-// only when it changes.
 const syncGrace = (world: World, tick: PlayerTick): World => {
   const graceMs = biteGraceFor(tick.rttMs)
   return Option.exists(
@@ -547,9 +464,6 @@ const isOwnGunShot =
     bullet.shooter === slot &&
     bullet.weapon !== TURRET_WEAPON
 
-// NOTE: favor the shooter: each player's shots of this tick fly the ticks
-// they were behind, against where the zombies stood then (src/world/step/simulation.ts,
-// catchUpShots), capped at MAX_VIEW_LAG_TICKS.
 const catchUp = (
   room: RoomWorld,
   world: World,
@@ -621,8 +535,6 @@ export const stepRoomWorld: {
   },
 )
 
-// THE WIRE
-
 export const writeRoomSnapshot: {
   (room: RoomWorld): (writer: Writer) => void
   (writer: Writer, room: RoomWorld): void
@@ -686,10 +598,6 @@ export const readRoomDiff: {
   return { tick, world, events, pressed: [], history: [] }
 })
 
-// INTERPOLATION
-
-// NOTE: something that moved further than this between two messages was
-// thrown, respawned, or swapped, so it is shown where it is.
 const TELEPORT_PX = 64
 
 type Placed = Readonly<{ x: number; y: number }>
@@ -731,8 +639,6 @@ const interpolateWorld = (from: World, to: World, t: number): World =>
     seats: () => lerpSeats(from, to, t),
   })
 
-// OWN PLAYER
-
 const ownOf = (room: RoomWorld, slot: PlayerSlot): Option.Option<OwnSeat> =>
   Option.map(maybePlayerAt(room.world, slot), ({ player }) => ({
     slot,
@@ -748,10 +654,6 @@ const putOwn = (
   world: modifySeat(room.world, slot, { player: () => own.player }),
 })
 
-// NOTE: one predicted tick of your own player from your own input, against
-// the newest World the room sent: its walls, traps, and boosts. It walks,
-// reloads, and pulls the trigger, so the shot's cooldown, recoil, and ammo
-// are predicted too; the room's answer replaces them on the next message.
 export const predictOwn: {
   (input: PlayerInput, room: RoomWorld): (own: OwnSeat) => OwnSeat
   (own: OwnSeat, input: PlayerInput, room: RoomWorld): OwnSeat
@@ -788,8 +690,6 @@ const blendOwn = (from: OwnSeat, to: OwnSeat, t: number): OwnSeat => ({
   },
 })
 
-// THE ROOM'S WORLD
-
 const isRunOver = (world: World): boolean =>
   Phase.isAnyOf(['GameOver', 'LeftEarly', 'Escaped'])(world.phase)
 
@@ -810,8 +710,6 @@ export const DEFAULT_ROOM_SETTINGS: RoomSettings = {
   things: [],
 }
 
-// NOTE: the room's World for one run: a fresh run with the lobby's
-// settings.
 export const roomWorldFor = (
   settings: RoomSettings,
 ): RoomWorldOf<RoomWorld, OwnSeat> => ({
@@ -842,12 +740,8 @@ export const roomWorldFor = (
   },
 })
 
-// NOTE: the room's World with the lobby's first settings, as the client
-// names it (src/domain/coopRoom.ts), the dev page plays it, and tests step it.
 export const ROOM_WORLD = roomWorldFor(DEFAULT_ROOM_SETTINGS)
 
-// NOTE: the World a client draws itself in: its own seat first (src/world/party/party.ts,
-// focusSeat), so `focusOf` is its own player.
 export const ownWorldOf: {
   (slot: PlayerSlot): (room: RoomWorld) => World
   (room: RoomWorld, slot: PlayerSlot): World
@@ -855,8 +749,6 @@ export const ownWorldOf: {
   focusSeat(room.world, slot),
 )
 
-// NOTE: the events of the ticks after `afterTick` up to `untilTick`, oldest
-// first, from every message a client holds.
 export const eventsBetween: {
   (
     afterTick: number,

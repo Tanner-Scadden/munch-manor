@@ -65,14 +65,6 @@ import {
 } from '../../world/shop/purchase'
 import { clamp } from '../../world/step/geometry'
 
-// NOTE: a purchasable says what it costs without a word: a dark tag with
-// the coin and the price hangs off a nail. Walk up and it brightens, with a
-// keycap (or a pointing finger on touch) beside it; hold and a gold ring
-// fills around it; a press the wallet cannot cover shakes it red with the
-// shortfall under it. Nothing covers the fight and the camera stays put.
-
-// THE TAG
-
 const TAG_PAD = 2
 const RING_STEPS = 24
 const RING_GAP = 2
@@ -100,8 +92,6 @@ type PriceTag = Readonly<{
   rings: Array.NonEmptyReadonlyArray<Sprite>
 }>
 
-// NOTE: a tag can lead with a small picture of what it sells, such as the
-// stove's perk.
 type TagIcon = Readonly<{ sprite: Sprite; width: number }>
 
 const ICON_GAP = 2
@@ -129,8 +119,6 @@ const ringSprite = (pixels: ReadonlyArray<RingPixel>, filled: number): Sprite =>
     ),
   )
 
-// NOTE: built once per tag, as the module loads, so every tag is an image
-// from the atlas.
 const makeTag = (content: Sprite, width: number, height: number): PriceTag => {
   const pixels = ringPixels(Math.ceil(width / 2) + RING_GAP)
   return {
@@ -172,11 +160,6 @@ const bakeTag = (
   )
 }
 
-// NOTE: a prize already paid for (the fridge's weapon on offer, or a
-// display case opened for the player) says what it gives with no word: an
-// open hand beside the prize's own icon, small, so the tag never hides the
-// prize itself (the owner, 2026-11-10: "I can't even tell what item I am
-// getting").
 const TAKE_PAD = 2
 
 const takeTag = (item: Sprite): PriceTag => {
@@ -220,8 +203,6 @@ const CASE_TAKE_TAGS: Readonly<Record<CasePrize, PriceTag>> = Record.map(
   item => takeTag(item),
 )
 
-// NOTE: what a take gives: the fridge's weapon on offer, or the prize in
-// the opened case. The tag here and the touch hold button both show it.
 type TakenPrize =
   | Readonly<{ _tag: 'FromFridge'; prize: FridgePrize }>
   | Readonly<{ _tag: 'FromCase'; prize: CasePrize }>
@@ -251,7 +232,6 @@ const maybeTakenPrize = (
       ),
   })
 
-// NOTE: the icon of what a take at `target` gives, if it is one.
 export const maybeTakenIcon: {
   (target: Purchasable): (model: Model) => Option.Option<Sprite>
   (model: Model, target: Purchasable): Option.Option<Sprite>
@@ -274,9 +254,6 @@ const takeTagAt = (model: Model, target: Purchasable): PriceTag =>
         : CASE_TAKE_TAGS[taken.prize],
   })
 
-// NOTE: a boarded exit wears a padlock with the keys it asks
-// (src/world/level/exits.ts): one price each for the kitchen, a room off
-// the dining room, and the far room, each baked once here.
 const PADLOCK_WIDTH = 7
 
 const padlockTag = (keys: number): PriceTag =>
@@ -307,21 +284,14 @@ const exitTagOf = (keys: number): PriceTag =>
 
 const FRIDGE_TAG = bakePriceTag(FRIDGE_RULES.keys)
 
-// NOTE: the kitchen tour gives the boards and the first pull away
-// (src/world/run/tutorialRules.ts), so their tags say FREE.
 const FREE_TAG = bakeTag(bakeText('FREE', 'Title'))
 
-// NOTE: the stove and the valve are earned by feats, not bought
-// (src/world/feats/feats.ts), so their tags say GO beside what they give:
-// the stove's perk this break, or the valve's flame.
 const goTag = (icon: Sprite): PriceTag =>
   bakeTag(
     bakeText('GO', 'Prompt'),
     Option.some({ sprite: icon, width: PERK_ICON_SIZE }),
   )
 
-// NOTE: the stove's tag shows the gun in hand wearing this break's perk,
-// so GO reads as "cook your gun".
 const cookTag = (perk: GunPerk): PriceTag =>
   bakeTag(
     bakeText('GO', 'Prompt'),
@@ -342,7 +312,6 @@ const stoveTagOf = (model: Model): PriceTag =>
 
 const VALVE_TAG = goTag(FLAME_ICON)
 
-// NOTE: the back door's tag is a chicken and OUT: what leaving makes you.
 const BACK_DOOR_TAG = bakeTag(
   bakeText('OUT', 'Prompt'),
   Option.some({ sprite: CHICKEN_ICON, width: CHICKEN_ICON_SIZE }),
@@ -358,8 +327,6 @@ const tagOf = (model: Model, offer: Offer): PriceTag =>
     Case: () => takeTagAt(model, offer.target),
     BackDoor: () => BACK_DOOR_TAG,
   })
-
-// THE PROMPT
 
 const KEYCAP: Sprite = spriteShapes(
   [
@@ -411,8 +378,6 @@ const promptShapes = (
     ),
   ]
 }
-
-// THE HOLD
 
 const SHAKE_PX = 2
 const SHAKE_PERIOD_MS = 40
@@ -467,10 +432,6 @@ const refusedShapes = (
         ),
       ]
 
-// NOTE: the stove cooks only a gun Rattles sells, so a press there with
-// the knife, the Pan, or a fridge weapon in hand shakes the tag with a red
-// cross beside it, and no price.
-// The back door with nothing on the list found shakes the same way.
 const isUncooked = (offer: Offer, sinceMs: number): boolean =>
   Purchasable.isAnyOf(['Stove', 'BackDoor'])(offer.target) &&
   offer.isFull &&
@@ -489,19 +450,10 @@ const uncookedShapes = (
   ),
 ]
 
-// NOTE: a weapon on offer fills the fridge's door (src/features/fridge/fridgeRevealView.ts),
-// so its take tag hangs beside the fridge instead of over it.
 const PRIZE_TAG_GAP = 4
 
-// NOTE: a display case's prize floats up out of the case once it opens
-// (src/features/cases/caseView.ts), so its tag hangs over the case's top,
-// clear of the prize.
 const CASE_TAG_GAP = 3
 
-// NOTE: boards in a side wall stand in a narrow doorway with a display
-// case's feat lock close by (the dining room's west case, 2026-11-10
-// playtest), so their tag hangs just above the boards, tucked in from the
-// wall so it stays on the screen, and never over the lock.
 const SIDE_TAG_GAP = 1
 
 const isSideBoards = ({ box }: Offer): boolean =>
@@ -548,9 +500,6 @@ const placedOffer = (model: Model, offer: Offer, tag: PriceTag): Offer =>
     }),
   })
 
-// NOTE: what taking a prize gives up hangs under the take tag, crossed
-// out: for the Clang Pan the knife, whose slot it takes; for a gun-slot
-// prize with both gun slots full, the gun in the player's hands.
 const CROSS: Sprite = spriteShapes(
   [
     'r.......r',
@@ -570,8 +519,6 @@ const CROSS_HALF = 4
 
 const REPLACED_DROP_PX = 7
 
-// NOTE: the knife lying flat on the plate, dark steel so it reads on the
-// pale plate, for a Clang Pan that would take its slot.
 export const REPLACED_KNIFE: Sprite = spriteShapes(
   ['....XXXXX..', 'RRRoXXXXXXX', '....XXXX...'],
   { X: '#5d6672', R: '#a8302a', o: '#140c10' },
@@ -615,8 +562,6 @@ const replacedShapes = (
       })
     : []
 
-// NOTE: in a crew the back door counts who stands at it under its tag,
-// 1/3, gold once everyone is there: the hold fills only then.
 const crewCountShapes = (
   model: Model,
   offer: Offer,
@@ -684,10 +629,6 @@ const offerShapes = ({
   return [...shapes, ...replaced]
 }
 
-// NOTE: what a tag covers in the game's pixels round its placed spot: the
-// tag with its edge and nail, and room on its right for the keycap (or the
-// finger) that comes as the player walks up, so a tag pinned to an edge
-// never jumps when it lights.
 const NAIL_RISE = 5
 const PROMPT_WIDTH = 10
 
@@ -698,16 +639,8 @@ const tagBoxOf = (offer: Offer, tag: PriceTag): Keepout => ({
   bottom: offer.spot.y + tag.height + 1,
 })
 
-// NOTE: a tag pinned to the window's edge stays whole inside the window,
-// clear of the HUD strip's rows in landscape and of the gun slots, and
-// moves up or down off the HUD's buttons and panels (`keepouts`, as
-// Rattles' bubbles do). A tag wholly out of the window is not drawn: a
-// zoomed phone window can stop short of the boards or the fridge, and the
-// overlay has no edge of its own over the portrait HUD band or the thumbs.
 const EDGE_GAP = 2
 
-// NOTE: a tag as it is drawn: its offer placed, its tag, how far it moves
-// to stay whole and clear, and what it then covers on the screen.
 type PinnedTag = Readonly<{
   unplaced: Offer
   offer: Offer
@@ -716,7 +649,6 @@ type PinnedTag = Readonly<{
   covers: Keepout
 }>
 
-// NOTE: the window and its clear part are read once a frame, not per tag.
 const maybePinnedTag = (
   model: Model,
   camera: Camera,
@@ -794,8 +726,6 @@ const pinnedTagShapes = (model: Model, camera: Camera) => {
   }
 }
 
-// NOTE: what the tags cover on the screen as they are drawn, for Rattles'
-// bubbles to keep out of, so a hint never hides a price.
 export const tagKeepoutsOf: {
   (
     camera: Camera,
@@ -816,12 +746,8 @@ export const tagKeepoutsOf: {
     Array.map(pinnedTagsOf(model, camera, keepouts), ({ covers }) => covers),
 )
 
-// NOTE: the stove and the valve, until the player has done their feats,
-// hang a feat's lock (src/render/featLockView.ts) where their tag will.
 const LOCK_DROP_PX = 6
 
-// NOTE: a lock moves up or down off the HUD and a banner's rows
-// (`keepouts`), as a tag does, so WAVE CLEARED never prints over its count.
 const lockShapes = (
   model: Model,
   camera: Camera,
@@ -865,11 +791,6 @@ const lockShapes = (
   )
 }
 
-// NOTE: drawn on the overlay, over the actors and the HUD strip, each tag
-// placed on its spot through the lens by the screen camera, so a tag is
-// never lost behind a zombie at the boards or dimmed by the strip it hangs
-// under. `keepouts` are the HUD's buttons and panels it stays off
-// (src/screens/game/pocket.ts).
 export const purchaseOverlayShapes: {
   (
     camera: Camera,

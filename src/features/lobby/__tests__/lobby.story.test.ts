@@ -29,9 +29,6 @@ import { focusOf } from '../../../world/party/party'
 import { LobbyMessage } from '../message'
 import { focusesPlay } from './lobby.fixture'
 
-// The single player lobby (src/features/lobby/lobby.ts, src/features/lobby/update.ts): PLAY opens
-// it, START plays what it holds, and BACK and Esc go home.
-
 describe('PLAY opens the lobby', () => {
   it.effect('a tap on PLAY opens it, focuses START, and starts no run', () =>
     Effect.gen(function* () {

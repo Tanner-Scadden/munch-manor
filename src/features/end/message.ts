@@ -2,8 +2,6 @@ import { UiSchema } from '@effect/ui'
 
 import { ShareOutcome, ShareSheet } from './share'
 
-// NOTE: the end of a run: the end card's buttons and SHARE. Their handlers
-// are in src/app/update/end.ts.
 export const endCases = {
   ClickedRetryButton: {},
   ClickedShareButton: {},

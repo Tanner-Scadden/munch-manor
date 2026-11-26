@@ -4,23 +4,13 @@ import type { Zombie } from '../schema/worldSchema'
 import { type Grid, buildGrid } from '../step/grid'
 import { ZOMBIE_KINDS, bodyRadiusOf, isGrounded, statsOf } from './zombies'
 
-// NOTE: the widest any two zombie bodies, or a zombie and a bullet, reach
-// from each other is the largest body radius of any kind (the boss's) twice.
-// A cell that side means a query of that reach touches at most a 3 by 3 block.
 export const MAX_BODY_RADIUS_PX = Math.max(
   ...Array.map(Record.values(ZOMBIE_KINDS), ({ bodyRadius }) => bodyRadius),
 )
 
-// NOTE: the grid of the zombies that bullets, bursts, and the crowd can reach,
-// built fresh for one step.
 export const groundedGrid = (zombies: ReadonlyArray<Zombie>): Grid =>
   buildGrid(zombies, isGrounded, 2 * MAX_BODY_RADIUS_PX)
 
-// NOTE: what the crowd's inner loops read of each zombie, by its index in the
-// list, laid out in typed arrays for one step: where it stands, how big its
-// body is, how heavy, and which it is. The zombies stay the objects they are;
-// these are read off them once, so a loop over neighbors touches no object and
-// allocates nothing. Like the grid, they are made for one step and dropped.
 export type ZombieColumns = Readonly<{
   grid: Grid
   xs: Float64Array
@@ -49,9 +39,6 @@ export const groundedColumns = (
       ids[index] = zombie.id
     }
   }
-  // NOTE: cells as wide as the widest body, not twice it: a crowd's query
-  // reaches its own radius and the widest, so finer cells hand it about half
-  // the candidates to test.
   return {
     grid: buildGrid(zombies, isGrounded, MAX_BODY_RADIUS_PX),
     xs,

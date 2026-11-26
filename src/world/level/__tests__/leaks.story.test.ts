@@ -22,10 +22,6 @@ import { distanceBetween } from '../../step/geometry'
 import { levelOf } from '../arena'
 import { WADE_PACE, leaksOf } from '../leaks'
 
-// Wading through a roof leak's puddle (src/world/level/leaks.ts): a player's
-// or a zombie's feet in the water walk at WADE_PACE, the same steps on dry
-// floor beside it at full pace.
-
 const FRAME_MS = FIXED_STEP_MS
 const STEPS = 8
 
@@ -35,18 +31,12 @@ const middle = Option.getOrThrow(
   Array.get(leak.rows, Math.floor(leak.rows.length / 2)),
 )
 
-// NOTE: a body whose feet stand on the puddle's middle row at its west
-// edge, so walking east keeps them in the water for the whole stretch; and
-// the same spot a step north of the puddle's far row, on dry floor.
 const wet = { x: middle.left + 0.5, y: middle.y - PLAYER_FOOT_OFFSET + 0.5 }
 const dry = {
   x: wet.x,
   y: Array.headNonEmpty(leak.rows).y - PLAYER_FOOT_OFFSET - 4.5,
 }
 
-// NOTE: a step west of the water on the same row, so walking east wades
-// in; long enough to reach the second puff of the walk, the first being
-// dust on the dry floor.
 const shore = { x: middle.left - 4.5, y: wet.y }
 const SPLASH_STEPS = 12
 
@@ -60,8 +50,6 @@ const playerWalked = (at: Readonly<{ x: number; y: number }>) =>
     Effect.map(model => distanceBetween(focusOf(model).player, at)),
   )
 
-// NOTE: one Groaner at the spot, the player well east of it on its row, so
-// it walks east toward them.
 const zombieAt = (at: Readonly<{ x: number; y: number }>): Model =>
   modifyFocus(
     UiStruct.evolve(wave, {

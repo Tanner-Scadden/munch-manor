@@ -1,20 +1,10 @@
 import { Effect, Function, Option, Stream } from 'effect'
 import { TestClock } from 'effect/testing'
 
-// TESTING
-
-// NOTE: for tests that run sync on the TestClock `it.effect` provides, where
-// the heartbeat, the silence watchdog, the resend timer, the backoff, and the
-// follower poll move only when the test moves time. A loaded machine then
-// cannot make a server look quiet and drop a session halfway through a test.
-
 const STEP = '10 millis'
 const TURNS_PER_STEP = 20
 const LIMIT = '30 seconds'
 
-// NOTE: hands the other fibers turns and moves the TestClock a step, so a
-// backoff or a poll in the way of a wait still elapses. It never ends: settle
-// interrupts it once the wait is over.
 const driveClock: Effect.Effect<never> = Effect.forever(
   Effect.andThen(
     Effect.repeat(Effect.yieldNow, { times: TURNS_PER_STEP - 1 }),
@@ -22,9 +12,6 @@ const driveClock: Effect.Effect<never> = Effect.forever(
   ),
 )
 
-// NOTE: waits for an event, not for time, while driveClock runs beside it.
-// The limit is on the TestClock too, so a wait that never ends fails after 30
-// seconds of test clock, not of real time.
 export const settle = <A, E, R>(
   wait: Effect.Effect<A, E, R>,
 ): Effect.Effect<A, E, R> =>
@@ -37,8 +24,6 @@ export const settle = <A, E, R>(
     driveClock,
   )
 
-// NOTE: the first value a stream shows that passes, waited for with settle.
-// The status streams start with the current value, so nothing is missed.
 export const first: {
   <A, E, R>(
     isDone: (value: A) => boolean,

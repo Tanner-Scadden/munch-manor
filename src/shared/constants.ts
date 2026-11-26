@@ -1,10 +1,6 @@
 export const VIEW_WIDTH = 320
 export const VIEW_HEIGHT = 180
 
-// NOTE: the aim lean's cap, in world pixels; the share of the cursor's
-// distance from the window's middle the mouse leans by; and how fast the
-// lean eases, per second: quick toward an aim, slow back home once the aim
-// is let go, so a lifted thumb does not swing the view (src/render/camera.ts).
 export const CAMERA_LEAN_PX = 28
 export const MOUSE_LEAN_SHARE = 0.2
 export const CAMERA_LEAN_RATE = 6
@@ -12,16 +8,10 @@ export const CAMERA_LEAN_RETURN_RATE = 3
 
 export const MS_PER_SECOND = 1000
 export const MAX_FRAME_DELTA_MS = 50
-// NOTE: the world steps in whole 60 Hz ticks whatever the display's rate, so
-// a 120 Hz phone, a 60 Hz laptop, and the co-op room play the same ticks.
-// A frame's time goes into a carry, and each whole tick in it is stepped.
 export const FIXED_STEP_MS = 1000 / 60
-// NOTE: float sums of frame times can land a hair under a whole tick.
 export const STEP_EPSILON_MS = 1e-6
 
 export const PLAYER_RADIUS = 4
-// NOTE: how far a zombie's body may sink into the player's. It stays above
-// zero so a zombie held at the edge still overlaps the player and bites.
 export const CONTACT_ALLOWANCE_PX = 1
 export const PLAYER_SPEED = 72
 export const PLAYER_MAX_HP = 5
@@ -35,8 +25,6 @@ export const PLAYER_RECOIL_MS = 90
 export const FIRE_INTERVAL_MS = 150
 export const PISTOL_MAGAZINE = 14
 export const PISTOL_RELOAD_MS = 800
-// NOTE: below Hard, a gun with room in its magazine reloads by itself once
-// the trigger has rested this long with it in hand (src/world/step/firing.ts).
 export const IDLE_RELOAD_MS = 1_500
 export const BULLET_SPEED = 240
 export const BULLET_RADIUS = 1.5
@@ -47,9 +35,6 @@ export const ZOMBIE_RADIUS = 4
 export const ZOMBIE_SPEED_MIN = 16
 export const ZOMBIE_SPEED_MAX = 28
 export const ZOMBIE_SPAWN_MARGIN = 10
-// NOTE: the least a zombie walks while it is still outside the room, where
-// nothing is drawn, so even a Big Lug is in its doorway a beat after its
-// door's warning ends instead of most of a second later.
 export const ZOMBIE_ENTRY_SPEED = 50
 export const SCORE_PER_ZOMBIE = 10
 export const ZOMBIE_MAX_HP = 3
@@ -73,10 +58,7 @@ export const SEPARATION_SPEED = 40
 
 export const FIRST_PREPARATION_MS = 6000
 export const PREPARATION_MS = 20000
-// NOTE: the break before this wave waits for START WAVE. Later ones are timed.
 export const OPEN_BREAK_WAVE = 2
-// NOTE: the break before this wave is the first where the kitchen's boards
-// are for sale (src/world/level/exits.ts) and the guided tutorial's kitchen tour runs.
 export const KITCHEN_FIRST_WAVE = 3
 export const SPAWN_JITTER_MS = 400
 export const STRAGGLER_JITTER_MS = 1500
@@ -86,9 +68,6 @@ export const WAVE_BANNER_MS = 1600
 
 export const STICK_RADIUS_PX = 56
 export const STICK_DEAD_ZONE = 0.15
-// NOTE: the aim stick turns the player once it leaves the dead zone, but
-// pulls the trigger only past this share of its radius, so a thumb that
-// lands fires nowhere until it has pushed toward where it means to shoot.
 export const STICK_FIRE_ZONE = 0.4
 
 export const DEFAULT_SEED = 0x2f6b9a1d
@@ -236,9 +215,6 @@ export const HIT_STOP_KILL_MAX_MS = 60
 export const HIT_STOP_HURT_MS = 70
 export const HIT_STOP_MAX_MS = 70
 export const HIT_STOP_COOLDOWN_MS = 120
-// NOTE: the blow that clears a wave lands like a finisher: about 9 ticks
-// still, past the cap and the cooldown, and a hard shake (owner, 2026-11-14,
-// from a hit feel guide's killing blow).
 export const HIT_STOP_WAVE_CLEAR_MS = 150
 export const SHAKE_TRAUMA_WAVE_CLEAR = 0.7
 
@@ -420,10 +396,6 @@ export const ENDLESS_TANKS_BASE = 4
 export const ENDLESS_WAVES_PER_EXTRA_TANK = 2
 export const ENDLESS_EXPLODER_WEIGHT_PER_WAVE = 0.25
 
-// NOTE: how long each face of the Mystery Leftovers spin shows, fast then
-// slow, 0.7 s in all, so the prize lands with 0.4 s of the door's 1.1 s
-// opening still to go (src/features/fridge/fridgeReveal.ts). The spin's clicks keep time
-// with it (src/audio/audio.ts).
 export const FRIDGE_SPIN_STEPS_MS: ReadonlyArray<number> = [
   40, 40, 45, 50, 55, 65, 75, 90, 110, 130,
 ]

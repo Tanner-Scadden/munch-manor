@@ -13,11 +13,6 @@ import type { Palette } from './sprite'
 import { GUN_TIER_TRIMS } from './sprites/guns'
 import { HEART_PIXELS } from './sprites/hearts'
 
-// NOTE: the shop's pictures are pixel maps turned into SVG once, at module
-// scope, like the HTML buttons' icons. Each keeps its size in pixels so CSS
-// can draw it at a whole multiple and the pixels stay square.
-// NOTE: the segments a stat bar has, in the shop's rows and the guide's
-// cards.
 export const BAR_SEGMENTS = 5
 
 export type ShopArt = Readonly<{ url: string; width: number; height: number }>
@@ -35,8 +30,6 @@ export const artOf: {
     height: pixels.length,
   }),
 )
-
-// PALETTE
 
 const INK = '#140c10'
 
@@ -62,8 +55,6 @@ const trimmed = (tier: number): Palette =>
     GUN_TIER_TRIMS[Math.min(tier, GUN_TIER_TRIMS.length - 1)] ?? {},
     (_base, trim) => trim,
   )
-
-// GUNS
 
 const GUN_PIXELS: Readonly<Record<WeaponKind, ReadonlyArray<string>>> = {
   Pistol: [
@@ -131,8 +122,6 @@ const GUN_PIXELS: Readonly<Record<WeaponKind, ReadonlyArray<string>>> = {
     '..KBBBBBBK....',
     '...KKKKKK.....',
   ],
-  // NOTE: the display cases' two: Old Thunder, a long hunting rifle with a
-  // brass band, and the Big Blunder, a brass barrel flaring to a bell.
   Rifle: [
     '........KKKKKKKKKKKKKKKKKKKK',
     'VV.....KGHHHHHHHHHHHHHHHHHHK',
@@ -176,9 +165,6 @@ export const gunArt: {
     artOf(GUN_PIXELS[weapon], GUN_BASE),
 )
 
-// GOODS
-
-// NOTE: the Pickled Heart's jar, the shop guide's picture of a found heart.
 export const JAR_ART = artOf(
   [
     '..KKKKKKKK..',
@@ -250,8 +236,6 @@ const GNOME_ART = artOf(
   },
 )
 
-// NOTE: the laser sight: a grey scope with a red lens, and the red dot it
-// throws on the floor below.
 export const SIGHT_ART = artOf(
   [
     '..KKKKKKKKKK..',
@@ -270,7 +254,6 @@ export const SIGHT_ART = artOf(
   { K: INK, M: '#4a4f5a', R: '#ff3a3f', L: '#ffb3b6' },
 )
 
-// NOTE: a skeleton key, the crew's currency (src/world/keys/keys.ts).
 export const KEY_ART = artOf(
   ['.ooo....', 'oyyyo...', 'oy.yyyyy', 'oyyyo.yo', '.ooo..o.'],
   { o: '#5a3510', y: '#ffd23f' },
@@ -281,19 +264,12 @@ export const TRAP_ART: Readonly<Record<TrapKind, ShopArt>> = {
   Turret: GNOME_ART,
 }
 
-// HEARTS
-
 export const HEART_FULL = artOf(HEART_PIXELS, { R: '#e8333a', W: '#ff8a8f' })
 
-// RATTLES
-
-// NOTE: his portrait is his own sprite from his trunk, scaled up by the CSS
-// and cropped at his bow tie (see src/art/rattlesArt.ts).
 export const RATTLES_ART: Readonly<Record<Mood, ShopArt>> = Record.map(
   MOOD_FACES,
   face =>
     artOf(rattlesPixels(face).slice(0, RATTLES_BUST_ROWS), RATTLES_PALETTE),
 )
 
-// NOTE: the Shop tile on the Munchopedia's list wears Rattles' face.
 export const SHOP_TILE_ART: ShopArt = RATTLES_ART.Grinning

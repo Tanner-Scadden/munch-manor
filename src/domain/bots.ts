@@ -14,17 +14,8 @@ import type { World } from '../world/schema/world'
 import type { PlayerSlot } from '../world/schema/worldSchema'
 import type { Bot } from './clientSchema'
 
-// Teammate bots in single player (GAME_DESIGN.md, "Teammate bots"): the
-// single player lobby seats up to three, each a seat in the run's World with
-// a hero, a goofy name, and a look. The roster rules here are pure; the
-// root applies them for the lobby (src/app/update/lobby.ts), and the bot's
-// brain is in src/features/bots/teammateBot.ts.
-
 const MAX_BOTS = COOP_RULES.maxPlayers - 1
 
-// NOTE: the seats a run can fill: the human takes slot 0, and a dev-only
-// `?local=N` link seats N-1 couch players after them. The lobby's bots sit
-// in the slots after those, as many as the room's four seats leave.
 export const botSeatsFor = (model: Model): number =>
   Math.max(0, Math.min(MAX_BOTS, COOP_RULES.maxPlayers - model.localPlayers))
 
@@ -39,14 +30,9 @@ export const botSlotOf: {
   (model: Model, index: number): PlayerSlot => model.localPlayers + index,
 )
 
-// NOTE: whether this run has bots at its seats: a run started from the
-// lobby with a crew. An online room's run never does.
 export const isBotCrew = (model: Model): boolean =>
   Array.isReadonlyArrayNonEmpty(model.runStart.crewBots)
 
-// NOTE: a crew of people, an online co-op room's: awards, revives, and the
-// co-op missions count only here, never with teammate bots, so a bot never
-// makes Bones (and a human never farms them by reviving or outscoring one).
 export const isHumanCrew = (model: Model): boolean =>
   isCoop(model) && !isBotCrew(model)
 
@@ -60,8 +46,6 @@ export const maybeCrewBotAt: {
 export const crewBotSlots = (model: Model): ReadonlyArray<PlayerSlot> =>
   Array.map(model.runStart.crewBots, (_bot, index) => botSlotOf(model, index))
 
-// NOTE: the seats from `firstSlot` on made over as these heroes, in order:
-// their hearts and their gun, as the room seats a lobby's callings.
 export const seatCallings: {
   (
     firstSlot: PlayerSlot,
@@ -81,8 +65,6 @@ export const seatCallings: {
       }),
     ),
 )
-
-// ROSTER
 
 const pickFrom = <A>(
   state: number,
@@ -111,9 +93,6 @@ const heroChoicesOf = (model: Model): Array.NonEmptyReadonlyArray<Calling> => {
   return Array.isReadonlyArrayNonEmpty(owned) ? owned : ['You']
 }
 
-// NOTE: a bot joins the next empty seat: a goofy name nobody in the crew
-// has, a hero picked at random from the ones this player owns (the
-// seeded cosmetic generator), and the look of the seat it sits in.
 export const addBot = (model: Model): Model => {
   if (model.home.bots.length >= botSeatsFor(model)) {
     return model
@@ -147,7 +126,6 @@ export const removeBot: {
   }),
 )
 
-// NOTE: only a hero this player owns, as for their own pick.
 export const setBotCalling: {
   (index: number, calling: Calling): (model: Model) => Model
   (model: Model, index: number, calling: Calling): Model
@@ -167,5 +145,4 @@ export const setBotCalling: {
     : model,
 )
 
-// NOTE: a bot's name in the capitals a name tag and the crew board show.
 export const botNameOf = (bot: Bot): string => String.toUpperCase(bot.name)

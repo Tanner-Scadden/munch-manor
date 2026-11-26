@@ -55,8 +55,6 @@ const controls = HtmlLocator.role('list', { name: 'Controls' })
 const moreKeys = HtmlLocator.role('list', { name: 'More keys' })
 const inControls = (locator: Locator.Locator) =>
   Locator.inside(controls, locator)
-// NOTE: a key in the line under the cards, a list item read by its text
-// (a list item takes no name from what it holds).
 const moreKey = (text: string) =>
   Locator.inside(moreKeys, Locator.text(text, { exact: true }))
 

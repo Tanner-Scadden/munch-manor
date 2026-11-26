@@ -36,14 +36,6 @@ import {
 } from '../../../__tests__/profile.fixture'
 import { Profile } from '../../../block'
 
-// The Look tab's rows of earned looks (src/features/profile/blocks/look/view.ts,
-// src/features/profile/blocks/look/lookGearView.ts): an option in one of four
-// states, a pick that wears or buys, the arrow keys that only move, and the
-// NEW badges. The Look tab is a child of the Profile, of the root, so its
-// rows are drawn in a Scene of their own, each event taken up to a Story of
-// the root (profile.fixture.ts); the Bones on the rank plate and the home
-// menu's pips are the root's, read in the root's Scene.
-
 const closet: Model = UiStruct.evolve(homeAfterRead, {
   rank: () => ({
     ...noRank,
@@ -56,13 +48,11 @@ const closet: Model = UiStruct.evolve(homeAfterRead, {
   appearance: look => ({ ...look, hat: 'Fez' }),
 })
 
-// NOTE: the Look tab opened by C, as the root hears it.
 const openLook = send(Message.PressedKey({ code: 'KeyC' }))
 
 const lookOpenedFrom = (model: Model) =>
   Effect.map(lookDeskOf(model), atLookRoot(openLook))
 
-// NOTE: the Profile shut by its close, as its Dialog asks.
 const closeLook = send(Message.ClosedDialog({ dialog: 'Profile' }))
 
 const buyPill = byClass('look-buy')
@@ -95,7 +85,6 @@ const lacks = (locator: Locator.Locator, name: string) =>
 
 const click = (locator: Locator.Locator) => inLook(s => s.click(locator))
 
-// NOTE: a buy moves focus to the look bought, its BUY pill gone.
 const focusedBought = (part: LookPart, value: string) =>
   atLookRoot(s =>
     s.resolve(
@@ -106,8 +95,6 @@ const focusedBought = (part: LookPart, value: string) =>
     ),
   )
 
-// NOTE: the Bones the rank plate over the Profile's tabs shows, drawn by the
-// root's Scene from the Model the desk's root holds.
 const balanceShown = (desk: LookDesk, count: string) =>
   Effect.gen(function* () {
     const s = yield* sceneOf(desk.root.model)
@@ -264,10 +251,6 @@ describe('the gear rows', () => {
     }),
   )
 
-  // NOTE: the kit's RadioGroup moves focus on an arrow key and picks only in
-  // a group that is not read only; its keys run in its own update, which a
-  // Scene does not run. What the Look tab decides is that an earned row is
-  // read only, so walking it never tries on or buys.
   it.effect('the arrow keys only move between the options, and never buy', () =>
     Effect.gen(function* () {
       const desk = yield* lookOpenedFrom(closet)

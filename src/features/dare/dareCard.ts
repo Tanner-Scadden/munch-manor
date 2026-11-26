@@ -19,17 +19,6 @@ import { type HudLayout, POCKET_CHIP_HEIGHT } from '../../render/hudLayout'
 import { dareCardOf } from '../../world/dare/dare'
 import type { Vector } from '../../world/schema/worldSchema'
 
-// The dare card on the HUD (LORE.md, "The dare card in your pocket"), as a
-// pocket. Through a wave it is shut: a chip of the card and how many things
-// are found ("2/5"), so nothing covers the room while zombies come. In a
-// break, when the house is there to search, it opens into the whole list:
-// each thing at twice its size in a slot, a light silhouette until found,
-// then in color with a green check. Only the rooms' things: Uncle Chunk is
-// the fight once they are found, never a slot. Show, don't explain: no
-// words, only the things. The screen
-// decides which (src/screens/game/pocket.ts), since a banner in the open
-// list's rows keeps it shut.
-
 export type DarePocket = 'Shut' | 'Open'
 
 export type PocketBox = Readonly<{
@@ -88,8 +77,6 @@ const boxOf = (card: Card, layout: HudLayout, pocket: DarePocket): PocketBox =>
         bottom: layout.pocket.openTop + OPEN_HEIGHT,
       }
 
-// NOTE: what the pocket covers, for what must keep clear of it (Rattles'
-// bubbles, the boss's bar beside it on a portrait HUD, a banner).
 export const pocketBoxOf: {
   (layout: HudLayout, pocket: DarePocket): (model: Model) => PocketBox
   (model: Model, layout: HudLayout, pocket: DarePocket): PocketBox
@@ -99,9 +86,6 @@ export const pocketBoxOf: {
     boxOf(dareCardOf(model), layout, pocket),
 )
 
-// NOTE: where the open pocket's header has room on its right, for the rooms
-// counter the screen puts there (src/features/kitchen/roomsFound.ts): its
-// right edge and its text's top.
 export const pocketHeaderOf: {
   (layout: HudLayout): (model: Model) => Vector
   (model: Model, layout: HudLayout): Vector
@@ -110,11 +94,6 @@ export const pocketHeaderOf: {
   return { x: box.right - POCKET_PAD, y: box.top + POCKET_PAD + 2 }
 })
 
-// NOTE: where each picture of the card in your pocket lands as it folds
-// (src/features/dare/pocketCardView.ts): inside its own slot
-// on the open list, at the slot's size, so the player sees the card become
-// the list; or, with the pocket shut (a banner over the list), all on the
-// shut chip's card.
 export const pocketSlotSpotsOf: {
   (
     layout: HudLayout,
@@ -142,7 +121,6 @@ export const pocketSlotSpotsOf: {
   },
 )
 
-// A rim one pixel wide with its corners cut, round a dark fill.
 const frameShapes = (
   box: PocketBox,
   rim: string,
@@ -179,8 +157,6 @@ const chipShapes = (card: Card, box: PocketBox): ReadonlyArray<Draw.Shape> => [
 
 const CHECK_INSET = DARE_CHECK_SIZE - 2
 
-// NOTE: the checks are drawn after every slot, so a check hanging past its
-// slot's corner is never under the next slot.
 const openShapes = (card: Card, box: PocketBox): ReadonlyArray<Draw.Shape> => {
   const top = box.top + POCKET_PAD + DARE_CARD_HEIGHT + HEADER_GAP
   const left = box.left + POCKET_PAD
@@ -209,8 +185,6 @@ const openShapes = (card: Card, box: PocketBox): ReadonlyArray<Draw.Shape> => {
   ]
 }
 
-// NOTE: laid out from the layout's right edge. Endless has
-// no list, so no pocket.
 export const dareCardShapes: {
   (
     layout: HudLayout,
@@ -237,11 +211,6 @@ export const dareCardShapes: {
   },
 )
 
-// POINTED AT
-
-// NOTE: the guided first break's last step (src/features/onboarding/firstBreakQuest.ts)
-// points at the pocket: a gold rim round it that blinks, an arrow under it
-// bobbing up, and its one word.
 const POINT_BLINK_MS = 300
 const POINT_BOB_MS = 260
 const POINT_GAP = 2

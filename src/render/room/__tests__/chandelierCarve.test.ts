@@ -9,10 +9,6 @@ import {
 import { carvedChandelierOf } from '../chandelierCarve'
 import type { ChandelierState } from '../diningArt'
 
-// The dining room's chandelier carved (src/render/room/chandelierCarve.ts):
-// from the lens it is exactly the art it was carved from, hung and fallen,
-// and it is a real volume, deeper than one block.
-
 const STATES: ReadonlyArray<ChandelierState> = ['Hung', 'Fallen']
 
 describe('the carved chandelier', () => {

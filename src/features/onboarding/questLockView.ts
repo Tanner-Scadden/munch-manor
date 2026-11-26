@@ -8,14 +8,6 @@ import { FULL_TURN } from '../../render/drawing'
 import { doorArrowShapes } from '../../render/powerupView'
 import { maybeLockProgress, maybePadlockNudge } from './firstBreakQuest'
 
-// The padlock the guided first break points at, and the nudge later on
-// (src/features/onboarding/firstBreakQuest.ts). On the tour's padlock step
-// the keys on the ring and the keys it asks hang beside the padlock on the
-// floor under its boards, a key and "1/3", so a player short of keys sees
-// how far to go; the quest's arrow bobs over the boards. Outside the tour,
-// once the ring holds enough for the cheapest padlock, an arrow pulses
-// gently over it, with no words.
-
 const PROGRESS_RIGHT_PX = 6
 const PROGRESS_DROP_PX = 4
 const NUDGE_PULSE_MS = 1200

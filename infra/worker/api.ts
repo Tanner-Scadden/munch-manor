@@ -41,16 +41,10 @@ import {
   visitRateKey,
 } from './rules.ts'
 
-// ENVIRONMENT
-
 export type RateLimiter = Readonly<{
   limit: (options: { key: string }) => Promise<{ success: boolean }>
 }>
 
-// NOTE: main.ts builds this from the Worker's bindings for each request: the
-// D1 database as an Effect SQL layer, the two rate limit bindings, and the
-// address salt. Tests build it over SQLite and counting fakes.
-/** @stability unstable */
 export type WorkerServices = Readonly<{
   database: Layer.Layer<
     SqlClient.SqlClient,
@@ -61,12 +55,9 @@ export type WorkerServices = Readonly<{
   addressSalt: string
 }>
 
-/** @stability unstable */
 export class WorkerEnv extends Context.Service<WorkerEnv, WorkerServices>()(
   'munch-manor-infra/worker/api/WorkerEnv',
 ) {}
-
-// ERRORS
 
 class SummaryTooLarge extends Schema.TaggedError<
   SummaryTooLarge,
@@ -91,8 +82,6 @@ class StoreUnavailable extends Schema.TaggedError<
   StoreUnavailable,
   { readonly brand: unique symbol }
 >()('StoreUnavailable', {}, { httpApiStatus: 503 }) {}
-
-// API
 
 export const Health = Schema.Struct({
   status: Schema.Literal('Ok'),
@@ -127,10 +116,6 @@ const Api = HttpApi.make('munch-manor').add(
     .add(HttpApiEndpoint.get('health', HEALTH_PATH, { success: Health })),
 )
 
-// DATABASE
-
-// NOTE: the database layer is built for this one effect and closed after
-// it, as each request brings its own bindings.
 const withDatabase = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
   Effect.scoped(
     Effect.gen(function* () {
@@ -152,10 +137,6 @@ const insertShare = (row: ShareRow) =>
     yield* sql`INSERT INTO shares ${sql.insert(row)}`
   })
 
-// NOTE: the retention rule: every run row and share row received before the
-// cutoff day goes. Both tables index received_day, so each is one range
-// delete. Answers how many run rows went.
-/** @stability unstable */
 export const deleteExpiredRuns = (nowMs: number) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient
@@ -171,8 +152,6 @@ const checkDatabase = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient
   yield* sql`SELECT 1 AS ok`
 })
-
-// RATE LIMITS
 
 const sha256Hex = (input: string) =>
   Effect.promise(() =>
@@ -216,14 +195,10 @@ const failWhenLimited = (decision: RateDecision) =>
     ? Effect.fail(RateLimited.make({ by: decision.by }))
     : Effect.void
 
-// HANDLERS
-
 const healthy: Health = { status: 'Ok', database: 'Ok' }
 
 const databaseDown: Health = { status: 'Ok', database: 'Unavailable' }
 
-// NOTE: a run summary and a share event go in the same way: the size cap,
-// the decode, the rate limits by visit and by address, then one row.
 const recordPosted = <A extends { readonly visitId: string }, E>(
   request: HttpServerRequest.HttpServerRequest,
   decode: (body: string) => Effect.Effect<A, E>,

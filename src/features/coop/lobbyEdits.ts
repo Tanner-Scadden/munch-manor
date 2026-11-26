@@ -21,12 +21,6 @@ import { CoopNotice } from './message'
 import { type Model } from './model'
 import { type CoopFocus, isPicking, meIn, withRoom } from './roomState'
 
-// The lobby's edits: the host's modifiers, a tap on a pick that is not
-// yours, and your name (the hero is the picker's, src/features/coop/steps.ts). They are
-// plain changes of the room; the Commands they return come from the caller,
-// as the rules name them (`ChangeLobby`, `focusCoop`), so this
-// module never imports the update that holds them.
-
 export type EditCommands<C> = Readonly<{
   changeLobby: (change: LobbyChange) => C
   focus: (target: CoopFocus) => C
@@ -41,11 +35,6 @@ type EditReturn<C> = Readonly<{
 export const makeEdits = <C>(commands: EditCommands<C>) => {
   type R = EditReturn<C>
 
-  // MODIFIERS
-
-  // NOTE: the host turns a run modifier on or off, as they pick the
-  // difficulty: the room takes back everyone's READY. A guest's tap is the
-  // pick nudge's (the view sends that instead), so nothing here is theirs.
   const pickModifier = (model: Model, room: Room, modifier: Modifier): R =>
     Option.match(room.maybeLobby, {
       onNone: () => ({ model }),
@@ -69,10 +58,6 @@ export const makeEdits = <C>(commands: EditCommands<C>) => {
           : { model },
     })
 
-  // DARE'S BREAK CLOCK
-
-  // NOTE: the host steps Dare's break clock, as they turn a modifier: the
-  // room takes back everyone's READY. Only on Dare is it drawn.
   const pickEasyBreak = (model: Model, room: Room): R =>
     Option.match(room.maybeLobby, {
       onNone: () => ({ model }),
@@ -91,11 +76,6 @@ export const makeEdits = <C>(commands: EditCommands<C>) => {
           : { model },
     })
 
-  // THE DARE LADDER
-
-  // NOTE: the host picks the room's mark, as they step the break clock: the
-  // room takes back everyone's READY, and holds the mark to the host's own
-  // best on the room's difficulty when the run starts.
   const pickDareMark = (model: Model, room: Room, mark: number): R =>
     Option.match(room.maybeLobby, {
       onNone: () => ({ model }),
@@ -112,11 +92,6 @@ export const makeEdits = <C>(commands: EditCommands<C>) => {
           : { model },
     })
 
-  // NUDGE
-
-  // NOTE: a tap on a pick that is not the player's to change: a guest's, since
-  // the host picks, or the locked Nightmare. Nothing is sent; the lobby says
-  // why, in place.
   const nudge = (model: Model, room: Room, reason: NudgeReason): R =>
     isInLobby(room)
       ? {
@@ -133,13 +108,6 @@ export const makeEdits = <C>(commands: EditCommands<C>) => {
         }
       : { model }
 
-  // NAME
-
-  // NOTE: a player renames themselves in the lobby with the same cleaning and
-  // dice as the Profile's Name tab (src/features/profile/profile.ts). Saving sends the name to
-  // the room for the others to see, and up to the parent, which keeps it as
-  // the player's name everywhere else. An empty name or the one already worn
-  // only closes the field. Nobody's READY changes.
   const withNameDraft = (
     model: Model,
     room: Room,

@@ -3,9 +3,6 @@ import { type Effect, Function, Schema } from 'effect'
 import { MusicLevel, MusicMood, MusicStinger } from '../../src/audio/music'
 import { SoundEffect } from '../../src/shared/soundEffect'
 
-// NOTE: what the tool asks the soundtrack page for (audioPage.ts): the
-// sounds and music cues at their second, the length, and the sample rate.
-
 const SoundCue = Schema.TaggedStruct('Sound', {
   seconds: Schema.Finite,
   sound: SoundEffect,
@@ -31,8 +28,6 @@ type SoundtrackRequest = typeof SoundtrackRequest.Type
 
 export const SoundtrackRequestJson = Schema.fromJsonString(SoundtrackRequest)
 
-// NOTE: the director's log (tools/audit/harness/director.ts): each sound
-// and music cue the game asked for, by the tick it asked on.
 const LoggedCue = Schema.Union([
   Schema.TaggedStruct('Sound', {
     tick: Schema.Finite,
@@ -54,7 +49,6 @@ export const decodeAudioLog = (
   log: unknown,
 ): Effect.Effect<ReadonlyArray<LoggedCue>, Schema.SchemaError> => decodeLog(log)
 
-// NOTE: a cue at the clip frame it is heard on.
 export type ClipCue = Readonly<{ frame: number; cue: LoggedCue }>
 
 export const cueAt: {

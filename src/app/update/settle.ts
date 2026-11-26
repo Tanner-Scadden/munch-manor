@@ -36,10 +36,6 @@ import { applyRotationFrom } from './rotation'
 import { writeSaveFrom } from './save'
 import { type UpdateStep, modelStep } from './step'
 
-// COMMAND
-
-// NOTE: a summary that cannot go out waits in the store's queue, so the
-// Model hears nothing either way: a failure is logged.
 export class SendRunSummary extends Command.Service<SendRunSummary>()(
   'app/SendRunSummary',
   { args: { summary: RunSummary }, success: Component.Noop },
@@ -60,12 +56,6 @@ export class SendRunSummary extends Command.Service<SendRunSummary>()(
   )
 }
 
-// ANALYTICS
-
-// NOTE: the summary is built here from the Model, so update stays pure. The
-// visit id comes from GenerateVisitId and the build id is a build constant.
-// An online co-op run sends its own the same way: each player's client
-// sends one from its own seat, by its own sharing setting.
 const sendRunSummaryFrom =
   (before: Model): UpdateStep =>
   $ =>
@@ -90,21 +80,8 @@ const sendRunSummaryFrom =
           },
         )
 
-// AFTER A MESSAGE
-
-// NOTE: a synced save is taken from the store, so writing it back would
-// echo it. Its Messages settle with `Synced`.
 type SaveWrite = 'Write' | 'Synced'
 
-// NOTE: what the root does after any change, comparing the Model from
-// before it: music for the phase, the end menu's focus, the rotation lock,
-// Nightmare, hero and gun mastery, the rank, the rank purses, and the daily missions a run pays, the Proof Shelf, the dare ladder's marks opened and the pick held to them, the Dare Journal and its milestones, the death tip, how the run ended and the friends' line for the
-// next intro, the run count and its summary, the run's recording, the new
-// zombie badges, the
-// fridge prizes pulled, the prop style fitted to the hero picked, and the save. `update` in src/app/main.ts runs them once
-// after every dispatch, a child's delivery and its fold included. Each looks
-// only at the root's own fields and acts on a change between the two Models,
-// so a dispatch that leaves the root as it was does nothing here.
 export const afterMessage: {
   (saveWrite: SaveWrite): (before: Model) => ReadonlyArray<UpdateStep>
   (before: Model, saveWrite: SaveWrite): ReadonlyArray<UpdateStep>

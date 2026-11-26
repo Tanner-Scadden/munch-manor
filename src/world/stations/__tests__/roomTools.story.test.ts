@@ -23,11 +23,6 @@ import {
   spotAtTool,
 } from './roomTools.fixture'
 
-// Every room tool is a work station (src/world/stations/): a still player
-// at it in a wave works it, and once set up it fires and cools down on its
-// own clock, longer for a stronger tool (src/world/stations/toolRules.ts).
-// What each tool does is in toolEffects.story.test.ts.
-
 const FRAME_MS = FIXED_STEP_MS
 
 const TOOLS: ReadonlyArray<Exclude<StationId, 'Cleat'>> = [
@@ -158,7 +153,6 @@ describe('the cooldowns', () => {
 })
 
 describe('a room tool in co-op', () => {
-  // NOTE: one or two seats at the gramophone, both still.
   const crewAt = (count: number): Model => {
     const spot = spotAtTool(houseWave, 'Gramophone')
     const crew = openHouse(crewInWave(2))

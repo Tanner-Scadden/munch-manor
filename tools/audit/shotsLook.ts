@@ -1,8 +1,3 @@
-// The look pass (src/render/iso/look.ts, lookSpecs.ts): every room in a
-// break or a hot wave, the dining room in a frenzy, and the cellar dark and
-// lit, as `look-<TAG>-<viewport>-<scene>.png`, so a change to the dithered
-// bands, the dark, or a room's colors can be set beside an earlier TAG.
-//   TAG=try bun run heavy -- --shared bun tools/audit/shotsLook.ts
 import { Effect } from 'effect'
 
 import { runHarnessAudit } from './harnessServer'
@@ -22,9 +17,6 @@ import {
 const BASE_QUERY =
   'god&nodev&seen=all&wave=3&openexits=West,East,Far,Kitchen&kitchen'
 
-// NOTE: the cellar is the far room in the first house (ARRANGEMENTS in
-// src/world/level/plan.ts), from x 680 to 1000; `tool=Bulb` with `firedms`
-// burns its bulb.
 const SCENES: ReadonlyArray<Readonly<{ name: string; query: string }>> = [
   { name: 'dining-break', query: 'px=180&py=150&break=open&freeze=20' },
   {

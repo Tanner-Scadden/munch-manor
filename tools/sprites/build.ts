@@ -1,11 +1,3 @@
-// Builds the sprite atlas (docs/IMAGES_PLAN.md): loads the game's modules in
-// stand-in mode, so every sprite they build is recorded by its content key
-// instead of encoded, adds the sprites built later on first use
-// (src/art/spritePrecompile.ts), and packs them into PNG files with a manifest
-// from key to box. The Vite plugin in ./vitePlugin.ts runs it for every
-// production build and serves the result to the game.
-//   bun tools/sprites/build.ts <out dir>   writes the files, or reuses them
-//   bun tools/sprites/build.ts --keys      prints every sprite key as JSON
 import {
   Array,
   Clock,
@@ -42,8 +34,6 @@ Object.assign(globalThis, { __BUILD_ID__: 'sprites' })
 
 useSpriteMode('StandIn')
 
-// NOTE: the modules src/app/entry.ts runs, which build every sprite made at load.
-// They load only now, in stand-in mode: a static import would run first.
 const { spriteContents } = await import('../../src/art/sprite')
 await import('../../src/app/view')
 await import('../../src/app/main')
@@ -56,15 +46,11 @@ const { EVERY_LEVEL_SPEC } = await import('../../src/world/level/plan')
 const contents = spriteContents()
 const keys = Array.sort([...contents.keys()], String.Order)
 
-// NOTE: only the files a previous manifest named, read from a manifest of
-// any version (one written before `levels` holds none, and before `normals`
-// none of those).
 const PreviousManifest = Schema.Struct({
   sources: Schema.Array(Schema.String),
   normals: Schema.optionalKey(Schema.Array(Schema.NullOr(Schema.String))),
 })
 
-// NOTE: every file a manifest names, its sheets and their normal maps.
 const filesOf = (
   manifest: Readonly<{
     sources: ReadonlyArray<string>
@@ -75,7 +61,6 @@ const filesOf = (
   ...Array.filter(manifest.normals ?? [], Predicate.isNotNull),
 ]
 
-// NOTE: changing how the files are written must make every cache miss.
 const GENERATOR_VERSION = 5
 const MANIFEST_FILE = 'manifest.json'
 const SIGNATURE_FILE = 'signature.txt'
@@ -92,7 +77,6 @@ class AtlasMismatch extends Schema.TaggedError<
 
 const textBytes = (text: string): Uint8Array => new TextEncoder().encode(text)
 
-// NOTE: the SHA-256 of the parts one after another, as lowercase hex.
 const sha256 = (
   ...parts: ReadonlyArray<Uint8Array>
 ): Effect.Effect<string, DigestFailed> =>
@@ -115,8 +99,6 @@ const sha256 = (
       '',
     )
   })
-
-// IMAGES
 
 type Image = Readonly<{
   keys: ReadonlyArray<string>
@@ -160,19 +142,11 @@ const imagesOf = Effect.gen(function* () {
   return images
 })
 
-// NOTE: a room is one big image drawn on its own, and a level holds only
-// one, so each gets its own file instead of a place in the atlas.
 const OWN_FILE_AREA = 16_384
 const isOwnFile = ({ raster }: Image) =>
   raster.width * raster.height > OWN_FILE_AREA
 
 const ATLAS_WIDTH = 1024
-// NOTE: each sprite in the atlas sits in a frame of its own edge pixels, one
-// pixel wide, repeated outward. A rotated or scaled draw samples a little past
-// a sprite's edge, and a whole image drawn on its own repeats its edge there,
-// so the frame makes a cropped region draw the very same pixels. A
-// transparent gutter in its place drops those edge pixels instead, and a
-// shared one would let a sprite sample its neighbor.
 const FRAME = 1
 
 type Sheet = Readonly<{
@@ -256,9 +230,6 @@ const sheetsOf = (images: ReadonlyArray<Image>): Packed => {
   }
 }
 
-// NOTE: a sheet's normal map, each sprite's read off its own pixels alone
-// and laid in its place with the same frame, so a crop of the sheet finds
-// its own sprite's normals and never a neighbor's dome.
 const normalSheetOf = ({ raster, placed, frame }: Sheet): Raster =>
   sheetOf(
     raster.width,
@@ -283,8 +254,6 @@ const normalRasterOf = (raster: Raster): Raster => ({
   ),
 })
 
-// ENCODE AND CHECK
-
 const samePixels = (sheet: Raster, { image, x, y }: Placed): boolean => {
   const { raster } = image
   for (let row = 0; row < raster.height; row++) {
@@ -293,7 +262,6 @@ const samePixels = (sheet: Raster, { image, x, y }: Placed): boolean => {
       const alpha =
         raster.pixels[row * raster.width * 4 + (column - (column % 4)) + 3] ?? 0
       const got = sheet.pixels[((y + row) * sheet.width + x) * 4 + column] ?? 0
-      // NOTE: a fully transparent pixel is written as transparent black.
       if (got !== (alpha === 0 ? 0 : want)) {
         return false
       }
@@ -302,8 +270,6 @@ const samePixels = (sheet: Raster, { image, x, y }: Placed): boolean => {
   return true
 }
 
-// NOTE: each file's name holds a hash of its bytes, so a browser never
-// shows an old atlas from its cache under a new manifest on the dev server.
 const fileNameOf = (
   name: string,
   png: Uint8Array,
@@ -368,8 +334,6 @@ const writeAtlas = (outDir: string) =>
       bytes += png.length
     }
 
-    // NOTE: each sheet's normal map beside it, but a room's: a room lies
-    // flat on the floor, and no light rounds it.
     const levels = levelSourcesOf(entries)
     const roomSources = new Set(Array.flatten(Record.values(levels)))
     const normalNames: Array<string | null> = []
@@ -385,9 +349,6 @@ const writeAtlas = (outDir: string) =>
       bytes += png.length
     }
 
-    // NOTE: the manifest lands whole, by a rename, since the dev server may
-    // read it at any moment. Files the previous manifest named stay, for a
-    // page that loaded it a moment ago, and older ones go.
     const manifest: SpriteAtlas = {
       sources: fileNames,
       normals: normalNames,
@@ -423,8 +384,6 @@ const writeAtlas = (outDir: string) =>
     )
   })
 
-// NOTE: each level spec's id to the files its room images sit in, so the
-// game preloads a house without building its art (src/app/layers.ts).
 const levelSourcesOf = (
   entries: Readonly<Record<string, AtlasEntry>>,
 ): Record<string, ReadonlyArray<number>> =>

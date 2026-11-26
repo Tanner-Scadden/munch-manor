@@ -20,10 +20,6 @@ import {
   slotOf,
 } from '../lookTexels'
 
-// The look pass's bytes (src/render/iso/lookTexels.ts): every level's rooms
-// fit the room map, a shut room and the outside are the void, the dark
-// cellar's dark lies on its own tiles alone, and the void's ramp is black.
-
 const byteAt = (
   texels: Uint8Array,
   point: Readonly<{ x: number; y: number }>,

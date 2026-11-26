@@ -1,10 +1,3 @@
-// The kitchen's top right corner in a break: the break banner, the stove's
-// feat lock and its count, the price tags by it, and Rattles' bubble, with
-// the player by the stove and by the fridge, on a 1280x720 desktop, an
-// 844x390 phone on its side, and a 390x844 phone held upright, as
-// `corner-<TAG>-<viewport>-<scene>.png`.
-//   TAG=after bun run heavy -- --shared bun tools/audit/shotsCorner.ts
-// ONLY picks scenes, and VIEWPORTS picks screens.
 import { Effect } from 'effect'
 
 import { runHarnessAudit } from './harnessServer'

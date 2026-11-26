@@ -1,6 +1,3 @@
-// Renders the clips of a shot list to MP4 (and GIF) in tools/video/out:
-//   bun run video -- tools/video/shots/devlog.json [--only <clip>] [--frames-only]
-// It runs through the heavy guard as a CPU job. See tools/video/README.md.
 import {
   Array,
   Clock,
@@ -71,10 +68,6 @@ const hashOf = (bytes: Uint8Array): string =>
     16,
   )(new Bun.CryptoHasher('sha256').update(bytes).digest('hex'))
 
-// NOTE: each frame's hash and the soundtrack's, one a line, in
-// hashes.txt beside them, and one hash of the lot, so two renders of the
-// same shot list can be compared at a glance and, when they differ, frame
-// by frame.
 const hashFiles = (paths: ReadonlyArray<string>, listPath: string) =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
@@ -90,8 +83,6 @@ const hashFiles = (paths: ReadonlyArray<string>, listPath: string) =>
     return hashOf(new TextEncoder().encode(text))
   })
 
-// NOTE: a clip with its own score drops the music the game cued for its
-// shots and plays the score's cues instead; `music: false` drops music.
 const soundsOf = (
   clip: Clip,
   cues: ReadonlyArray<ClipCue>,
@@ -115,12 +106,8 @@ const soundsOf = (
   return clip.music === false ? effects : cues
 }
 
-// NOTE: the music's first note sounds a moment after its cue, as the
-// game's does (START_DELAY_SECONDS in src/audio/music.ts).
 const MUSIC_START_FRAMES = 0.05 * FRAMES_PER_SECOND
 
-// NOTE: how far each cut (the middle of a dissolve) lands from the score's
-// nearest beat, so a shot list can be cut to the music.
 const beatReport = (score: Score, cuts: ReadonlyArray<number>): string => {
   const beat = (FRAMES_PER_SECOND * 60) / score.bpm
   const start = score.cues[0].frame + MUSIC_START_FRAMES
@@ -187,7 +174,6 @@ const renderClip = (
         frames,
         overlap: clip.loop,
       })
-      // NOTE: the tail's sounds play over the head it dissolved into.
       const moved = Array.map(cues, cue =>
         cue.frame >= tailStart ? { ...cue, frame: cue.frame - tailStart } : cue,
       )

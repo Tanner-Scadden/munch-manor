@@ -1,9 +1,3 @@
-// The World played on its own: the same few ticks in any engine, from a
-// World as JSON, and a co-op room's World (src/world/net/roomWorld.ts) from its seats
-// and seed. It imports only the step and the room's adapter and binary
-// wire, so a bundle of it holds exactly what a co-op
-// room runs.
-
 import { Array, Effect, Schema } from 'effect'
 
 import type { PlayerInput } from '@munch/netcode'
@@ -20,9 +14,6 @@ import { Intent } from '../../src/world/schema/worldSchema'
 import { type InputsByPlayer, stepWorld } from '../../src/world/step/stepWorld'
 import { decodeJson, encodeJson } from '../json'
 
-// NOTE: plain JSON both ways, so it crosses into any engine: the World and
-// each player's intent by slot, as their Schemas' JSON. One entry is single
-// player; co-op holds an entry per seat.
 export type PlayRequest = Readonly<{
   world: string
   intents: ReadonlyArray<readonly [slot: number, intent: string]>
@@ -46,8 +37,6 @@ const inputsOf = (request: PlayRequest): InputsByPlayer =>
     ),
   )
 
-// NOTE: the step takes its transcendental math from src/shared/detMath.ts,
-// so both sides agree bit for bit with the engines' own Math in place.
 export const playWorld = (
   request: PlayRequest,
 ): Effect.Effect<string, Schema.SchemaError> =>
@@ -56,8 +45,6 @@ export const playWorld = (
     return yield* worldToJson(play(world, inputsOf(request), request.ticks))
   })
 
-// NOTE: a co-op room from its seats and seed, each seat holding one input
-// the whole way, as the room's adapter steps it.
 export type RoomPlayRequest = Readonly<{
   slots: ReadonlyArray<number>
   seed: number

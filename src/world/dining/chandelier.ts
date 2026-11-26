@@ -25,16 +25,6 @@ import { ZOMBIE_BLAST_TARGET } from '../step/combat'
 import { isInsideBox } from '../step/geometry'
 import { bodyRadiusOf, isGrounded } from '../zombies/zombies'
 
-// The dining room's twist (docs/ROOM_DRAFTS.md): the chandelier hangs over
-// the gap in the party table. A shot through it in a wave snaps its chain:
-// it drops into the gap, crushing every zombie under it, and lies there as
-// cover, blocking the gap, until the next break, when the house hoists it
-// back up, or a player winches it up sooner at the cleat by the west wall
-// (src/world/stations/stations.ts), to be shot down again. It never hurts
-// a player. Fallen, it is the level's drop
-// (LevelState.dropped), so the gap's tiles are solid for every walker,
-// bullet, and path without a rule of their own.
-
 type ChandelierRules = Readonly<{
   hungRisePx: number
   sidePx: number
@@ -42,9 +32,6 @@ type ChandelierRules = Readonly<{
   damage: number
 }>
 
-// NOTE: the hung chandelier is drawn 12 px over the gap (HUNG_RISE in
-// src/render/room/diningArt.ts), so a shot strikes it there: a box as wide as
-// the gap and a little more, from the chain down to the ring.
 export const CHANDELIER_RULES: ChandelierRules = {
   hungRisePx: 12,
   sidePx: 3,
@@ -54,8 +41,6 @@ export const CHANDELIER_RULES: ChandelierRules = {
 
 const gapBoxes = new WeakMap<Level, Option.Option<Box>>()
 
-// NOTE: the gap in the table, where the chandelier lands. A level keeps its
-// box, so a frame only reads it.
 export const gapBoxOf = (level: Level): Option.Option<Box> => {
   const cached = gapBoxes.get(level)
   if (cached !== undefined) {
@@ -68,7 +53,6 @@ export const gapBoxOf = (level: Level): Option.Option<Box> => {
   return box
 }
 
-// NOTE: where a shot strikes the hung chandelier.
 export const chandelierHitBox = (gap: Box): Box => ({
   left: gap.left - CHANDELIER_RULES.sidePx,
   top: gap.top - CHANDELIER_RULES.hungRisePx - CHANDELIER_RULES.chainPx,
@@ -79,8 +63,6 @@ export const chandelierHitBox = (gap: Box): Box => ({
 export const isChandelierDown = (world: World): boolean =>
   Array.contains(world.level.dropped, CHANDELIER_DROP)
 
-// NOTE: a body in the gap when it falls is set down at the nearer open edge
-// of it, north or south, since the table halves close its east and west.
 const yOutOfGap = (gap: Box, radius: number, body: Vector): number => {
   if (!isInsideBox(body, gap)) {
     return body.y
@@ -103,8 +85,6 @@ const crush = (world: World, gap: Box): World => {
       : { target: zombie, events: [] },
   )
   const events = Array.flatMap(outcomes, outcome => outcome.events)
-  // NOTE: its kills drop keys like any other, from the tick's ZombieKilled
-  // events (src/world/keys/keys.ts).
   return UiStruct.evolve(world, {
     zombies: () =>
       Array.map(outcomes, ({ target }) =>
@@ -116,8 +96,6 @@ const crush = (world: World, gap: Box): World => {
   })
 }
 
-// NOTE: no player is ever under it when it lands: one standing in the gap is
-// stepped out to its nearer edge.
 const clearPlayers = (world: World, gap: Box): World =>
   forEachSeat(world, (current, slot) =>
     isInsideBox(seatStateAt(current, slot).player, gap)
@@ -130,8 +108,6 @@ const clearPlayers = (world: World, gap: Box): World =>
       : current,
   )
 
-// NOTE: a shot through the hung chandelier in a wave drops it. The bullet is
-// spent on the chain.
 export const dropChandelier = (world: World): World => {
   if (!Phase.isAnyOf(['Wave'])(world.phase) || isChandelierDown(world)) {
     return world
@@ -164,8 +140,6 @@ export const dropChandelier = (world: World): World => {
   })
 }
 
-// NOTE: the chandelier back up over the gap, its tiles floor again: at a
-// break, or winched up mid-wave at the cleat (src/world/stations/).
 export const hoistChandelier = (world: World): World =>
   UiStruct.evolve(world, {
     level: state =>
@@ -174,8 +148,6 @@ export const hoistChandelier = (world: World): World =>
       }),
   })
 
-// NOTE: when a wave ends and its break begins, the house hoists the
-// chandelier back up over the gap.
 export const rehangAtBreak: {
   (after: World): (before: World) => World
   (before: World, after: World): World

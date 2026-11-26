@@ -178,7 +178,6 @@ describe('the kind table', () => {
     () =>
       Effect.gen(function* () {
         const runner = zombieOf('Runner', 1, 200, 60)
-        // NOTE: in the open aisle south of the party table.
         const tank = zombieOf('Tank', 2, 100, 130)
         const tankHp = ZOMBIE_KINDS.Tank.hp
 

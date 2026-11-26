@@ -9,13 +9,6 @@ import { FocusGuideControl, Munchopedia } from '../../munchopedia/block'
 import { Message } from '../../munchopedia/message'
 import { GuideStatus, openedGuide, withSection } from '../model'
 
-// The shop guide on its own rules: it opens and goes back, turns its
-// sections, and moves focus between BACK and the Shop tile that opened it.
-// Its one parent is the Munchopedia, which holds its status as its own
-// Model and draws it on the Shop page (src/features/munchopedia/block.ts);
-// a fresh panel mounts it shut. The Munchopedia's other pages are in
-// src/features/munchopedia/__tests__/story.test.ts.
-
 describe('the shop guide', () => {
   it.effect(
     'starts shut, and a section tap or BACK while shut does nothing',

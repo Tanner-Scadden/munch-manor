@@ -29,16 +29,9 @@ import {
 } from '../save'
 import { learnedSave } from './save.fixture'
 
-// The rank and the calling a save carries: the veteran grant a save from
-// before rank is given once it loads, the purses of ranks a save reached
-// before purses paid once it loads, and the calling's round trip.
-
-// NOTE: the save read at boot, then the splash's last Commands.
 const loaded = (maybeSave: Option.Option<PlayerSave>) =>
   steps(send(Message.CompletedLoadSave({ maybeSave })), finishSplash)
 
-// NOTE: the changes each pending save write carries, checked before it
-// is written.
 const changesWritten = (
   check: (changes: ReadonlyArray<ReadonlyArray<PlayerChange>>) => void,
 ) =>
@@ -47,7 +40,6 @@ const changesWritten = (
   )
 
 describe('the veteran grant', () => {
-  // NOTE: a save from before rank, as the previous build wrote it.
   const beforeRank = (killsByKind: Record<string, number>) => {
     const { rank: _rank, ...rest } = learnedSave
     const json = jsonOf({
@@ -134,8 +126,6 @@ describe('the veteran grant', () => {
 })
 
 describe('the purses on load', () => {
-  // NOTE: a save at rank 24 from before purses: ranks 21, 23, and 24 have
-  // one each, 15, 17, and 18 Bones.
   const atRank24: PlayerSave = {
     ...learnedSave,
     rank: { ...learnedSave.rank, earnedPoints: pointsForRank(24) },

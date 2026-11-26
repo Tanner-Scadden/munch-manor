@@ -2,10 +2,6 @@ import { type Effect, Schema } from 'effect'
 
 import { World } from '../schema/world'
 
-// The World as one JSON text and back, for tools that carry a World
-// between engines (tools/determinism) and the room that keeps a won run. The
-// co-op room's wire is the binary codec in src/world/net/worldCodec.ts.
-
 const worldCodec = Schema.toCodecJson(World)
 const WorldJson = Schema.fromJsonString(worldCodec)
 

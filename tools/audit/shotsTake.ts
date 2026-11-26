@@ -1,10 +1,3 @@
-// The take pass: the player at an opened display case and at the fridge's
-// prize on offer, with the take tag and its prompt beside the prize, on a
-// 1280x720 desktop, an 844x390 phone on its side, and a 390x844 phone held
-// upright, as `take-<TAG>-<viewport>-<scene>.png`. The tag must never
-// cover the prize.
-//   TAG=after bun run heavy -- --shared bun tools/audit/shotsTake.ts
-// ONLY picks scenes, and VIEWPORTS picks screens.
 import { Effect } from 'effect'
 
 import { runHarnessAudit } from './harnessServer'

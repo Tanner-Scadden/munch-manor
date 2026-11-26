@@ -10,16 +10,6 @@ import {
   spriteShapes,
 } from './sprite'
 
-// The rank badge and the Bone as pixel art, original to the game (the
-// end card's strip in src/features/end/rankStripView.ts, the home menu's and the
-// Profile's badge in src/ui/rankBadgeView.ts). Chunky arcade badges: every
-// tier has its own silhouette and its own metal, so the tiers read apart at
-// a glance, even in grayscale. Each has a dark outline, a bright top-left
-// edge, and a shaded bottom-right edge, like the health bars. The ladder is
-// a wood tag, a tin bolt plate, a bronze notched shield, a silver gem crest,
-// a gold winged shield, and last a skull crest over crossed bones. Built
-// once at module scope, with the shine frames baked beside them.
-
 const WOOD = [
   '.OOOOOOOOOOO.',
   'OLLLLLLLLLLDO',
@@ -170,11 +160,6 @@ const TIERS: Readonly<
   },
 }
 
-// THE SHINE
-
-// NOTE: a glint sweeps over a badge corner to corner: each frame turns the
-// lit pixels on three slanted lines of the badge white. The outline and the
-// dark details stay, so the shape never changes.
 const SHINE_FRAMES = 9
 const SHINE_STEP = 3
 const SHINE_WIDTH = 1
@@ -214,8 +199,6 @@ const SHINES: Readonly<Record<BadgeTier, ReadonlyArray<Sprite>>> = Record.map(
 
 export const badgeSprite = (tier: BadgeTier): Sprite => BADGES[tier]
 
-// NOTE: the badge with the glint at `frame`, 0 to SHINE_FRAMES - 1; before
-// and after the sweep, the plain badge.
 export const shineSprite: {
   (frame: number): (tier: BadgeTier) => Sprite
   (tier: BadgeTier, frame: number): Sprite
@@ -225,7 +208,6 @@ export const shineSprite: {
     SHINES[tier][frame] ?? BADGES[tier],
 )
 
-// NOTE: the badge as an image for HTML, which cannot crop the atlas.
 export const badgeImage = (tier: BadgeTier): Option.Option<ArtImage> =>
   spriteImage(BADGES[tier])
 
@@ -245,12 +227,6 @@ export const BONE: Sprite = spriteShapes(
 
 export const BONE_IMAGE = spriteImage(BONE)
 
-// THE RANK GIFTS
-
-// NOTE: a rank's Bones purse (src/shared/rankCurve.ts): a sack tied with
-// rope, a bone across its mouth. The end card's purse flip stands it on
-// the card, and the home menu and the Profile show it as the next rank's
-// gift. Beside it the gift box, for a gift look up next.
 export const PURSE_PIXELS: ReadonlyArray<string> = [
   '.OO.....OO.',
   'OWWOOOOOWWO',

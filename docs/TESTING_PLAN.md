@@ -106,7 +106,7 @@ There are 559 `story(` calls and 138 `scene(` calls. Only 23 tests call `update`
 **Vitest performance.**
 
 - The guide lists, in order: profile the duration breakdown, turn off isolation where tests do not leak state (`isolate: false`, or per group through `projects`), choose the pool (`threads` with `isolate: false` is named the fastest; `forks` is the more compatible default), and use the cheapest environment. It gives happy-dom about 90 to 200 ms per import and jsdom 200 to 500 ms, with `node` as the default.
-- Environments can be set per file (`// @vitest-environment`) or per project, and one tier can be run with `--project`.
+- Environments are set per project: a `*.dom.test.ts` file runs in happy-dom (comments are banned in code, so no `// @vitest-environment` line), and one tier can be run with `--project`.
 - `--changed` and `vitest related <files>` run only the tests affected by a change, following static imports.
 - `--shard` with the blob reporter and `--merge-reports` splits CI runs by file.
 - The `fsModuleCache` keeps transformed modules between runs: the guide's example went from 8.75 s to 5.90 s.

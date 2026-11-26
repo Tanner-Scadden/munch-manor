@@ -16,8 +16,6 @@ interface Seen {
   readonly body: string
 }
 
-// NOTE: a fetch that answers each request with the next response in line
-// and keeps what was sent, so a test reads both sides.
 const fakeFetch = (responses: ReadonlyArray<() => Response>) => {
   const seen: Array<Seen> = []
   const fetch: typeof globalThis.fetch = (input, init) =>
@@ -87,8 +85,6 @@ describe('the browser identity client', () => {
     }),
   )
 
-  // NOTE: compares the error alone, since a failure raised inside the
-  // request's span carries that span's stack frame in its Cause.
   it.effect('a refusal without a failure, or no answer, is Unavailable', () =>
     Effect.gen(function* () {
       const unavailable = Option.some(

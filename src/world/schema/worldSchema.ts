@@ -1,7 +1,3 @@
-// The World's Schemas and starting values, and the plain Schemas beside
-// them, apart from the client Model (src/app/model.ts), so the step a co-op
-// room runs never imports the UI, the sync engine, or the tip jar.
-
 import { Function, Option, Schema } from 'effect'
 
 import { UiSchema, UiStruct } from '@effect/ui'
@@ -67,9 +63,6 @@ export {
 } from '../../shared/playerData'
 export * from './entitySchema'
 
-// NOTE: what a kill was made with, for the feats (src/world/feats/feats.ts):
-// every gun (the Peashooter is a gnome's), the knife, and the parlour's fire
-// the gas valve lights.
 export const Armament = Schema.Literals([
   'Pistol',
   'Shotgun',
@@ -85,9 +78,6 @@ export const Armament = Schema.Literals([
 ])
 export type Armament = typeof Armament.Type
 
-// NOTE: what made a kill, as its ZombieKilled event says: one of the
-// armaments a player holds, a Kaboomer's blast, or something no player
-// aimed (a trap, an oven, a shatter).
 export const KillSource = Schema.Literals([
   ...Armament.literals,
   'Blast',
@@ -95,7 +85,6 @@ export const KillSource = Schema.Literals([
 ])
 export type KillSource = typeof KillSource.Type
 
-// NOTE: what a display case holds (src/world/feats/cases.ts).
 export const CasePrize = Schema.Literals([
   'Shotgun',
   'Smg',
@@ -105,9 +94,6 @@ export const CasePrize = Schema.Literals([
 ])
 export type CasePrize = typeof CasePrize.Type
 
-// NOTE: a shot names the seat that fired it (a PlayerSlot), so a co-op
-// client can tell its own shots, which it predicts, from the room's; a
-// trap's shot names none.
 export const GameEvent = UiSchema.TaggedEnum({
   Fired: {
     x: PositionNumber,
@@ -200,9 +186,7 @@ export const GameEvent = UiSchema.TaggedEnum({
   Purchased: { x: PositionNumber, y: PositionNumber },
   PurchaseRefused: { x: PositionNumber, y: PositionNumber },
   ExitOpened: { x: PositionNumber, y: PositionNumber },
-  // NOTE: the dining room's chandelier came down into the table's gap.
   ChandelierFell: { x: PositionNumber, y: PositionNumber },
-  // NOTE: the library's secret shelf swung open (src/world/library/secretShelf.ts).
   ShelfSwung: { x: PositionNumber, y: PositionNumber },
   FridgeOpened: { x: PositionNumber, y: PositionNumber, prize: FridgePrize },
   FridgeSlammed: { x: PositionNumber, y: PositionNumber },
@@ -214,16 +198,9 @@ export const GameEvent = UiSchema.TaggedEnum({
     y: PositionNumber,
     goodie: PantryGoodie,
   },
-  // NOTE: skeleton keys added to the crew's ring (src/world/keys/keys.ts),
-  // dropped by a kill, a cleared wave, the pantry, or the fridge's Dud, at
-  // where they came from: they fly to the ring on the HUD.
   KeysFound: { x: PositionNumber, y: PositionNumber, count: Schema.Finite },
-  // NOTE: a found trap taken from a trap crate (src/world/gear/crates.ts),
-  // and a trap mended back to full by standing at it in a break.
   CrateTaken: { x: PositionNumber, y: PositionNumber, trap: TrapKind },
   TrapMended: { x: PositionNumber, y: PositionNumber, kind: TrapKind },
-  // NOTE: a work station's set-up done, its effect fired
-  // (src/world/stations/stations.ts).
   StationWorked: {
     x: PositionNumber,
     y: PositionNumber,
@@ -246,27 +223,17 @@ export const GameEvent = UiSchema.TaggedEnum({
   PlayerDowned: { x: PositionNumber, y: PositionNumber },
   PlayerRevived: { x: PositionNumber, y: PositionNumber },
   FriendlyFire: { x: PositionNumber, y: PositionNumber, direction: Heading },
-  // NOTE: a downed player shouts MEDIC! (src/world/party/medic.ts), where they lie.
   MedicCalled: { x: PositionNumber, y: PositionNumber },
-  // NOTE: the dare's things (src/world/dare/dare.ts): one found by a walk
-  // onto it, and the last thing on the list found (the finale's cue).
   DareFound: { x: PositionNumber, y: PositionNumber, kind: DareKind },
   DareListDone: { x: PositionNumber, y: PositionNumber },
-  // NOTE: the finale (src/world/dare/finale.ts): Uncle Chunk's big key
-  // bursts out of him where he falls, the front door swings open as it
-  // lands in the lock, and a player steps out through it, each at the door.
   BigKeyBurst: { x: PositionNumber, y: PositionNumber },
   FrontDoorOpened: { x: PositionNumber, y: PositionNumber },
   SteppedOut: { x: PositionNumber, y: PositionNumber, slot: Schema.Finite },
-  // NOTE: a teammate got a downed player up, at the reviver; a clutch save
-  // came with under MEDIC_RULES.clutchBleedMs of bleed left.
   TeammateSaved: {
     x: PositionNumber,
     y: PositionNumber,
     clutch: Schema.Boolean,
   },
-  // NOTE: a gun reached a new tier on its kills (src/world/gear/gunLevels.ts),
-  // in the hands of the seat at `slot`, where that player stands.
   GunLeveled: {
     x: PositionNumber,
     y: PositionNumber,
@@ -274,8 +241,6 @@ export const GameEvent = UiSchema.TaggedEnum({
     weapon: WeaponKind,
     tier: Schema.Finite,
   },
-  // NOTE: a display case sprang open for the seat that finished its feat
-  // (src/world/feats/cases.ts), at the case.
   CaseOpened: {
     x: PositionNumber,
     y: PositionNumber,
@@ -329,8 +294,6 @@ export type Streak = typeof Streak.Type
 export const GunSlot = Schema.Literals(['First', 'Second'])
 export type GunSlot = typeof GunSlot.Type
 
-// NOTE: JustUnlocked is the run that won Hard and its end screen. It
-// settles to Unlocked when the next run starts.
 export const NightmareLock = Schema.Literals([
   'Locked',
   'JustUnlocked',
@@ -338,25 +301,18 @@ export const NightmareLock = Schema.Literals([
 ])
 export type NightmareLock = typeof NightmareLock.Type
 
-// NOTE: the chosen difficulty and the Nightmare unlock are kept in the
-// on-device save (src/platform/save.ts). They are plain data on purpose: they move
-// into the SQLite player scope from PLATFORM.md beside the look.
 export const DifficultySetting = Schema.Struct({
   chosen: Difficulty,
   nightmare: NightmareLock,
 })
 export type DifficultySetting = typeof DifficultySetting.Type
 
-// NOTE: the best campaign run on a difficulty, for the end card's ghost:
-// the most things on the dare's list found, then the furthest wave.
 export const BestRun = Schema.Struct({
   wave: Schema.Finite,
   things: Schema.Array(DareKind),
 })
 export type BestRun = typeof BestRun.Type
 
-// NOTE: the furthest campaign wave, the most kills in one run, and the best
-// run are the run records, saved apart from the bests (SavedRunRecords).
 export const DifficultyBests = Schema.Struct({
   maybeFastestWinMs: Schema.Option(Schema.Finite),
   maybeBestEndlessWave: Schema.Option(Schema.Finite),
@@ -377,8 +333,6 @@ export const KillCounts = Schema.Struct({
 })
 export type KillCounts = typeof KillCounts.Type
 
-// FEATS
-
 const ArmamentCounts = Schema.Struct({
   Pistol: Schema.Finite,
   Shotgun: Schema.Finite,
@@ -394,12 +348,6 @@ const ArmamentCounts = Schema.Struct({
 })
 type ArmamentCounts = typeof ArmamentCounts.Type
 
-// NOTE: a feat, something one player does this run that opens a display
-// case, the stove, or the gas valve (src/world/feats/feats.ts). Kill counts,
-// skill (a wave with no hit taken, a streak of kills with no hit between,
-// zombies a Kaboomer's blast takes with it), exploring (rooms opened, the
-// fireplace lit, keys from marked zombies).
-// KitchenKills counts since the last wave began, the rest the whole run.
 export const Feat = UiSchema.TaggedEnum({
   Kills: { count: Schema.Finite },
   KillsWith: { armament: Armament, count: Schema.Finite },
@@ -415,9 +363,6 @@ export const Feat = UiSchema.TaggedEnum({
 })
 export type Feat = typeof Feat.Type
 
-// NOTE: one player's counts toward every feat, kept on their seat so a
-// co-op room and its players agree. `hurtThisWave` and `kitchenKills` start
-// again as each wave begins; `streak` as the player is hurt.
 export const FeatTally = Schema.Struct({
   kills: Schema.Finite,
   killsWith: ArmamentCounts,
@@ -435,9 +380,6 @@ export const FeatTally = Schema.Struct({
 })
 export type FeatTally = typeof FeatTally.Type
 
-// NOTE: a Locked case's progress is each seat's own tally toward its feat;
-// Opened waits for the seat that finished it to take the prize; Emptied is
-// taken.
 export const CaseState = UiSchema.TaggedEnum({
   Locked: {},
   Opened: { by: Schema.Finite },
@@ -445,8 +387,6 @@ export const CaseState = UiSchema.TaggedEnum({
 })
 export type CaseState = typeof CaseState.Type
 
-// NOTE: `spot` indexes the hand-picked case spots (CASE_SPOTS in
-// src/world/feats/cases.ts); `id` keys it on the co-op wire.
 export const DisplayCase = Schema.Struct({
   id: Schema.Finite,
   spot: Schema.Finite,
@@ -468,9 +408,6 @@ export const PlannedSpawn = Schema.Struct({
 })
 export type PlannedSpawn = typeof PlannedSpawn.Type
 
-// NOTE: a Counting break starts the wave when remainingMs runs out. A
-// Waiting break has no timer: it waits for START WAVE, and its elapsedMs only
-// ages the hints and banners. remainingMs and durationMs stay put meanwhile.
 export const BreakClock = UiSchema.TaggedEnum({
   Counting: {},
   Waiting: { elapsedMs: MillisNumber },
@@ -485,8 +422,6 @@ const preparationFields = {
   clock: BreakClock,
 }
 
-// NOTE: A wave's elapsedMs is its spawn clock, not wall time. It stops while
-// the pacing beat is Fading or Resting.
 const waveFields = {
   wave: Schema.Finite,
   elapsedMs: MillisNumber,
@@ -505,15 +440,9 @@ export const RunMode = UiSchema.TaggedEnum({
 })
 export type RunMode = typeof RunMode.Type
 
-// NOTE: the intro's two lengths (src/world/run/arrival.ts): the whole drive
-// up to the house the first time, the knock and the slam after.
 export const IntroCut = Schema.Literals(['Full', 'Short'])
 export type IntroCut = typeof IntroCut.Type
 
-// NOTE: Arriving is the intro before the first break: only its clock runs,
-// counting up to the slam, which starts the run (src/world/run/arrival.ts).
-// LeftEarly is a run the crew left by the kitchen's back door in a break
-// (src/world/kitchen/backDoor.ts): an ending between GameOver and Escaped.
 export const Phase = UiSchema.TaggedEnum({
   Ready: {},
   Arriving: { elapsedMs: MillisNumber, cut: IntroCut },
@@ -526,12 +455,9 @@ export const Phase = UiSchema.TaggedEnum({
 })
 export type Phase = typeof Phase.Type
 
-// NOTE: a round is a break and the wave after it.
 export const isRoundActive = (phase: Phase): boolean =>
   Phase.isAnyOf(['Preparation', 'Wave'])(phase)
 
-// NOTE: a round's planned spawns changed, in a break or a wave alike; any
-// other phase as it was.
 export const evolveRoundSpawns: {
   (
     change: (
@@ -562,16 +488,9 @@ export const evolveRoundSpawns: {
     ),
 )
 
-// NOTE: the wave a break or a fight is about, 0 outside a round.
 export const roundWaveOf = (phase: Phase): number =>
   Phase.isAnyOf(['Preparation', 'Wave'])(phase) ? phase.wave : 0
 
-// NOTE: A boss wave holds its boss outside until only waitBelow planned
-// spawns are left, then rattles its door for the entrance before it walks in.
-// While it arrives and for its first seconds in the room, the wave clock
-// waits, so the rest of the wave comes after the boss has had the floor.
-// guestHpScale is the wave's health scale, which the guests he belches and
-// calls in take (src/world/zombies/boss.ts), apart from his own health.
 export const Boss = UiSchema.TaggedEnum({
   Absent: {},
   Waiting: {
@@ -600,9 +519,6 @@ export const Boss = UiSchema.TaggedEnum({
 })
 export type Boss = typeof Boss.Type
 
-// NOTE: a frenzy pack pays its bonus once every one of its zombies has been
-// killed. left counts the ones still to kill, including any still waiting
-// outside behind the alive cap.
 export const FrenzyPack = Schema.Struct({
   pack: Schema.Finite,
   left: Schema.Finite,
@@ -637,8 +553,6 @@ export const Alarm = UiSchema.TaggedEnum({
 })
 export type Alarm = typeof Alarm.Type
 
-// NOTE: the door a warned pack will come through, kept from its warning on
-// so a plank breaking after the rattle cannot move it.
 export const PackDoor = Schema.Struct({
   pack: Schema.Finite,
   planned: DoorId,
@@ -646,9 +560,6 @@ export const PackDoor = Schema.Struct({
 })
 export type PackDoor = typeof PackDoor.Type
 
-// NOTE: loneMs is how long the wave's last few zombies have been the last
-// (src/world/zombies/lastZombie.ts): they hurry once it passes the rule's
-// delay. 0 while more are alive or more are to come.
 export const Pacing = Schema.Struct({
   holds: Schema.Array(Hold),
   beat: Beat,
@@ -674,17 +585,9 @@ export const Blast = Schema.Struct({
 })
 export type Blast = typeof Blast.Type
 
-// NOTE: the laser sight, a display case prize (src/world/feats/cases.ts) kept
-// for the run: a line or a spread fan on the floor showing where the held
-// gun's shot goes.
 const LaserSight = Schema.Literals(['None', 'Fitted'])
 type LaserSight = typeof LaserSight.Type
 
-// NOTE: something in the world bought by standing still or holding the
-// interact key beside it, the way a wall buy works (src/world/shop/purchase.ts): a
-// boarded exit, the Mystery Leftovers fridge (src/world/fridge/leftovers.ts) and its
-// prize, and in the kitchen the stove bench (src/world/kitchen/stove.ts) and the gas valve
-// (src/world/kitchen/gasValve.ts).
 export const Purchasable = UiSchema.TaggedEnum({
   Exit: { exit: ExitId },
   Fridge: {},
@@ -696,12 +599,6 @@ export const Purchasable = UiSchema.TaggedEnum({
 })
 export type Purchasable = typeof Purchasable.Type
 
-// NOTE: one player's hold at a purchasable. Holding fills toward the buy,
-// from the key held or the player standing still (src/world/shop/purchase.ts);
-// Refused is a press the key ring could not cover, shaking for a moment;
-// Done waits for the key to be let go after a buy, so one hold buys once;
-// Spent waits for a player who bought and stands still to move before
-// standing buys again, so one buy never chains into the next.
 export const Purchase = UiSchema.TaggedEnum({
   Idle: {},
   Holding: { target: Purchasable, heldMs: MillisNumber },
@@ -715,12 +612,8 @@ export const Purchase = UiSchema.TaggedEnum({
 })
 export type Purchase = typeof Purchase.Type
 
-// NOTE: a seat partway through a hold to buy.
 export const isHolding = Purchase.isAnyOf(['Holding'])
 
-// NOTE: a kitchen oven belches fire when it is shot while Ready, then cools
-// off before it can again. The Model keeps one per oven on the map, in the
-// order the map lists them.
 export const Oven = UiSchema.TaggedEnum({
   Ready: {},
   Belching: { remainingMs: MillisNumber, burnedTicks: Schema.Finite },
@@ -734,9 +627,6 @@ export const TurretGun = UiSchema.TaggedEnum({
 })
 export type TurretGun = typeof TurretGun.Type
 
-// NOTE: `maxHp` is the health a trap was placed with: its kind's, or half
-// again for the Handyman's (src/world/heroes/calling.ts), so a mend fills it
-// back to that.
 export const Trap = UiSchema.TaggedEnum({
   Barricade: {
     id: Schema.Finite,
@@ -784,17 +674,6 @@ export const Lesson = UiSchema.TaggedEnum({
 })
 export type Lesson = typeof Lesson.Type
 
-// NOTE: `dareTour` is the guided first break of the dare
-// (src/features/onboarding/firstBreakQuest.ts) and `dareKey` its skeleton key
-// on the dining room floor (src/world/run/tutorialRules.ts). `rattles` is
-// meeting Rattles by the front door, his hello in the first break after the
-// practice wave (src/features/onboarding/rattlesIntro.ts). `displayCase` is the
-// card a display case raises the first time a player walks up to one in a
-// break (src/features/onboarding/caseCard.ts). `dareCard` is the
-// dare card from the pocket read once (src/features/dare/pocketCard.ts):
-// until then it waits for a key or a tap.
-// `gunLevel` is the first time hint as a gun nears its first level on its
-// kills, learned at the first level up (src/features/onboarding/onboarding.ts).
 export const Lessons = Schema.Struct({
   move: Lesson,
   fire: Lesson,
@@ -840,23 +719,11 @@ export const RunStats = Schema.Struct({
 })
 export type RunStats = typeof RunStats.Type
 
-// CO-OP
-
-// NOTE: a player is keyed by their seat in the room. Single player is the
-// one seat SOLO_SLOT.
 export const PlayerSlot = Schema.Finite
 export type PlayerSlot = typeof PlayerSlot.Type
 
 export const SOLO_SLOT: PlayerSlot = 0
 
-// NOTE: in co-op a player at zero hearts is Downed: they crawl, cannot
-// shoot, and bleed out when bleedMs runs out, unless a teammate standing
-// still beside them fills reviveMs first. A BledOut player is out of the
-// fight until the next break (MULTIPLAYER.md, decided row 4). `callMs` is
-// how long ago they last shouted MEDIC! (src/world/party/medic.ts): 0 is a shout the
-// next tick sounds. An Out player stepped out through the open front door
-// (src/world/dare/finale.ts): safe outside, out of the fight for good,
-// waiting for the crew.
 export const Life = UiSchema.TaggedEnum({
   Standing: {},
   Downed: {
@@ -870,24 +737,12 @@ export const Life = UiSchema.TaggedEnum({
 export type Life = typeof Life.Type
 export type DownedLife = typeof Life.cases.Downed.Type
 
-// NOTE: an Away player sent no input for a while (decided row 10): frozen
-// in place, and zombies can still hurt them.
 export const Presence = Schema.Literals(['Here', 'Away'])
 export type Presence = typeof Presence.Type
 
 const Readiness = Schema.Literals(['Waiting', 'Ready'])
 type Readiness = typeof Readiness.Type
 
-// NOTE: what co-op adds to a player: their seat, life, presence, READY for
-// the break, the traps they placed (one of each kind, decided row 21), and
-// their run's own numbers for the end card's crew board (src/crewBoard.ts):
-// the kills credited to them, the teammates they revived, the times they
-// went down, and their shots fired and landed.
-// NOTE: `graceMs` is how long a zombie must keep touching this player
-// before its first bite lands, half their round trip and at most 100 ms
-// (MULTIPLAYER.md, "Latency"), so a dodge they made on their own screen
-// counts; `touchedMs` is how long one has touched them so far. Both stay 0
-// for a player with no lag.
 export const Seat = Schema.Struct({
   slot: PlayerSlot,
   life: Life,
@@ -905,9 +760,6 @@ export const Seat = Schema.Struct({
 })
 export type Seat = typeof Seat.Type
 
-// NOTE: one player's place in the World: the seat's own record and every
-// per-player field. The World holds them in `seats`, in slot order, so a
-// per-player system reads and writes its player by slot, with no swapping.
 export const SeatState = Schema.Struct({
   seat: Seat,
   player: Player,
@@ -922,21 +774,12 @@ export const SeatState = Schema.Struct({
 })
 export type SeatState = typeof SeatState.Type
 
-// NOTE: Solo is single player, exactly as it always played. A Crew plays by
-// co-op's rules: a downed player, READY for the break, no world pause. Both
-// hold their players in the World's `seats`, one for Solo at SOLO_SLOT.
 export const Party = UiSchema.TaggedEnum({
   Solo: {},
   Crew: {},
 })
 export type Party = typeof Party.Type
 
-// NOTE: the World is the part of the Model the step reads and writes: what
-// a co-op room owns and runs (MULTIPLAYER.md, Phase 0). The rest of the
-// Model is the client's: dialogs, menus, input, the camera, cosmetics,
-// audio, settings, and the save. The lessons, practice, and new zombie
-// card are single player gates the step reads; the room plays with them
-// settled.
 export const World = Schema.Struct({
   phase: Phase,
   pacing: Pacing,
@@ -946,10 +789,7 @@ export const World = Schema.Struct({
   mode: RunMode,
   difficulty: DifficultySetting,
   modifiers: Modifiers,
-  // NOTE: Dare's break clock in seconds, picked in the lobby, 0 for none
-  // (src/world/run/difficulty.ts, EASY_BREAK_CHOICES).
   easyBreakSeconds: Schema.Finite,
-  // NOTE: the dare mark the run plays, 0 for none (src/world/run/dareLadder.ts).
   dareMark: Schema.Finite,
   zombies: Schema.Array(Zombie),
   bullets: Schema.Array(Bullet),
@@ -983,7 +823,6 @@ export const World = Schema.Struct({
 })
 export type World = typeof World.Type
 
-// NOTE: a run starts on its level's start spot.
 export const initialPlayer: Player = {
   x: START_LEVEL.start.x,
   y: START_LEVEL.start.y,
@@ -1103,18 +942,11 @@ export const freshLoot = (seed: number): Loot => ({
 const STOVE_SEED_SALT = 0x5709e3c1
 const HOUSE_SEED_SALT = 0x40a5e5ed
 
-// NOTE: the house stream: one draw off the run's seed, salted apart from
-// every other stream so it moves no other roll, picks which hand-made room
-// stands in each of the house's three slots. Single player and a co-op
-// room both start a run from the seed, so every client of a room stands in
-// the same house, and the arrangement rides the wire in the level state.
 export const freshLevel = (seed: number): LevelState =>
   startingLevelFor(
     arrangementAt(nextRandom((seed ^ HOUSE_SEED_SALT) >>> 0).value),
   )
 
-// NOTE: the stove's own generator, apart from the run's, so its rolls move
-// no other; `wave` 0 is no break yet, so the first break rolls its perk.
 export const freshStove = (seed: number): Stove => ({
   rngState: (seed ^ STOVE_SEED_SALT) >>> 0,
   perk: 'Spicy',
@@ -1123,8 +955,6 @@ export const freshStove = (seed: number): Stove => ({
 
 const DARE_SEED_SALT = 0x0da4e5b7
 
-// NOTE: the dare's own generator, apart from the run's, so rolling the list
-// and its spots moves no other; the list is rolled as the run starts.
 export const freshDare = (seed: number): Dare => ({
   rngState: (seed ^ DARE_SEED_SALT) >>> 0,
   list: [],
@@ -1160,12 +990,8 @@ export const barePantry: Pantry = Pantry.Bare({ round: 0 })
 
 const CRATE_SEED_SALT = 0x0c7a7e5b
 
-// NOTE: the trap crates' own generator, apart from the run's, so a roll
-// moves no other; no crate stands until the first break with traps.
 const KEY_SEED_SALT = 0x6b3e75c1
 
-// NOTE: an empty key ring with its drops' own generator, apart from the
-// run's, so a drop moves no other roll.
 export const freshKeys = (seed: number): KeyRing => ({
   held: 0,
   found: 0,

@@ -19,13 +19,12 @@ import * as NodeRuntime from '@effect/platform-node/NodeRuntime'
 import { Vector } from '@game/world/schema/entitySchema'
 
 import { harnessBaseUrl } from './harnessServer'
+import { pixelDiffOf } from './inPage/lib'
 import { type AuditFailed, attempt, evaluateAs, failWith } from './page'
 
 const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 export const GAME = 'http://localhost:4173/'
 
-// NOTE: the world draws in 3D (src/render/iso/), so headless Chrome gets the
-// Mac's real GPU through Metal, with WebGPU on, instead of no WebGL2 at all.
 const GPU_ARGS = [
   '--enable-unsafe-webgpu',
   '--enable-features=Vulkan,WebGPU',
@@ -39,8 +38,6 @@ export const launch = () =>
     args: ['--autoplay-policy=no-user-gesture-required', ...GPU_ARGS],
   })
 
-// VIEWPORTS
-
 export type Viewport = Readonly<{
   name: string
   width: number
@@ -49,9 +46,6 @@ export type Viewport = Readonly<{
   isPhone: boolean
 }>
 
-// NOTE: the screens the audit scripts shoot. A script that names a screen
-// differently in its file names, or wants another pixel ratio, spreads one of
-// these and overrides the field.
 export const DESKTOP_1280: Viewport = {
   name: 'd1280',
   width: 1280,
@@ -94,7 +88,6 @@ export const ANDROID_915: Viewport = {
   scale: 2.625,
   isPhone: true,
 }
-// NOTE: a 20:9 Android phone on its side, wider than the 388 pixel cap.
 export const ANDROID_800: Viewport = {
   name: 'a800',
   width: 800,
@@ -131,13 +124,6 @@ export const UPRIGHT_375: Viewport = {
   isPhone: true,
 }
 
-// THE PROGRAM
-
-// NOTE: runs a script's program with a Scope (for `openBrowser`). A failure
-// prints and exits with 1. `runAuditWith` also provides `layer`, such as
-// `NodeServices.layer` for a script that reads files. The harness forms
-// first build and serve the harness (see `harness` below), so `harnessUrl`
-// points at it.
 export const runAudit = <A, E>(program: Effect.Effect<A, E, Scope.Scope>) => {
   NodeRuntime.runMain(program.pipe(Effect.scoped))
 }
@@ -160,9 +146,6 @@ export const runAuditWith: {
   },
 )
 
-// THE BROWSER
-
-// NOTE: Chrome, closed when the program's Scope closes.
 export const openBrowser: Effect.Effect<Browser, AuditFailed, Scope.Scope> =
   Effect.acquireRelease(attempt(launch), browser =>
     attempt(() => browser.close()).pipe(Effect.ignore),
@@ -185,21 +168,13 @@ export const openPage: {
 
 export const desktop = (browser: Browser) => openPage(browser, DESKTOP_1280)
 
-// NOTE: closes the page's browser context.
 export const closePage = (page: Page) => attempt(() => page.context().close())
 
-// THE ENVIRONMENT
-
-// NOTE: every harness script reads the same variables: TAG names the shot
-// set, BASE points at another harness port, ONLY picks scenes by name, and
-// VIEWPORTS picks screens by name.
 export const tagOr = (fallback: string) =>
   Config.String('TAG').pipe(Config.withDefault(fallback))
 
-// NOTE: the shot set most scripts write, `after` unless TAG names another.
 export const auditTag = tagOr('after')
 
-// NOTE: a variable that holds a list, such as `ONLY=a,b`.
 export const listFromEnv = (key: string) =>
   Config.String(key).pipe(Config.map(String.split(',')), Config.option)
 
@@ -224,17 +199,12 @@ export const pickViewports = (viewports: ReadonlyArray<Viewport>) =>
     return Array.filter(viewports, viewport => isListed(picked, viewport.name))
   })
 
-// NOTE: the same three screens under the long names the find passes'
-// shots wear (`desktop`, `phone-landscape`, `phone-portrait`).
 export const longNamedViewports = pickViewports([
   { ...DESKTOP_1280, name: 'desktop' },
   { ...PHONE_844, name: 'phone-landscape' },
   { ...UPRIGHT_390, name: 'phone-portrait' },
 ])
 
-// NOTE: more screens, taken only when asked for by name: a narrower,
-// shorter upright phone (360 by 780), and the other phones `taps.ts`
-// sweeps, so a shot set covers every phone (VIEWPORTS=p667,a800,u360,u430).
 const ON_REQUEST: ReadonlyArray<Viewport> = [
   { ...UPRIGHT_360, width: 360, height: 780, name: 'p360' },
   PHONE_667,
@@ -243,8 +213,6 @@ const ON_REQUEST: ReadonlyArray<Viewport> = [
   UPRIGHT_430,
 ]
 
-// NOTE: a desktop, a phone on its side, and a phone held upright: the
-// screens most shot scripts take, and any of `ON_REQUEST` named.
 export const shotViewports = Effect.gen(function* () {
   const picked = yield* listFromEnv('VIEWPORTS')
   const defaults = yield* pickViewports([
@@ -260,12 +228,8 @@ export const shotViewports = Effect.gen(function* () {
   ]
 })
 
-// CONCURRENCY
-
 const DEFAULT_PARALLEL = 3
 
-// NOTE: how many browser contexts a script drives at once, read from its own
-// variable (such as TAPS_PARALLEL), 3 by default, at least 1.
 export const parallelFrom = (key: string) =>
   Effect.gen(function* () {
     const text = yield* Config.String(key).pipe(
@@ -277,11 +241,6 @@ export const parallelFrom = (key: string) =>
 
 export type Log = (line: string) => void
 
-// NOTE: runs `work` on every item, up to `limit` at once, each in its own
-// browser context. Each item logs through its own `log`, and the lines are
-// printed as a block in the items' order as soon as every earlier item is
-// done, so the report reads the same as a run one after another. The
-// results come back in the items' order too.
 export const forEachInOrder: {
   <A, B, E, R>(
     limit: number,
@@ -326,13 +285,8 @@ export const forEachInOrder: {
   },
 )
 
-// THE HARNESS
-
-// NOTE: tools/video starts the harness through lib.ts.
 export { HARNESS, useHarness } from './harnessServer'
 
-// NOTE: joins the query parts that are not empty, so a scene with no query
-// and a device part make `?device=touch`, never `?&device=touch`.
 export const harnessQuery = (...parts: ReadonlyArray<string>) =>
   Array.join(
     Array.filter(parts, part => part.length > 0),
@@ -344,9 +298,6 @@ export const harnessUrl = (...parts: ReadonlyArray<string>) =>
 
 const READY_TIMEOUT_MS = 20_000
 
-// NOTE: waits for the harness's ready signal: the scene rendered with every
-// image decoded, and a frozen scene at its frame. A bad query fails here with
-// the Schema error instead of timing out.
 export const sceneReady = (page: Page) =>
   Effect.gen(function* () {
     yield* attempt(() =>
@@ -372,13 +323,9 @@ export const sceneReady = (page: Page) =>
     }
   })
 
-// NOTE: `sceneReady` for tools/video, which waits on a promise.
 export const waitForReady = (page: Page): Promise<void> =>
   Effect.runPromise(sceneReady(page))
 
-// NOTE: after a click or a key, waits until the page has rendered what it
-// set off and every image it asked for has decoded. `whenSettled` is the
-// promise tools/video waits on.
 export const whenSettled = (page: Page) =>
   page.evaluate(() => window.__whenSettled())
 
@@ -396,8 +343,6 @@ export const gotoScene: {
     ),
 )
 
-// NOTE: swaps the scene in place through `window.__loadScene`, without a
-// reload, and waits for it to be ready.
 export const loadScene: {
   (query: string): (page: Page) => Effect.Effect<void, AuditFailed>
   (page: Page, query: string): Effect.Effect<void, AuditFailed>
@@ -413,26 +358,16 @@ export const loadScene: {
 )
 
 export type ScenePages = Readonly<{
-  // NOTE: a page showing the scene: an idle page of this screen with the
-  // scene switched in, or a new one when there is none or `fresh` is set.
   open: (
     viewport: Viewport,
     query: string,
     options?: Readonly<{ fresh?: boolean }>,
   ) => Effect.Effect<Page, AuditFailed | Config.ConfigError>
-  // NOTE: hands the page back for the next scene on its screen.
   release: (page: Page) => void
-  // NOTE: closes the page's context, for a page whose state should not be
-  // reused, such as one with storage a scene depends on.
   discard: (page: Page) => Effect.Effect<void, AuditFailed>
   close: Effect.Effect<void, AuditFailed>
 }>
 
-// NOTE: one long-lived page per screen and worker. `pageQuery` holds the
-// query parts that belong to the page, such as `nodev`, which every scene
-// on it shares. `FRESH_PAGES=1` loads every scene in a new page, as before
-// scenes were switched in place, to check that switching changes no
-// picture.
 export const scenePages: {
   (pageQuery: ReadonlyArray<string>): (browser: Browser) => ScenePages
   (browser: Browser, pageQuery: ReadonlyArray<string>): ScenePages
@@ -501,8 +436,6 @@ export const scenePages: {
 export const deviceQuery = (viewport: Viewport) =>
   viewport.isPhone ? 'device=touch' : ''
 
-// NOTE: prints the problems a check found and sets the exit code to 1, or
-// prints the all clear.
 export const finish: {
   (allClear: string): (problems: ReadonlyArray<string>) => Effect.Effect<void>
   (problems: ReadonlyArray<string>, allClear: string): Effect.Effect<void>
@@ -523,8 +456,6 @@ export const finish: {
 
 export const SHOTS_DIR = `${import.meta.dir}/shots`
 
-// NOTE: CSS animations that end are shown at their end, and ones that loop
-// at their start, so a shot never catches a button mid pop in.
 export const shot: {
   (name: string): (page: Page) => Effect.Effect<void, AuditFailed>
   (page: Page, name: string): Effect.Effect<void, AuditFailed>
@@ -543,13 +474,8 @@ export const shot: {
 
 export const wait = (ms: number) => Effect.sleep(Duration.millis(ms))
 
-// NOTE: the wall clock, for an audit that reports how long something took.
-// An Effect program reads `Clock.currentTimeMillis` instead.
 export const nowMs = (): number => Effect.runSync(Clock.currentTimeMillis)
 
-// NOTE: runs `poll`, then again every `everyMs`, until `isDone` holds of
-// its result or `timeoutMs` has passed. Hands back the last result and how
-// long the polling took, in whole milliseconds.
 export const pollUntil: {
   <A>(
     isDone: (result: A) => boolean,
@@ -587,12 +513,6 @@ export const pollUntil: {
     ),
 )
 
-// NOTE: jumps every animation that ends, such as a button's pop in, to its
-// end, so a size check never measures a button mid scale and never waits for
-// one. A blink that loops forever is left running. A tap often starts its
-// animation a frame or a Command later (a dialog opens once its ShowDialog
-// Command has run), and an ending animation can set off a Message, so it lets
-// the page settle around each pass, until no animation that ends is left.
 const finishAnimations = (page: Page) =>
   attempt(() =>
     page.evaluate(() => {
@@ -602,9 +522,7 @@ const finishAnimations = (page: Page) =>
           try {
             animation.finish()
             finished++
-          } catch {
-            // NOTE: an animation that cannot finish, such as a paused one, stays.
-          }
+          } catch {}
         }
       }
       return finished
@@ -623,8 +541,6 @@ export const settleAnimations = (page: Page) =>
       yield* settled(page)
     }
   })
-
-// PIXEL COMPARE
 
 const pngDataUrl = (path: string) =>
   attempt(() => Bun.file(path).arrayBuffer()).pipe(
@@ -646,9 +562,6 @@ export type PixelDiff = Readonly<{
   diffUrl: string | null
 }>
 
-// NOTE: counts the pixels that differ between two PNG files, read in the
-// page through WebGL2, and draws a diff with the changed pixels in magenta over a dim
-// copy of the second image.
 export const comparePngs: {
   (
     beforePath: string,
@@ -670,142 +583,10 @@ export const comparePngs: {
       const beforeUrl = yield* pngDataUrl(beforePath)
       const afterUrl = yield* pngDataUrl(afterPath)
       const urls = [beforeUrl, afterUrl] as const
-      return yield* attempt(() =>
-        page.evaluate(
-          // NOTE: runs in the page, where an image decodes only by a promise.
-          // @effect-diagnostics-next-line asyncFunction:off
-          async ([first, second]) => {
-            // NOTE: runs in the page, where an image decodes only by a promise.
-            // @effect-diagnostics-next-line asyncFunction:off
-            const load = async (src: string) => {
-              const image = new Image()
-              image.src = src
-              await image.decode()
-              return image
-            }
-            // NOTE: an image's own RGBA read back through WebGL2: uploaded as
-            // a texture, bound to a framebuffer, and read with readPixels,
-            // rows top first as the image's, unpremultiplied, with no color
-            // conversion, so the bytes are the PNG's.
-            const gl = document.createElement('canvas').getContext('webgl2')
-            if (gl === null) {
-              throw new Error('No WebGL2 context for the pixel compare')
-            }
-            // NOTE: runs in the page, where an image decodes only by a promise.
-            // @effect-diagnostics-next-line asyncFunction:off
-            const pixels = async (src: string) => {
-              const image = await load(src)
-              const width = image.naturalWidth
-              const height = image.naturalHeight
-              const texture = gl.createTexture()
-              gl.bindTexture(gl.TEXTURE_2D, texture)
-              gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false)
-              gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false)
-              gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE)
-              gl.texImage2D(
-                gl.TEXTURE_2D,
-                0,
-                gl.RGBA8,
-                width,
-                height,
-                0,
-                gl.RGBA,
-                gl.UNSIGNED_BYTE,
-                image,
-              )
-              const framebuffer = gl.createFramebuffer()
-              gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer)
-              gl.framebufferTexture2D(
-                gl.FRAMEBUFFER,
-                gl.COLOR_ATTACHMENT0,
-                gl.TEXTURE_2D,
-                texture,
-                0,
-              )
-              const data = new Uint8ClampedArray(width * height * 4)
-              gl.readPixels(
-                0,
-                0,
-                width,
-                height,
-                gl.RGBA,
-                gl.UNSIGNED_BYTE,
-                data,
-              )
-              gl.bindFramebuffer(gl.FRAMEBUFFER, null)
-              gl.deleteFramebuffer(framebuffer)
-              gl.deleteTexture(texture)
-              return { width, height, data }
-            }
-            const a = await pixels(first)
-            const b = await pixels(second)
-            const out = new ImageData(a.width, a.height)
-            let differing = 0
-            let maxDelta = 0
-            let left = Infinity
-            let top = Infinity
-            let right = -Infinity
-            let bottom = -Infinity
-            const before = a.data
-            const after = b.data
-            const at = (data: Uint8ClampedArray, index: number) =>
-              data[index] ?? 0
-            for (let i = 0; i < before.length; i += 4) {
-              const delta = Math.max(
-                Math.abs(at(before, i) - at(after, i)),
-                Math.abs(at(before, i + 1) - at(after, i + 1)),
-                Math.abs(at(before, i + 2) - at(after, i + 2)),
-              )
-              const gray = Math.round(
-                (at(after, i) + at(after, i + 1) + at(after, i + 2)) / 12,
-              )
-              out.data[i] = delta > 0 ? 255 : gray
-              out.data[i + 1] = delta > 0 ? 0 : gray
-              out.data[i + 2] = delta > 0 ? 255 : gray
-              out.data[i + 3] = 255
-              if (delta > 0) {
-                differing++
-                const pixel = i / 4
-                const x = pixel % a.width
-                const y = Math.floor(pixel / a.width)
-                left = Math.min(left, x)
-                top = Math.min(top, y)
-                right = Math.max(right, x)
-                bottom = Math.max(bottom, y)
-              }
-              maxDelta = Math.max(maxDelta, delta)
-            }
-            // NOTE: the diff's pixels made a PNG with no 2D context: an
-            // ImageBitmap of them shown on a bitmaprenderer canvas, encoded.
-            // It runs in the page, where a bitmap is made only by a promise.
-            // @effect-diagnostics-next-line asyncFunction:off
-            const diffUrl = async () => {
-              const diff = document.createElement('canvas')
-              diff.width = a.width
-              diff.height = a.height
-              const renderer = diff.getContext('bitmaprenderer')
-              if (renderer === null) {
-                throw new Error('No bitmaprenderer context for the pixel diff')
-              }
-              renderer.transferFromImageBitmap(await createImageBitmap(out))
-              return diff.toDataURL('image/png')
-            }
-            return {
-              differing,
-              total: a.data.length / 4,
-              maxDelta,
-              box: differing > 0 ? { left, top, right, bottom } : null,
-              diffUrl: differing > 0 ? await diffUrl() : null,
-            }
-          },
-          urls,
-        ),
-      )
+      return yield* attempt(() => page.evaluate(pixelDiffOf, urls))
     }),
 )
 
-// NOTE: the fields of the harness's Model that `schema` names, decoded
-// (see `evaluateAs` in page.ts).
 export const modelAs: {
   <S extends Schema.ConstraintDecoder<unknown>>(
     schema: S,
@@ -862,8 +643,6 @@ export const toClient: {
   }),
 )
 
-// NOTE: the player and the zombies, as much of the Model as aiming needs.
-// NOTE: the lead seat's player, single player's only one.
 export const AimView = Schema.Struct({
   seats: Schema.NonEmptyArray(Schema.Struct({ player: Vector })),
   zombies: Schema.Array(
@@ -892,7 +671,6 @@ export const nearestZombie = (m: AimView): AimZombie | undefined => {
   )
 }
 
-// NOTE: taps a button on a phone and clicks it on a desktop.
 export const pressButton: {
   (
     viewport: Viewport,
@@ -915,7 +693,6 @@ export const pressButton: {
   },
 )
 
-// NOTE: opens How to play from home: MORE, then its card in the hand.
 export const openHowToPlay: {
   (viewport: Viewport): (page: Page) => Effect.Effect<void, AuditFailed>
   (page: Page, viewport: Viewport): Effect.Effect<void, AuditFailed>
@@ -939,7 +716,6 @@ export const openHowToPlay: {
 
 const OPEN_TIMEOUT_MS = 10_000
 
-// NOTE: waits for a dialog to open, and goes on after 10 s if none does.
 export const waitForDialog = (page: Page) =>
   attempt(() =>
     page
@@ -948,8 +724,6 @@ export const waitForDialog = (page: Page) =>
       .waitFor({ state: 'visible', timeout: OPEN_TIMEOUT_MS }),
   ).pipe(Effect.ignore)
 
-// NOTE: the lobby PLAY opens for a scene whose player has learned to move
-// and fire (`learned=move,fire`; a new player's PLAY starts the tutorial).
 const LOBBY = '.coop[data-screen="Solo"]'
 
 export const waitForLobby = (page: Page) =>
@@ -957,14 +731,12 @@ export const waitForLobby = (page: Page) =>
     page.locator(LOBBY).waitFor({ state: 'visible', timeout: OPEN_TIMEOUT_MS }),
   ).pipe(Effect.ignore)
 
-// NOTE: clicks PLAY and waits for the lobby.
 export const openLobby = (page: Page) =>
   Effect.andThen(
     attempt(() => page.click('#home-play')),
     waitForLobby(page),
   )
 
-// NOTE: waits for the game's loading splash to go, the game up.
 export const awaitGame = (page: Page) =>
   attempt(() =>
     page.waitForFunction(() => document.getElementById('splash') === null, {
@@ -972,7 +744,6 @@ export const awaitGame = (page: Page) =>
     }),
   )
 
-// NOTE: how many elements match `selector` on the page.
 export const countOf: {
   (selector: string): (page: Page) => Effect.Effect<number, AuditFailed>
   (page: Page, selector: string): Effect.Effect<number, AuditFailed>
@@ -984,8 +755,6 @@ export const countOf: {
 
 export type Act = (page: Page) => Effect.Effect<void, AuditFailed>
 
-// NOTE: a click on a visible button by its accessible name. On a phone the
-// harness plays with touch, but a click lands the same Message.
 export const press =
   (name: RegExp | string): Act =>
   page =>
@@ -994,8 +763,6 @@ export const press =
       settleAnimations(page),
     )
 
-// NOTE: a click on the first element a selector finds, then the page
-// settles.
 export const clickFirst =
   (selector: string): Act =>
   page =>
@@ -1019,8 +786,6 @@ export const fromHand = (name: RegExp) =>
     ),
   )
 
-// NOTE: the rooms passes' scenes (shotsRooms.ts, shotsFinds.ts): every
-// lesson learned and every exit open, in a quiet open break of wave 3.
 export const LEARNED_ALL =
   'learned=move,fire,startWave,swap,pickup,timedBreaks,openBreak,dareTour,dareKey,displayCase'
 export const EVERY_EXIT_OPEN = 'openexits=Kitchen,West,East,Far,Secret'

@@ -22,11 +22,6 @@ import { asVeteran } from '../../../test/veteran'
 import { freshGun, heldWeapon } from '../../../world/gear/weapons'
 import { modifyFocus } from '../../../world/party/party'
 
-// The HUD's gun and knife slots sit at the bottom middle, over the world.
-// Mid-wave a mouse click there is a shot at the zombie beneath, not a swap,
-// so a desktop player never changes guns by aiming low. A tap on a phone
-// still equips, and in a break a mouse click on a slot does too.
-
 const MOUSE = 1
 const FINGER = 7
 
@@ -61,8 +56,6 @@ const inBreak = armed(
   }),
 )
 
-// NOTE: the middle of a HUD slot, in view units and as the browser's
-// client point on SURFACE.
 const slotMiddle = (current: Model, index: number) => {
   const screen = screenOf(current)
   const box = gunSlotBox(screen, index)

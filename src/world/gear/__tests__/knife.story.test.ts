@@ -65,14 +65,7 @@ import {
   inHandOf,
 } from '../weapons'
 
-// The knife (src/world/gear/knife.ts) and the two gun slots (src/world/gear/weapons.ts), played
-// through Block-aware Stories the way a player plays them: F or a tap on the knife's
-// slot to draw it, fire to stab, Q or a gun's slot to go back, and a
-// display case's gun trading one gun for another.
-
 const FRAME_MS = FIXED_STEP_MS
-// NOTE: on the open floor between the dining room's table and the start
-// spot, with room on both sides.
 const ROW_Y = 130
 const PLAYER_X = 180
 
@@ -94,9 +87,6 @@ const fightingWith = (zombies: ReadonlyArray<Zombie>): Model =>
     },
   )
 
-// NOTE: the Model each of `count` frames leaves, played through a
-// Block-aware Story from `start`, gathered in an array only the Story
-// fills, as `recordTicks` does.
 const frames = (
   start: Model,
   count: number,

@@ -35,9 +35,6 @@ import {
   writeWorldDiff,
 } from '../worldCodec'
 
-// NOTE: every number the World and its events hold, by its path, with how
-// the wire packs it. It follows the codec: Options, lists, unions, and
-// suspended Schemas down to each number.
 const numbersOf = (
   ast: SchemaAST.AST,
   path: string,
@@ -98,7 +95,6 @@ const hintTable = (
 
 describe('the wire packs numbers by their Schema', () => {
   test('a number with no wire annotation goes exactly, whatever its field is named', () => {
-    // NOTE: the old codec packed these by name and rounded them.
     const Named = Schema.Struct({
       x: Schema.Finite,
       y: Schema.Finite,
@@ -134,7 +130,6 @@ describe('the wire packs numbers by their Schema', () => {
       ),
       ...numbersOf(GameEvent.ast, 'Event'),
     ]
-    // NOTE: a new lossy field shows up here. Name it on purpose.
     expect(hintTable(numbers)).toEqual({
       Position: { count: 203, names: ['offset', 'remainingPx', 'x', 'y'] },
       Velocity: {
@@ -235,8 +230,6 @@ describe("the run's modifiers on the wire", () => {
 
 const BOSS_ID = 9000
 
-// NOTE: a charge aimed across the room: the target and the rush both go
-// far past the 8 px a unit value holds.
 const BRACING = BossMove.Bracing({
   target: { x: 213.37, y: 101.9 },
   remainingMs: 400,
@@ -259,12 +252,8 @@ const readBackMove = (move: BossMove): BossMove => {
   return boss._tag === 'Fighting' ? boss.move : expect.fail('No fight')
 }
 
-// NOTE: a position goes in eighths of a pixel, so it reads back within
-// half of one.
 const POSITION_PRECISION = 1 / 16
 
-// NOTE: how far each read-back number is from the one sent, or Infinity
-// when the move came back as another case.
 const braceMiss = (move: BossMove): ReadonlyArray<number> =>
   move._tag === 'Bracing'
     ? [
@@ -292,54 +281,6 @@ describe("the boss's charge on the wire", () => {
   })
 })
 
-// NOTE: the bytes of a scripted room of three in wave 4, its snapshots,
-// diffs, and events, then a boss bracing and rushing. Protocol 8 changed
-// the boss's bytes (its brace target and rush length went from unit
-// values to positions); protocol 11 added each player's `wield`, the knife
-// or a gun in hand; protocol 12 added each player's `melee`, the knife or
-// the Clang Pan in the melee slot; protocol 13 added each player's
-// `triggerRestMs`, the idle reload's clock; protocol 14 added the ammo window's
-// tap; protocol 15 added each seat's revives, downs, and shots for the crew
-// board; protocol 16 added each player's `calling`; protocol 18 added the
-// run's `modifiers`; protocol 19 added the fridge's cheap first pulls,
-// the pantry's stash, the kitchen's `stove` and `gasValve`, and each
-// seat's `cooking`; protocol 20 dropped a gun's `rounds`, the ammo
-// window's tap, and RanDry (endless ammo), then added a gun's `kills` and
-// the GunLeveled event and dropped the upgrade items (guns level up with
-// kills), then added the run's display `cases`, each seat's `feats`, and a
-// kill's killer and source (display cases and feats), then the hunting
-// rifle and the blunderbuss joined the guns, the case prizes, and the
-// feats' armaments, with two more case spots (two new guns), then added
-// the trap `crates`, each trap's `maxHp`, and the shop without traps,
-// hearts, or repairs (found traps), then the World's `keys` ring, each
-// seat's `keysFound`, and the KeysFound event in place of the wallet, the
-// shop, and its seat actions (skeleton keys), then the front door and the
-// west slot's doors, the level's `dropped`, and ChandelierFell (the dining
-// room), then the east and far slots' doors and ShelfSwung (the library
-// and the cellar), then the level's rolled `arrangement`, which room
-// stands in each slot (rolled rooms), then the run's `dare` and its
-// `dareThings` and the dare's events (the dare), then the dare's `finale`,
-// FrontDoorOpened, SteppedOut, and the Escaped phase
-// (the finale), then a dare thing's InCase and InStove (the case's page
-// and the stove's recipe), then the Arriving phase, the intro's clock
-// and cut, before the first break, with the first wave rolled on the slam
-// (the intro), then one thing to each room, with a dare thing's Marked,
-// InCase, InStove, Carried, Held, and Delivered states, its `isAsked`,
-// the DareTaken and DareDelivered events, and the Delivered feat and its
-// tally gone, then the boss's `guestHpScale` and his Slam, with the party
-// hat, the Dropped thing, Unlocking, DareDropped, and FrontDoorUnlocking
-// swapped for KeyFlying and BigKeyBurst (Uncle Chunk's last fight), all
-// under protocol 20 within the escape stack. The wire must
-// not change without a protocol bump. A
-// change to how the room plays moves the bytes with no change to the wire,
-// as zombies coming in promptly after their warning did, and Normal's
-// eased health and speed (2026-10-31) did, and the escape's balance pass
-// (Normal's health x0.68, 2026-11-10) did again, and the crates, the
-// pantry, the stove, and mending working mid-wave (2026-11-10) did too, and
-// the last zombie's hurry (2026-11-10) as well, and the rooms' new shapes
-// (the rooms rework, 2026-11-10) once more, and the work stations (2026-11-10),
-// and the rooms' finds (a hidden thing's `workedMs`) and wake-ups
-// (2026-11-11), and Uncle Chunk's last fight (2026-11-11), and every room tool a station of its own (2026-11-11), and the tighter opening waves (2026-11-11), and the hotter, shorter waves (2026-11-11), and READY's rank points (2026-11-11), and the slower Runners on Easy and Normal (2026-11-11), and Dare's break clock picked in the lobby (`easyBreakSeconds`, 2026-11-12), and the dare ladder's mark (`dareMark`, 2026-11-13: 8 bytes, the field alone, the room plays at mark 0), and wave 1's drawn doors and the eased crew crowd (2026-11-14), and the engine-stable math of src/shared/detMath.ts (2026-11-15: the same 64,994 bytes, a few last bits moved).
 const GOLDEN_DIGEST = '64994:ba6aab72c64024cc'
 const WIRE_TICKS = 360
 
@@ -349,8 +290,6 @@ const bytesOf = (write: (writer: Writer) => void): Uint8Array => {
   return writer.finish()
 }
 
-// NOTE: two 32-bit FNV-1a hashes from different starts, as hex. Enough to
-// see a byte change, which is all the test asks.
 const makeDigest = () => {
   const state = { a: 0x811c9dc5, b: 0x01000193, length: 0 }
   return {
@@ -405,8 +344,6 @@ describe('the bytes on the wire', () => {
   })
 })
 
-// NOTE: a small seeded generator, so the pairs a test draws are the same on
-// every run.
 const lcg = (seed: number) => {
   const state = { value: seed }
   return (below: number): number => {

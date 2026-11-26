@@ -35,18 +35,11 @@ import {
 } from '../../world/shop/purchase'
 import { maybeTakenIcon } from './purchaseView'
 
-// NOTE: the kitchen tour's free boards and pull are read as free.
-// NOTE: a price is in skeleton keys off the crew's ring (src/world/keys/keys.ts).
 const keyWords = (count: number): string =>
   `${count} ${count === 1 ? 'key' : 'keys'}`
 
 const priceWords = (price: number): string =>
   price === 0 ? 'free' : keyWords(price)
-
-// The HTML half of buying in the world (src/world/shop/purchase.ts): on touch, a hold
-// button beside the guns while the player stands at a purchasable, in the
-// right thumb's reach, and for a screen reader a polite line with the name
-// and the price. The canvas half is src/features/shop/purchaseView.ts.
 
 const nameOf = (target: Purchasable): string =>
   Purchasable.match(target, {
@@ -68,12 +61,8 @@ const badgeOf = (offer: Offer): string =>
       ? 'OUT'
       : `${offer.price}`
 
-// NOTE: the prize's picture doubled, crisp, as on the canvas tag.
 const TAKE_IMAGE_SCALE = 2
 
-// NOTE: a prize on offer is already paid for, so where a price would be,
-// its button shows an open hand and the prize's own picture: what you
-// take, with no word.
 const takeBadgeView = (
   model: Model,
   offer: Offer,
@@ -134,8 +123,6 @@ const labelOf = (model: Model, offer: Offer): string =>
           : `Bring the whole crew to the ${nameOf(offer.target)} to leave early`,
   })
 
-// NOTE: what the player is at: the offer in reach, or the one they still
-// hold or were refused at a moment ago.
 const maybeShownOffer = (model: Model): Option.Option<Offer> =>
   Purchase.match(focusOf(model).purchase, {
     Idle: () => maybeOfferInReach(model, focusSlotOf(model)),
@@ -171,11 +158,6 @@ const progressAt = (model: Model, offer: Offer): number =>
     Spent: () => 0,
   })
 
-// NOTE: the button is held, not clicked: the finger that lands on it holds
-// the intent's interact until it lifts (src/input/input.ts). It sits outside the
-// game surface, so it never takes a stick's finger.
-// NOTE: a Mount, as the element's own `pointerdown` carries no pointer id,
-// and the hold lasts until that finger lifts (ReleasedPointer).
 export const PressHoldButton = Mount.makeStream(
   'PressHoldButton',
   { args: {} },
@@ -244,8 +226,6 @@ const announcementOf = (model: Model, offer: Offer): string => {
     : `${nameOf(offer.target)}, ${priceWords(offer.price)}. ${how}`
 }
 
-// NOTE: spoken once as the player reaches a purchasable, and again when
-// the key ring's verdict changes, never while the fight goes on around it.
 export const purchaseAnnouncementView: {
   (h: ApplicationViewBuilder): (model: Model) => ApplicationHtml
   (model: Model, h: ApplicationViewBuilder): ApplicationHtml

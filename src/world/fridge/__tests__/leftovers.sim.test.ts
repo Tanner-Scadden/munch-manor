@@ -1,7 +1,3 @@
-// The fridge's slam sim test: pull after pull until the door slams, then
-// its rest, each pull a Block-aware Story. It takes about half a second, so
-// it runs in `bun run test:full` and CI, not in `bun run test`. The fridge's
-// rules are in leftovers.story.test.ts.
 import { Array, Effect } from 'effect'
 
 import { describe, expect, it } from '@effect/vitest'
@@ -21,7 +17,6 @@ import { isFridgeOffered } from './leftovers.fixture'
 
 const FRAME_MS = FIXED_STEP_MS
 
-// NOTE: `count` fixed-step frames.
 const framesOf = (count: number): ReadonlyArray<Message> =>
   Array.makeBy(count, () => FIXED_FRAME)
 

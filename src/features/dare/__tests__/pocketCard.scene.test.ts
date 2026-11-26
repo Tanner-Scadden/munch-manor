@@ -32,12 +32,6 @@ import { Lobby } from '../../lobby/block'
 import { Events } from '../../lobby/message'
 import { FOLD_MS, GATE_MS, READ_MS, UNFOLD_MS } from '../pocketCard'
 
-// The dare card in your pocket (src/features/dare/pocketCard.ts): out on
-// the slam, the first break waits under it while it is read, and it folds
-// into the HUD's dare card on a key, a tap, or after a few seconds. The
-// first time alone it waits for a key or a tap instead, taken only past
-// its gate. Endless has no list, so no card.
-
 const CARD_STATUS = /Your friends' dare card/
 const BREAK_STATUS = /Get ready for wave 1\./
 
@@ -59,7 +53,6 @@ const showsStatus =
   s =>
     s.pipe(ackHudSlots).expect(statusLine).toHaveText(text)
 
-// NOTE: a finger on the surface.
 const surfaceTap = pressSurface({
   pointerId: 4,
   device: 'Touch',
@@ -71,14 +64,12 @@ const onTouch: Model = UiStruct.evolve(home, {
   lastDevice: () => 'Touch',
 })
 
-// NOTE: a player who has never read the card: it waits for them.
 const unread = (model: Model): Model =>
   UiStruct.evolve(model, {
     lessons: lessons =>
       UiStruct.evolve(lessons, { dareCard: () => Lesson.Pending() }),
   })
 
-// NOTE: from home through START and the intro, to the slam's card.
 const toTheCard: SceneStep = steps(
   measureSurface,
   startIntoIntroInScene,

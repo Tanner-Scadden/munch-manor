@@ -46,23 +46,10 @@ import {
 import { clamp } from '../../world/step/geometry'
 import { type Rarity, revealOf } from './fridgeReveal'
 
-// The Mystery Leftovers fridge in motion (src/world/fridge/leftovers.ts) and the fridge
-// weapons' own pictures (src/world/fridge/fridgeWeapons.ts): the door swinging open on a
-// pull (the prize's reveal is src/features/fridge/fridgeRevealView.ts), the chain
-// and padlock while it rests after a slam, the Cooker's pressure dial over
-// the player, and its lids in flight. The fridge itself is baked into the
-// kitchen (fridgeShapes in src/render/room/kitchenView.ts).
-
 const FRIDGE_WIDTH = TILE_SIZE * 2
 const FREEZER_PX = 11
 const MAIN_DOOR_PX = FRIDGE_RISE_PX + TILE_SIZE * 2 - FREEZER_PX - 2
 
-// THE DOOR
-
-// NOTE: the main door swung open toward the viewer's left, a dark inside
-// lit sick green, shelves of things best not named, and its pulse: the
-// inside's top lit brighter on every other beat. Each stands upright on the
-// carved fridge's front (`ON_FRONT_PX`), a block deep.
 const doorShapes = (inside: string): ReadonlyArray<Draw.Shape> => [
   rect(1, FREEZER_PX + 1, FRIDGE_WIDTH - 3, MAIN_DOOR_PX - 1, '#14200e'),
   rect(1, FREEZER_PX + 1, FRIDGE_WIDTH - 3, 2, '#9be36a'),
@@ -85,14 +72,10 @@ const OPEN_DOOR: Sprite = deepSprite(
   ON_FRONT,
 )
 
-// NOTE: the green glow over the dark inside, mixed solid (a pixel under half
-// opacity carves to nothing).
 const LIT_DOOR: Sprite = deepSprite(bakeShapes(doorShapes('#517837')), ON_FRONT)
 
 const GLOW_PULSE_MS = 140
 
-// NOTE: a chain across the shut door with a padlock, while it rests after
-// a slam.
 const CHAIN: Sprite = deepSprite(
   bakeShapes([
     ...Array.makeBy(6, index =>
@@ -132,8 +115,6 @@ const openDoor = (model: Model, spot: FridgeSpot): ReadonlyArray<Drawable> => [
   },
 ]
 
-// NOTE: the door's state, standing in front of the carved fridge
-// (`ON_FRONT_PX`).
 export const fridgeDrawables = (model: Model): ReadonlyArray<Drawable> =>
   isKitchenShown(model)
     ? Option.match(maybeFridgeSpot(model), {
@@ -162,13 +143,6 @@ export const fridgeDrawables = (model: Model): ReadonlyArray<Drawable> =>
       })
     : []
 
-// THE ODDS
-
-// NOTE: shown, not explained (owner, 2026-11-02): walk up to the shut fridge
-// and a grease-stained note taped beside its door lists what is inside, each
-// prize's icon with a pip for every 5 in 100 of its chance as this player
-// would pull now (a weapon they carry shows none). Pips are in the prize's
-// rarity color, as on the reveal.
 const ODDS_PIP_SHARE = 0.05
 const ODDS_MAX_PIPS = 12
 const ODDS_ROW_PX = 7
@@ -215,7 +189,6 @@ const PIP_ROWS: Readonly<Record<Rarity, Array.NonEmptyReadonlyArray<Sprite>>> =
     ],
   }
 
-// NOTE: a pip for every 5 in 100, and one at least for any chance at all.
 export const oddsPips = (share: number): number =>
   share <= 0
     ? 0
@@ -253,15 +226,7 @@ const isNearShutFridge = (model: Model): boolean =>
     box => distanceToBox(focusOf(model).player, box) <= ODDS_NEAR_PX,
   )
 
-// NOTE: the note hangs east of the fridge, over the wall by its door, so it
-// never covers the stove's feat lock and count west of it or the fridge's
-// own price tag. It is drawn on the overlay, as the tags are, so no wall
-// stands in front of it and its rows never sink behind its paper; moved
-// up or down off the HUD, the tags, and a banner's rows (`keepouts`), and
-// kept whole in the window.
 const ODDS_GAP_PX = 3
-// NOTE: what the paper covers round its rows: its edge, the tape over its
-// top, and its shadow.
 const ODDS_EDGE_PX = 2
 const ODDS_EDGE_GAP = 2
 
@@ -280,8 +245,6 @@ const maybePlacedOdds = (
   isNearShutFridge(model)
     ? Option.flatMap(fridgeBoxOf(levelOf(model)), box => {
         const anchor = { x: box.right + ODDS_GAP_PX, y: box.top }
-        // NOTE: a whole number of screen pixels to a game pixel, so every
-        // pip on the note is the same width.
         const scale = Math.max(1, Math.round(camera.scale))
         const at = worldToView(camera, anchor)
         const left = Math.round(at.x) - ODDS_EDGE_PX * scale
@@ -300,9 +263,6 @@ const maybePlacedOdds = (
         const clear = clearWindowOf(screenOf(model), ODDS_EDGE_GAP)
         const x = clamp(left, clear.left, clear.right - width)
         const lowest = clear.bottom - height
-        // NOTE: with nowhere clear (a phone held upright, with WAVE CLEARED
-        // over the kitchen), the note waits for room rather than cover
-        // something.
         return Option.map(
           maybeClearOfKeepouts({
             keepouts,
@@ -335,7 +295,6 @@ const maybePlacedOdds = (
       })
     : Option.none()
 
-// NOTE: the note as drawn, in the overlay's pixels.
 export const fridgeOddsShapes: {
   (
     camera: Camera,
@@ -372,8 +331,6 @@ export const fridgeOddsShapes: {
     }),
 )
 
-// NOTE: what the note covers on the screen, for Rattles' bubbles to keep
-// out of.
 export const fridgeOddsKeepoutsOf: {
   (
     camera: Camera,
@@ -399,11 +356,6 @@ export const fridgeOddsKeepoutsOf: {
     ),
 )
 
-// THE DIAL
-
-// NOTE: a little pressure dial over the player while the Cooker charges
-// (and while the Pan 3000 winds up its smash): it fills clockwise, turns
-// red past full, and blinks just before the lid pops.
 const DIAL_RADIUS = 3
 const DIAL_STEPS = 12
 const DIAL_LIFT_PX = 15
@@ -489,9 +441,6 @@ const dialShapes = (model: Model): ReadonlyArray<Draw.Shape> =>
     ],
   })
 
-// THE LIDS
-
-// NOTE: a spinning pot lid: wide, then edge-on, then wide again.
 const LID_FRAMES: Array.NonEmptyReadonlyArray<Sprite> = [
   spriteShapes(['.kHk.', 'kGHGk', '.kkk.'], {
     k: '#140c10',
@@ -535,7 +484,6 @@ const lidShapes = (model: Model): ReadonlyArray<Draw.Shape> =>
     ),
   )
 
-// NOTE: what flies over the heads of everything standing.
 export const fridgeOverheadShapes = (
   model: Model,
 ): ReadonlyArray<Draw.Shape> => [...lidShapes(model), ...dialShapes(model)]

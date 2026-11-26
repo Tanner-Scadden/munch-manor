@@ -1,29 +1,3 @@
-// The look pass on the GPU, the house's look: it cuts the 3D light into a
-// room's dithered bands of color (the tunables in src/render/iso/lookSpecs.ts,
-// their bytes in src/render/iso/lookTexels.ts).
-//
-// The cut is one shader bit on every lit material, after the lights are
-// summed. The light alone is read back out of the lit color (the lit color
-// over the art's own, the glow taken off first), so the sprites' and the
-// floor's own colors are never banded, only the light on them. The dither is
-// a 4x4 Bayer matrix on whole game pixels, counted on the world's own grid
-// (the floor's texels, a billboard's pixels up the camera), so it lands on
-// the art's pixels and never crawls as the camera moves. Each pixel finds its
-// room by the tile its foot stands on: a billboard's or a body's height is
-// slid back down the camera's view to the floor first, and a piece standing
-// upright stands straight over its own tiles already.
-//
-// The cellar's dark is cut here too, off the same room map, so it ends on
-// the cellar's own tiles and walls: what its dark takes away (DARK_TAKES)
-// comes off the light on a pixel before it is banded, all of it off the
-// house's floor and walls. Off what stands, the ambient's share (DARK_EVEN)
-// comes off every face and the rest only as much as the face looks up, so a
-// body by the player's lights keeps its front and a side seen edge on stays
-// black. The player's pool and flashlight add theirs back first.
-//
-// Its cost is two small texture reads and a few lines of math a pixel, after
-// the lights: no loop and no new pass.
-
 import { BufferImageSource, Texture } from 'pixi.js'
 
 import type { ShaderBit } from '@pixi/3d'
@@ -42,14 +16,11 @@ import {
 } from './lookTexels'
 import { PITCH, STRETCH, UNIT } from './space'
 
-// NOTE: a number as GLSL and WGSL read a float, with its point.
 export const glFloat = (value: number): string =>
   Number.isInteger(value) ? value.toFixed(1) : `${value}`
 
 const RAMP_ROWS = rampRowsOf(LOOK)
 
-// NOTE: the numbers the shader is written around, from the space and the
-// textures' layout.
 const CONSTANTS = {
   columns: glFloat(RAMP_COLUMNS),
   rows: glFloat(RAMP_ROWS),
@@ -60,9 +31,6 @@ const CONSTANTS = {
   sinPitch: glFloat(Math.sin(PITCH)),
   cosPitch: glFloat(Math.cos(PITCH)),
   unit: glFloat(UNIT),
-  // NOTE: half a game pixel north, in tiles: a piece standing upright has its
-  // front on its foot, the very edge of its tiles, so it reads its room a
-  // little behind that, on its own tiles, never the wall's south of them.
   uprightBack: glFloat(UNIT / 2),
   mapColumn: glFloat(ROOM_MAP.column),
   mapRow: glFloat(ROOM_MAP.row),
@@ -72,8 +40,6 @@ const CONSTANTS = {
   darkEven: glFloat(DARK_EVEN),
 }
 
-// NOTE: the 4x4 Bayer dither on whole game pixels, which the god rays
-// (godRays.ts) dither on too.
 export const GL_HEADER = `
 float lookBayer2(vec2 a) {
   a = floor(a);
@@ -94,8 +60,6 @@ fn lookBayer4(a: vec2<f32>) -> f32 {
 }
 `
 
-// NOTE: the cut, after the lights. `glow` is what the material glows of
-// itself, kept whole.
 const glCut = (glow: string, look: Look): string => {
   const c = CONSTANTS
   const { isStanding } = look
@@ -163,18 +127,8 @@ const gpuCut = (glow: string, look: Look): string => {
 
 const TEXTURES = ['lookRamps', 'lookRooms']
 
-// NOTE: how a bit reads its pixel: as what stands (the dark taken off by
-// how much a face looks up) or as the house's planes, and its room at its
-// foot down the camera's up or straight down.
 type Look = Readonly<{ isStanding: boolean; foot: Foot }>
 
-// NOTE: where a pixel's foot is, the tile it reads its room from: slid down
-// the camera's view (a leaning billboard or body), straight under it (the
-// house's planes), or straight under it and a little behind (a piece
-// standing upright, whose front is on the very edge of its tiles). A side
-// of a piece standing upright is not dithered: the dither's whole pixels
-// are counted up the lens's view, which runs slanting along that side, so
-// it showed as stripes; the side's band is cut clean at the halfway mark.
 type Foot = 'DownTheView' | 'Under' | 'BehindTheFront'
 
 const footOf = (at: string, foot: Foot): string => {
@@ -187,11 +141,6 @@ const footOf = (at: string, foot: Foot): string => {
   }[foot]
 }
 
-// NOTE: the four bits: what stands (billboards and bodies of blocks, its
-// room read at its foot, down the camera's up), the pieces of the house
-// standing upright (`isUpright`, straight down), the house's lit planes (the
-// floor and the walls' art, straight down), and the walls' toon blocks,
-// which glow of nothing.
 const bitOf = (
   input: Readonly<{ name: string; glow: GlowOf; look: Look }>,
 ): ShaderBit => ({
@@ -253,9 +202,6 @@ export const dataTexture = ({
     }),
   })
 
-// NOTE: mutable on purpose: it owns the two textures every lit material
-// shares, the room map painted again as rooms open, and both again when
-// the specs read are another table (Munch Studio's lab, ./tunable.ts).
 export class LookTextures {
   private readonly ramps: Texture
   private readonly rooms: Texture
@@ -280,9 +226,6 @@ export class LookTextures {
     })
   }
 
-  // NOTE: each room's slot and the cellar's dark, again only for a new
-  // level (an exit opened), the dark coming or going (the bulb), or new
-  // specs, and the ramps again only for new specs.
   paintRooms(level: Level, isDark: boolean): void {
     const specs = LOOK_TUNING.now
     const isNewSpecs = specs !== this.lastSpecs

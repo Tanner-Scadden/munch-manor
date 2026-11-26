@@ -1,12 +1,7 @@
-// Canvas shapes flattened into leaves: each drawn shape with the matrix and
-// the opacity its groups give it, as the 2D painter would draw it.
-
 import { Function } from 'effect'
 
 import type * as Draw from '../draw'
 
-// NOTE: a 2D affine matrix as the canvas keeps it: x' = a x + c y + e,
-// y' = b x + d y + f.
 export type Affine = Readonly<{
   a: number
   b: number
@@ -36,7 +31,6 @@ const rotation = (turn: number): Affine => ({
   f: 0,
 })
 
-// NOTE: the painter's order: translate, then rotate, then scale.
 const groupMatrix = (group: Draw.Group): Affine => {
   const moved =
     group.translate === undefined
@@ -85,20 +79,45 @@ export const flatten = (
   return out
 }
 
-// NOTE: a rectangle named by where it is and how it is filled, to find one
-// list's rectangles in another (the room's art less the standing furniture,
-// the ground less what has landed).
-// NOTE: read once per level, as the house's floor art is sorted out
-// (house.ts), never per frame.
-// oxlint-disable-next-line munch/no-string-key-per-frame
-export const rectKey = (shape: Draw.Rect): string =>
-  `${shape.x},${shape.y},${shape.width},${shape.height},${shape.fill ?? ''}`
+type Heights = Set<number>
+type Widths = Map<number, Heights>
+type Rows = Map<number, Widths>
+type Columns = Map<number, Rows>
 
-// SAMENESS
+export interface RectSet {
+  readonly add: (shape: Draw.Rect) => void
+  readonly has: (shape: Draw.Rect) => boolean
+}
 
-// NOTE: whether two values hold the same data, `depth` levels down: a
-// shape's own fields are numbers and strings, but for a path's instructions
-// (a list of flat records) and an image's crop (one flat record).
+const childOf = <K, V>(map: Map<K, V>, key: K, make: () => V): V => {
+  const known = map.get(key)
+  if (known !== undefined) {
+    return known
+  }
+  const made = make()
+  map.set(key, made)
+  return made
+}
+
+export const makeRectSet = (): RectSet => {
+  const byFill = new Map<string | undefined, Columns>()
+  return {
+    add: shape => {
+      const columns = childOf(byFill, shape.fill, (): Columns => new Map())
+      const rows = childOf(columns, shape.x, (): Rows => new Map())
+      const widths = childOf(rows, shape.y, (): Widths => new Map())
+      childOf(widths, shape.width, (): Heights => new Set()).add(shape.height)
+    },
+    has: shape =>
+      byFill
+        .get(shape.fill)
+        ?.get(shape.x)
+        ?.get(shape.y)
+        ?.get(shape.width)
+        ?.has(shape.height) === true,
+  }
+}
+
 const isSameData = (a: unknown, b: unknown, depth: number): boolean => {
   if (a === b) {
     return true
@@ -136,11 +155,6 @@ const isSameMatrix = (m: Affine, n: Affine): boolean =>
     m.e === n.e &&
     m.f === n.f)
 
-// NOTE: whether two lists of leaves draw exactly the same picture, so a
-// picture drawn from the first need not be drawn again for the second. It
-// reads each leaf's few fields once, a few dozen leaves a frame, and never
-// hashes or walks a Model: a shape built again each frame to the same
-// numbers is the same, and one moved by a pixel is not.
 export const isSameLeaves: {
   (after: ReadonlyArray<Leaf>): (before: ReadonlyArray<Leaf>) => boolean
   (before: ReadonlyArray<Leaf>, after: ReadonlyArray<Leaf>): boolean

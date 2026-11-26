@@ -3,8 +3,6 @@ import { describe, it } from 'vitest'
 
 import munch from './munchPlugin'
 
-// NOTE: each rule of the project's oxlint plugin on the old pattern it was
-// written against, and on the shape that replaced it.
 RuleTester.describe = describe
 RuleTester.it = it
 
@@ -72,9 +70,7 @@ tester.run('stable-math', ruleOf('stable-math'), {
 tester.run('no-conditional-step', ruleOf('no-conditional-step'), {
   valid: [
     'const step = stepWhen(isDue, playSounds(cues))',
-    // NOTE: a pick between two Steps, not a Step run on a condition.
     'const step = isDue ? playSounds(cues) : unchanged',
-    // NOTE: a result built in place, as a Foldkit `{ model, commands }` was.
     'const result = isDue ? $.run(FetchBuild.make()) : $.model',
     'const result = isOpen ? $.evolve({ guide: closed }) : $.model',
     'const next = isQuiet ? advance(noticed.model) : noticed.model',
@@ -143,7 +139,6 @@ tester.run('no-floating-story', ruleOf('no-floating-story'), {
     "it.effect('all', () => Effect.all(Array.map(SEEDS, seed => Story.make(Application, {}))))",
     "it.effect('play', () => Effect.gen(function* () { const play = yield* HtmlPlay.make(Application, {}); yield* play.click('PLAY') }))",
     'const started = (model) => Story.make(Application, {}).pipe(Effect.map(s => s.given(model)))',
-    // NOTE: start makes its cursor at once, with no Effect to run.
     "test('throws', () => { assert.throws(() => HtmlScene.start(Shelf, {}).click('x')) })",
   ],
   invalid: [
@@ -244,14 +239,6 @@ tester.run('no-dialog-field-write', ruleOf('no-dialog-field-write'), {
   ],
 })
 
-tester.run('live-test-note', ruleOf('live-test-note'), {
-  valid: [
-    "it.effect('waits on the TestClock', () => program)",
-    "// NOTE: real document events.\nit.live('hears a release', () => program)",
-  ],
-  invalid: [one("it.live('hears a release', () => program)")],
-})
-
 tester.run('no-tag-chain on a tag string', ruleOf('no-tag-chain'), {
   valid: ["if (tag === 'Swap') { swap() }"],
   invalid: [
@@ -262,21 +249,20 @@ tester.run('no-tag-chain on a tag string', ruleOf('no-tag-chain'), {
   ],
 })
 
-tester.run('disable-needs-reason', ruleOf('disable-needs-reason'), {
+tester.run('no-comments', ruleOf('no-comments'), {
   valid: [
-    '// NOTE: the page owns this timer.\n// oxlint-disable-next-line no-restricted-globals\nsetTimeout(run, 10)',
-    '// oxlint-disable-next-line no-shadow -- Effect names the interface after its namespace\ninterface Annotations {}',
+    'const answer = 42',
+    "const slashes = 'http://example.com // not a comment'",
+    'const pattern = /\\/\\*not a comment\\*\\//',
+    '#!/usr/bin/env bun\nconst answer = 42',
   ],
   invalid: [
-    one(
-      '// oxlint-disable-next-line no-restricted-globals\nsetTimeout(run, 10)',
-    ),
-    // NOTE: written in two parts, so the Effect language service does not
-    // read the string as a directive of this file's own.
-    one(
-      '// @effect-' +
-        'diagnostics-next-line globalDate:off\nconst now = Date.now()',
-    ),
+    one('// a line comment\nconst answer = 42'),
+    one('/* a block comment */\nconst answer = 42'),
+    one('/** a doc comment */\nexport const answer = 42'),
+    one('const answer = 42 // a trailing comment'),
+    one('// oxlint-disable-next-line no-shadow\nconst answer = 42'),
+    { code: '// one\n// two\nconst answer = 42', errors: 2 },
   ],
 })
 

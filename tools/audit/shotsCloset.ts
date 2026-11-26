@@ -1,16 +1,3 @@
-// The earned looks pass: every shirt color by every print on both bodies and
-// every gun skin on every gun (drawn from the game's own pixel maps, big),
-// then the Look tab's Outfit and Gear rows with worn, owned, for sale, and
-// locked options and with NEW badges, the home hero with a skinned gun and
-// the NEW pips, a run with a skinned gun, the co-op lobby and arena in the
-// new looks, and the end cards that gift a print and a gun skin, on a
-// 1280x720 desktop, an 844x390 phone on its side, and a 390x844 phone held
-// upright, as `s50-<TAG>-<viewport>-<scene>.png`, `s50-<TAG>-looks-<body>.png`,
-// and `s50-<TAG>-skins.png`. It exits with 1 when a Look tab row runs past
-// its panel, an option is under 40 px, or a pick does not try on and the BUY
-// pill does not buy.
-//   TAG=after bun run heavy -- --shared bun tools/audit/shotsCloset.ts
-// ONLY picks scenes, and VIEWPORTS picks screens.
 import { Array, Effect, String } from 'effect'
 import type { Browser, Page } from 'playwright-core'
 
@@ -40,12 +27,9 @@ import { attempt } from './page'
 const LEARNED =
   'learned=move,fire,startWave,swap,pickup,timedBreaks,openBreak,dareTour,dareKey,rattles'
 
-// NOTE: rank 4 (the points for it) holds two hat gifts; 140 Bones earned
-// and 50 spent leave 90, enough for a hat, a color, a print, or a skin.
 const MIXED =
   'rank=600&bones=140&spent=50&bought=Fez,shirt:Midnight,print:Skull'
 
-// NOTE: the points that make rank 16: the Gold shirt opens, with every hat.
 const RANK_16 = 4125
 
 type Scene = Readonly<{
@@ -126,21 +110,17 @@ const SCENES: ReadonlyArray<Scene> = [
     query: `wave=6&phase=gameover&stats&crowd=10&${LEARNED}&rank=5100&rankgain=600`,
     ticks: [330, 420, 520, 640],
   },
-  // NOTE: rank 20 to 24: the Slime gift, then the purses of 21, 23, and 24.
   {
     name: 'end-purse',
     query: `wave=6&phase=gameover&stats&crowd=10&${LEARNED}&rank=7600&rankgain=1900`,
     ticks: [420, 470, 520, 580, 640],
   },
-  // NOTE: the next rank's gift by the bar: a purse at rank 20, a look at 3.
   { name: 'home-next-purse', query: 'rank=5200' },
   { name: 'profile-next-purse', query: 'profile=look&rank=5200' },
   { name: 'profile-next-gift', query: 'profile=look&rank=150' },
 ]
 
 const problems: Array<string> = []
-
-// THE SHEETS
 
 const BODIES = ['Broad', 'Slim'] as const
 
@@ -223,8 +203,6 @@ const shootSheets = (browser: Browser, tag: string) =>
     yield* attempt(() => skins.close())
   })
 
-// CHECKS
-
 const checkLook = (page: Page, where: string) =>
   Effect.gen(function* () {
     const found = yield* attempt(() =>
@@ -299,8 +277,6 @@ const checkLook = (page: Page, where: string) =>
     }
   })
 
-// NOTE: tries on the first look for sale, which spends nothing and shows the
-// BUY pill (shot as look-tryon), then buys it by the pill.
 const checkBuying = (page: Page, where: string, tryOnShot: string) =>
   Effect.gen(function* () {
     const sale = page.locator('.look-option[data-standing="ForSale"]').first()

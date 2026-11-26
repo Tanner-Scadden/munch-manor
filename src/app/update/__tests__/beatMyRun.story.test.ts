@@ -34,17 +34,11 @@ import { type Model, Phase } from '../../model'
 import { ForgetBeatLink } from '../beatMyRun'
 import { FocusHomeButton } from '../home'
 
-// Beat my run (src/domain/beatMyRun.ts): SHARE's link carries a lone
-// player's run, a link read at start offers it on the home menu, taking it
-// holds the lobby to the friend's picks, START plays the friend's house, and
-// the end card says whether the run beat theirs.
-
 const FRIEND_SEED = 1_234_567
 const OWN_SEED = 7_654_321
 
 const NAPKIN_OPENER = Option.getOrElse(maybeOpenerOf('NapkinRing'), () => '')
 
-// NOTE: the friend, who has opened the napkin ring, on Hard with Broke on.
 const friendHome: Model = UiStruct.evolve(readyModel, {
   rngState: () => FRIEND_SEED,
   difficulty: setting => UiStruct.evolve(setting, { chosen: () => 'Hard' }),
@@ -53,8 +47,6 @@ const friendHome: Model = UiStruct.evolve(readyModel, {
     UiStruct.evolve(journal, { milestones: () => [NAPKIN_OPENER] }),
 })
 
-// NOTE: this player, who has not, on Normal with nothing on, and their own
-// seed.
 const ownHome: Model = UiStruct.evolve(readyModel, {
   rngState: () => OWN_SEED,
   difficulty: setting => UiStruct.evolve(setting, { chosen: () => 'Normal' }),
@@ -86,7 +78,6 @@ const takeFromCard = steps(
   resolveFocusLobby(),
 )
 
-// NOTE: what decides the house, read off a run's start.
 const houseOf = (model: Model) => ({
   arrangement: model.level.arrangement,
   list: model.dare.list,
@@ -109,7 +100,6 @@ describe('the link', () => {
       Option.none(),
     )
     expect(readBeatLink('')).toEqual(Option.none())
-    // NOTE: version 2, and a wave past the wire's range.
     expect(readBeatLink('?dare=WzIsMSwwLDAsMCwwLDAsMCwwLDAsMSwwLDBd')).toEqual(
       Option.none(),
     )
@@ -147,8 +137,7 @@ describe('the link', () => {
         ),
         checkModel(({ beatMyRun }) => {
           expect(beatMyRun).toEqual(BeatMyRun.Offered({ dare: DARE }))
-        }), // NOTE: and the dare comes off the address, so a reload never offers
-        // it again.
+        }),
         s => s.expectExact(ForgetBeatLink.make()),
         s => s.resolve(ForgetBeatLink.make(), Component.noop),
       ),
@@ -197,7 +186,7 @@ describe('BEAT MY RUN', () => {
           expect(current.lobby.status).toBe('Open')
           expect(current.difficulty.chosen).toBe('Hard')
           expect(current.modifiers.broke).toBe(true)
-        }), // NOTE: a pick tapped on the held lobby changes nothing.
+        }),
         send(LobbyMessage.PickedLobbyDifficulty({ difficulty: 'Easy' })),
         checkModel(({ difficulty }) => {
           expect(difficulty.chosen).toBe('Hard')
@@ -272,8 +261,6 @@ describe('BEAT MY RUN', () => {
             throughIntro,
           ),
         )
-        // NOTE: the napkin ring is not this player's, but it is the
-        // friend's dare's, so the list rolls from it all the same.
         expect(ownRun.runStart.runPool).toEqual(['NapkinRing'])
         expect(houseOf(ownRun)).toEqual(houseOf(friendRun))
         expect(ownRun.elapsedMs).toBe(friendRun.elapsedMs)

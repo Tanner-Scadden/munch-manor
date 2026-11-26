@@ -4,8 +4,6 @@ import { TRAPS } from '../../src/world/gear/traps'
 import { EXIT_RULES } from '../../src/world/level/exits'
 import type { SpareGun } from './modelGuns'
 
-// THE PRICES, IN KEYS
-
 export type Catalog = Readonly<{
   gunPrice: Readonly<Record<SpareGun, number>>
   plankPrice: number
@@ -15,18 +13,11 @@ export type Catalog = Readonly<{
   kitchenPrice: number
 }>
 
-// NOTE: the shop is gone (docs/ESCAPE_PLAN.md, layer 7). Guns sit in display
-// cases opened by feats, so the model never buys one: their price is out of
-// reach, and the Chatterbox comes from a case at `caseGunWave` (economy).
-// The kitchen's padlock asks its keys.
 export const CATALOG: Catalog = {
   gunPrice: {
     Shotgun: globalThis.Number.POSITIVE_INFINITY,
     Smg: globalThis.Number.POSITIVE_INFINITY,
   },
-  // NOTE: traps are found in the trap crates (src/world/gear/crates.ts),
-  // not bought, so the model gets them for nothing. It still picks them up
-  // in its own order, one a visit, about as a crate gives one a break.
   plankPrice: 0,
   plankLimit: TRAPS.Barricade.limit,
   gnomePrice: 0,
@@ -34,9 +25,6 @@ export const CATALOG: Catalog = {
   kitchenPrice: EXIT_RULES.kitchenKeys,
 }
 
-// NOTE: a gun's tier is earned by its kills (src/world/gear/gunLevels.ts),
-// so each gun carries its kills: the model kills every zombie of a wave
-// with the gun it holds.
 type Spare = Readonly<{ kind: SpareGun; tier: number; kills: number }>
 
 export type Loadout = Readonly<{
@@ -109,10 +97,6 @@ export const withPurchase: {
   }
 })
 
-// NOTE: the bot's shopping list in tools/balance/bot.ts, without hearts:
-// the SMG once it can, else the shotgun; two planks; upkeep for repairs; a
-// gnome; the kitchen; then a second gnome while a reserve stays. Tiers
-// come from kills, not the shop (withKills).
 const wantedNext = (
   catalog: Catalog,
   basket: Basket,
@@ -183,7 +167,6 @@ export type Visit = Readonly<{
   loadout: Loadout
 }>
 
-// One shop visit: buy what the list wants until nothing more is wanted.
 export const shopVisit: {
   (
     money: number,
