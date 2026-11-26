@@ -23,11 +23,11 @@ let activations = 0
 
 export class EventLogStore {
   private readonly ready: Promise<Transport>
-  private readonly activation: number
+  private readonly activation: string
 
   constructor(ctx: cf.DurableObjectState, env: Env) {
     activations += 1
-    this.activation = activations
+    this.activation = `${activations}@${new Date().toISOString()}`
     const isHere = (storeId: string) =>
       env.EVENTLOG.idFromName(storeId).equals(ctx.id)
     this.ready = Effect.runPromise(
@@ -60,7 +60,7 @@ export class EventLogStore {
   async fetch(request: Request): Promise<Response> {
     const transport = await this.ready
     if (new URL(request.url).pathname.endsWith('/activation')) {
-      return new Response(String(this.activation))
+      return new Response(this.activation)
     }
     return Effect.runPromise(transport.upgrade())
   }

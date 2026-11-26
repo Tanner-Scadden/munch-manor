@@ -42,7 +42,10 @@ export const deviceLayer = (options: {
 
 export const remoteLayer = (url: string) =>
   EventLogRemote.layerUnencrypted.pipe(
-    Layer.provide(RpcClient.layerProtocolSocket({ retryTransientErrors: true })),
+    Layer.provide(RpcClient.layerProtocolSocket({
+        retryTransientErrors: true,
+        pingInterval: `${Number(process.env['PING_SECONDS'] ?? '5')} seconds`,
+      })),
     Layer.provide(Socket.layerWebSocket(url)),
     Layer.provide(Socket.layerWebSocketConstructorGlobal),
     Layer.provide(RpcSerialization.layerSchemaBinary()),

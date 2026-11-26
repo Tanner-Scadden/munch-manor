@@ -17,6 +17,7 @@ import {
 import { playerStoreOf } from './serverParts.ts'
 
 const PORT = 8792
+const REMOTE = process.env["REMOTE"]
 const IDLE_SECONDS = Number(process.env['IDLE_SECONDS'] ?? '15')
 const here = import.meta.dirname
 const infra = resolve(here, '../..')
@@ -75,18 +76,22 @@ const check = (label: string, ok: boolean, detail: unknown) =>
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
 
 const program = Effect.gen(function* () {
-  yield* build
-  yield* spawn
-  yield* Effect.addFinalizer(() => kill)
+  if (REMOTE === undefined) {
+    yield* build
+    yield* spawn
+    yield* Effect.addFinalizer(() => kill)
+  }
 
   const identity = yield* EventLog.makeIdentity.pipe(
     Effect.provide(EventLogEncryption.layerSubtle),
   )
   const store = playerStoreOf(identity.publicKey)
-  const base = `127.0.0.1:${PORT}/eventlog/${encodeURIComponent(store)}`
-  const url = `ws://${base}`
+  const host = REMOTE ?? `127.0.0.1:${PORT}`
+  const secure = REMOTE === undefined ? "" : "s"
+  const base = `${host}/eventlog/${encodeURIComponent(store)}`
+  const url = `ws${secure}://${base}`
   const activation = Effect.tryPromise(() =>
-    fetch(`http://${base}/activation`).then(r =>
+    fetch(`http${secure}://${base}/activation`).then(r =>
       r.ok ? r.text() : r.text().then(t => Promise.reject(new Error(t))),
     ),
   ).pipe(Effect.retry({ schedule: Schedule.spaced('100 millis'), times: 100 }))
@@ -115,6 +120,10 @@ const program = Effect.gen(function* () {
   const expected2 = { heroes: { Cook: 13 }, guns: { Pistol: 6, Shotgun: 2 } }
   yield* check('DO: a write after idling reaches the other device', same(phone2, expected2), phone2)
 
+  if (REMOTE !== undefined) {
+    yield* Effect.log('ALL PASSED (remote: skipped the reset step)')
+    return
+  }
   yield* kill
   yield* Effect.log('workerd killed (Durable Object reset)')
   yield* gainMastery(phone, { runId: 'run-4', heroes: { Medic: 4 }, guns: {} })
