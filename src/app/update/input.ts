@@ -2,7 +2,8 @@ import { Option, Struct } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import { foldPocketCard } from '../../features/dare/pocketCard'
+import { refreshIntent } from '#app/frame/frame.ts'
+import { foldPocketCard } from '#features/dare/pocketCard.ts'
 import {
   type PointerPress,
   keepTouchedSticks,
@@ -12,17 +13,17 @@ import {
   pressPointer,
   releaseKeys,
   releasePointer,
-} from '../../input/input'
-import type { InputDevice, PointerDevice } from '../../input/inputSchema'
-import { noteMissedKeyDown } from '../../input/keyGrab'
-import { isTurnHintShown, seeTurnHint } from '../../screens/home/home'
-import { isArriving } from '../../world/run/arrival'
-import { isRoundActive } from '../../world/waves/waves'
-import { refreshIntent } from '../frame'
-import { orInRun } from './coopRun'
-import { skipFromPointer } from './end'
-import { skipIntro } from './intro'
-import { padMenuSteps } from './padMenu'
+} from '#input/input.ts'
+import type { InputDevice, PointerDevice } from '#input/inputSchema.ts'
+import { noteMissedKeyDown } from '#input/keyGrab.ts'
+import { isTurnHintShown, seeTurnHint } from '#screens/home/home.ts'
+import { isArriving } from '#world/run/arrival.ts'
+import { isRoundActive } from '#world/waves/waves.ts'
+
+import { orInRun } from './coopRun.ts'
+import { skipFromPointer } from './end.ts'
+import { skipIntro } from './intro.ts'
+import { padMenuSteps } from './padMenu.ts'
 import {
   asAllowedPress,
   clickDareList,
@@ -49,17 +50,17 @@ import {
   swapFromButton,
   useDevice,
   withSlotClick,
-} from './play'
-import { startsRun } from './run'
-import { playStartSoundWhen, unlockAudio } from './sound'
+} from './play.ts'
+import { startsRun } from './run.ts'
+import { playStartSoundWhen, unlockAudio } from './sound.ts'
 import {
   type UpdateStep,
   defineHandlers,
   modelStep,
   toModel,
   withInput,
-} from './step'
-import { checkForUpdate } from './version'
+} from './step.ts'
+import { checkForUpdate } from './version.ts'
 
 const deviceOf = (device: PointerDevice): InputDevice =>
   device === 'Touch' ? 'Touch' : 'KeyboardMouse'

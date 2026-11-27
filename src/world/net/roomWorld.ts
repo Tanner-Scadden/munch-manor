@@ -13,16 +13,16 @@ import type {
   Writer,
 } from '@munch/netcode'
 
-import { FIXED_STEP_MS } from '../../shared/constants'
-import * as DetMath from '../../shared/detMath'
-import { type Calling, callingOfCode } from '../../shared/playerData'
-import { rollDare } from '../dare/dare'
-import type { DareKind } from '../dare/dareSchema'
-import { rollCases } from '../feats/cases'
-import { TURRET_WEAPON } from '../gear/traps'
-import { seatedAs } from '../heroes/callingPlayer'
-import { freshOvens } from '../kitchen/kitchen'
-import { START_LEVEL } from '../level/arena'
+import { FIXED_STEP_MS } from '#shared/constants.ts'
+import * as DetMath from '#shared/detMath.ts'
+import { type Calling, callingOfCode } from '#shared/records/playerData.ts'
+import { rollDare } from '#world/dare/dare.ts'
+import type { DareKind } from '#world/dare/dareSchema.ts'
+import { rollCases } from '#world/feats/cases.ts'
+import { TURRET_WEAPON } from '#world/gear/traps.ts'
+import { seatedAs } from '#world/heroes/callingPlayer.ts'
+import { freshOvens } from '#world/kitchen/kitchen.ts'
+import { START_LEVEL } from '#world/level/arena.ts'
 import {
   biteGraceFor,
   focusSeat,
@@ -37,12 +37,16 @@ import {
   soloSeat,
   soloState,
   withStartingHearts,
-} from '../party/party'
-import { beginArrival, endArrival, isArriving } from '../run/arrival'
-import { clampMark } from '../run/dareLadder'
-import { settledLessons } from '../run/lessons'
-import { type Modifiers, modifiersOfMask, noModifiers } from '../run/modifiers'
-import { type World, modifyWorldFields } from '../schema/world'
+} from '#world/party/party.ts'
+import { beginArrival, endArrival, isArriving } from '#world/run/arrival.ts'
+import { clampMark } from '#world/run/dareLadder.ts'
+import { settledLessons } from '#world/run/lessons.ts'
+import {
+  type Modifiers,
+  modifiersOfMask,
+  noModifiers,
+} from '#world/run/modifiers.ts'
+import { type World, modifyWorldFields } from '#world/schema/world.ts'
 import {
   Boss,
   type Bullet,
@@ -72,11 +76,16 @@ import {
   noPractice,
   shutFridge,
   shutValve,
-} from '../schema/worldSchema'
-import { type ZombieAt, catchUpShots, zombiesAt } from '../step/firing'
-import { lerp, normalize } from '../step/geometry'
-import { predictSeat } from '../step/simulation'
-import { SeatAction, applySeatAction, stepWorld } from '../step/stepWorld'
+} from '#world/schema/worldSchema.ts'
+import { type ZombieAt, catchUpShots, zombiesAt } from '#world/step/firing.ts'
+import { lerp, normalize } from '#world/step/geometry.ts'
+import { predictSeat } from '#world/step/simulation.ts'
+import {
+  SeatAction,
+  applySeatAction,
+  stepWorld,
+} from '#world/step/stepWorld.ts'
+
 import {
   readEvent,
   readMany,
@@ -85,7 +94,7 @@ import {
   writeEvent,
   writeWorld,
   writeWorldDiff,
-} from './worldCodec'
+} from './worldCodec.ts'
 
 type TickEvents = Readonly<{
   tick: number

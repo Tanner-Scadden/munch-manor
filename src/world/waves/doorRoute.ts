@@ -2,11 +2,11 @@ import { Array, Function, Option, Result, pipe } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import { countWork } from '../../shared/workCount'
-import { barricadedDoors } from '../gear/traps'
-import type { DoorId } from '../schema/entitySchema'
-import type { PackDoor, PlannedSpawn, Trap } from '../schema/worldSchema'
-import { isFloorKind } from '../zombies/zombies'
+import { countWork } from '#shared/workCount.ts'
+import { barricadedDoors } from '#world/gear/traps.ts'
+import type { DoorId } from '#world/schema/entitySchema.ts'
+import type { PackDoor, PlannedSpawn, Trap } from '#world/schema/worldSchema.ts'
+import { isFloorKind } from '#world/zombies/zombies.ts'
 
 const CLOCKWISE: Array.NonEmptyReadonlyArray<DoorId> = [
   'Back',

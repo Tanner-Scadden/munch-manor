@@ -13,7 +13,7 @@ import { HtmlCommand } from '@effect/ui/html'
 import { HtmlScene } from '@effect/ui/html/testing'
 import { type Steps, Story } from '@effect/ui/testing'
 
-import { ApplicationNoDeps } from '../app/block'
+import { ApplicationNoDeps } from '#app/block.ts'
 import {
   AwaitFirstFrame,
   DecodeSprites,
@@ -30,8 +30,8 @@ import {
   ReadUpdateMarker,
   StartRecordingQueue,
   StartSummaryQueue,
-} from '../app/boot'
-import { Message } from '../app/message'
+} from '#app/boot.ts'
+import { Message } from '#app/message.ts'
 import {
   AudioState,
   type Bullet,
@@ -46,32 +46,32 @@ import {
   ZombieAction,
   type ZombieKind,
   ZombieState,
-} from '../app/model'
-import { ReadBeatLink } from '../app/update/beatMyRun'
-import { ReadRoomLink } from '../app/update/coop'
-import { FocusLobbyControl, FoldLobby } from '../app/update/lobby'
-import { CueMusic } from '../app/update/music'
-import { HideSplash, ShowLoadProgress, WriteSave } from '../app/update/save'
-import { SendRunSummary } from '../app/update/settle'
-import { PlayPlaced, PlaySound } from '../app/update/sound'
-import type { SoundEffect } from '../audio/audio'
-import { SoundMessage } from '../audio/message'
-import { ChangeLobby } from '../features/coop/steps'
-import { RememberRoom } from '../features/coop/update'
+} from '#app/model.ts'
+import { ReadBeatLink } from '#app/update/beatMyRun.ts'
+import { ReadRoomLink } from '#app/update/coop.ts'
+import { FocusLobbyControl, FoldLobby } from '#app/update/lobby.ts'
+import { CueMusic } from '#app/update/music.ts'
+import { HideSplash, ShowLoadProgress, WriteSave } from '#app/update/save.ts'
+import { SendRunSummary } from '#app/update/settle.ts'
+import { PlayPlaced, PlaySound } from '#app/update/sound.ts'
+import type { SoundEffect } from '#audio/audio.ts'
+import { SoundMessage } from '#audio/message.ts'
+import { ChangeLobby } from '#features/coop/steps.ts'
+import { RememberRoom } from '#features/coop/update.ts'
 import {
   GATE_MS,
   isPocketCardHeld,
   isPocketCardReading,
-} from '../features/dare/pocketCard'
-import { LobbyMessage } from '../features/lobby/message'
-import type { LobbyControl } from '../features/lobby/model'
+} from '#features/dare/pocketCard.ts'
+import { LobbyMessage } from '#features/lobby/message.ts'
+import type { LobbyControl } from '#features/lobby/model.ts'
 import {
   type HintId,
   LESSON_MIN_SHOWN_MS,
   shownHints,
-} from '../features/onboarding/onboarding'
-import { LoadMessage, SaveMessage } from '../platform/message'
-import { floorToScreenDirection } from '../render/lens'
+} from '#features/onboarding/onboarding.ts'
+import { LoadMessage, SaveMessage } from '#platform/message.ts'
+import { floorToScreenDirection } from '#render/camera/lens.ts'
 import {
   FIXED_STEP_MS,
   MAX_FRAME_DELTA_MS,
@@ -79,20 +79,20 @@ import {
   SCORE_PER_ZOMBIE,
   STICK_RADIUS_PX,
   ZOMBIE_MAX_HP,
-} from '../shared/constants'
-import { hypot } from '../shared/detMath'
-import type { Calling } from '../shared/playerData'
-import { FRIDGE_RULES } from '../world/fridge/leftovers'
-import { TRAPS } from '../world/gear/traps'
-import { START_LEVEL, levelOf } from '../world/level/arena'
-import { KITCHEN_EXIT } from '../world/level/exits'
-import type { Clearance } from '../world/level/pathing'
-import { SLAM_MS } from '../world/run/arrival'
-import { World } from '../world/schema/world'
-import { Trap } from '../world/schema/worldSchema'
-import { PURCHASE_RULES } from '../world/shop/purchase'
-import { stepWorld } from '../world/step/stepWorld'
-import { ZOMBIE_KINDS } from '../world/zombies/zombies'
+} from '#shared/constants.ts'
+import { hypot } from '#shared/detMath.ts'
+import type { Calling } from '#shared/records/playerData.ts'
+import { FRIDGE_RULES } from '#world/fridge/leftovers.ts'
+import { TRAPS } from '#world/gear/traps.ts'
+import { START_LEVEL, levelOf } from '#world/level/arena.ts'
+import { KITCHEN_EXIT } from '#world/level/exits.ts'
+import type { Clearance } from '#world/level/pathing.ts'
+import { SLAM_MS } from '#world/run/arrival.ts'
+import { World } from '#world/schema/world.ts'
+import { Trap } from '#world/schema/worldSchema.ts'
+import { PURCHASE_RULES } from '#world/shop/purchase.ts'
+import { stepWorld } from '#world/step/stepWorld.ts'
+import { ZOMBIE_KINDS } from '#world/zombies/zombies.ts'
 
 export const scoring =
   (score: number) =>

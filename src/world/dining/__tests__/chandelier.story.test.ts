@@ -9,14 +9,14 @@ import {
   GameEvent,
   type Model,
   Phase,
-} from '../../../app/model'
-import { FIXED_STEP_MS, PLAYER_RADIUS } from '../../../shared/constants'
+} from '#app/model.ts'
+import { FIXED_STEP_MS, PLAYER_RADIUS } from '#shared/constants.ts'
 import {
   DISTANT_SPAWN,
   quietWave,
   withActors,
   withPlayerAt,
-} from '../../../test/model.fixture'
+} from '#test/model.fixture.ts'
 import {
   bulletInto,
   checkModel,
@@ -24,17 +24,17 @@ import {
   steps,
   ticks,
   zombieAt,
-} from '../../../test/testing'
-import { MANOR, levelFor, levelOf } from '../../level/arena'
-import { CHANDELIER_DROP, MANOR_SPEC } from '../../level/plan'
-import { findStrike, isWalkableTile } from '../../level/tileQueries'
-import { focusOf } from '../../party/party'
+} from '#test/testing.ts'
 import {
   CHANDELIER_RULES,
   chandelierHitBox,
   gapBoxOf,
   isChandelierDown,
-} from '../chandelier'
+} from '#world/dining/chandelier.ts'
+import { MANOR, levelFor, levelOf } from '#world/level/arena.ts'
+import { CHANDELIER_DROP, MANOR_SPEC } from '#world/level/plan.ts'
+import { findStrike, isWalkableTile } from '#world/level/tileQueries.ts'
+import { focusOf } from '#world/party/party.ts'
 
 const FRAME_MS = FIXED_STEP_MS
 

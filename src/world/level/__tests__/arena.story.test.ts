@@ -3,9 +3,9 @@ import { Array, Effect, Option, Result, pipe } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { type Bullet, type Model, Phase, Pierce } from '../../../app/model'
-import { initialModel } from '../../../app/pureApp'
-import type { Particle } from '../../../render/renderSchema'
+import { type Bullet, type Model, Phase, Pierce } from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
+import type { Particle } from '#render/renderSchema.ts'
 import {
   FIXED_STEP_MS,
   MAX_FRAME_DELTA_MS,
@@ -14,13 +14,9 @@ import {
   TILE_SIZE,
   ZOMBIE_MAX_HP,
   ZOMBIE_RADIUS,
-} from '../../../shared/constants'
-import { walkToward } from '../../../test/lensTesting'
-import {
-  DISTANT_SPAWN,
-  quietWave,
-  withPlayerAt,
-} from '../../../test/model.fixture'
+} from '#shared/constants.ts'
+import { walkToward } from '#test/lensTesting.ts'
+import { DISTANT_SPAWN, quietWave, withPlayerAt } from '#test/model.fixture.ts'
 import {
   checkModel,
   modelAfter,
@@ -29,13 +25,21 @@ import {
   tick,
   ticks,
   zombieAt,
-} from '../../../test/testing'
-import { focusOf, modifyFocus } from '../../party/party'
-import { PARLOUR, levelOf } from '../arena'
-import { UNREACHED_DISTANCE, distanceAt, flowFieldToward } from '../pathing'
-import { ROOM_MAP } from '../plan'
-import { tileCenter, tileOfIndex } from '../tileGrid'
-import { isInsideRoomAt, isSolidAt, isWalkableTile } from '../tileQueries'
+} from '#test/testing.ts'
+import { PARLOUR, levelOf } from '#world/level/arena.ts'
+import {
+  UNREACHED_DISTANCE,
+  distanceAt,
+  flowFieldToward,
+} from '#world/level/pathing.ts'
+import { ROOM_MAP } from '#world/level/plan.ts'
+import { tileCenter, tileOfIndex } from '#world/level/tileGrid.ts'
+import {
+  isInsideRoomAt,
+  isSolidAt,
+  isWalkableTile,
+} from '#world/level/tileQueries.ts'
+import { focusOf, modifyFocus } from '#world/party/party.ts'
 
 const FRAME_MS = FIXED_STEP_MS
 

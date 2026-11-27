@@ -37,14 +37,10 @@ import {
   lobbyOfSnapshot,
   negotiateVersion,
 } from '@munch/netcode'
-import {
-  type Delta,
-  ServerMessage,
-  decodeArgs,
-} from '@munch/sync-engine'
+import { type Delta, ServerMessage, decodeArgs } from '@munch/sync-engine'
 
-import { lookCodeOf, lookOfCode } from '../../src/shared/lookCodes.ts'
-import { callingOfCode } from '../../src/shared/playerData.ts'
+import { lookCodeOf, lookOfCode } from '../../src/shared/records/lookCodes.ts'
+import { callingOfCode } from '../../src/shared/records/playerData.ts'
 import { verifyToken } from './sessionToken.ts'
 import {
   type ScopeHost,

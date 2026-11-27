@@ -2,12 +2,12 @@ import { Function, type Layer } from 'effect'
 
 import { type Component, UiStruct } from '@effect/ui'
 
-import { releaseAll } from '../../input/input'
-import type { Input } from '../../input/inputSchema'
-import { refreshIntent } from '../frame'
-import type { CommandsLayer } from '../layer'
-import type { Message } from '../message'
-import type { Model } from '../model'
+import type { CommandsLayer } from '#app/commands.ts'
+import { refreshIntent } from '#app/frame/frame.ts'
+import type { Message } from '#app/message.ts'
+import type { Model } from '#app/model.ts'
+import { releaseAll } from '#input/input.ts'
+import type { Input } from '#input/inputSchema.ts'
 
 type AppHandlers = Layer.Success<typeof CommandsLayer>
 

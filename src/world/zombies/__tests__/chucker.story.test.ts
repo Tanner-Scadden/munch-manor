@@ -3,7 +3,7 @@ import { Array, Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { Message } from '../../../app/message'
+import { Message } from '#app/message.ts'
 import {
   type Bullet,
   type Model,
@@ -12,15 +12,15 @@ import {
   type Zombie,
   ZombieAction,
   ZombieState,
-} from '../../../app/model'
-import { initialModel } from '../../../app/pureApp'
-import { debutPitch } from '../../../screens/game/menus'
+} from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
+import { debutPitch } from '#screens/game/menus.ts'
 import {
   FIXED_STEP_MS,
   HIT_STOP_HURT_MS,
   PLAYER_MAX_HP,
-} from '../../../shared/constants'
-import { DISTANT_SPAWN } from '../../../test/model.fixture'
+} from '#shared/constants.ts'
+import { DISTANT_SPAWN } from '#test/model.fixture.ts'
 import {
   bulletInto,
   checkModel,
@@ -32,11 +32,11 @@ import {
   ticks,
   zombieById,
   zombieOf,
-} from '../../../test/testing'
-import { START_LEVEL } from '../../level/arena'
-import { focusOf, modifyFocus } from '../../party/party'
-import { CHUCKER_RULES } from '../chucker'
-import { ZOMBIE_KINDS } from '../zombies'
+} from '#test/testing.ts'
+import { START_LEVEL } from '#world/level/arena.ts'
+import { focusOf, modifyFocus } from '#world/party/party.ts'
+import { CHUCKER_RULES } from '#world/zombies/chucker.ts'
+import { ZOMBIE_KINDS } from '#world/zombies/zombies.ts'
 
 const FRAME_MS = FIXED_STEP_MS
 const CENTER_X = START_LEVEL.start.x

@@ -7,11 +7,11 @@ import {
   FIXED_STEP_MS,
   PLAYER_RADIUS,
   ZOMBIE_BUMP_SPEED,
-} from '../../shared/constants'
-import * as DetMath from '../../shared/detMath'
-import { sameIfUnchanged } from '../../shared/sameList'
-import { creditGunKills, killerSlotOf } from '../gear/gunLevels'
-import { TURRET_WEAPON } from '../gear/traps'
+} from '#shared/constants.ts'
+import * as DetMath from '#shared/detMath.ts'
+import { sameIfUnchanged } from '#shared/sameList.ts'
+import { creditGunKills, killerSlotOf } from '#world/gear/gunLevels.ts'
+import { TURRET_WEAPON } from '#world/gear/traps.ts'
 import {
   atSeat,
   creditKills,
@@ -22,11 +22,11 @@ import {
   maybeShooterOf,
   modifySeatRecord,
   seatStateAt,
-} from '../party/party'
-import { resolveFriendlyFire } from '../party/revive'
-import { biteDamage, biteGraceScale } from '../run/difficulty'
-import { countHits } from '../run/stats'
-import type { World } from '../schema/world'
+} from '#world/party/party.ts'
+import { resolveFriendlyFire } from '#world/party/revive.ts'
+import { biteDamage, biteGraceScale } from '#world/run/difficulty.ts'
+import { countHits } from '#world/run/stats.ts'
+import type { World } from '#world/schema/world.ts'
 import {
   type Boss,
   type Bullet,
@@ -39,11 +39,17 @@ import {
   type WeaponKind,
   type Zombie,
   ZombieState,
-} from '../schema/worldSchema'
-import { woundScaleOf } from '../zombies/bossFight'
-import { maybeShieldFor } from '../zombies/chucker'
-import { MAX_BODY_RADIUS_PX, groundedGrid } from '../zombies/zombieGrid'
-import { Behavior, bodyRadiusOf, isFree, statsOf } from '../zombies/zombies'
+} from '#world/schema/worldSchema.ts'
+import { woundScaleOf } from '#world/zombies/bossFight.ts'
+import { maybeShieldFor } from '#world/zombies/chucker.ts'
+import { MAX_BODY_RADIUS_PX, groundedGrid } from '#world/zombies/zombieGrid.ts'
+import {
+  Behavior,
+  bodyRadiusOf,
+  isFree,
+  statsOf,
+} from '#world/zombies/zombies.ts'
+
 import {
   bulletDirection,
   creditKillEvents,
@@ -51,15 +57,15 @@ import {
   killEvent,
   strikeZombie,
   woundPlayer,
-} from './combat'
+} from './combat.ts'
 import {
   ZERO_VECTOR,
   circlesOverlap,
   closestPointOnSegment,
   directionBetween,
   scaleVector,
-} from './geometry'
-import { queryBox, queryBuffer } from './grid'
+} from './geometry.ts'
+import { queryBox, queryBuffer } from './grid.ts'
 
 type BulletHit = Readonly<{
   bulletId: number

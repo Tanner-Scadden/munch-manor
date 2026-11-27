@@ -1,14 +1,12 @@
 import { Function } from 'effect'
 
-import type {
-  ApplicationHtml,
-  ApplicationViewBuilder,
-} from '../../app/definition'
-import type { Model } from '../../app/model'
-import type { HomeButton } from '../../features/home/homeSchema'
-import { HomeMessage } from '../../features/home/message'
-import { keyCapView } from '../../ui/menuParts'
-import { HOME_KEYS, homeButtonId } from './home'
+import type { ApplicationHtml, ApplicationViewBuilder } from '#app/component.ts'
+import type { Model } from '#app/model.ts'
+import type { HomeButton } from '#features/home/homeSchema.ts'
+import { HomeMessage } from '#features/home/message.ts'
+import { keyCapView } from '#ui/menuParts.ts'
+
+import { HOME_KEYS, homeButtonId } from './home.ts'
 
 export const keyBadgeView: {
   (

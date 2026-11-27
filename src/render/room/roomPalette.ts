@@ -1,14 +1,14 @@
 import { Array, Function, Option, Record, pipe } from 'effect'
 
-import { TILE_SIZE } from '../../shared/constants'
-import { nextRandom } from '../../shared/prng'
-import type { Level } from '../../world/level/arena'
+import { TILE_SIZE } from '#shared/constants.ts'
+import { nextRandom } from '#shared/prng.ts'
+import type { Level } from '#world/level/arena.ts'
 import {
   COVER_SYMBOLS,
   type CoverKind,
   type Tile,
   tilesWithSymbol,
-} from '../../world/level/tileGrid'
+} from '#world/level/tileGrid.ts'
 
 export const FLOOR_COLOR = '#3b2b23'
 export const PLANK_SEAM_COLOR = '#2d2019'

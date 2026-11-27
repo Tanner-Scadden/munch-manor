@@ -2,10 +2,10 @@ import { Array, Option, Schema } from 'effect'
 
 import { Html } from '@effect/ui/html'
 
-import { Events, Message } from './message'
-import { ProfileProps } from './model'
-import { PROFILE_TABS } from './profile'
-import { profileView } from './view'
+import { Events, Message } from './message.ts'
+import { ProfileProps } from './model.ts'
+import { PROFILE_TABS } from './profile.ts'
+import { profileView } from './view.ts'
 
 const tabNamed = (value: string) =>
   Array.findFirst(PROFILE_TABS, tab => tab === value)

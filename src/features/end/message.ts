@@ -1,6 +1,6 @@
 import { UiSchema } from '@effect/ui'
 
-import { ShareOutcome, ShareSheet } from './share'
+import { ShareOutcome, ShareSheet } from './share.ts'
 
 export const endCases = {
   ClickedRetryButton: {},

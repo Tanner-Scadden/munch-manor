@@ -1,7 +1,7 @@
 import { Array, Clock, Effect, Function, Option } from 'effect'
 import type { Page } from 'playwright-core'
 
-import { type Readout } from '@game/features/coop/readout'
+import { type Readout } from '@game/features/coop/audit/readout'
 import { TILE_SIZE } from '@game/shared/constants'
 import { START_LEVEL } from '@game/world/level/arena'
 import { isWalkableTile, tileCoordinate } from '@game/world/level/tileQueries'

@@ -5,18 +5,38 @@ import { HtmlLocator, HtmlScene } from '@effect/ui/html/testing'
 import { Locator } from '@effect/ui/testing'
 import { describe, expect, it } from '@effect/vitest'
 
-import { type Model, Phase, defaultAppearance } from '../../../app/model'
-import { portraitOf } from '../../../art/coopIcons'
-import { badgeImage } from '../../../art/rankArt'
-import { seatLook } from '../../../art/seatLooks'
+import { type Model, Phase, defaultAppearance } from '#app/model.ts'
+import { portraitOf } from '#art/icons/coopIcons.ts'
+import { badgeImage } from '#art/rankArt.ts'
+import { seatLook } from '#art/seatLooks.ts'
 import {
   LobbyChange,
   type Room,
   RoomRequest,
   Screen,
-} from '../../../domain/coopRoom'
-import { lookCodeOf } from '../../../shared/lookCodes'
-import type { Appearance } from '../../../shared/playerData'
+} from '#domain/coopRoom.ts'
+import { CoopMessage } from '#features/coop/message.ts'
+import { emptyQueue } from '#features/coop/model.ts'
+import { freshRoom } from '#features/coop/roomState.ts'
+import {
+  CODE,
+  lobbyOf,
+  memberOf,
+  playingSession,
+  stagedWorld,
+} from '#features/coop/services/testing.ts'
+import {
+  AnswerOffer,
+  CancelQuickPlay,
+  CopyRoomCode,
+  LeaveRoom,
+  RequestRoom,
+  ShareRoomLink,
+} from '#features/coop/update.ts'
+import { HeroPicker, HeroPickerProps } from '#features/heroes/block.ts'
+import { Events as HeroPickerEvents } from '#features/heroes/message.ts'
+import { lookCodeOf } from '#shared/records/lookCodes.ts'
+import type { Appearance } from '#shared/records/playerData.ts'
 import {
   button,
   byClass,
@@ -26,35 +46,16 @@ import {
   firstOf,
   measureSurface,
   withAttrs,
-} from '../../../test/sceneTesting'
+} from '#test/sceneTesting.ts'
 import {
   type AppScene,
   type SceneStep,
   resolveFocusCoop,
   resolveRememberRoom,
   sceneOf,
-} from '../../../test/testing'
-import { HeroPicker, HeroPickerProps } from '../../heroes/block'
-import { Events as HeroPickerEvents } from '../../heroes/message'
-import { CoopMessage } from '../message'
-import { emptyQueue } from '../model'
-import { freshRoom } from '../roomState'
-import {
-  CODE,
-  lobbyOf,
-  memberOf,
-  playingSession,
-  stagedWorld,
-} from '../testing'
-import {
-  AnswerOffer,
-  CancelQuickPlay,
-  CopyRoomCode,
-  LeaveRoom,
-  RequestRoom,
-  ShareRoomLink,
-} from '../update'
-import { coopAt, lobbyChanged } from './story.fixture'
+} from '#test/testing.ts'
+
+import { coopAt, lobbyChanged } from './story.fixture.ts'
 
 const at = (screen: Screen): Model =>
   UiStruct.evolve(coopAt(screen), {

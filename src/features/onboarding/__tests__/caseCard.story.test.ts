@@ -3,7 +3,7 @@ import { Effect } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { Message } from '../../../app/message'
+import { Message } from '#app/message.ts'
 import {
   CaseCard,
   CaseState,
@@ -12,16 +12,20 @@ import {
   type Model,
   Phase,
   QuestTour,
-} from '../../../app/model'
-import { initialModel } from '../../../app/pureApp'
-import { restoreSave, saveOf } from '../../../platform/save'
+} from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
+import {
+  CASE_CARD_MIN_MS,
+  CASE_CARD_MS,
+} from '#features/onboarding/caseCard.ts'
+import { restoreSave, saveOf } from '#platform/save/save.ts'
 import {
   atCase,
   breakBefore,
   crewInWave,
   quietWave,
   readyModel,
-} from '../../../test/model.fixture'
+} from '#test/model.fixture.ts'
 import {
   checkModel,
   send,
@@ -30,11 +34,10 @@ import {
   tick,
   ticks,
   writeSave,
-} from '../../../test/testing'
-import { asVeteran } from '../../../test/veteran'
-import { modifyFocus } from '../../../world/party/party'
-import { isPending } from '../../../world/run/lessons'
-import { CASE_CARD_MIN_MS, CASE_CARD_MS } from '../caseCard'
+} from '#test/testing.ts'
+import { asVeteran } from '#test/veteran.ts'
+import { modifyFocus } from '#world/party/party.ts'
+import { isPending } from '#world/run/lessons.ts'
 
 const TICK_MS = 50
 const MIN_TICKS = Math.ceil(CASE_CARD_MIN_MS / TICK_MS)

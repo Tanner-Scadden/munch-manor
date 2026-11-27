@@ -3,15 +3,18 @@ import { Effect, Option } from 'effect'
 import { Command, UiStruct } from '@effect/ui'
 import { NEUTRAL_INPUT } from '@munch/netcode'
 
-import { releaseDare } from '../../domain/beatMyRun'
-import { isLeftFromRoom, maybeRunRoom } from '../../domain/onlineRun'
-import { cleanName, joinName } from '../../domain/playerName'
-import { CoopNotice } from '../../features/coop/message'
-import type { CoopMessage } from '../../features/coop/message'
-import type { Model as CoopModel } from '../../features/coop/model'
-import { IS_COOP_RELEASED } from '../../features/coop/release'
-import { pressAction, readRoomLink } from '../../features/coop/roomState'
-import { boughtHero } from '../../features/coop/steps'
+import { MenuState, menuState } from '#app/menus/menuState.ts'
+import { Message } from '#app/message.ts'
+import type { Model } from '#app/model.ts'
+import { releaseDare } from '#domain/machines/beatMyRun.ts'
+import { isLeftFromRoom, maybeRunRoom } from '#domain/onlineRun.ts'
+import { cleanName, joinName } from '#domain/playerName.ts'
+import { CoopNotice } from '#features/coop/message.ts'
+import type { CoopMessage } from '#features/coop/message.ts'
+import type { Model as CoopModel } from '#features/coop/model.ts'
+import { IS_COOP_RELEASED } from '#features/coop/release.ts'
+import { pressAction, readRoomLink } from '#features/coop/roomState.ts'
+import { boughtHero } from '#features/coop/steps.ts'
 import {
   type CoopResult,
   asRequest,
@@ -22,25 +25,23 @@ import {
   tickRoom,
   toggleReadyInRoom,
   updateCoop,
-} from '../../features/coop/update'
+} from '#features/coop/update.ts'
 import {
   buyCalling,
   chooseCalling,
   startingCallingOf,
-} from '../../features/heroes/callingPick'
-import { isCoopKey } from '../../screens/home/home'
-import { lookCodeOf } from '../../shared/lookCodes'
-import type { Calling } from '../../shared/playerData'
-import { stepWhen } from '../../shared/stepWhen'
-import { callingStandingOf, canAffordCalling } from '../../world/heroes/calling'
-import { bonesBalanceOf, rankOf, totalPointsOf } from '../../world/heroes/rank'
-import type { SeatAction } from '../../world/step/stepWorld'
-import { MenuState, menuState } from '../menuState'
-import { Message } from '../message'
-import type { Model } from '../model'
-import { applyCoop, playRoomFrame } from './coopPlay'
-import { FocusHomeButton, goHome } from './home'
-import { playSounds, tapSound, uiCue, unlockAudio } from './sound'
+} from '#features/heroes/callingPick.ts'
+import { isCoopKey } from '#screens/home/home.ts'
+import { lookCodeOf } from '#shared/records/lookCodes.ts'
+import type { Calling } from '#shared/records/playerData.ts'
+import { stepWhen } from '#shared/stepWhen.ts'
+import { callingStandingOf, canAffordCalling } from '#world/heroes/calling.ts'
+import { bonesBalanceOf, rankOf, totalPointsOf } from '#world/heroes/rank.ts'
+import type { SeatAction } from '#world/step/stepWorld.ts'
+
+import { applyCoop, playRoomFrame } from './coopPlay.ts'
+import { FocusHomeButton, goHome } from './home.ts'
+import { playSounds, tapSound, uiCue, unlockAudio } from './sound.ts'
 import {
   type App$,
   type UpdateStep,
@@ -49,8 +50,8 @@ import {
   modelStep,
   releaseInput,
   toModel,
-} from './step'
-import { FetchBuild } from './version'
+} from './step.ts'
+import { FetchBuild } from './version.ts'
 
 export const ReadRoomLink = Command.make('ReadRoomLink', { args: {} }, () =>
   Effect.sync(() =>

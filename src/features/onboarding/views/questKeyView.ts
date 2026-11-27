@@ -1,0 +1,39 @@
+import type { Model } from '#app/model.ts'
+import { KEY_SPRITE } from '#art/font.ts'
+import { placeAt } from '#art/sprite.ts'
+import type { Drawable } from '#render/depth.ts'
+import { GLINT, GOODIE_SHADOW } from '#render/drawing.ts'
+import {
+  isTutorialKeyOut,
+  tutorialKeySpotOf,
+} from '#world/run/tutorialRules.ts'
+
+const BOB_MS = 280
+const BOB_PX = 1
+const LIFT_PX = 4
+const GLINT_MS = 1400
+const GLINT_ON_MS = 160
+const KEY_HALF_WIDTH = 3
+const KEY_HALF_HEIGHT = 3
+
+export const questKeyDrawables = (model: Model): ReadonlyArray<Drawable> => {
+  if (!isTutorialKeyOut(model)) {
+    return []
+  }
+  const spot = tutorialKeySpotOf(model)
+  const bob = Math.floor(model.elapsedMs / BOB_MS) % 2 === 0 ? 0 : BOB_PX
+  const top = spot.y - LIFT_PX - bob
+  return [
+    {
+      footY: spot.y,
+      rank: 'Prop',
+      shapes: [
+        placeAt(spot.x, spot.y, GOODIE_SHADOW),
+        placeAt(spot.x - KEY_HALF_WIDTH, top - KEY_HALF_HEIGHT, KEY_SPRITE),
+        ...(model.elapsedMs % GLINT_MS < GLINT_ON_MS
+          ? [placeAt(spot.x + 3, top - 3, GLINT)]
+          : []),
+      ],
+    },
+  ]
+}

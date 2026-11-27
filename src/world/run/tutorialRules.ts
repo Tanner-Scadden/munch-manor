@@ -2,12 +2,12 @@ import { Array, Option, pipe } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import { KITCHEN_FIRST_WAVE, OPEN_BREAK_WAVE } from '../../shared/constants'
-import { caseFootOf, isCaseShown } from '../feats/caseSpots'
-import { grantKeys } from '../keys/keys'
-import { levelOf } from '../level/arena'
-import { isStanding, seatStateAt } from '../party/party'
-import type { World } from '../schema/world'
+import { KITCHEN_FIRST_WAVE, OPEN_BREAK_WAVE } from '#shared/constants.ts'
+import { caseFootOf, isCaseShown } from '#world/feats/caseSpots.ts'
+import { grantKeys } from '#world/keys/keys.ts'
+import { levelOf } from '#world/level/arena.ts'
+import { isStanding, seatStateAt } from '#world/party/party.ts'
+import type { World } from '#world/schema/world.ts'
 import {
   type DisplayCase,
   Feat,
@@ -16,9 +16,10 @@ import {
   Phase,
   SOLO_SLOT,
   type Vector,
-} from '../schema/worldSchema'
-import { distanceBetween } from '../step/geometry'
-import { isPending, learn } from './lessons'
+} from '#world/schema/worldSchema.ts'
+import { distanceBetween } from '#world/step/geometry.ts'
+
+import { isPending, learn } from './lessons.ts'
 
 const isSolo = (world: World): boolean => Party.isAnyOf(['Solo'])(world.party)
 

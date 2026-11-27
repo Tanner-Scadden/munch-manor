@@ -8,13 +8,17 @@ import {
   OPEN_BREAK_WAVE,
   PACK_WARNING_MS,
   ZOMBIE_ALIVE_MAX,
-} from '../../shared/constants'
-import { type Seeded, nextRandom } from '../../shared/prng'
-import { hungrierSpawns, isCrewOut, summonAtFrontDoor } from '../dare/finale'
-import { readyPointsFor } from '../heroes/rank'
-import { KEY_RULES, grantKeys } from '../keys/keys'
-import { levelOf } from '../level/arena'
-import { doorSpawnPoint } from '../level/tileQueries'
+} from '#shared/constants.ts'
+import { type Seeded, nextRandom } from '#shared/prng.ts'
+import {
+  hungrierSpawns,
+  isCrewOut,
+  summonAtFrontDoor,
+} from '#world/dare/finale.ts'
+import { readyPointsFor } from '#world/heroes/rank.ts'
+import { KEY_RULES, grantKeys } from '#world/keys/keys.ts'
+import { levelOf } from '#world/level/arena.ts'
+import { doorSpawnPoint } from '#world/level/tileQueries.ts'
 import {
   focusOf,
   isCoop,
@@ -22,13 +26,13 @@ import {
   playerCountOf,
   playersOf,
   targetsOf,
-} from '../party/party'
-import { isEveryoneReady, returnFallen } from '../party/revive'
+} from '#world/party/party.ts'
+import { isEveryoneReady, returnFallen } from '#world/party/revive.ts'
 import {
   activeModifiersOf,
   chunkHealthScaleOf,
   markSpawns,
-} from '../run/dareLadder'
+} from '#world/run/dareLadder.ts'
 import {
   breakClockMsOf,
   breakMsOf,
@@ -36,15 +40,15 @@ import {
   paceHolds,
   paceSpawns,
   toughenSpawns,
-} from '../run/difficulty'
+} from '#world/run/difficulty.ts'
 import {
   isPracticeGateHeld,
   isTimedBreak,
   learnOpenBreak,
   learnTimedBreaks,
-} from '../run/lessons'
-import { isKitchenTourOn } from '../run/tutorialRules'
-import { type World, modifyWorldFields } from '../schema/world'
+} from '#world/run/lessons.ts'
+import { isKitchenTourOn } from '#world/run/tutorialRules.ts'
+import { type World, modifyWorldFields } from '#world/schema/world.ts'
 import {
   Alarm,
   Beat,
@@ -59,17 +63,17 @@ import {
   type Vector,
   ZombieAction,
   evolveRoundSpawns,
-} from '../schema/worldSchema'
-import { clamp } from '../step/geometry'
+} from '#world/schema/worldSchema.ts'
+import { clamp } from '#world/step/geometry.ts'
 import {
   advanceBossEntrance,
   isBossOutside,
   isWaveHeldByBoss,
   planBoss,
-} from '../zombies/boss'
-import { CHUCKER_RULES } from '../zombies/chucker'
-import { burrowed, drawSurfacingSpot } from '../zombies/crawler'
-import { frenzyOnArrival, frenzyPacksOf } from '../zombies/frenzy'
+} from '#world/zombies/boss.ts'
+import { CHUCKER_RULES } from '#world/zombies/chucker.ts'
+import { burrowed, drawSurfacingSpot } from '#world/zombies/crawler.ts'
+import { frenzyOnArrival, frenzyPacksOf } from '#world/zombies/frenzy.ts'
 import {
   ZOMBIE_KINDS,
   arrivingZombie,
@@ -77,10 +81,11 @@ import {
   isFloorKind,
   isWalking,
   scaledHp,
-} from '../zombies/zombies'
-import { routeSpawns } from './doorRoute'
-import { nearDoorsOf } from './doorWeights'
-import { rollWave } from './endlessWaves'
+} from '#world/zombies/zombies.ts'
+
+import { routeSpawns } from './doorRoute.ts'
+import { nearDoorsOf } from './doorWeights.ts'
+import { rollWave } from './endlessWaves.ts'
 import {
   aliveCount,
   delayCampedPacks,
@@ -94,9 +99,9 @@ import {
   stepBeat,
   waitingCount,
   warnPacks,
-} from './pacing'
-import { GROUP_ID_STRIDE, PACK_ID_STRIDE, bySpawnTime } from './wavePacks'
-import { FINAL_WAVE, planFor } from './wavePlans'
+} from './pacing.ts'
+import { GROUP_ID_STRIDE, PACK_ID_STRIDE, bySpawnTime } from './wavePacks.ts'
+import { FINAL_WAVE, planFor } from './wavePlans.ts'
 
 export const JOIN_LEAD_MS = PACK_WARNING_MS + 1500
 
@@ -246,7 +251,7 @@ export const joinNewDoors: {
   })
 })
 
-export { isRoundActive } from '../schema/worldSchema'
+export { isRoundActive } from '#world/schema/worldSchema.ts'
 
 export const isBreak = (model: World): boolean =>
   Phase.isAnyOf(['Preparation'])(model.phase)

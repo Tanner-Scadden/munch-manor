@@ -1,8 +1,8 @@
 import { Config, Effect, Option, Schema } from 'effect'
 
 import { initialModel } from '@game/app/pureApp'
-import { SAVE_KEY, encodeSave, saveOf } from '@game/platform/save'
-import { Calling } from '@game/shared/playerData'
+import { SAVE_KEY, encodeSave, saveOf } from '@game/platform/save/save'
+import { Calling } from '@game/shared/records/playerData'
 import { pointsForRank } from '@game/world/heroes/rank'
 
 import {

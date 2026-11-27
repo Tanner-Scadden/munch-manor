@@ -2,7 +2,7 @@ import { Array, Function, Match } from 'effect'
 
 import { Locator } from '@effect/ui/testing'
 
-import * as Draw from '../render/draw'
+import * as Draw from '#render/draw.ts'
 
 type Box = Readonly<{ x: number; y: number; width: number; height: number }>
 

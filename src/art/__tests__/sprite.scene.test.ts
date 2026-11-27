@@ -1,23 +1,27 @@
 import { Array, Option, Record, String, pipe } from 'effect'
 import { afterEach, describe, expect, test } from 'vitest'
 
-import { defaultAppearance } from '../../app/model'
-import * as Draw from '../../render/draw'
-import { decodePng, hexOf } from '../../test/testPng'
-import { imagesIn } from '../../test/viewReading'
-import { playerSprites } from '../appearance'
-import { GLYPH_SPRITES, KEY_SPRITE } from '../font'
+import { defaultAppearance } from '#app/model.ts'
+import { playerSprites } from '#art/appearance.ts'
+import {
+  standInKeyOf,
+  useSpriteAtlas,
+  useSpriteMode,
+} from '#art/atlas/spriteAtlas.ts'
+import { GLYPH_SPRITES, KEY_SPRITE } from '#art/font.ts'
 import {
   type Palette,
   bakeShapes,
   placeAt,
   spriteDataUrl,
   spriteShapes,
-} from '../sprite'
-import { standInKeyOf, useSpriteAtlas, useSpriteMode } from '../spriteAtlas'
-import { PICKUP_SPRITES } from '../sprites/pickups'
-import { BARRICADE_SPRITES } from '../sprites/traps'
-import { ZOMBIE_SPRITES } from '../sprites/zombies'
+} from '#art/sprite.ts'
+import { PICKUP_SPRITES } from '#art/sprites/pickups.ts'
+import { BARRICADE_SPRITES } from '#art/sprites/traps.ts'
+import { ZOMBIE_SPRITES } from '#art/sprites/zombies.ts'
+import * as Draw from '#render/draw.ts'
+import { decodePng, hexOf } from '#test/testPng.ts'
+import { imagesIn } from '#test/viewReading.ts'
 
 const PALETTE: Palette = { R: '#e8333a', W: '#ff8a8f', K: '#2a1418' }
 

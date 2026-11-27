@@ -1,23 +1,21 @@
 import { Array, Function, Option } from 'effect'
 
-import type {
-  ApplicationHtml,
-  ApplicationViewBuilder,
-} from '../../app/definition'
-import type { Model } from '../../app/model'
+import type { ApplicationHtml, ApplicationViewBuilder } from '#app/component.ts'
+import type { Model } from '#app/model.ts'
 import {
   CLOCK_ICON,
   KILLS_ICON,
   SKULL_ICONS,
   TROPHY_ICON,
-} from '../../art/icons'
-import { HomeMessage } from '../../features/home/message'
-import { missionCardView } from '../../features/missions/missionCard'
-import { iconView } from '../../ui/menuParts'
-import { DIFFICULTIES } from '../../world/run/difficulty'
-import { durationLabel } from '../../world/run/stats'
-import { bestsFor } from './home'
-import { homeButton, keyBadgeView } from './homeAttributes'
+} from '#art/icons/icons.ts'
+import { HomeMessage } from '#features/home/message.ts'
+import { missionCardView } from '#features/missions/missionCard.ts'
+import { iconView } from '#ui/menuParts.ts'
+import { DIFFICULTIES } from '#world/run/difficulty.ts'
+import { durationLabel } from '#world/run/stats.ts'
+
+import { bestsFor } from './home.ts'
+import { homeButton, keyBadgeView } from './homeAttributes.ts'
 
 type Best = Readonly<{ label: string; icon: string; value: string }>
 

@@ -1,8 +1,8 @@
 import { Array, Function, Option, pipe } from 'effect'
 
-import { WEAPONS, statsAt } from '../gear/weapons'
-import type { WeaponKind } from '../schema/worldSchema'
-import { hundredths } from '../step/geometry'
+import { WEAPONS, statsAt } from '#world/gear/weapons.ts'
+import type { WeaponKind } from '#world/schema/worldSchema.ts'
+import { hundredths } from '#world/step/geometry.ts'
 
 const changeText = (
   before: number,

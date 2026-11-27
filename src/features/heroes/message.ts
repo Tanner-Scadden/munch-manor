@@ -1,6 +1,6 @@
 import { UiSchema } from '@effect/ui'
 
-import { Calling } from '../../shared/playerData'
+import { Calling } from '#shared/records/playerData.ts'
 
 export const Message = UiSchema.TaggedEnum({
   ClickedCard: { calling: Calling },

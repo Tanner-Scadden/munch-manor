@@ -2,26 +2,27 @@ import { Array, Function, Option, Record, Result, pipe } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import type { Model } from '../app/model'
-import { notePress } from '../platform/recording'
-import { screenToFloorDirection } from '../render/lens'
+import type { Model } from '#app/model.ts'
+import { notePress } from '#platform/recording/recording.ts'
+import { screenToFloorDirection } from '#render/camera/lens.ts'
 import {
   focusSeat,
   isBledOut,
   isOut,
   leadSeatOf,
   playersOf,
-} from '../world/party/party'
-import { withWorld } from '../world/schema/world'
+} from '#world/party/party.ts'
+import { withWorld } from '#world/schema/world.ts'
 import {
   type Intent,
   type PlayerSlot,
   type Vector,
-} from '../world/schema/worldSchema'
-import { ZERO_VECTOR, normalize } from '../world/step/geometry'
-import { type InputsByPlayer, applySeatAction } from '../world/step/stepWorld'
-import { isRoundActive } from '../world/waves/waves'
-import { type ActionKeys, keyActionOf } from './keyActions'
+} from '#world/schema/worldSchema.ts'
+import { ZERO_VECTOR, normalize } from '#world/step/geometry.ts'
+import { type InputsByPlayer, applySeatAction } from '#world/step/stepWorld.ts'
+import { isRoundActive } from '#world/waves/waves.ts'
+
+import { type ActionKeys, keyActionOf } from './keyActions.ts'
 
 type CouchKeys = ActionKeys &
   Readonly<{

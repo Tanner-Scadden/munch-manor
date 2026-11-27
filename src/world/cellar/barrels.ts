@@ -1,16 +1,21 @@
 import { Function, Option } from 'effect'
 
-import { TILE_SIZE } from '../../shared/constants'
-import { type Level, levelOf } from '../level/arena'
-import { boxCenter } from '../level/tileGrid'
-import { isSolidAt, tileCoordinate } from '../level/tileQueries'
-import type { World } from '../schema/world'
-import type { Vector } from '../schema/worldSchema'
-import { knockDownWhere } from '../stations/knockDown'
-import { stationBoxOf } from '../stations/stationSpots'
-import { TOOL_RULES, isToolActive, toolActiveMs } from '../stations/toolRules'
-import { bodyRadiusOf, isFree, isGrounded } from '../zombies/zombies'
-import { cellarBoxOf } from './bulb'
+import { TILE_SIZE } from '#shared/constants.ts'
+import { type Level, levelOf } from '#world/level/arena.ts'
+import { boxCenter } from '#world/level/tileGrid.ts'
+import { isSolidAt, tileCoordinate } from '#world/level/tileQueries.ts'
+import type { World } from '#world/schema/world.ts'
+import type { Vector } from '#world/schema/worldSchema.ts'
+import { knockDownWhere } from '#world/stations/knockDown.ts'
+import { stationBoxOf } from '#world/stations/stationSpots.ts'
+import {
+  TOOL_RULES,
+  isToolActive,
+  toolActiveMs,
+} from '#world/stations/toolRules.ts'
+import { bodyRadiusOf, isFree, isGrounded } from '#world/zombies/zombies.ts'
+
+import { cellarBoxOf } from './bulb.ts'
 
 const RULES = TOOL_RULES.Barrels
 

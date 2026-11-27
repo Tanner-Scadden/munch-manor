@@ -2,21 +2,25 @@ import { Array, Function, Option, pipe } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import { caseOffers, takeCase } from '../feats/cases'
-import { fridgeOffers, pullFridge, takePrize } from '../fridge/leftovers'
-import { heldKeys } from '../keys/keys'
+import { caseOffers, takeCase } from '#world/feats/cases.ts'
+import { fridgeOffers, pullFridge, takePrize } from '#world/fridge/leftovers.ts'
+import { heldKeys } from '#world/keys/keys.ts'
 import {
   BACK_DOOR_RULES,
   backDoorOffers,
   isBackDoorHoldPaused,
   leaveEarly,
-} from '../kitchen/backDoor'
-import { buyValve, valveOffers } from '../kitchen/gasValve'
-import { STOVE_RULES, cookGun, stoveOffers } from '../kitchen/stove'
-import { buyExit, exitOffers } from '../level/exits'
-import { type Box, distanceToBox } from '../level/tileGrid'
-import { isStanding as isOnFeet, modifySeat, seatStateAt } from '../party/party'
-import type { World } from '../schema/world'
+} from '#world/kitchen/backDoor.ts'
+import { buyValve, valveOffers } from '#world/kitchen/gasValve.ts'
+import { STOVE_RULES, cookGun, stoveOffers } from '#world/kitchen/stove.ts'
+import { buyExit, exitOffers } from '#world/level/exits.ts'
+import { type Box, distanceToBox } from '#world/level/tileGrid.ts'
+import {
+  isStanding as isOnFeet,
+  modifySeat,
+  seatStateAt,
+} from '#world/party/party.ts'
+import type { World } from '#world/schema/world.ts'
 import {
   GameEvent,
   Phase,
@@ -24,7 +28,7 @@ import {
   Purchasable,
   Purchase,
   type Vector,
-} from '../schema/worldSchema'
+} from '#world/schema/worldSchema.ts'
 
 type PurchaseRules = Readonly<{
   holdMs: number

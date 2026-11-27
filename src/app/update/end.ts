@@ -2,9 +2,10 @@ import { Array, Effect, Function, Option } from 'effect'
 
 import { Command, Component, UiStruct } from '@effect/ui'
 
-import { runDifficultyOf } from '../../domain/onlineRun'
-import { isEndScreen } from '../../domain/run'
-import { isOpen as isCoopOpen } from '../../features/coop/update'
+import type { Model } from '#app/model.ts'
+import { runDifficultyOf } from '#domain/onlineRun.ts'
+import { isEndScreen } from '#domain/run.ts'
+import { isOpen as isCoopOpen } from '#features/coop/update.ts'
 import {
   TIMELINES,
   beatSounds,
@@ -15,35 +16,35 @@ import {
   isRunCardHeld,
   sharePathOf,
   skipBeat,
-} from '../../features/end/endBeat'
-import { endOffer } from '../../features/end/endOffer'
-import type { ShareOutcome } from '../../features/end/share'
+} from '#features/end/endBeat.ts'
+import { endOffer } from '#features/end/endOffer.ts'
+import type { ShareOutcome } from '#features/end/share.ts'
 import {
   isCharacterKey,
   isEndlessKey,
   isLobbyKey,
   isMenuKey,
   isStartKey,
-} from '../../input/input'
-import { ShareEvent } from '../../platform/analytics'
-import { sendShareEvent } from '../../platform/analyticsBeacon'
-import { shareEventOf } from '../../platform/analyticsRun'
-import { RUNNING_BUILD } from '../../platform/version'
-import { advanceJuice } from '../../render/juice'
-import { advanceParticles } from '../../render/particles/particles'
-import { stepWhen } from '../../shared/stepWhen'
-import { RunMode } from '../../world/schema/worldSchema'
-import type { Model } from '../model'
-import { leaveCoopRoom, toggleCoopReady } from './coop'
-import { startFromButton, startWhenAllowed } from './run'
-import { playSounds, uiCue, unlockAudio } from './sound'
+} from '#input/input.ts'
+import { ShareEvent } from '#platform/analytics/analytics.ts'
+import { sendShareEvent } from '#platform/analytics/analyticsBeacon.ts'
+import { shareEventOf } from '#platform/analytics/analyticsRun.ts'
+import { RUNNING_BUILD } from '#platform/version.ts'
+import { advanceJuice } from '#render/effects/juice.ts'
+import { advanceParticles } from '#render/particles/particles.ts'
+import { stepWhen } from '#shared/stepWhen.ts'
+import { RunMode } from '#world/schema/worldSchema.ts'
+
+import { leaveCoopRoom, toggleCoopReady } from './coop.ts'
+import { startFromButton, startWhenAllowed } from './run.ts'
+import { playSounds, uiCue, unlockAudio } from './sound.ts'
 import {
   type UpdateStep,
   combine,
   defineHandlers,
   modelStep,
   toModel,
-} from './step'
+} from './step.ts'
 
 const MS_PER_SECOND = 1000
 

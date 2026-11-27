@@ -2,8 +2,8 @@ import { Array } from 'effect'
 import { Machine } from 'effect-machine'
 import { describe, expect, test } from 'vitest'
 
-import { AudioState } from '../../domain/clientSchema'
-import { AudioEvent, audioMachine, stepAudio } from '../audioFlow'
+import { AudioEvent, audioMachine, stepAudio } from '#audio/audioFlow.ts'
+import { AudioState } from '#domain/clientSchema.ts'
 
 const registered = (): ReadonlyArray<string> =>
   Array.sort(

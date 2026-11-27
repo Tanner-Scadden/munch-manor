@@ -1,28 +1,26 @@
 import { Array, Function, Option } from 'effect'
 
-import type {
-  ApplicationHtml,
-  ApplicationViewBuilder,
-} from '../../app/definition'
-import type { Model } from '../../app/model'
-import { pixelArtStyle } from '../../art/artSize'
+import type { ApplicationHtml, ApplicationViewBuilder } from '#app/component.ts'
+import type { Model } from '#app/model.ts'
+import { pixelArtStyle } from '#art/icons/artSize.ts'
 import {
   GIFT_BOX_ICON,
   GIFT_LID_ICON,
   GIFT_ZOMBIE_ICON,
   NEWS_ICON,
   SPARKLE_ICON,
-} from '../../art/icons'
-import { UpdateGift } from '../../domain/clientSchema'
+} from '#art/icons/icons.ts'
+import { UpdateGift } from '#domain/clientSchema.ts'
 import {
   type NewsBullet,
   maybeNewestNewsDay,
   newsHeadline,
-} from '../../features/whatsNew/changelog'
-import { VersionMessage } from '../../platform/message'
-import { closeButtonView } from '../../ui/cornerButtons'
-import type { DialogParts } from '../../ui/dialog'
-import { isUpdateGiftShown } from './home'
+} from '#features/whatsNew/changelog.ts'
+import { VersionMessage } from '#platform/message.ts'
+import { closeButtonView } from '#ui/cornerButtons.ts'
+import type { DialogParts } from '#ui/dialog.ts'
+
+import { isUpdateGiftShown } from './home.ts'
 
 const layerView = (
   className: string,

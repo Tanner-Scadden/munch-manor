@@ -10,14 +10,19 @@ import {
   Party,
   QuestTour,
   RattlesIntro,
-} from '../../../app/model'
-import { forgetTutorial } from '../../../platform/save'
-import { FIXED_STEP_MS, PLAYER_RADIUS } from '../../../shared/constants'
+} from '#app/model.ts'
+import {
+  RATTLES_INTRO_LINES,
+  RATTLES_LINE_MS,
+  maybeRattlesLine,
+} from '#features/onboarding/rattlesIntro.ts'
+import { forgetTutorial } from '#platform/save/save.ts'
+import { FIXED_STEP_MS, PLAYER_RADIUS } from '#shared/constants.ts'
 import {
   WAVE_2_BREAK,
   WAVE_2_FIGHT,
   newPlayerCardSeen,
-} from '../../../test/model.fixture'
+} from '#test/model.fixture.ts'
 import {
   checkModel,
   settleRunCommands,
@@ -25,16 +30,11 @@ import {
   storyOf,
   tick,
   ticks,
-} from '../../../test/testing'
-import { asTutorialDone, asVeteran } from '../../../test/veteran'
-import { RATTLES_BOX, START_LEVEL } from '../../../world/level/arena'
-import { isPending } from '../../../world/run/lessons'
-import { ZOMBIE_KIND_ORDER } from '../../../world/zombies/zombies'
-import {
-  RATTLES_INTRO_LINES,
-  RATTLES_LINE_MS,
-  maybeRattlesLine,
-} from '../rattlesIntro'
+} from '#test/testing.ts'
+import { asTutorialDone, asVeteran } from '#test/veteran.ts'
+import { RATTLES_BOX, START_LEVEL } from '#world/level/arena.ts'
+import { isPending } from '#world/run/lessons.ts'
+import { ZOMBIE_KIND_ORDER } from '#world/zombies/zombies.ts'
 
 const LINE_FRAMES = Math.ceil(RATTLES_LINE_MS / FIXED_STEP_MS)
 

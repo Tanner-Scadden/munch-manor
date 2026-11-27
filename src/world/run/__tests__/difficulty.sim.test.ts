@@ -3,12 +3,12 @@ import { Array, Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { Message } from '../../../app/message'
-import { type Difficulty, type Model, Phase } from '../../../app/model'
-import { initialModel } from '../../../app/pureApp'
-import { SURFACE, playedThrough, startedRun } from '../../../test/testing'
-import { asVeteran } from '../../../test/veteran'
-import { focusOf } from '../../party/party'
+import { Message } from '#app/message.ts'
+import { type Difficulty, type Model, Phase } from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
+import { SURFACE, playedThrough, startedRun } from '#test/testing.ts'
+import { asVeteran } from '#test/veteran.ts'
+import { focusOf } from '#world/party/party.ts'
 
 const REPLAYED: ReadonlyArray<Difficulty> = ['Easy', 'Hard', 'Nightmare']
 

@@ -5,7 +5,7 @@ import {
   TAP_MAX_MS,
   TAP_SLOP_PX,
   listenForTouchTaps,
-} from '../touchTaps'
+} from '#input/touchTaps.ts'
 
 const makePage = () => {
   const root = document.createElement('main')

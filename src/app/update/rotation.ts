@@ -2,9 +2,10 @@ import { Effect, pipe } from 'effect'
 
 import { Command, Component, UiStruct } from '@effect/ui'
 
-import { toBrowserError } from '../../shared/describeError'
-import { type Model, RotationSetting } from '../model'
-import type { UpdateStep } from './step'
+import { type Model, RotationSetting } from '#app/model.ts'
+import { toBrowserError } from '#shared/describeError.ts'
+
+import type { UpdateStep } from './step.ts'
 
 const lockLandscape = Effect.tryPromise({
   try: () => screen.orientation.lock('landscape'),

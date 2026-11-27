@@ -4,11 +4,12 @@ import { Component } from '@effect/ui'
 import { Story } from '@effect/ui/testing'
 import { describe, expect, it } from '@effect/vitest'
 
-import { GuideStatus } from '../../guide/model'
-import { FocusGuideControl, Munchopedia } from '../block'
-import { Message, MunchopediaEvents } from '../message'
-import { MunchopediaPage } from '../model'
-import { HOME_PROPS } from './munchopedia.fixture'
+import { GuideStatus } from '#features/guide/model.ts'
+import { FocusGuideControl, Munchopedia } from '#features/munchopedia/block.ts'
+import { Message, MunchopediaEvents } from '#features/munchopedia/message.ts'
+import { MunchopediaPage } from '#features/munchopedia/model.ts'
+
+import { HOME_PROPS } from './munchopedia.fixture.ts'
 
 type MunchopediaStory = Story.Steps<typeof Munchopedia>
 

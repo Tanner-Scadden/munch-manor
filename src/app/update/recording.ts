@@ -2,16 +2,17 @@ import { Effect, Option, pipe } from 'effect'
 
 import { Command, Component } from '@effect/ui'
 
-import { maybeRunOutcome } from '../../platform/analyticsRun'
+import type { Model } from '#app/model.ts'
+import { maybeRunOutcome } from '#platform/analytics/analyticsRun.ts'
 import {
   RunRecorder,
   RunRecording,
   finishRecording,
-} from '../../platform/recording'
-import { uploadRecording } from '../../platform/recordingUpload'
-import { PlayerStore } from '../../platform/store'
-import type { Model } from '../model'
-import { type UpdateStep, defineHandlers } from './step'
+} from '#platform/recording/recording.ts'
+import { uploadRecording } from '#platform/recording/recordingUpload.ts'
+import { PlayerStore } from '#platform/save/store.ts'
+
+import { type UpdateStep, defineHandlers } from './step.ts'
 
 export class UploadRecording extends Command.Service<UploadRecording>()(
   'app/UploadRecording',

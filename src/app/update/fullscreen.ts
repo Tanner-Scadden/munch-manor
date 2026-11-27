@@ -2,10 +2,11 @@ import { Effect, pipe } from 'effect'
 
 import { Command, Component, UiStruct } from '@effect/ui'
 
-import { FullscreenSetting } from '../../platform/deviceSchema'
-import { DeviceMessage } from '../../platform/message'
-import { toBrowserError } from '../../shared/describeError'
-import { type UpdateStep, defineHandlers } from './step'
+import { FullscreenSetting } from '#platform/deviceSchema.ts'
+import { DeviceMessage } from '#platform/message.ts'
+import { toBrowserError } from '#shared/describeError.ts'
+
+import { type UpdateStep, defineHandlers } from './step.ts'
 
 const enterFullscreen = Effect.tryPromise({
   try: () =>

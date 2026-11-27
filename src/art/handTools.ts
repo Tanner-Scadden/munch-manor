@@ -6,7 +6,7 @@ import {
   mirrorRows,
   spriteShapes,
   spriteWidth,
-} from './sprite'
+} from './sprite.ts'
 
 export type ToolSprite = Readonly<Record<Facing, Sprite>>
 

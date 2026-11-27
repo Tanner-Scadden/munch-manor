@@ -3,7 +3,7 @@ import { Array, Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { Message } from '../../app/message'
+import { Message } from '#app/message.ts'
 import {
   AudioState,
   type Bullet,
@@ -12,15 +12,16 @@ import {
   Phase,
   Pierce,
   type Zombie,
-} from '../../app/model'
-import { initialModel } from '../../app/pureApp'
+} from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
 import {
   AcquireAudioEngine,
   PlaySound,
   ResumeAudio,
-} from '../../app/update/sound'
-import { FIXED_STEP_MS } from '../../shared/constants'
-import { DISTANT_SPAWN } from '../../test/model.fixture'
+} from '#app/update/sound.ts'
+import { type SoundEffect, positionVariation } from '#audio/audio.ts'
+import { FIXED_STEP_MS } from '#shared/constants.ts'
+import { DISTANT_SPAWN } from '#test/model.fixture.ts'
 import {
   MUZZLE_X,
   SURFACE,
@@ -37,9 +38,8 @@ import {
   storyOf,
   tick,
   zombieAt,
-} from '../../test/testing'
-import { START_LEVEL } from '../../world/level/arena'
-import { type SoundEffect, positionVariation } from '../audio'
+} from '#test/testing.ts'
+import { START_LEVEL } from '#world/level/arena.ts'
 
 const FRAME_MS = FIXED_STEP_MS
 const MID_GAME_MS = 30_000

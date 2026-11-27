@@ -3,13 +3,8 @@ import { Array, Effect } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import {
-  BreakClock,
-  type Model,
-  Phase,
-  type PlannedSpawn,
-} from '../../../app/model'
-import { FIXED_STEP_MS, PACK_WARNING_MS } from '../../../shared/constants'
+import { BreakClock, type Model, Phase, type PlannedSpawn } from '#app/model.ts'
+import { FIXED_STEP_MS, PACK_WARNING_MS } from '#shared/constants.ts'
 import {
   DISTANT_SPAWN,
   crewInWave,
@@ -17,7 +12,7 @@ import {
   pastTimedBreaks,
   placeSeat,
   withKeys,
-} from '../../../test/model.fixture'
+} from '#test/model.fixture.ts'
 import {
   BELOW_KITCHEN_DOOR,
   holdToBuy,
@@ -26,11 +21,11 @@ import {
   startWave,
   steps,
   tick,
-} from '../../../test/testing'
-import { modifyFocus } from '../../party/party'
-import { withWorld } from '../../schema/world'
-import { EXIT_RULES } from '../exits'
-import { WAKE_RULES, isWakePack, wakeRoom } from '../wakeUp'
+} from '#test/testing.ts'
+import { EXIT_RULES } from '#world/level/exits.ts'
+import { WAKE_RULES, isWakePack, wakeRoom } from '#world/level/wakeUp.ts'
+import { modifyFocus } from '#world/party/party.ts'
+import { withWorld } from '#world/schema/world.ts'
 
 const KEYS = EXIT_RULES.kitchenKeys + 2
 

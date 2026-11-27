@@ -6,7 +6,8 @@ import {
   type PixelView,
   carve,
   pixelViewOfShapes,
-} from '../../art/carve'
+} from '#art/carve.ts'
+
 import {
   CHAIN_COLOR,
   CHAIN_DARK_COLOR,
@@ -15,7 +16,7 @@ import {
   CRYSTAL_LIGHT_COLOR,
   type ChandelierState,
   STREAMER_COLOR,
-} from './diningArt'
+} from './diningArt.ts'
 import {
   CANDLE_COLOR,
   FLAME_COLOR,
@@ -24,7 +25,7 @@ import {
   GOLD_DARK_COLOR,
   GOLD_LIGHT_COLOR,
   ZOMBIE_SKIN_COLOR,
-} from './roomPalette'
+} from './roomPalette.ts'
 
 const HAND_SHADE_COLOR = '#5a8a3a'
 

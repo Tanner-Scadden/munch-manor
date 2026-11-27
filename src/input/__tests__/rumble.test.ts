@@ -2,8 +2,8 @@ import { Option } from 'effect'
 
 import { describe, expect, test } from '@effect/vitest'
 
-import { GameEvent } from '../../world/schema/worldSchema'
-import { rumbleOf } from '../rumble'
+import { rumbleOf } from '#input/rumble.ts'
+import { GameEvent } from '#world/schema/worldSchema.ts'
 
 const PLAYER = { x: 100, y: 100 }
 

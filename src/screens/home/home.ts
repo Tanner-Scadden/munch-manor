@@ -2,41 +2,41 @@ import { Array, Function, Option, String, pipe } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import type { Model } from '../../app/model'
-import { isDareTaken } from '../../domain/beatMyRun'
-import { botSeatsFor } from '../../domain/bots'
-import { type HomeMode, RunTally } from '../../domain/clientSchema'
-import { bestMarkOn } from '../../domain/dareMarks'
+import type { Model } from '#app/model.ts'
+import { botSeatsFor } from '#domain/bots.ts'
+import { type HomeMode, RunTally } from '#domain/clientSchema.ts'
+import { bestMarkOn } from '#domain/dareMarks.ts'
+import { isDareTaken } from '#domain/machines/beatMyRun.ts'
 import {
   isAskingForFeedback,
   isEndScreen,
   isInRun,
   isOnHome,
   withBests,
-} from '../../domain/run'
-import { IS_COOP_RELEASED } from '../../features/coop/release'
-import type { HandCard, HomeButton } from '../../features/home/homeSchema'
-import type { LobbyPicks } from '../../features/lobby/model'
-import { maybeTodaysMissions } from '../../features/missions/missions'
+} from '#domain/run.ts'
+import { IS_COOP_RELEASED } from '#features/coop/release.ts'
+import type { HandCard, HomeButton } from '#features/home/homeSchema.ts'
+import type { LobbyPicks } from '#features/lobby/model.ts'
+import { maybeTodaysMissions } from '#features/missions/missions.ts'
 import {
   isDiscovered,
   newlyDiscovered,
-} from '../../features/munchopedia/munchopedia'
-import { maybeNewestNewsDay } from '../../features/whatsNew/changelog'
-import { FOCUS_STEP_OFFSET, type FocusStep } from '../../input/input'
-import { isPortrait } from '../../render/screen'
-import { FEEDBACK_LINE } from '../../shared/constants'
-import { isObjectSecond } from '../../shared/dualArgs'
-import { hasJustWon } from '../../world/run/difficulty'
-import { addKills, killTotal, killsSince } from '../../world/run/stats'
-import type { ZombieKind } from '../../world/schema/entitySchema'
+} from '#features/munchopedia/munchopedia.ts'
+import { maybeNewestNewsDay } from '#features/whatsNew/changelog.ts'
+import { FOCUS_STEP_OFFSET, type FocusStep } from '#input/input.ts'
+import { isPortrait } from '#render/camera/screen.ts'
+import { FEEDBACK_LINE } from '#shared/constants.ts'
+import { isObjectSecond } from '#shared/dualArgs.ts'
+import { hasJustWon } from '#world/run/difficulty.ts'
+import { addKills, killTotal, killsSince } from '#world/run/stats.ts'
+import type { ZombieKind } from '#world/schema/entitySchema.ts'
 import {
   type Difficulty,
   type DifficultyBests,
   type KillCounts,
   Phase,
   RunMode,
-} from '../../world/schema/worldSchema'
+} from '#world/schema/worldSchema.ts'
 
 export const HOME_BUTTONS: Array.NonEmptyReadonlyArray<HomeButton> =
   IS_COOP_RELEASED

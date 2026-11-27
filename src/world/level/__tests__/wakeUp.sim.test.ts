@@ -3,14 +3,14 @@ import { Array, Effect } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { type Model, Phase } from '../../../app/model'
-import { FIXED_STEP_MS } from '../../../shared/constants'
+import { type Model, Phase } from '#app/model.ts'
+import { FIXED_STEP_MS } from '#shared/constants.ts'
 import {
   DISTANT_SPAWN,
   freshRunModel,
   pastTimedBreaks,
   withKeys,
-} from '../../../test/model.fixture'
+} from '#test/model.fixture.ts'
 import {
   BELOW_KITCHEN_DOOR,
   holdToBuy,
@@ -18,10 +18,10 @@ import {
   settleRunCommands,
   steps,
   ticks,
-} from '../../../test/testing'
-import { modifyFocus } from '../../party/party'
-import { EXIT_RULES } from '../exits'
-import { WAKE_RULES, isWakePack } from '../wakeUp'
+} from '#test/testing.ts'
+import { EXIT_RULES } from '#world/level/exits.ts'
+import { WAKE_RULES, isWakePack } from '#world/level/wakeUp.ts'
+import { modifyFocus } from '#world/party/party.ts'
 
 const fighting: Model = modifyFocus(
   UiStruct.evolve(

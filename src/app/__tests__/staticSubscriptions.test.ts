@@ -2,16 +2,16 @@ import { Array, Effect, String } from 'effect'
 
 import { describe, expect, it } from '@effect/vitest'
 
-import { playingModel } from '../../test/model.fixture'
+import { type Model } from '#app/model.ts'
+import { subscriptions } from '#app/subscriptions.ts'
+import { playingModel } from '#test/model.fixture.ts'
 import {
   FRAME_MS,
   checkModel,
   settleRunCommands,
   storyOf,
   tick,
-} from '../../test/testing'
-import { type Model } from '../model'
-import { subscriptions } from '../subscriptions'
+} from '#test/testing.ts'
 
 const FRAMES = 30
 

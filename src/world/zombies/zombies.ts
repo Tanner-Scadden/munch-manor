@@ -16,10 +16,10 @@ import {
   ZOMBIE_SHAMBLE_PX_PER_FRAME,
   ZOMBIE_SPEED_MAX,
   ZOMBIE_SPEED_MIN,
-} from '../../shared/constants'
-import type { SoundEffect } from '../../shared/soundEffect'
-import type { Clearance } from '../level/pathing'
-import { ZOMBIE_NAMES } from '../names'
+} from '#shared/constants.ts'
+import type { SoundEffect } from '#shared/soundEffect.ts'
+import type { Clearance } from '#world/level/pathing.ts'
+import { ZOMBIE_NAMES } from '#world/names.ts'
 import {
   Frenzy,
   type ParticleKind,
@@ -28,7 +28,7 @@ import {
   ZombieAction,
   type ZombieKind,
   ZombieState,
-} from '../schema/worldSchema'
+} from '#world/schema/worldSchema.ts'
 
 export const Behavior = UiSchema.TaggedEnum({
   Brawler: {},

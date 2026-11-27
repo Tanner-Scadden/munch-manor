@@ -2,7 +2,7 @@ import { Array, Function, Option, Result } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import type { Model } from '../../app/model'
+import type { Model } from '#app/model.ts'
 import {
   type DareHint,
   DareHintCall,
@@ -11,37 +11,38 @@ import {
   QuestTour,
   RattlesIntro,
   Tour,
-} from '../../domain/clientSchema'
-import { runDifficultyOf } from '../../domain/onlineRun'
-import { evolveFor } from '../../shared/evolve'
-import type { Difficulty } from '../../shared/playerData'
-import { type Seeded, drawIndex, pickLine } from '../../shared/prng'
+} from '#domain/clientSchema.ts'
+import { runDifficultyOf } from '#domain/onlineRun.ts'
+import { evolveFor } from '#shared/evolve.ts'
+import { type Seeded, drawIndex, pickLine } from '#shared/prng.ts'
+import type { Difficulty } from '#shared/records/playerData.ts'
 import {
   isDareListDone,
   isInOpenRoom,
   maybeThingRoom,
-} from '../../world/dare/dare'
+} from '#world/dare/dare.ts'
 import {
   DareKind,
   type DareThing,
   DareThingState,
-} from '../../world/dare/dareSchema'
-import { levelOf } from '../../world/level/arena'
+} from '#world/dare/dareSchema.ts'
+import { levelOf } from '#world/level/arena.ts'
 import {
   CELLAR_ROOM_ID,
   DINING_ROOM_ID,
   KITCHEN_ROOM_ID,
   LIBRARY_ROOM_ID,
   PARLOUR_ROOM_ID,
-} from '../../world/level/plan'
+} from '#world/level/plan.ts'
 import {
   GameEvent,
   Phase,
   type Vector,
   roundWaveOf,
-} from '../../world/schema/worldSchema'
-import { isThingShownOn } from './dareView'
-import { isPocketCardOut } from './pocketCard'
+} from '#world/schema/worldSchema.ts'
+
+import { isPocketCardOut } from './pocketCard.ts'
+import { isThingShownOn } from './views/dareView.ts'
 
 export const HINT_MS = 5000
 export const EASY_REST_MS = 15_000

@@ -2,14 +2,19 @@ import { Array, Option, Order } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import { PLAYER_RADIUS, TILE_SIZE } from '../../shared/constants'
-import * as DetMath from '../../shared/detMath'
-import { type Level, levelOf, maybeExit, openExitIn } from '../level/arena'
-import { LIBRARY_ROOM_ID, SECRET_EXIT, type Side } from '../level/plan'
-import type { Tile } from '../level/tileGrid'
-import { isStanding, playersOf } from '../party/party'
-import type { World } from '../schema/world'
-import { GameEvent, Phase, type Vector } from '../schema/worldSchema'
+import { PLAYER_RADIUS, TILE_SIZE } from '#shared/constants.ts'
+import * as DetMath from '#shared/detMath.ts'
+import {
+  type Level,
+  levelOf,
+  maybeExit,
+  openExitIn,
+} from '#world/level/arena.ts'
+import { LIBRARY_ROOM_ID, SECRET_EXIT, type Side } from '#world/level/plan.ts'
+import type { Tile } from '#world/level/tileGrid.ts'
+import { isStanding, playersOf } from '#world/party/party.ts'
+import type { World } from '#world/schema/world.ts'
+import { GameEvent, Phase, type Vector } from '#world/schema/worldSchema.ts'
 
 type ShelfRules = Readonly<{ reachPx: number; bookOutPx: number }>
 

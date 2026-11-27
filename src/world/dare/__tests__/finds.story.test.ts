@@ -3,9 +3,9 @@ import { Array, Effect } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { Message } from '../../../app/message'
-import type { Model } from '../../../app/model'
-import { FIXED_STEP_MS } from '../../../shared/constants'
+import { Message } from '#app/message.ts'
+import type { Model } from '#app/model.ts'
+import { FIXED_STEP_MS } from '#shared/constants.ts'
 import {
   crewInWave,
   hidingSpotIn,
@@ -14,7 +14,7 @@ import {
   roomOpenIn,
   withDareThings,
   withPlayerAt,
-} from '../../../test/model.fixture'
+} from '#test/model.fixture.ts'
 import {
   checkModel,
   eventsOver,
@@ -24,19 +24,19 @@ import {
   steps,
   tagsOf,
   ticks,
-} from '../../../test/testing'
-import { levelOf, openExitIn } from '../../level/arena'
-import { KITCHEN_EXIT } from '../../level/exits'
+} from '#test/testing.ts'
+import { findStyleOf, isWorkingFind } from '#world/dare/dare.ts'
+import { DareThingState } from '#world/dare/dareSchema.ts'
+import { FIND_RULES, type FindStyle } from '#world/dare/finds.ts'
+import { levelOf, openExitIn } from '#world/level/arena.ts'
+import { KITCHEN_EXIT } from '#world/level/exits.ts'
 import {
   DEFAULT_ARRANGEMENT,
   KITCHEN_ROOM_ID,
   LIBRARY_ROOM_ID,
   PARLOUR_ROOM_ID,
-} from '../../level/plan'
-import type { SlotRoomId } from '../../schema/worldSchema'
-import { findStyleOf, isWorkingFind } from '../dare'
-import { DareThingState } from '../dareSchema'
-import { FIND_RULES, type FindStyle } from '../finds'
+} from '#world/level/plan.ts'
+import type { SlotRoomId } from '#world/schema/worldSchema.ts'
 
 const FRAME_MS = FIXED_STEP_MS
 

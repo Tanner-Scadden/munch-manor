@@ -11,10 +11,10 @@ import {
   Phase,
   QuestTour,
   Tour,
-} from '../../../app/model'
-import { initialModel } from '../../../app/pureApp'
-import { FIXED_STEP_MS, PREPARATION_MS } from '../../../shared/constants'
-import { DISTANT_SPAWN } from '../../../test/model.fixture'
+} from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
+import { FIXED_STEP_MS, PREPARATION_MS } from '#shared/constants.ts'
+import { DISTANT_SPAWN } from '#test/model.fixture.ts'
 import {
   ackHudSlots,
   byClass,
@@ -22,13 +22,9 @@ import {
   emitPressedKey,
   expectAttr,
   measureHud,
-} from '../../../test/sceneTesting'
-import {
-  type SceneStep,
-  sceneOf,
-  settleRunCommands,
-} from '../../../test/testing'
-import { asVeteran } from '../../../test/veteran'
+} from '#test/sceneTesting.ts'
+import { type SceneStep, sceneOf, settleRunCommands } from '#test/testing.ts'
+import { asVeteran } from '#test/veteran.ts'
 
 const questBreak: Model = UiStruct.evolve(asVeteran(initialModel), {
   phase: () =>

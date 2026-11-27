@@ -2,8 +2,8 @@ import { Array, Function } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import type { World } from '../schema/world'
-import { type Zombie, ZombieAction } from '../schema/worldSchema'
+import type { World } from '#world/schema/world.ts'
+import { type Zombie, ZombieAction } from '#world/schema/worldSchema.ts'
 
 export const REELING_GUARD_MS = 1200
 

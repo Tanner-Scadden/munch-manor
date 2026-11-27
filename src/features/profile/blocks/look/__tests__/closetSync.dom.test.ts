@@ -2,22 +2,22 @@ import { Effect, Option } from 'effect'
 
 import { describe, expect, it } from '@effect/vitest'
 
-import { PlayerChange } from '../../../../../platform/playerSync'
-import type { PlayerSave } from '../../../../../platform/save'
-import type { PlayerDatabase } from '../../../../../platform/storeSqlite'
+import { PlayerChange } from '#platform/save/playerSync.ts'
+import type { PlayerSave } from '#platform/save/save.ts'
+import type { PlayerDatabase } from '#platform/save/storeSqlite.ts'
 import {
   type Appearance,
   COSMETIC_PRICES,
   type SoldHat,
-} from '../../../../../shared/playerData'
+} from '#shared/records/playerData.ts'
 import {
   legacySave,
   linkedPair,
   synced,
   until,
   write,
-} from '../../../../../test/store.fixture'
-import { bonesBalanceOf, noRank } from '../../../../../world/heroes/rank'
+} from '#test/store.fixture.ts'
+import { bonesBalanceOf, noRank } from '#world/heroes/rank.ts'
 
 const withBones = (bones: number): PlayerSave => ({
   ...legacySave,

@@ -3,35 +3,31 @@ import { Array, Effect } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { type Model, Phase } from '../../app/model'
-import { WriteSave } from '../../app/update/save'
+import { type Model, Phase } from '#app/model.ts'
+import { WriteSave } from '#app/update/save.ts'
+import {
+  hasNewJournalPage,
+  markJournalSeen,
+  milestoneUnlockId,
+  openedThingsOf,
+} from '#domain/journal.ts'
 import {
   diesOnWave7,
   frame,
   lastWave,
-} from '../../features/end/__tests__/rank.fixture'
-import { EndUnlock, unlocksOf } from '../../features/end/endBeat'
-import { noJournal } from '../../shared/journalData'
-import {
-  knowingDay,
-  readyModel,
-  withDareThings,
-} from '../../test/model.fixture'
+} from '#features/end/__tests__/rank.fixture.ts'
+import { EndUnlock, unlocksOf } from '#features/end/endBeat.ts'
+import { noJournal } from '#shared/records/journalData.ts'
+import { knowingDay, readyModel, withDareThings } from '#test/model.fixture.ts'
 import {
   checkModel,
   checkPendingArgs,
   press,
   storyOf,
   writeSave,
-} from '../../test/testing'
-import { type DareThing, DareThingState } from '../../world/dare/dareSchema'
-import { focusOf } from '../../world/party/party'
-import {
-  hasNewJournalPage,
-  markJournalSeen,
-  milestoneUnlockId,
-  openedThingsOf,
-} from '../journal'
+} from '#test/testing.ts'
+import { type DareThing, DareThingState } from '#world/dare/dareSchema.ts'
+import { focusOf } from '#world/party/party.ts'
 
 const TODAY = '2026-11-13'
 

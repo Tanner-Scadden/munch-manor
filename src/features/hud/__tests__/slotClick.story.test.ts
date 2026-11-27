@@ -3,24 +3,24 @@ import { Array, Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { Message } from '../../../app/message'
-import { BreakClock, GameEvent, type Model, Phase } from '../../../app/model'
-import { initialModel } from '../../../app/pureApp'
-import type { PointerDevice } from '../../../input/inputSchema'
-import { MELEE_SLOT_INDEX, gunSlotBox } from '../../../render/hudLayout'
-import { screenOf } from '../../../render/screen'
-import { holdingFirst } from '../../../test/arsenals'
-import { DISTANT_SPAWN } from '../../../test/model.fixture'
+import { Message } from '#app/message.ts'
+import { BreakClock, GameEvent, type Model, Phase } from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
+import type { PointerDevice } from '#input/inputSchema.ts'
+import { screenOf } from '#render/camera/screen.ts'
+import { MELEE_SLOT_INDEX, gunSlotBox } from '#render/hud/hudLayout.ts'
+import { holdingFirst } from '#test/arsenals.ts'
+import { DISTANT_SPAWN } from '#test/model.fixture.ts'
 import {
   FIXED_FRAME,
   SURFACE,
   checkModel,
   send,
   storyOf,
-} from '../../../test/testing'
-import { asVeteran } from '../../../test/veteran'
-import { freshGun, heldWeapon } from '../../../world/gear/weapons'
-import { modifyFocus } from '../../../world/party/party'
+} from '#test/testing.ts'
+import { asVeteran } from '#test/veteran.ts'
+import { freshGun, heldWeapon } from '#world/gear/weapons.ts'
+import { modifyFocus } from '#world/party/party.ts'
 
 const MOUSE = 1
 const FINGER = 7

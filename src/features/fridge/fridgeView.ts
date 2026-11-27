@@ -1,7 +1,7 @@
 import { Array, Function, Option, Result, pipe } from 'effect'
 
-import type { Model } from '../../app/model'
-import { prizeOnPaperSprite } from '../../art/prizeArt'
+import type { Model } from '#app/model.ts'
+import { prizeOnPaperSprite } from '#art/prizeArt.ts'
 import {
   type Sprite,
   bakeShapes,
@@ -9,32 +9,32 @@ import {
   group,
   placeAt,
   spriteShapes,
-} from '../../art/sprite'
-import { type Camera, worldToView } from '../../render/camera'
-import { type Drawable, ON_FRONT_PX } from '../../render/depth'
-import type * as Draw from '../../render/draw'
-import { rect } from '../../render/drawing'
-import { clearWindowOf } from '../../render/hudLayout'
-import { type Keepout, maybeClearOfKeepouts } from '../../render/keepout'
-import { FRIDGE_RISE_PX, isKitchenShown } from '../../render/room/kitchenView'
-import { screenOf } from '../../render/screen'
-import { TILE_SIZE } from '../../shared/constants'
+} from '#art/sprite.ts'
+import { type Camera, worldToView } from '#render/camera/camera.ts'
+import { screenOf } from '#render/camera/screen.ts'
+import { type Drawable, ON_FRONT_PX } from '#render/depth.ts'
+import type * as Draw from '#render/draw.ts'
+import { rect } from '#render/drawing.ts'
+import { clearWindowOf } from '#render/hud/hudLayout.ts'
+import { type Keepout, maybeClearOfKeepouts } from '#render/hud/keepout.ts'
+import { FRIDGE_RISE_PX, isKitchenShown } from '#render/room/kitchenView.ts'
+import { TILE_SIZE } from '#shared/constants.ts'
 import {
   PAN_RULES,
   SMASH_TIER,
   chargeOf,
   maybeHeldFridgeWeapon,
-} from '../../world/fridge/fridgeWeapons'
+} from '#world/fridge/fridgeWeapons.ts'
 import {
   FRIDGE_RULES,
   PRIZE_ORDER,
   fridgeBoxOf,
   prizeOddsFor,
-} from '../../world/fridge/leftovers'
-import { levelOf } from '../../world/level/arena'
-import { distanceToBox } from '../../world/level/tileGrid'
-import { focusOf, focusSlotOf } from '../../world/party/party'
-import { activeModifiersOf } from '../../world/run/dareLadder'
+} from '#world/fridge/leftovers.ts'
+import { levelOf } from '#world/level/arena.ts'
+import { distanceToBox } from '#world/level/tileGrid.ts'
+import { focusOf, focusSlotOf } from '#world/party/party.ts'
+import { activeModifiersOf } from '#world/run/dareLadder.ts'
 import {
   Charge,
   FridgeDoor,
@@ -42,9 +42,10 @@ import {
   type Lob,
   type Player,
   type Vector,
-} from '../../world/schema/entitySchema'
-import { clamp } from '../../world/step/geometry'
-import { type Rarity, revealOf } from './fridgeReveal'
+} from '#world/schema/entitySchema.ts'
+import { clamp } from '#world/step/geometry.ts'
+
+import { type Rarity, revealOf } from './fridgeReveal.ts'
 
 const FRIDGE_WIDTH = TILE_SIZE * 2
 const FREEZER_PX = 11

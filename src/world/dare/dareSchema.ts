@@ -2,7 +2,11 @@ import { type Array, Schema } from 'effect'
 
 import { UiSchema } from '@effect/ui'
 
-import { MillisNumber, Point, PositionNumber } from '../schema/wireNumber'
+import {
+  MillisNumber,
+  Point,
+  PositionNumber,
+} from '#world/schema/wireNumber.ts'
 
 export const DareKind = Schema.Literals([
   'SilverSpoon',

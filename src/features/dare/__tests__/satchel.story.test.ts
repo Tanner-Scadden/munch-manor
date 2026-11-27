@@ -3,25 +3,30 @@ import { Array, Effect, Option, Record } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { Message } from '../../../app/message'
-import type { Difficulty, Model } from '../../../app/model'
-import { DARE_FOUND_SLOTS, SATCHEL_BACK } from '../../../art/dareArt'
-import { textWidth } from '../../../art/font'
-import { PocketCard } from '../../../domain/clientSchema'
-import { PAD_SELECT } from '../../../input/gamepad'
-import type * as Draw from '../../../render/draw'
+import { Message } from '#app/message.ts'
+import type { Difficulty, Model } from '#app/model.ts'
+import { DARE_FOUND_SLOTS, SATCHEL_BACK } from '#art/dareArt.ts'
+import { textWidth } from '#art/font.ts'
+import { PocketCard } from '#domain/clientSchema.ts'
+import {
+  isPocketCardBlocking,
+  maybeClueRoom,
+} from '#features/dare/pocketCard.ts'
+import { pocketCardShapes } from '#features/dare/views/pocketCardView.ts'
+import { PAD_SELECT } from '#input/gamepad.ts'
 import {
   DEFAULT_PORTRAIT_SCREEN,
   LANDSCAPE_SCREEN,
-} from '../../../render/screen'
-import { pocketOf } from '../../../screens/game/pocket'
+} from '#render/camera/screen.ts'
+import type * as Draw from '#render/draw.ts'
+import { pocketOf } from '#screens/game/pocket.ts'
 import {
   hidingSpotIn,
   onDifficulty,
   quietWave,
   roomOpenIn,
   withDareThings,
-} from '../../../test/model.fixture'
+} from '#test/model.fixture.ts'
 import {
   changeModel,
   checkModel,
@@ -31,19 +36,17 @@ import {
   storyOf,
   tick,
   ticks,
-} from '../../../test/testing'
-import { imagesIn } from '../../../test/viewReading'
+} from '#test/testing.ts'
+import { imagesIn } from '#test/viewReading.ts'
 import {
   type DareKind,
   type DareThing,
   DareThingState,
-} from '../../../world/dare/dareSchema'
-import { levelOf } from '../../../world/level/arena'
-import { DEFAULT_ARRANGEMENT, LIBRARY_ROOM_ID } from '../../../world/level/plan'
-import { DARE_LINES } from '../../../world/names'
-import { Phase } from '../../../world/schema/worldSchema'
-import { isPocketCardBlocking, maybeClueRoom } from '../pocketCard'
-import { pocketCardShapes } from '../pocketCardView'
+} from '#world/dare/dareSchema.ts'
+import { levelOf } from '#world/level/arena.ts'
+import { DEFAULT_ARRANGEMENT, LIBRARY_ROOM_ID } from '#world/level/plan.ts'
+import { DARE_LINES } from '#world/names.ts'
+import { Phase } from '#world/schema/worldSchema.ts'
 
 const FRAME_MS = 50
 

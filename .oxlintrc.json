@@ -118,6 +118,7 @@
         "munch/stand-through-space": "error",
         "munch/no-dialog-field-write": "error",
         "munch/folder-imports": "error",
+        "munch/subpath-imports": "error",
         "no-restricted-properties": [
           "error",
           {
@@ -154,15 +155,15 @@
           "error",
           {
             "name": "localStorage",
-            "message": "Persistent data goes through PlayerStore (src/platform/store.ts)."
+            "message": "Persistent data goes through PlayerStore (src/platform/save/store.ts)."
           },
           {
             "name": "sessionStorage",
-            "message": "Persistent data goes through PlayerStore (src/platform/store.ts)."
+            "message": "Persistent data goes through PlayerStore (src/platform/save/store.ts)."
           },
           {
             "name": "indexedDB",
-            "message": "Persistent data goes through PlayerStore (src/platform/store.ts)."
+            "message": "Persistent data goes through PlayerStore (src/platform/save/store.ts)."
           },
           {
             "name": "setTimeout",
@@ -234,7 +235,7 @@
         "src/app/update/*.ts",
         "src/features/*/update.ts",
         "src/app/main.ts",
-        "src/app/runFlow.ts",
+        "src/app/frame/runFlow.ts",
         "src/input/couch.ts"
       ],
       "rules": { "munch/seat-action-once": "error" }
@@ -302,11 +303,11 @@
       // NOTE: the store is where storage lives: save.ts keeps the legacy
       // localStorage copy that store.ts falls back to.
       "files": [
-        "src/platform/save.ts",
-        "src/platform/store.ts",
-        "src/platform/storeSqlite.ts",
-        "src/platform/storeEarly.ts",
-        "src/platform/store.worker.ts"
+        "src/platform/save/save.ts",
+        "src/platform/save/store.ts",
+        "src/platform/save/storeSqlite.ts",
+        "src/platform/save/storeEarly.ts",
+        "src/platform/save/store.worker.ts"
       ],
       "rules": {
         "no-restricted-globals": "off"
@@ -341,12 +342,12 @@
       // (screens, endView, bossView).
       "files": [
         "src/shared/constants.ts",
-        "src/render/screen.ts",
-        "src/render/camera.ts",
+        "src/render/camera/screen.ts",
+        "src/render/camera/camera.ts",
         "src/world/step/geometry.ts",
         "src/screens/game/overlay.ts",
-        "src/features/end/endView.ts",
-        "src/render/bossView.ts"
+        "src/features/end/views/endView.ts",
+        "src/render/bodies/bossView.ts"
       ],
       "rules": {
         "no-restricted-imports": "off"
@@ -425,8 +426,8 @@
       "files": [
         "src/render/**/*.ts",
         "src/screens/**/*.ts",
-        "src/app/layers.ts",
-        "src/app/frame.ts",
+        "src/app/views/layers.ts",
+        "src/app/frame/frame.ts",
         "src/app/view.ts",
         "src/app/update/play.ts",
         "src/world/step/**/*.ts",
@@ -453,8 +454,8 @@
         "src/app/**/*.ts",
         "src/domain/**/*.ts",
         "src/features/**/*.ts",
-        "src/render/lens.ts",
-        "src/render/camera.ts"
+        "src/render/camera/lens.ts",
+        "src/render/camera/camera.ts"
       ],
       "rules": { "munch/stable-math": "error" }
     },
@@ -514,7 +515,7 @@
       // NOTE: menuState derives which menu is up from the rootDialog field,
       // so it is the one place that reads it to decide (munch/no-menu-field).
       // rootDialog.ts asks which dialog it holds for the views that draw each.
-      "files": ["src/app/menuState.ts", "src/app/rootDialog.ts"],
+      "files": ["src/app/menus/menuState.ts", "src/app/menus/rootDialog.ts"],
       "rules": { "munch/no-menu-field": "off" }
     },
     {
@@ -539,8 +540,8 @@
       // test reads a point back onto the screen with them
       // (munch/stand-through-space).
       "files": [
-        "src/render/iso/voxelShape.ts",
-        "src/render/iso/carvedMesh.ts",
+        "src/render/iso/bodies/voxelShape.ts",
+        "src/render/iso/house/carvedMesh.ts",
         "src/render/__tests__/muzzleFlash.test.ts"
       ],
       "rules": { "munch/stand-through-space": "off" }

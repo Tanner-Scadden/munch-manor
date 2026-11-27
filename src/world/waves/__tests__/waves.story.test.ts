@@ -3,20 +3,20 @@ import { Array, Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { Message } from '../../../app/message'
+import { Message } from '#app/message.ts'
 import {
   BreakClock,
   type Model,
   Phase,
   type PlannedSpawn,
   type Zombie,
-} from '../../../app/model'
+} from '#app/model.ts'
 import {
   FIRST_PREPARATION_MS,
   FIXED_STEP_MS,
   PREPARATION_MS,
-} from '../../../shared/constants'
-import { plannedSpawn, readyModel } from '../../../test/model.fixture'
+} from '#shared/constants.ts'
+import { plannedSpawn, readyModel } from '#test/model.fixture.ts'
 import {
   bulletInto,
   checkModel,
@@ -32,18 +32,23 @@ import {
   tick,
   ticks,
   zombieAt,
-} from '../../../test/testing'
-import { START_LEVEL } from '../../level/arena'
-import { modifyFocus } from '../../party/party'
-import { breakMsOf } from '../../run/difficulty'
-import { scoreOf } from '../../run/stats'
-import { hasBoss } from '../../zombies/boss'
-import { frenzyPacksOf, isFrenzyPack } from '../../zombies/frenzy'
-import { ZOMBIE_KINDS } from '../../zombies/zombies'
-import { doorCounts, rollSpawns } from '../endlessWaves'
-import { CHUCKER_ESCORT_SIZE } from '../wavePacks'
-import { FINAL_WAVE, HEAT, type SpawnGroup, WAVE_PLANS } from '../wavePlans'
-import { roundWave } from '../waves'
+} from '#test/testing.ts'
+import { START_LEVEL } from '#world/level/arena.ts'
+import { modifyFocus } from '#world/party/party.ts'
+import { breakMsOf } from '#world/run/difficulty.ts'
+import { scoreOf } from '#world/run/stats.ts'
+import { doorCounts, rollSpawns } from '#world/waves/endlessWaves.ts'
+import { CHUCKER_ESCORT_SIZE } from '#world/waves/wavePacks.ts'
+import {
+  FINAL_WAVE,
+  HEAT,
+  type SpawnGroup,
+  WAVE_PLANS,
+} from '#world/waves/wavePlans.ts'
+import { roundWave } from '#world/waves/waves.ts'
+import { hasBoss } from '#world/zombies/boss.ts'
+import { frenzyPacksOf, isFrenzyPack } from '#world/zombies/frenzy.ts'
+import { ZOMBIE_KINDS } from '#world/zombies/zombies.ts'
 
 const FRAME_MS = 50
 const inWave = (

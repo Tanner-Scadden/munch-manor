@@ -3,8 +3,8 @@ import { describe, expect, test } from 'vitest'
 
 import { makeReader, makeWriter } from '@munch/netcode'
 
-import { FIXED_STEP_MS } from '../../../shared/constants'
-import { playRoom } from '../../../test/roomTesting'
+import { FIXED_STEP_MS } from '#shared/constants.ts'
+import { playRoom } from '#test/roomTesting.ts'
 import {
   DEFAULT_ROOM_SETTINGS,
   type RoomWorld,
@@ -14,10 +14,15 @@ import {
   startRoomWorld,
   writeRoomDiff,
   writeRoomSnapshot,
-} from '../../net/roomWorld'
-import { maybePlayerAt } from '../../party/party'
-import { Phase } from '../../schema/worldSchema'
-import { ARRIVAL_MS, SLAM_MS, skipArrival, slamAtMs } from '../arrival'
+} from '#world/net/roomWorld.ts'
+import { maybePlayerAt } from '#world/party/party.ts'
+import {
+  ARRIVAL_MS,
+  SLAM_MS,
+  skipArrival,
+  slamAtMs,
+} from '#world/run/arrival.ts'
+import { Phase } from '#world/schema/worldSchema.ts'
 
 const fullRoom = startRoomWorld([0, 1, 2], 7, {
   ...DEFAULT_ROOM_SETTINGS,

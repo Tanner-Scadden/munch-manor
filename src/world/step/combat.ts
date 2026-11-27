@@ -9,18 +9,18 @@ import {
   PLAYER_KNOCKBACK_SPEED,
   PLAYER_RADIUS,
   ZOMBIE_HIT_PULSE_MS,
-} from '../../shared/constants'
-import * as DetMath from '../../shared/detMath'
-import { trapBlastTarget } from '../gear/traps'
-import { woundGraceScaleOf } from '../heroes/calling'
-import { levelOf } from '../level/arena'
+} from '#shared/constants.ts'
+import * as DetMath from '#shared/detMath.ts'
+import { trapBlastTarget } from '#world/gear/traps.ts'
+import { woundGraceScaleOf } from '#world/heroes/calling.ts'
+import { levelOf } from '#world/level/arena.ts'
 import {
   atSeat,
   forEachSeatWhere,
   isStanding,
   seatStateAt,
-} from '../party/party'
-import type { World } from '../schema/world'
+} from '#world/party/party.ts'
+import type { World } from '#world/schema/world.ts'
 import {
   type Bullet,
   GameEvent,
@@ -32,7 +32,7 @@ import {
   type Zombie,
   ZombieAction,
   ZombieState,
-} from '../schema/worldSchema'
+} from '#world/schema/worldSchema.ts'
 import {
   Behavior,
   type DeathCause,
@@ -40,7 +40,8 @@ import {
   deathState,
   isGrounded,
   statsOf,
-} from '../zombies/zombies'
+} from '#world/zombies/zombies.ts'
+
 import {
   OUTWARD,
   ZERO_VECTOR,
@@ -48,7 +49,7 @@ import {
   directionBetween,
   normalize,
   scaleVector,
-} from './geometry'
+} from './geometry.ts'
 
 type Strike = Readonly<{
   damage: number

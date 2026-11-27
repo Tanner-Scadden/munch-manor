@@ -2,10 +2,10 @@ import { Array, Function, Option, Record, Result, pipe } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import { BULLET_STEP_PX } from '../../shared/constants'
-import * as DetMath from '../../shared/detMath'
-import { type Level, levelOf, maybeExit } from '../level/arena'
-import { KITCHEN_EXIT, boxAround } from '../level/exits'
+import { BULLET_STEP_PX } from '#shared/constants.ts'
+import * as DetMath from '#shared/detMath.ts'
+import { type Level, levelOf, maybeExit } from '#world/level/arena.ts'
+import { KITCHEN_EXIT, boxAround } from '#world/level/exits.ts'
 import {
   type Box,
   COVER_SYMBOLS,
@@ -13,9 +13,9 @@ import {
   distanceToBox,
   tileBox,
   tilesWithSymbol,
-} from '../level/tileGrid'
-import { isOnSoupAt } from '../level/tileQueries'
-import type { World } from '../schema/world'
+} from '#world/level/tileGrid.ts'
+import { isOnSoupAt } from '#world/level/tileQueries.ts'
+import type { World } from '#world/schema/world.ts'
 import {
   GameEvent,
   Oven,
@@ -23,10 +23,16 @@ import {
   type Zombie,
   ZombieAction,
   type ZombieKind,
-} from '../schema/worldSchema'
-import { ZOMBIE_BLAST_TARGET } from '../step/combat'
-import { bodyRadiusOf, isFree, isGrounded, statsOf } from '../zombies/zombies'
-import { isInPuddle, puddleOf } from './soupPot'
+} from '#world/schema/worldSchema.ts'
+import { ZOMBIE_BLAST_TARGET } from '#world/step/combat.ts'
+import {
+  bodyRadiusOf,
+  isFree,
+  isGrounded,
+  statsOf,
+} from '#world/zombies/zombies.ts'
+
+import { isInPuddle, puddleOf } from './soupPot.ts'
 
 type OvenRules = Readonly<{
   belchMs: number

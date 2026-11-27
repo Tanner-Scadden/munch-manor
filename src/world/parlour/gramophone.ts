@@ -1,13 +1,13 @@
 import { Array, Function, Option } from 'effect'
 
-import * as DetMath from '../../shared/detMath'
-import { type Level, levelOf } from '../level/arena'
-import { PARLOUR_ROOM_ID } from '../level/plan'
-import { type Box, boxCenter } from '../level/tileGrid'
-import type { World } from '../schema/world'
-import type { Vector, Zombie, ZombieKind } from '../schema/worldSchema'
-import { TOOL_RULES, isToolActive } from '../stations/toolRules'
-import { isInsideBox } from '../step/geometry'
+import * as DetMath from '#shared/detMath.ts'
+import { type Level, levelOf } from '#world/level/arena.ts'
+import { PARLOUR_ROOM_ID } from '#world/level/plan.ts'
+import { type Box, boxCenter } from '#world/level/tileGrid.ts'
+import type { World } from '#world/schema/world.ts'
+import type { Vector, Zombie, ZombieKind } from '#world/schema/worldSchema.ts'
+import { TOOL_RULES, isToolActive } from '#world/stations/toolRules.ts'
+import { isInsideBox } from '#world/step/geometry.ts'
 
 const RULES = TOOL_RULES.Gramophone
 

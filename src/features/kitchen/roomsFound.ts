@@ -1,15 +1,15 @@
 import { Array, Function } from 'effect'
 
-import type { Model } from '../../app/model'
-import { textShapes, textWidth } from '../../art/font'
-import { HOUSE_PALETTE, HOUSE_PIXELS } from '../../art/icons'
-import { TOP_LEFT, spriteShapes } from '../../art/sprite'
-import { KitchenCall } from '../../domain/clientSchema'
-import { roomsOf } from '../../domain/run'
-import type * as Draw from '../../render/draw'
-import { placeSprite, rect } from '../../render/drawing'
-import { levelOf } from '../../world/level/arena'
-import { Phase } from '../../world/schema/worldSchema'
+import type { Model } from '#app/model.ts'
+import { textShapes, textWidth } from '#art/font.ts'
+import { HOUSE_PALETTE, HOUSE_PIXELS } from '#art/icons/icons.ts'
+import { TOP_LEFT, spriteShapes } from '#art/sprite.ts'
+import { KitchenCall } from '#domain/clientSchema.ts'
+import { roomsOf } from '#domain/run.ts'
+import type * as Draw from '#render/draw.ts'
+import { placeSprite, rect } from '#render/drawing.ts'
+import { levelOf } from '#world/level/arena.ts'
+import { Phase } from '#world/schema/worldSchema.ts'
 
 const isRoomsCounterShown = (model: Model): boolean =>
   Phase.isAnyOf(['Preparation'])(model.phase) &&

@@ -1,18 +1,19 @@
 import { Array, Option, String } from 'effect'
 
-import type { Model } from '../app/model'
-import { rankOf, totalPointsOf } from '../world/heroes/rank'
-import { isCoop, leadSeatOf, playerCountOf } from '../world/party/party'
-import { isRunUnderway } from '../world/run/arrival'
-import { withMarkModifiers } from '../world/run/dareLadder'
-import type { Modifiers } from '../world/run/modifiers'
+import type { Model } from '#app/model.ts'
+import { rankOf, totalPointsOf } from '#world/heroes/rank.ts'
+import { isCoop, leadSeatOf, playerCountOf } from '#world/party/party.ts'
+import { isRunUnderway } from '#world/run/arrival.ts'
+import { withMarkModifiers } from '#world/run/dareLadder.ts'
+import type { Modifiers } from '#world/run/modifiers.ts'
 import {
   type Difficulty,
   Phase,
   type PlayerSlot,
-} from '../world/schema/worldSchema'
-import { botNameOf, botSlotOf, isBotCrew } from './bots'
-import { type Room as CoopRoom, isInLobby, maybeRoomOf } from './coopRoom'
+} from '#world/schema/worldSchema.ts'
+
+import { botNameOf, botSlotOf, isBotCrew } from './bots.ts'
+import { type Room as CoopRoom, isInLobby, maybeRoomOf } from './coopRoom.ts'
 
 const isEndToDraw = (model: Model, room: CoopRoom): boolean =>
   isRunUnderway(model.phase) &&

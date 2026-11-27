@@ -4,7 +4,7 @@ import { Component, UiStruct } from '@effect/ui'
 import { Story } from '@effect/ui/testing'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { ApplicationNoDeps } from '../../../app/block'
+import { ApplicationNoDeps } from '#app/block.ts'
 import {
   AwaitFirstFrame,
   DecodeSprites,
@@ -22,31 +22,25 @@ import {
   ReadUpdateMarker,
   StartRecordingQueue,
   StartSummaryQueue,
-} from '../../../app/boot'
-import { Message } from '../../../app/message'
-import {
-  Loading,
-  type Model,
-  Phase,
-  RunTally,
-  noKills,
-} from '../../../app/model'
-import { initialModel } from '../../../app/pureApp'
-import { returnHome } from '../../../app/runReset'
-import { maybeKeyDownMessage } from '../../../app/subscriptions'
-import { ReadBeatLink } from '../../../app/update/beatMyRun'
-import { ReadRoomLink } from '../../../app/update/coop'
-import { HideSplash, ShowLoadProgress } from '../../../app/update/save'
-import { withBests } from '../../../domain/run'
-import { LoadMessage } from '../../../platform/message'
-import { bestsFor } from '../../../screens/home/home'
-import { FIXED_STEP_MS, RESTART_GRACE_MS } from '../../../shared/constants'
+} from '#app/boot.ts'
+import { returnHome } from '#app/frame/runReset.ts'
+import { Message } from '#app/message.ts'
+import { Loading, type Model, Phase, RunTally, noKills } from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
+import { maybeKeyDownMessage } from '#app/subscriptions.ts'
+import { ReadBeatLink } from '#app/update/beatMyRun.ts'
+import { ReadRoomLink } from '#app/update/coop.ts'
+import { HideSplash, ShowLoadProgress } from '#app/update/save.ts'
+import { withBests } from '#domain/run.ts'
+import { LoadMessage } from '#platform/message.ts'
+import { bestsFor } from '#screens/home/home.ts'
+import { FIXED_STEP_MS, RESTART_GRACE_MS } from '#shared/constants.ts'
 import {
   DISTANT_SPAWN,
   escaping,
   home,
   veteranFighting,
-} from '../../../test/model.fixture'
+} from '#test/model.fixture.ts'
 import {
   type StoryStep,
   checkModel,
@@ -54,11 +48,11 @@ import {
   send,
   storyOf,
   throughIntro,
-} from '../../../test/testing'
-import { focusOf, modifyFocus } from '../../../world/party/party'
-import { scoreOf } from '../../../world/run/stats'
-import { FINAL_WAVE } from '../../../world/waves/wavePlans'
-import { pause } from '../../../world/waves/waves'
+} from '#test/testing.ts'
+import { focusOf, modifyFocus } from '#world/party/party.ts'
+import { scoreOf } from '#world/run/stats.ts'
+import { FINAL_WAVE } from '#world/waves/wavePlans.ts'
+import { pause } from '#world/waves/waves.ts'
 
 const withEndlessBest = (base: Model, wave: number): Model =>
   withBests(base, bests =>

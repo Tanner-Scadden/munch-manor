@@ -1,8 +1,8 @@
 import { Html } from '@effect/ui/html'
 
-import { Events, Message, isLookSection } from './message'
-import { CharacterProps, Model } from './model'
-import { lookTabView } from './view'
+import { Events, Message, isLookSection } from './message.ts'
+import { CharacterProps, Model } from './model.ts'
+import { lookTabView } from './view.ts'
 
 export const Character = Html.component({
   name: 'Character',

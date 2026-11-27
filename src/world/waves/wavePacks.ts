@@ -5,23 +5,24 @@ import {
   DOOR_SPAWN_SPREAD_PX,
   PINCER_LAG_MAX_MS,
   PINCER_LAG_MIN_MS,
-} from '../../shared/constants'
-import { type Seeded, between, nextRandom, shuffle } from '../../shared/prng'
+} from '#shared/constants.ts'
+import { type Seeded, between, nextRandom, shuffle } from '#shared/prng.ts'
 import type {
   DoorId,
   Formation,
   Hold,
   PlannedSpawn,
   ZombieKind,
-} from '../schema/worldSchema'
-import { OPPOSITE_DOOR } from './doorRoute'
+} from '#world/schema/worldSchema.ts'
+
+import { OPPOSITE_DOOR } from './doorRoute.ts'
 import {
   type DoorPattern,
   type SpawnGroup,
   type WavePlan,
   pickKind,
   pickOne,
-} from './wavePlans'
+} from './wavePlans.ts'
 
 const DOOR_PAIRS: Array.NonEmptyReadonlyArray<
   Array.NonEmptyReadonlyArray<DoorId>

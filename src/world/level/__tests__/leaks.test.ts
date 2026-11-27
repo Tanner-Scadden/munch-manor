@@ -1,12 +1,22 @@
 import { Array, Option } from 'effect'
 import { expect, test } from 'vitest'
 
-import { PLAYER_FOOT_OFFSET, TILE_SIZE } from '../../../shared/constants'
-import { TILE_DOOR, TILE_SOLID, hasTileFlag, levelFor } from '../arena'
-import { WADE_PACE, isWadingAt, leaksOf, wadePaceAt } from '../leaks'
-import { EVERY_LEVEL_SPEC } from '../plan'
-import { rugsOf } from '../rugs'
-import { isInsideRoom, symbolAt, tileIndex } from '../tileGrid'
+import { PLAYER_FOOT_OFFSET, TILE_SIZE } from '#shared/constants.ts'
+import {
+  TILE_DOOR,
+  TILE_SOLID,
+  hasTileFlag,
+  levelFor,
+} from '#world/level/arena.ts'
+import {
+  WADE_PACE,
+  isWadingAt,
+  leaksOf,
+  wadePaceAt,
+} from '#world/level/leaks.ts'
+import { EVERY_LEVEL_SPEC } from '#world/level/plan.ts'
+import { rugsOf } from '#world/level/rugs.ts'
+import { isInsideRoom, symbolAt, tileIndex } from '#world/level/tileGrid.ts'
 
 const EVERY_EXIT = [
   'West',

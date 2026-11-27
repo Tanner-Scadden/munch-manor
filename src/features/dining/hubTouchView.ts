@@ -1,6 +1,6 @@
 import { Array, Function, Option, Record, Result } from 'effect'
 
-import type { Model } from '../../app/model'
+import type { Model } from '#app/model.ts'
 import {
   type Sprite,
   TOP_LEFT,
@@ -9,11 +9,11 @@ import {
   glowingSprite,
   placeAt,
   spriteShapes,
-} from '../../art/sprite'
-import { type Drawable, ON_FRONT_PX } from '../../render/depth'
-import { rect } from '../../render/drawing'
-import { TILE_SIZE } from '../../shared/constants'
-import { type Level, type Room, levelOf } from '../../world/level/arena'
+} from '#art/sprite.ts'
+import { type Drawable, ON_FRONT_PX } from '#render/depth.ts'
+import { rect } from '#render/drawing.ts'
+import { TILE_SIZE } from '#shared/constants.ts'
+import { type Level, type Room, levelOf } from '#world/level/arena.ts'
 import {
   CELLAR_ROOM_ID,
   DINING_ROOM_ID,
@@ -21,10 +21,10 @@ import {
   LIBRARY_ROOM_ID,
   type LevelSpec,
   PARLOUR_ROOM_ID,
-} from '../../world/level/plan'
-import type { Vector } from '../../world/schema/worldSchema'
-import { stationCenterOf } from '../../world/stations/stationSpots'
-import { distanceBetween } from '../../world/step/geometry'
+} from '#world/level/plan.ts'
+import type { Vector } from '#world/schema/worldSchema.ts'
+import { stationCenterOf } from '#world/stations/stationSpots.ts'
+import { distanceBetween } from '#world/step/geometry.ts'
 
 const SIDEBOARD_FOOT_Y = 3 * TILE_SIZE
 const HATCH_SPOT = { x: 155, y: 19, footY: SIDEBOARD_FOOT_Y + ON_FRONT_PX }

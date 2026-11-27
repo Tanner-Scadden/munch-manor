@@ -10,9 +10,9 @@ import {
   type Model,
   Phase,
   RunMode,
-} from '../../../app/model'
-import { PlayPlaced } from '../../../app/update/sound'
-import { FIXED_STEP_MS } from '../../../shared/constants'
+} from '#app/model.ts'
+import { PlayPlaced } from '#app/update/sound.ts'
+import { FIXED_STEP_MS } from '#shared/constants.ts'
 import {
   DISTANT_SPAWN,
   hidingSpotIn,
@@ -21,7 +21,7 @@ import {
   withDareThings,
   withPlayerAt,
   withSeat,
-} from '../../../test/model.fixture'
+} from '#test/model.fixture.ts'
 import {
   checkModel,
   checkPendingArgs,
@@ -31,20 +31,24 @@ import {
   steps,
   tagsOf,
   tick,
-} from '../../../test/testing'
-import { levelOf, openExitIn } from '../../level/arena'
-import { KITCHEN_EXIT } from '../../level/exits'
-import { DINING_ROOM_ID, KITCHEN_ROOM_ID } from '../../level/plan'
-import { focusOf, modifyFocus, seatCrew } from '../../party/party'
-import { withWorld } from '../../schema/world'
+} from '#test/testing.ts'
 import {
   LIST_LENGTHS,
   dareCardOf,
   isDareListDone,
   maybeLyingAt,
   maybeThingRoom,
-} from '../dare'
-import { type DareKind, type DareThing, DareThingState } from '../dareSchema'
+} from '#world/dare/dare.ts'
+import {
+  type DareKind,
+  type DareThing,
+  DareThingState,
+} from '#world/dare/dareSchema.ts'
+import { levelOf, openExitIn } from '#world/level/arena.ts'
+import { KITCHEN_EXIT } from '#world/level/exits.ts'
+import { DINING_ROOM_ID, KITCHEN_ROOM_ID } from '#world/level/plan.ts'
+import { focusOf, modifyFocus, seatCrew } from '#world/party/party.ts'
+import { withWorld } from '#world/schema/world.ts'
 
 const FRAME_MS = FIXED_STEP_MS
 

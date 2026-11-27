@@ -14,11 +14,11 @@ import {
   PLAYER_RECOIL_MS,
   PLAYER_RECOIL_SQUASH,
   ZOMBIE_KNOCKBACK_SPEED,
-} from '../../shared/constants'
-import type { Calling } from '../../shared/playerData'
-import type { SoundEffect } from '../../shared/soundEffect'
-import { magazineFor } from '../heroes/calling'
-import { GUN_NAMES, KNIFE_NAME, gunTierName } from '../names'
+} from '#shared/constants.ts'
+import type { Calling } from '#shared/records/playerData.ts'
+import type { SoundEffect } from '#shared/soundEffect.ts'
+import { magazineFor } from '#world/heroes/calling.ts'
+import { GUN_NAMES, KNIFE_NAME, gunTierName } from '#world/names.ts'
 import {
   Arsenal,
   type CarriedGun,
@@ -28,7 +28,7 @@ import {
   type Player,
   Reload,
   type WeaponKind,
-} from '../schema/worldSchema'
+} from '#world/schema/worldSchema.ts'
 
 export type MuzzleFlash = 'Flicker' | 'Pop' | 'Blast'
 

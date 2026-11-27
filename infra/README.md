@@ -82,7 +82,7 @@ The same API Worker serves each player's save on `effect/eventlog` (see "What ph
 | `POST /link/redeem`           | `LinkCodes`                 | Trades a link code for the identity it holds, once; 30 tries a minute per address               |
 | `/sync/*?scope=room:<code>`   | the code's `GameRoom`       | A co-op room's lobby scope (see below)                                                           |
 
-- **`PlayerLog`.** One per store, by name (`player:<publicKey>`), SQLite backed. It runs `EventLogServerUnencrypted` on `SqlEventLogServerUnencrypted` with the game's own projection (`src/platform/playerProjection.ts`), so the object holds the player's facts as the game does. Only the store's owner may read or write it, and a store sent to the wrong object is refused. Over its socket a signed in device asks:
+- **`PlayerLog`.** One per store, by name (`player:<publicKey>`), SQLite backed. It runs `EventLogServerUnencrypted` on `SqlEventLogServerUnencrypted` with the game's own projection (`src/platform/save/playerProjection.ts`), so the object holds the player's facts as the game does. Only the store's owner may read or write it, and a store sent to the wrong object is refused. Over its socket a signed in device asks:
   - `Session.Mint`: a session token (24 hours) for the signed in player, which the rooms, QUICK PLAY, and recordings check. A socket that has not signed in is refused `NotSignedIn`.
   - `Session.CreateLinkCode`: a code that holds the device's identity string for 10 minutes in `LinkCodes`, one per player. The identity must be the signed in one.
 - **Hibernation.** `doProtocol.ts` keeps each socket's open `changes` requests and its signed in key in the socket's attachment, and on wake hands them to `RpcServer` again; a socket that wakes with any other request open is closed 1012 and its client reconnects.
@@ -90,7 +90,7 @@ The same API Worker serves each player's save on `effect/eventlog` (see "What ph
 - **Player facts.** `GameRoom` asks the host's `PlayerLog` at `/internal/nightmare` for the Nightmare unlock, the milestones, and the dare marks, read off the projection.
 - **Secrets.** `SyncSecret` (an `Alchemy.Random` per stage) signs session tokens.
 - **Deploying the move.** The deploy that brought `PlayerLog` and `LinkCodes` also deleted `SyncScope` and `SyncDirectory` and their data (Alchemy writes `deleted_classes`). Durable Object class changes cannot ride a gradual rollout, so it goes at 100%.
-- **The shared files.** The Worker bundles `src/shared/sessionApi.ts`, `src/platform/playerEvents.ts`, and `src/platform/playerProjection.ts` against infra's Effect, the same way as `src/platform/analytics.ts`.
+- **The shared files.** The Worker bundles `src/shared/records/sessionApi.ts`, `src/platform/save/playerEvents.ts`, and `src/platform/save/playerProjection.ts` against infra's Effect, the same way as `src/platform/analytics/analytics.ts`.
 
 ## Co-op rooms
 
@@ -113,7 +113,7 @@ On every stage the API Worker also serves co-op rooms (see "What Phases 2 and 3 
 
 The game posts one run summary per run to its stage's API Worker (see "Analytics" in `PLATFORM.md`). The Website gets the API Worker's URL as `VITE_API_ORIGIN`, which Vite inlines into the game.
 
-- **Two Effects.** The Worker imports `src/platform/analytics.ts`, which the game shares. Its `effect` import would otherwise resolve from the game's `node_modules`, a second copy of Effect beside infra's, so three things point it at infra's own copy: the Worker bundle's `resolve.alias` in `alchemy.run.ts`, `paths` in `tsconfig.json`, and the `one-effect` plugin in `vitest.config.ts` for the tests. Keep `src/platform/analytics.ts` importing only `effect`.
+- **Two Effects.** The Worker imports `src/platform/analytics/analytics.ts`, which the game shares. Its `effect` import would otherwise resolve from the game's `node_modules`, a second copy of Effect beside infra's, so three things point it at infra's own copy: the Worker bundle's `resolve.alias` in `alchemy.run.ts`, `paths` in `tsconfig.json`, and the `one-effect` plugin in `vitest.config.ts` for the tests. Keep `src/platform/analytics/analytics.ts` importing only `effect`.
 - **Migrations.** Add a new numbered file to `migrations/`, such as `0002_add_column.sql`. Never edit one that has shipped: Alchemy records each file's hash in the database's `__alchemy_migrations` table and applies new files in order on the next deploy.
 - **Secrets.** The address salt is an `Alchemy.Random`, made once per stage and kept in Alchemy's state. It reaches the Worker as a `secret_text` binding.
 - **Rate limits.** Cloudflare Rate Limiting bindings, namespaces 7101 (per visit) and 7102 (per address bucket), shared by every stage.

@@ -7,8 +7,8 @@ import {
   QuestTour,
   Tour,
   TrapHint,
-} from '../app/model'
-import { ZOMBIE_KIND_ORDER } from '../world/zombies/zombies'
+} from '#app/model.ts'
+import { ZOMBIE_KIND_ORDER } from '#world/zombies/zombies.ts'
 
 const learned = (): Lesson => Lesson.Learned({ atMs: 0 })
 

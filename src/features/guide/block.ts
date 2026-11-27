@@ -3,11 +3,12 @@ import { Array, Function, Option } from 'effect'
 import type { View } from '@effect/ui'
 import type { Html } from '@effect/ui/html'
 
-import { BAR_SEGMENTS, type ShopArt } from '../../art/shopArt'
-import type { ShopGuideSection } from '../../shared/nameKeys'
-import { backButtonView } from '../../ui/cornerButtons'
-import { SHOP_GUIDE_NAME } from '../../world/names'
-import { GUIDE_FOCUS_IDS, GuideStatus } from './model'
+import { BAR_SEGMENTS, type ShopArt } from '#art/shopArt.ts'
+import type { ShopGuideSection } from '#shared/nameKeys.ts'
+import { backButtonView } from '#ui/cornerButtons.ts'
+import { SHOP_GUIDE_NAME } from '#world/names.ts'
+
+import { GUIDE_FOCUS_IDS, GuideStatus } from './model.ts'
 import {
   type GuideBar,
   type GuideChip,
@@ -18,8 +19,8 @@ import {
   entriesOf,
   isEntryKnown,
   sectionName,
-} from './shopGuide'
-import { guideArtOf, sectionArtOf } from './shopGuideArt'
+} from './shopGuide.ts'
+import { guideArtOf, sectionArtOf } from './shopGuideArt.ts'
 
 const UNKNOWN_NAME = '???'
 const UNKNOWN_LINE = 'Pull the fridge to find out.'

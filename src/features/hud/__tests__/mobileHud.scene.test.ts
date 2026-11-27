@@ -5,18 +5,19 @@ import { HtmlLocator, HtmlScene } from '@effect/ui/html/testing'
 import { Locator } from '@effect/ui/testing'
 import { describe, it, expect as vitestExpect } from '@effect/vitest'
 
-import { Message } from '../../../app/message'
-import { BreakClock, type Model, Phase } from '../../../app/model'
-import { profilePropsOf } from '../../../app/profileView'
-import { initialModel } from '../../../app/pureApp'
-import { ShowInstallPrompt } from '../../../app/update/home'
+import { Message } from '#app/message.ts'
+import { BreakClock, type Model, Phase } from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
+import { ShowInstallPrompt } from '#app/update/home.ts'
+import { profilePropsOf } from '#app/views/profileView.ts'
 import {
   HOME_SCREEN_STEPS_ID,
   PROFILE_DIALOG_ID,
-} from '../../../domain/clientSchema'
-import { InstallMessage } from '../../../platform/message'
-import { PREPARATION_MS } from '../../../shared/constants'
-import { holdingSecond } from '../../../test/arsenals'
+} from '#domain/clientSchema.ts'
+import { Profile } from '#features/profile/block.ts'
+import { InstallMessage } from '#platform/message.ts'
+import { PREPARATION_MS } from '#shared/constants.ts'
+import { holdingSecond } from '#test/arsenals.ts'
 import {
   ackHudSlots,
   button,
@@ -40,18 +41,12 @@ import {
   showDialog,
   statusLine,
   withAttrs,
-} from '../../../test/sceneTesting'
-import {
-  modelAfter,
-  resolveFocusLobby,
-  sceneOf,
-  send,
-} from '../../../test/testing'
-import { asVeteran } from '../../../test/veteran'
-import { tierName } from '../../../world/gear/weapons'
-import { focusOf, modifyFocus } from '../../../world/party/party'
-import { type Player } from '../../../world/schema/worldSchema'
-import { Profile } from '../../profile/block'
+} from '#test/sceneTesting.ts'
+import { modelAfter, resolveFocusLobby, sceneOf, send } from '#test/testing.ts'
+import { asVeteran } from '#test/veteran.ts'
+import { tierName } from '#world/gear/weapons.ts'
+import { focusOf, modifyFocus } from '#world/party/party.ts'
+import { type Player } from '#world/schema/worldSchema.ts'
 
 const SMG_NAME = tierName('Smg', 0)
 

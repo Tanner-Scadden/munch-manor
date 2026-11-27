@@ -3,8 +3,8 @@ import { Array, Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { type Model, Phase, RunMode } from '../../../app/model'
-import { PLAYER_MAX_HP, PREPARATION_MS } from '../../../shared/constants'
+import { type Model, Phase, RunMode } from '#app/model.ts'
+import { PLAYER_MAX_HP, PREPARATION_MS } from '#shared/constants.ts'
 import {
   DISTANT_SPAWN,
   FRONT_DOOR_SILL,
@@ -17,7 +17,7 @@ import {
   withFinale,
   withSeatLife,
   withZombies,
-} from '../../../test/model.fixture'
+} from '#test/model.fixture.ts'
 import {
   checkModel,
   modelAfter,
@@ -26,27 +26,36 @@ import {
   tick,
   ticks,
   zombieOf,
-} from '../../../test/testing'
-import { asVeteran } from '../../../test/veteran'
-import { levelOf } from '../../level/arena'
-import { targetsOf } from '../../party/party'
-import { DIFFICULTIES } from '../../run/difficulty'
-import { withWorld } from '../../schema/world'
-import { Boss, BreakClock, Life, ZombieState } from '../../schema/worldSchema'
-import { hpScaleFor } from '../../waves/endlessWaves'
-import { FINAL_WAVE, WAVE_PLANS } from '../../waves/wavePlans'
-import { beginPreparation } from '../../waves/waves'
-import { BOSS_RULES } from '../../zombies/bossRules'
-import { ZOMBIE_KINDS, scaledHp } from '../../zombies/zombies'
-import { dareCardOf } from '../dare'
+} from '#test/testing.ts'
+import { asVeteran } from '#test/veteran.ts'
+import { dareCardOf } from '#world/dare/dare.ts'
 import {
   DareKind,
   type DareThing,
   DareThingState,
   Finale,
   HOUSE_THINGS,
-} from '../dareSchema'
-import { FINALE_RULES, isAtFrontDoor, isHouseHungry } from '../finale'
+} from '#world/dare/dareSchema.ts'
+import {
+  FINALE_RULES,
+  isAtFrontDoor,
+  isHouseHungry,
+} from '#world/dare/finale.ts'
+import { levelOf } from '#world/level/arena.ts'
+import { targetsOf } from '#world/party/party.ts'
+import { DIFFICULTIES } from '#world/run/difficulty.ts'
+import { withWorld } from '#world/schema/world.ts'
+import {
+  Boss,
+  BreakClock,
+  Life,
+  ZombieState,
+} from '#world/schema/worldSchema.ts'
+import { hpScaleFor } from '#world/waves/endlessWaves.ts'
+import { FINAL_WAVE, WAVE_PLANS } from '#world/waves/wavePlans.ts'
+import { beginPreparation } from '#world/waves/waves.ts'
+import { BOSS_RULES } from '#world/zombies/bossRules.ts'
+import { ZOMBIE_KINDS, scaledHp } from '#world/zombies/zombies.ts'
 
 const FRAME_MS = 1000 / 60
 

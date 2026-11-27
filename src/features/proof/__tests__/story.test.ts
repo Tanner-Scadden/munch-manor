@@ -4,16 +4,16 @@ import { Component } from '@effect/ui'
 import { Story } from '@effect/ui/testing'
 import { describe, expect, it } from '@effect/vitest'
 
-import { home } from '../../../test/model.fixture'
-import { FocusShelfSlot, ProofShelf } from '../block'
-import { Message } from '../message'
-import type { ProofShelfProps } from '../model'
+import { FocusShelfSlot, ProofShelf } from '#features/proof/block.ts'
+import { Message } from '#features/proof/message.ts'
+import type { ProofShelfProps } from '#features/proof/model.ts'
 import {
   FIRST_SPOT,
   type ShelfSpot,
   type ShelfThing,
   shelfThingsFor,
-} from '../proof'
+} from '#features/proof/proof.ts'
+import { home } from '#test/model.fixture.ts'
 
 type ShelfStory = Story.Steps<typeof ProofShelf>
 

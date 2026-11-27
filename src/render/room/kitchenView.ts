@@ -8,24 +8,24 @@ import {
   deepSprite,
   placeAt,
   spriteShapes,
-} from '../../art/sprite'
-import { TILE_SIZE } from '../../shared/constants'
-import { nextRandom } from '../../shared/prng'
+} from '#art/sprite.ts'
+import { type Drawable, ON_FRONT_PX } from '#render/depth.ts'
+import * as Draw from '#render/draw.ts'
+import { pixelArt, rect } from '#render/drawing.ts'
+import { mixColor } from '#render/iso/light/mood.ts'
+import { TILE_SIZE } from '#shared/constants.ts'
+import { nextRandom } from '#shared/prng.ts'
 import {
   OVEN_RULES,
   flameBoxOf,
   ovenBoxesOf,
   ovensOf,
-} from '../../world/kitchen/kitchen'
-import { type Level, levelOf } from '../../world/level/arena'
-import { maybePadlockedExit } from '../../world/level/exits'
-import { tilesWithSymbol } from '../../world/level/tileGrid'
-import type { World } from '../../world/schema/world'
-import { Oven } from '../../world/schema/worldSchema'
-import { type Drawable, ON_FRONT_PX } from '../depth'
-import * as Draw from '../draw'
-import { pixelArt, rect } from '../drawing'
-import { mixColor } from '../iso/mood'
+} from '#world/kitchen/kitchen.ts'
+import { type Level, levelOf } from '#world/level/arena.ts'
+import { maybePadlockedExit } from '#world/level/exits.ts'
+import { tilesWithSymbol } from '#world/level/tileGrid.ts'
+import type { World } from '#world/schema/world.ts'
+import { Oven } from '#world/schema/worldSchema.ts'
 
 type Box = Readonly<{ x: number; y: number; width: number; height: number }>
 

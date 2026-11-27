@@ -1,19 +1,20 @@
 import { Array, Function, Order, Record, pipe } from 'effect'
 
-import type { Level } from '../../world/level/arena'
-import type * as Draw from '../draw'
-import { rect } from '../drawing'
-import { barrelsShapes, wineRackShapes } from './cellarArt'
-import { candelabraShapes, hutchShapes, partyTableShapes } from './diningArt'
-import { deskShapes, globeShapes, stackShapes } from './libraryArt'
-import { coverBlocks, coverShadow } from './roomCover'
+import type * as Draw from '#render/draw.ts'
+import { rect } from '#render/drawing.ts'
+import type { Level } from '#world/level/arena.ts'
+
+import { barrelsShapes, wineRackShapes } from './cellarArt.ts'
+import { candelabraShapes, hutchShapes, partyTableShapes } from './diningArt.ts'
+import { deskShapes, globeShapes, stackShapes } from './libraryArt.ts'
+import { coverBlocks, coverShadow } from './roomCover.ts'
 import {
   type Box,
   GOLD_COLOR,
   GOLD_DARK_COLOR,
   GOLD_LIGHT_COLOR,
   INK_COLOR,
-} from './roomPalette'
+} from './roomPalette.ts'
 
 export type EscapeCoverKind =
   | 'PartyTable'

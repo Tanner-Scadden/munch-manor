@@ -2,8 +2,9 @@ import { Schema } from 'effect'
 
 import { UiSchema } from '@effect/ui'
 
-import { GunSlot } from '../world/schema/worldSchema'
-import { PadDirection } from './gamepad'
+import { GunSlot } from '#world/schema/worldSchema.ts'
+
+import { PadDirection } from './gamepad.ts'
 import {
   Gamepad,
   PadClick,
@@ -11,7 +12,7 @@ import {
   PointerDevice,
   SurfaceRectangle,
   TouchControls,
-} from './inputSchema'
+} from './inputSchema.ts'
 
 export const inputCases = {
   PressedKey: { code: Schema.String },

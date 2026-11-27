@@ -1,18 +1,18 @@
 import { Array, Equivalence, Function, Result } from 'effect'
 import { describe, expect, test } from 'vitest'
 
-import { EVERY_LEVEL } from '../../../test/model.fixture'
-import type { Toll } from '../../schema/worldSchema'
-import { type Level, TILE_OUTSIDE, hasTileFlag } from '../arena'
+import { EVERY_LEVEL } from '#test/model.fixture.ts'
+import { type Level, TILE_OUTSIDE, hasTileFlag } from '#world/level/arena.ts'
 import {
   type Clearance,
   UNREACHED_DISTANCE,
   distanceAt,
   flowFieldToward,
   isFieldTile,
-} from '../pathing'
-import { tileCenter, tileIndex, tileOfIndex } from '../tileGrid'
-import { isOpenBlock, isWalkableTile } from '../tileQueries'
+} from '#world/level/pathing.ts'
+import { tileCenter, tileIndex, tileOfIndex } from '#world/level/tileGrid.ts'
+import { isOpenBlock, isWalkableTile } from '#world/level/tileQueries.ts'
+import type { Toll } from '#world/schema/worldSchema.ts'
 
 const STRAIGHT = [
   [1, 0],

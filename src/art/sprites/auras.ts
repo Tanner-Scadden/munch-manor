@@ -1,8 +1,13 @@
 import { Array, Option, String, pipe } from 'effect'
 
-import { FULL_TURN } from '../../render/drawing'
-import type { BoostKind } from '../../world/schema/entitySchema'
-import { type Palette, type Sprite, TRANSPARENT, spriteShapes } from '../sprite'
+import {
+  type Palette,
+  type Sprite,
+  TRANSPARENT,
+  spriteShapes,
+} from '#art/sprite.ts'
+import { FULL_TURN } from '#render/drawing.ts'
+import type { BoostKind } from '#world/schema/entitySchema.ts'
 
 const AURA_WIDTH = 29
 const AURA_HEIGHT = 26

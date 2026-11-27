@@ -1,14 +1,15 @@
-import { Message } from '../app/message'
+import { Message } from '#app/message.ts'
 import {
   type LensFrame,
   floorToScreenDirection,
   lensOf,
   screenToFloorDirection,
-} from '../render/lens'
-import { STICK_RADIUS_PX } from '../shared/constants'
-import { hypot } from '../shared/detMath'
-import type { Vector } from '../world/schema/entitySchema'
-import { type StoryStep, send, steps } from './testing'
+} from '#render/camera/lens.ts'
+import { STICK_RADIUS_PX } from '#shared/constants.ts'
+import { hypot } from '#shared/detMath.ts'
+import type { Vector } from '#world/schema/entitySchema.ts'
+
+import { type StoryStep, send, steps } from './testing.ts'
 
 const WALK_THUMB = 71
 

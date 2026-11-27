@@ -2,8 +2,8 @@ import { Array } from 'effect'
 
 import { describe, expect, it } from '@effect/vitest'
 
-import { START_LEVEL } from '../../level/arena'
-import { rollWave } from '../endlessWaves'
+import { START_LEVEL } from '#world/level/arena.ts'
+import { rollWave } from '#world/waves/endlessWaves.ts'
 
 const doorsOfWave1 = (seed: number): ReadonlyArray<string> =>
   Array.dedupe(

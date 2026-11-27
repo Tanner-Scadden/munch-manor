@@ -2,12 +2,12 @@ import { Function, Option } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import type { Model } from '../../app/model'
-import type { RunEnding } from '../../shared/playerData'
-import { pickLine } from '../../shared/prng'
-import { FRIEND_LINES } from '../../world/names'
-import { isArriving } from '../../world/run/arrival'
-import { Phase } from '../../world/schema/worldSchema'
+import type { Model } from '#app/model.ts'
+import { pickLine } from '#shared/prng.ts'
+import type { RunEnding } from '#shared/records/playerData.ts'
+import { FRIEND_LINES } from '#world/names.ts'
+import { isArriving } from '#world/run/arrival.ts'
+import { Phase } from '#world/schema/worldSchema.ts'
 
 export const QUICK_DEATH_WAVE = 2
 

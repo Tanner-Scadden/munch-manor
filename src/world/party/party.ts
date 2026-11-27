@@ -2,12 +2,12 @@ import { Array, Function, Option, Result } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import { FIXED_STEP_MS } from '../../shared/constants'
-import { evolveFor } from '../../shared/evolve'
-import { sameIfUnchanged } from '../../shared/sameList'
-import { activeModifiersOf } from '../run/dareLadder'
-import { GLASS_START_HEARTS } from '../run/modifiers'
-import { type World, modifyWorldFields } from '../schema/world'
+import { FIXED_STEP_MS } from '#shared/constants.ts'
+import { evolveFor } from '#shared/evolve.ts'
+import { sameIfUnchanged } from '#shared/sameList.ts'
+import { activeModifiersOf } from '#world/run/dareLadder.ts'
+import { GLASS_START_HEARTS } from '#world/run/modifiers.ts'
+import { type World, modifyWorldFields } from '#world/schema/world.ts'
 import {
   type Bullet,
   Life,
@@ -26,7 +26,7 @@ import {
   idleIntent,
   initialPlayer,
   noCooking,
-} from '../schema/worldSchema'
+} from '#world/schema/worldSchema.ts'
 
 export const COOP_RULES = {
   waveCountScale: [1, 1.35, 1.7, 2.05],

@@ -5,10 +5,10 @@ import { HtmlLocator } from '@effect/ui/html/testing'
 import { Locator } from '@effect/ui/testing'
 import { describe, it } from '@effect/vitest'
 
-import { Arsenal, type Model } from '../../../app/model'
-import { roomsOf } from '../../../domain/run'
-import { gunAt } from '../../../test/arsenals'
-import { fighting, withDareThings, withKeys } from '../../../test/model.fixture'
+import { Arsenal, type Model } from '#app/model.ts'
+import { roomsOf } from '#domain/run.ts'
+import { gunAt } from '#test/arsenals.ts'
+import { fighting, withDareThings, withKeys } from '#test/model.fixture.ts'
 import {
   ackHudSlots,
   byClass,
@@ -16,13 +16,13 @@ import {
   measureHud,
   measureSurface,
   pausePressRuns,
-} from '../../../test/sceneTesting'
-import { sceneOf } from '../../../test/testing'
-import { DareThingState } from '../../../world/dare/dareSchema'
-import { levelOf, openExitIn } from '../../../world/level/arena'
-import { KITCHEN_EXIT } from '../../../world/level/exits'
-import { modifyFocus } from '../../../world/party/party'
-import { pause } from '../../../world/waves/waves'
+} from '#test/sceneTesting.ts'
+import { sceneOf } from '#test/testing.ts'
+import { DareThingState } from '#world/dare/dareSchema.ts'
+import { levelOf, openExitIn } from '#world/level/arena.ts'
+import { KITCHEN_EXIT } from '#world/level/exits.ts'
+import { modifyFocus } from '#world/party/party.ts'
+import { pause } from '#world/waves/waves.ts'
 
 const onTheHunt = (device: Model['lastDevice']): Model =>
   withKeys(

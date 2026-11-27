@@ -1,6 +1,6 @@
 import { Array, Function, Option, Record, String, pipe } from 'effect'
 
-import type { PropStyle } from '../../shared/playerData'
+import type { PropStyle } from '#shared/records/playerData.ts'
 
 type StyledProp = Exclude<PropStyle, 'Stock'>
 

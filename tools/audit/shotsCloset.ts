@@ -3,9 +3,9 @@ import type { Browser, Page } from 'playwright-core'
 
 import { type Appearance, defaultAppearance } from '@game/app/model'
 import { playerPalette, playerPixels } from '@game/art/appearance'
-import { pixelIconUrl } from '@game/art/icons'
+import { pixelIconUrl } from '@game/art/icons/icons'
 import { gunPictureOf } from '@game/art/sprites/guns'
-import { GunSkin, Print, ShirtColor } from '@game/shared/playerData'
+import { GunSkin, Print, ShirtColor } from '@game/shared/records/playerData'
 import { WeaponKind } from '@game/world/schema/worldSchema'
 
 import { runHarnessAudit } from './harnessServer'

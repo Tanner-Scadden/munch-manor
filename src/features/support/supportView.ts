@@ -1,14 +1,11 @@
 import { Function, Option } from 'effect'
 
-import type {
-  ApplicationHtml,
-  ApplicationViewBuilder,
-} from '../../app/definition'
-import type { Model } from '../../app/model'
-import { pixelArtStyle } from '../../art/artSize'
-import { COFFEE_ICON } from '../../art/icons'
-import { RESTART_GRACE_MS } from '../../shared/constants'
-import { Phase } from '../../world/schema/worldSchema'
+import type { ApplicationHtml, ApplicationViewBuilder } from '#app/component.ts'
+import type { Model } from '#app/model.ts'
+import { pixelArtStyle } from '#art/icons/artSize.ts'
+import { COFFEE_ICON } from '#art/icons/icons.ts'
+import { RESTART_GRACE_MS } from '#shared/constants.ts'
+import { Phase } from '#world/schema/worldSchema.ts'
 
 const SUPPORT_LABEL = 'Buy Rattles a coffee: support the game'
 

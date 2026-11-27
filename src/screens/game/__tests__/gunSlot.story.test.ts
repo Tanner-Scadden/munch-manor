@@ -2,18 +2,12 @@ import { Array, Option, String } from 'effect'
 
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { levelPopLines } from '../../../render/powerupView'
-import { FIXED_STEP_MS } from '../../../shared/constants'
-import { gunAt, holdingSecond } from '../../../test/arsenals'
-import { killShot, spareGunOf } from '../../../test/model.fixture'
-import {
-  checkModel,
-  modelAfter,
-  steps,
-  tick,
-  ticks,
-} from '../../../test/testing'
-import { isJustLeveled, maybeLevelBarOf } from '../hud'
+import { levelPopLines } from '#render/effects/powerupView.ts'
+import { isJustLeveled, maybeLevelBarOf } from '#screens/game/hud.ts'
+import { FIXED_STEP_MS } from '#shared/constants.ts'
+import { gunAt, holdingSecond } from '#test/arsenals.ts'
+import { killShot, spareGunOf } from '#test/model.fixture.ts'
+import { checkModel, modelAfter, steps, tick, ticks } from '#test/testing.ts'
 
 describe("a gun slot's level bar", () => {
   test('fills from the last tier to the next, full once maxed', () => {

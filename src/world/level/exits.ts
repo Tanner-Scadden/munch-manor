@@ -2,26 +2,27 @@ import { Array, Function, Option, Order, Record, Result, pipe } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import { KITCHEN_FIRST_WAVE } from '../../shared/constants'
-import { countWork } from '../../shared/workCount'
-import { heldKeys, spendKeys } from '../keys/keys'
-import { markedPadlockKeys } from '../run/dareLadder'
-import { isKitchenTourOn } from '../run/tutorialRules'
-import type { World } from '../schema/world'
+import { KITCHEN_FIRST_WAVE } from '#shared/constants.ts'
+import { countWork } from '#shared/workCount.ts'
+import { heldKeys, spendKeys } from '#world/keys/keys.ts'
+import { markedPadlockKeys } from '#world/run/dareLadder.ts'
+import { isKitchenTourOn } from '#world/run/tutorialRules.ts'
+import type { World } from '#world/schema/world.ts'
 import {
   type ExitId,
   GameEvent,
   Phase,
   Purchasable,
   type Vector,
-} from '../schema/worldSchema'
-import type { Offer } from '../shop/purchase'
-import { distanceBetween } from '../step/geometry'
-import { joinNewDoors } from '../waves/waves'
-import { type Level, levelOf, maybeExit, openExitIn } from './arena'
-import { EAST_EXIT, FAR_EXIT, WEST_EXIT } from './plan'
-import { type Box, tileBox } from './tileGrid'
-import { wakeRoom } from './wakeUp'
+} from '#world/schema/worldSchema.ts'
+import type { Offer } from '#world/shop/purchase.ts'
+import { distanceBetween } from '#world/step/geometry.ts'
+import { joinNewDoors } from '#world/waves/waves.ts'
+
+import { type Level, levelOf, maybeExit, openExitIn } from './arena.ts'
+import { EAST_EXIT, FAR_EXIT, WEST_EXIT } from './plan.ts'
+import { type Box, tileBox } from './tileGrid.ts'
+import { wakeRoom } from './wakeUp.ts'
 
 export const KITCHEN_EXIT: ExitId = 'Kitchen'
 

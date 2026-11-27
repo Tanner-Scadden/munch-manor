@@ -29,7 +29,7 @@ import {
   RunEnding,
   ShirtColor,
   SkinTone,
-} from '@game/shared/playerData'
+} from '@game/shared/records/playerData'
 import { StationId } from '@game/world/schema/worldSchema'
 
 const Flag = Schema.String.pipe(

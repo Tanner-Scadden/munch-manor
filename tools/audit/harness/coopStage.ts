@@ -12,7 +12,7 @@ import {
   memberOf,
   playingSession,
   stagedWorld,
-} from '@game/features/coop/testing'
+} from '@game/features/coop/services/testing'
 import type { RoomWorld } from '@game/world/net/roomWorld'
 import { modifySeatRecord } from '@game/world/party/party'
 import { Session } from '@munch/netcode'

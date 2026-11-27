@@ -17,13 +17,8 @@ import {
   makeWriter,
 } from '@munch/netcode'
 
-import { TWO_SEAT_ROOM, playRoom } from '../../../test/roomTesting'
-import { maskOfModifiers, noModifiers } from '../../run/modifiers'
-import { type WireHint, wireHintOf } from '../../schema/wireNumber'
-import { BossMove, GameEvent, Vector, World } from '../../schema/worldSchema'
-import { beginPreparation } from '../../waves/waves'
-import { freshFight } from '../../zombies/boss'
-import { DEFAULT_ROOM_SETTINGS, startRoomWorld } from '../roomWorld'
+import { TWO_SEAT_ROOM, playRoom } from '#test/roomTesting.ts'
+import { DEFAULT_ROOM_SETTINGS, startRoomWorld } from '#world/net/roomWorld.ts'
 import {
   WIRE_FIELDS,
   readEvent,
@@ -33,7 +28,17 @@ import {
   writeEvent,
   writeWorld,
   writeWorldDiff,
-} from '../worldCodec'
+} from '#world/net/worldCodec.ts'
+import { maskOfModifiers, noModifiers } from '#world/run/modifiers.ts'
+import { type WireHint, wireHintOf } from '#world/schema/wireNumber.ts'
+import {
+  BossMove,
+  GameEvent,
+  Vector,
+  World,
+} from '#world/schema/worldSchema.ts'
+import { beginPreparation } from '#world/waves/waves.ts'
+import { freshFight } from '#world/zombies/boss.ts'
 
 const numbersOf = (
   ast: SchemaAST.AST,

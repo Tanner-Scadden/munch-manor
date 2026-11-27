@@ -12,16 +12,19 @@ import {
   type Zombie,
   ZombieAction,
   ZombieState,
-} from '../../../app/model'
-import { initialModel } from '../../../app/pureApp'
-import { KABOOMER_FUSE_MAX } from '../../../art/sprites/zombies'
-import { wavePreviewLabel } from '../../../features/hud/wavePreview'
-import type * as Draw from '../../../render/draw'
-import { zombieGroundShapes } from '../../../render/zombieGroundView'
-import { kaboomerFuseLength, kaboomerSparkMs } from '../../../render/zombieView'
-import { debutPitch } from '../../../screens/game/menus'
-import { FIXED_STEP_MS, HIT_STOP_KILL_MAX_MS } from '../../../shared/constants'
-import { DISTANT_SPAWN } from '../../../test/model.fixture'
+} from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
+import { KABOOMER_FUSE_MAX } from '#art/sprites/zombies.ts'
+import { wavePreviewLabel } from '#features/hud/wavePreview.ts'
+import { zombieGroundShapes } from '#render/bodies/zombieGroundView.ts'
+import {
+  kaboomerFuseLength,
+  kaboomerSparkMs,
+} from '#render/bodies/zombieView.ts'
+import type * as Draw from '#render/draw.ts'
+import { debutPitch } from '#screens/game/menus.ts'
+import { FIXED_STEP_MS, HIT_STOP_KILL_MAX_MS } from '#shared/constants.ts'
+import { DISTANT_SPAWN } from '#test/model.fixture.ts'
 import {
   bulletInto,
   checkModel,
@@ -29,12 +32,12 @@ import {
   steps,
   tick,
   ticks,
-} from '../../../test/testing'
-import { imagesIn } from '../../../test/viewReading'
-import { START_LEVEL } from '../../level/arena'
-import { focusOf } from '../../party/party'
-import { rollSpawns } from '../../waves/endlessWaves'
-import { Behavior, ZOMBIE_KINDS } from '../zombies'
+} from '#test/testing.ts'
+import { imagesIn } from '#test/viewReading.ts'
+import { START_LEVEL } from '#world/level/arena.ts'
+import { focusOf } from '#world/party/party.ts'
+import { rollSpawns } from '#world/waves/endlessWaves.ts'
+import { Behavior, ZOMBIE_KINDS } from '#world/zombies/zombies.ts'
 
 const FRAME_MS = FIXED_STEP_MS
 const CENTER_X = START_LEVEL.start.x

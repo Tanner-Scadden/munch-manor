@@ -3,26 +3,20 @@ import { Array, Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { Message } from '../../../app/message'
-import {
-  DifficultyCard,
-  type Model,
-  Phase,
-  RunMode,
-  Trap,
-} from '../../../app/model'
-import { initialModel } from '../../../app/pureApp'
-import { withBests } from '../../../domain/run'
-import { endlessBannerOf } from '../../../screens/game/overlay'
-import { bestsFor } from '../../../screens/home/home'
+import { Message } from '#app/message.ts'
+import { DifficultyCard, type Model, Phase, RunMode, Trap } from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
+import { withBests } from '#domain/run.ts'
+import { endlessBannerOf } from '#screens/game/overlay.ts'
+import { bestsFor } from '#screens/home/home.ts'
 import {
   PACK_WARNING_MS,
   ZOMBIE_ALIVE_MAX,
   ZOMBIE_DYING_MS,
   ZOMBIE_MAX_HP,
-} from '../../../shared/constants'
-import { pistolOnly } from '../../../test/arsenals'
-import { plannedSpawn, withKeys } from '../../../test/model.fixture'
+} from '#shared/constants.ts'
+import { pistolOnly } from '#test/arsenals.ts'
+import { plannedSpawn, withKeys } from '#test/model.fixture.ts'
 import {
   MUZZLE_X,
   RESTART_GRACE_TICKS,
@@ -42,22 +36,22 @@ import {
   ticks,
   ticksFor,
   zombieAt,
-} from '../../../test/testing'
-import { asVeteran } from '../../../test/veteran'
-import { TRAPS } from '../../gear/traps'
-import { STARTING_PISTOL } from '../../gear/weapons'
-import { START_LEVEL } from '../../level/arena'
-import { modifyFocus } from '../../party/party'
-import { DIFFICULTIES, breakMsOf } from '../../run/difficulty'
-import { Arsenal } from '../../schema/worldSchema'
-import { ZOMBIE_KINDS } from '../../zombies/zombies'
+} from '#test/testing.ts'
+import { asVeteran } from '#test/veteran.ts'
+import { TRAPS } from '#world/gear/traps.ts'
+import { STARTING_PISTOL } from '#world/gear/weapons.ts'
+import { START_LEVEL } from '#world/level/arena.ts'
+import { modifyFocus } from '#world/party/party.ts'
+import { DIFFICULTIES, breakMsOf } from '#world/run/difficulty.ts'
+import { Arsenal } from '#world/schema/worldSchema.ts'
 import {
   endlessTankCount,
   endlessZombieCount,
   hpScaleFor,
   rollSpawns,
-} from '../endlessWaves'
-import { FINAL_WAVE } from '../wavePlans'
+} from '#world/waves/endlessWaves.ts'
+import { FINAL_WAVE } from '#world/waves/wavePlans.ts'
+import { ZOMBIE_KINDS } from '#world/zombies/zombies.ts'
 
 const FRAME_MS = 50
 const GRACE_TICK_MS = 50

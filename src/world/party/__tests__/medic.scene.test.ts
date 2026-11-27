@@ -3,17 +3,17 @@ import { Effect } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, it } from '@effect/vitest'
 
-import { Life, type Model } from '../../../app/model'
+import { Life, type Model } from '#app/model.ts'
 import {
   crewInWave,
   pipeline,
   placeSeat,
   withSeatLife,
-} from '../../../test/model.fixture'
-import { byClass, expectAttr, measureHud } from '../../../test/sceneTesting'
-import { sceneOf } from '../../../test/testing'
-import { MEDIC_RULES } from '../medic'
-import { COOP_RULES } from '../party'
+} from '#test/model.fixture.ts'
+import { byClass, expectAttr, measureHud } from '#test/sceneTesting.ts'
+import { sceneOf } from '#test/testing.ts'
+import { MEDIC_RULES } from '#world/party/medic.ts'
+import { COOP_RULES } from '#world/party/party.ts'
 
 const medicButton = byClass('medic-button')
 

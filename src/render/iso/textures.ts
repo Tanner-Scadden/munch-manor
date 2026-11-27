@@ -11,15 +11,16 @@ import {
   groupD8,
 } from 'pixi.js'
 
-import { atlasNormalOf } from '../../art/spriteAtlas'
-import type { Level } from '../../world/level/arena'
-import type * as Draw from '../draw'
+import { atlasNormalOf } from '#art/atlas/spriteAtlas.ts'
+import type * as Draw from '#render/draw.ts'
+import type { Level } from '#world/level/arena.ts'
+
 import {
   type LookKind,
   type LookOptions,
   LookTextures,
   dataTexture,
-} from './look'
+} from './light/look.ts'
 
 TextureSource.defaultOptions.scaleMode = 'nearest'
 

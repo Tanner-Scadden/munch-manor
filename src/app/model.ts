@@ -2,7 +2,7 @@ import { Option, Schema } from 'effect'
 
 import { NetStats } from '@munch/netcode'
 
-import { BeatMyRun, noBeatMyRun } from '../domain/beatLink'
+import { BeatMyRun, noBeatMyRun } from '#domain/beatLink.ts'
 import {
   AudioState,
   Bot,
@@ -41,19 +41,19 @@ import {
   noMasteryRun,
   noRankPaid,
   quietDareHint,
-} from '../domain/clientSchema'
-import * as Coop from '../features/coop/model'
-import { ShareSheet } from '../features/end/share'
-import { HomeButton, MenuPanel } from '../features/home/homeSchema'
-import * as Lobby from '../features/lobby/model'
-import { HelpCard } from '../features/menus/message'
+} from '#domain/clientSchema.ts'
+import * as Coop from '#features/coop/model.ts'
+import { ShareSheet } from '#features/end/share.ts'
+import { HomeButton, MenuPanel } from '#features/home/homeSchema.ts'
+import * as Lobby from '#features/lobby/model.ts'
+import { HelpCard } from '#features/menus/message.ts'
 import {
   MissionGain,
   MissionRun,
   noMissionRun,
-} from '../features/missions/missionSchema'
-import { MunchopediaPage } from '../features/munchopedia/model'
-import * as Profile from '../features/profile/model'
+} from '#features/missions/missionSchema.ts'
+import { MunchopediaPage } from '#features/munchopedia/model.ts'
+import * as Profile from '#features/profile/model.ts'
 import {
   Input,
   InputDevice,
@@ -61,17 +61,17 @@ import {
   SurfaceRectangle,
   TouchControls,
   idleInput,
-} from '../input/inputSchema'
+} from '#input/inputSchema.ts'
 import {
   FullscreenSetting,
   InstallOffer,
   OrientationLock,
   PageVisibility,
   ScreenFit,
-} from '../platform/deviceSchema'
-import { PlayerChange, SyncState } from '../platform/playerSync'
-import { RunRecorder } from '../platform/recording'
-import { SUPPORT_URL, maybeSupportUrlOf } from '../platform/support'
+} from '#platform/deviceSchema.ts'
+import { RunRecorder } from '#platform/recording/recording.ts'
+import { PlayerChange, SyncState } from '#platform/save/playerSync.ts'
+import { SUPPORT_URL, maybeSupportUrlOf } from '#platform/support.ts'
 import {
   ActionWatch,
   CameraGlide,
@@ -82,13 +82,13 @@ import {
   TellWatch,
   noActionWatch,
   noTellWatch,
-} from '../render/renderSchema'
-import { DEFAULT_SEED } from '../shared/constants'
-import { SavedDareMarks, noDareMarks } from '../shared/dareMarkData'
-import { DayStamp } from '../shared/dayStamp'
-import { SavedJournal, noJournal } from '../shared/journalData'
-import { SavedMastery, noMastery } from '../shared/masteryData'
-import { SavedMissions, noMissions } from '../shared/missionData'
+} from '#render/renderSchema.ts'
+import { DEFAULT_SEED } from '#shared/constants.ts'
+import { SavedDareMarks, noDareMarks } from '#shared/records/dareMarkData.ts'
+import { DayStamp } from '#shared/records/dayStamp.ts'
+import { SavedJournal, noJournal } from '#shared/records/journalData.ts'
+import { SavedMastery, noMastery } from '#shared/records/masteryData.ts'
+import { SavedMissions, noMissions } from '#shared/records/missionData.ts'
 import {
   Appearance,
   Calling,
@@ -111,14 +111,14 @@ import {
   ShareStatsSetting,
   SoundSetting,
   noBonuses,
-} from '../shared/playerData'
-import { SavedProof, noProof } from '../shared/proofData'
-import { DareKind } from '../world/dare/dareSchema'
-import { rollCases } from '../world/feats/cases'
-import { noRank } from '../world/heroes/rank'
-import { startingLevel } from '../world/level/arena'
-import { soloState } from '../world/party/party'
-import { Modifiers, noModifiers } from '../world/run/modifiers'
+} from '#shared/records/playerData.ts'
+import { SavedProof, noProof } from '#shared/records/proofData.ts'
+import { DareKind } from '#world/dare/dareSchema.ts'
+import { rollCases } from '#world/feats/cases.ts'
+import { noRank } from '#world/heroes/rank.ts'
+import { startingLevel } from '#world/level/arena.ts'
+import { soloState } from '#world/party/party.ts'
+import { Modifiers, noModifiers } from '#world/run/modifiers.ts'
 import {
   Blast,
   Boss,
@@ -152,11 +152,12 @@ import {
   shutFridge,
   shutValve,
   stillShake,
-} from '../world/schema/worldSchema'
-import { RootDialog } from './rootDialog'
+} from '#world/schema/worldSchema.ts'
 
-export * from '../domain/clientSchema'
-export * from '../world/schema/worldSchema'
+import { RootDialog } from './menus/rootDialog.ts'
+
+export * from '#domain/clientSchema.ts'
+export * from '#world/schema/worldSchema.ts'
 
 const Saving = Schema.Struct({
   loading: Loading,

@@ -1,8 +1,9 @@
 import { Array, Option, Record, Result, String } from 'effect'
 
-import type * as Draw from '../draw'
-import { pixelArt } from '../drawing'
-import type { Box } from './roomPalette'
+import type * as Draw from '#render/draw.ts'
+import { pixelArt } from '#render/drawing.ts'
+
+import type { Box } from './roomPalette.ts'
 
 const SIZE = 17
 const MIDDLE = (SIZE - 1) / 2

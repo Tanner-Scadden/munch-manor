@@ -3,7 +3,15 @@ import { Array, Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { screenToFloorDirection } from '../../render/lens'
+import { Message } from '#app/message.ts'
+import {
+  GameEvent,
+  Invulnerability,
+  Phase,
+  type Zombie,
+  ZombieState,
+} from '#app/model.ts'
+import { screenToFloorDirection } from '#render/camera/lens.ts'
 import {
   FIRE_INTERVAL_MS,
   FIXED_STEP_MS,
@@ -16,14 +24,14 @@ import {
   ZOMBIE_HIT_PULSE_MS,
   ZOMBIE_KNOCKBACK_SPEED,
   ZOMBIE_MAX_HP,
-} from '../../shared/constants'
-import { RIGHT_ON_SCREEN } from '../../test/lensTesting'
+} from '#shared/constants.ts'
+import { RIGHT_ON_SCREEN } from '#test/lensTesting.ts'
 import {
   NORMAL_BITE_GRACE,
   playingModel,
   readyModel,
   withZombies,
-} from '../../test/model.fixture'
+} from '#test/model.fixture.ts'
 import {
   FRAME_MS,
   MUZZLE_X,
@@ -41,18 +49,10 @@ import {
   ticks,
   waitOutFreeze,
   zombieAt,
-} from '../../test/testing'
-import { START_LEVEL } from '../../world/level/arena'
-import { focusOf, modifyFocus } from '../../world/party/party'
-import { scoreOf } from '../../world/run/stats'
-import { Message } from '../message'
-import {
-  GameEvent,
-  Invulnerability,
-  Phase,
-  type Zombie,
-  ZombieState,
-} from '../model'
+} from '#test/testing.ts'
+import { START_LEVEL } from '#world/level/arena.ts'
+import { focusOf, modifyFocus } from '#world/party/party.ts'
+import { scoreOf } from '#world/run/stats.ts'
 
 const dyingZombieAt = (id: number, x: number, y: number): Zombie =>
   UiStruct.evolve(zombieAt(id, x, y, { speed: 0 }), {

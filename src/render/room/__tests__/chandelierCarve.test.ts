@@ -1,13 +1,9 @@
 import { Array } from 'effect'
 import { describe, expect, test } from 'vitest'
 
-import {
-  carvedViewsOf,
-  showpieceSheetOf,
-  viewColorsOf,
-} from '../../../art/carve'
-import { carvedChandelierOf } from '../chandelierCarve'
-import type { ChandelierState } from '../diningArt'
+import { carvedViewsOf, showpieceSheetOf, viewColorsOf } from '#art/carve.ts'
+import { carvedChandelierOf } from '#render/room/chandelierCarve.ts'
+import type { ChandelierState } from '#render/room/diningArt.ts'
 
 const STATES: ReadonlyArray<ChandelierState> = ['Hung', 'Fallen']
 

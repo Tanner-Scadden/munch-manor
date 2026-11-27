@@ -1,15 +1,15 @@
 import { Array } from 'effect'
 import { describe, expect, test } from 'vitest'
 
-import { zombieOf } from '../../../test/testing'
-import { ZombieKind } from '../../schema/entitySchema'
+import { zombieOf } from '#test/testing.ts'
+import { ZombieKind } from '#world/schema/entitySchema.ts'
 import {
   ZOMBIE_KINDS,
   bodyRadiusOf,
   radiusOf,
   statsOf,
   wearAt,
-} from '../zombies'
+} from '#world/zombies/zombies.ts'
 
 describe('the per-kind tables read by index', () => {
   test.each(ZombieKind.literals)('%s reads its own row', kind => {

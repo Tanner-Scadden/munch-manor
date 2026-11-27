@@ -5,12 +5,13 @@ import { HtmlPlay } from '@effect/ui/html/testing'
 import { TestHost } from '@effect/ui/testing'
 import { expect, layer } from '@effect/vitest'
 
-import { type Model } from '../../../app/model'
-import { profilePropsOf } from '../../../app/profileView'
-import { inPortrait } from '../../../test/model.fixture'
-import { Profile } from '../block'
-import { Events } from '../message'
-import { profileOpenOn, profileTab } from './profile.fixture'
+import { type Model } from '#app/model.ts'
+import { profilePropsOf } from '#app/views/profileView.ts'
+import { Profile } from '#features/profile/block.ts'
+import { Events } from '#features/profile/message.ts'
+import { inPortrait } from '#test/model.fixture.ts'
+
+import { profileOpenOn, profileTab } from './profile.fixture.ts'
 
 layer(TestHost.layer())('the tab strip', it => {
   const playOn = (model: Model) => HtmlPlay.make(Profile, profilePropsOf(model))

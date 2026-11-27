@@ -3,11 +3,13 @@ import { Array, Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { worldCameraFor } from '../../render/camera'
-import { type HoldKey, holdKeyOf, isHeldOver } from '../../render/iso/hold'
-import { screenOf } from '../../render/screen'
-import { shakeOffset } from '../../screens/game/worldView'
-import { playingModel, withZombies } from '../../test/model.fixture'
+import { Message } from '#app/message.ts'
+import type { Model } from '#app/model.ts'
+import { worldCameraFor } from '#render/camera/camera.ts'
+import { screenOf } from '#render/camera/screen.ts'
+import { type HoldKey, holdKeyOf, isHeldOver } from '#render/iso/hold.ts'
+import { shakeOffset } from '#screens/game/worldView.ts'
+import { playingModel, withZombies } from '#test/model.fixture.ts'
 import {
   FRAME_MS,
   checkModel,
@@ -19,12 +21,10 @@ import {
   tick,
   ticks,
   zombieAt,
-} from '../../test/testing'
-import { START_LEVEL } from '../../world/level/arena'
-import { modifyFocus } from '../../world/party/party'
-import { Phase } from '../../world/schema/worldSchema'
-import { Message } from '../message'
-import type { Model } from '../model'
+} from '#test/testing.ts'
+import { START_LEVEL } from '#world/level/arena.ts'
+import { modifyFocus } from '#world/party/party.ts'
+import { Phase } from '#world/schema/worldSchema.ts'
 
 const keyOf = (model: Model): Option.Option<HoldKey> =>
   holdKeyOf({

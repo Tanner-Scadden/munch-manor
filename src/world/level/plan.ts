@@ -1,6 +1,6 @@
 import { Array, Option, Result, String, pipe } from 'effect'
 
-import { TILE_SIZE } from '../../shared/constants'
+import { TILE_SIZE } from '#shared/constants.ts'
 import type {
   Arrangement,
   DoorId,
@@ -8,7 +8,7 @@ import type {
   LevelState,
   SlotRoomId,
   Vector,
-} from '../schema/entitySchema'
+} from '#world/schema/entitySchema.ts'
 
 export const ROOM_MAP: ReadonlyArray<string> = [
   '######KK#############NN#########',

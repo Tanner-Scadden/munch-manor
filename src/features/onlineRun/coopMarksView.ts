@@ -1,26 +1,26 @@
 import { Array, Function, Option, Record, pipe } from 'effect'
 
-import type { Model } from '../../app/model'
-import { textShapes } from '../../art/font'
-import { TOP_LEFT, placeAt, spriteShapes } from '../../art/sprite'
-import { isBotCrew, maybeCrewBotAt } from '../../domain/bots'
-import { maybeRoomOf } from '../../domain/coopRoom'
-import { seatNamesOf } from '../../domain/onlineRun'
-import { type Camera, worldToView } from '../../render/camera'
-import * as Draw from '../../render/draw'
-import {
-  EDGE_BADGE_INK,
-  EDGE_BADGE_PX,
-  edgeBadgeOf,
-} from '../../render/edgeBadge'
+import type { Model } from '#app/model.ts'
+import { textShapes } from '#art/font.ts'
+import { TOP_LEFT, placeAt, spriteShapes } from '#art/sprite.ts'
+import { isBotCrew, maybeCrewBotAt } from '#domain/bots.ts'
+import { maybeRoomOf } from '#domain/coopRoom.ts'
+import { seatNamesOf } from '#domain/onlineRun.ts'
 import {
   NAME_LIFT_CALLING_PX,
   NAME_LIFT_DOWNED_PX,
   seatColorOf,
   seatHatRiseOf,
-} from '../../render/partyView'
-import type { Calling } from '../../shared/playerData'
-import { isCallFresh } from '../../world/party/medic'
+} from '#render/bodies/partyView.ts'
+import { type Camera, worldToView } from '#render/camera/camera.ts'
+import * as Draw from '#render/draw.ts'
+import {
+  EDGE_BADGE_INK,
+  EDGE_BADGE_PX,
+  edgeBadgeOf,
+} from '#render/hud/edgeBadge.ts'
+import type { Calling } from '#shared/records/playerData.ts'
+import { isCallFresh } from '#world/party/medic.ts'
 import {
   isBledOut,
   isCoop,
@@ -28,9 +28,9 @@ import {
   isOut,
   leadSeatOf,
   playersOf,
-} from '../../world/party/party'
-import type { Seat } from '../../world/schema/worldSchema'
-import { isBreak } from '../../world/waves/waves'
+} from '#world/party/party.ts'
+import type { Seat } from '#world/schema/worldSchema.ts'
+import { isBreak } from '#world/waves/waves.ts'
 
 const isOnline = (model: Model): boolean =>
   isCoop(model) && (Option.isSome(maybeRoomOf(model.coop)) || isBotCrew(model))

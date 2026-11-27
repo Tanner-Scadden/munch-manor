@@ -1,15 +1,16 @@
 import { Array, Function, Option, Schema, SchemaGetter } from 'effect'
 import { State } from 'effect-machine'
 
-import { Calling, Difficulty } from '../shared/playerData'
-import { DareKind } from '../world/dare/dareSchema'
-import { MAX_MARK } from '../world/run/dareLadder'
+import { Calling, Difficulty } from '#shared/records/playerData.ts'
+import { DareKind } from '#world/dare/dareSchema.ts'
+import { MAX_MARK } from '#world/run/dareLadder.ts'
 import {
   Modifiers,
   maskOfModifiers,
   modifiersOfMask,
-} from '../world/run/modifiers'
-import { Bot, HomeMode } from './clientSchema'
+} from '#world/run/modifiers.ts'
+
+import { Bot, HomeMode } from './clientSchema.ts'
 
 export const DareOutcome = Schema.Literals(['Munched', 'Chicken', 'Won'])
 export type DareOutcome = typeof DareOutcome.Type

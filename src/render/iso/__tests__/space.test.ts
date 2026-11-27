@@ -1,7 +1,7 @@
 import { Array } from 'effect'
 import { describe, expect, test } from 'vitest'
 
-import { canvasStepOf, isFrontWallAt, scaledStepOf } from '../space'
+import { canvasStepOf, isFrontWallAt, scaledStepOf } from '#render/iso/space.ts'
 
 const TILES: ReadonlyArray<string> = [
   ',,,,,,',

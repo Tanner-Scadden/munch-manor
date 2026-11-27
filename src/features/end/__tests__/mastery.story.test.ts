@@ -3,9 +3,9 @@ import { Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { Message } from '../../../app/message'
-import { type Model } from '../../../app/model'
-import { MasteryUnlock } from '../../../domain/clientSchema'
+import { Message } from '#app/message.ts'
+import { type Model } from '#app/model.ts'
+import { MasteryUnlock } from '#domain/clientSchema.ts'
 import {
   fitPropStyle,
   heroLevelIn,
@@ -13,13 +13,14 @@ import {
   masterySkinIn,
   masterySkinOf,
   unlocksBetween,
-} from '../../../domain/mastery'
-import { type SavedMastery, noMastery } from '../../../shared/masteryData'
-import { home } from '../../../test/model.fixture'
-import { checkModel, send, storyOf, writeSave } from '../../../test/testing'
-import { focusOf, modifyFocus } from '../../../world/party/party'
-import { unlocksOf } from '../endBeat'
-import { checkSavedChanges, diesOnWave7, frame, leave } from './rank.fixture'
+} from '#domain/mastery.ts'
+import { unlocksOf } from '#features/end/endBeat.ts'
+import { type SavedMastery, noMastery } from '#shared/records/masteryData.ts'
+import { home } from '#test/model.fixture.ts'
+import { checkModel, send, storyOf, writeSave } from '#test/testing.ts'
+import { focusOf, modifyFocus } from '#world/party/party.ts'
+
+import { checkSavedChanges, diesOnWave7, frame, leave } from './rank.fixture.ts'
 
 const withMastery = (model: Model, mastery: SavedMastery): Model =>
   UiStruct.evolve(model, { mastery: () => mastery })

@@ -15,7 +15,7 @@ const FILE_MS: Readonly<Record<string, number>> = {
   'tools/determinism/determinism.sim.test.ts': 11_300,
   'src/features/home/__tests__/menu.scene.test.ts': 8_400,
   'src/features/dare/__tests__/pocketCard.scene.test.ts': 7_300,
-  'src/platform/__tests__/store.dom.test.ts': 7_300,
+  'src/platform/save/__tests__/store.dom.test.ts': 7_300,
   'src/world/zombies/__tests__/crawler.sim.test.ts': 7_000,
   'src/world/gear/__tests__/traps.story.test.ts': 6_700,
   'src/features/profile/blocks/look/__tests__/closetSync.dom.test.ts': 6_600,
@@ -50,7 +50,7 @@ const FILE_MS: Readonly<Record<string, number>> = {
   'src/world/level/__tests__/pathing.test.ts': 2_200,
   'src/features/onboarding/__tests__/onboarding.story.test.ts': 2_200,
   'src/world/zombies/__tests__/lastZombie.story.test.ts': 2_000,
-  'src/render/__tests__/juice.story.test.ts': 2_000,
+  'src/render/effects/__tests__/juice.story.test.ts': 2_000,
 }
 
 const DEFAULT_FILE_MS = 400

@@ -2,9 +2,9 @@ import { Array, Function, Option } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import { MS_PER_SECOND, PLAYER_RADIUS } from '../../shared/constants'
-import type { Difficulty } from '../../shared/playerData'
-import { type Level, levelOf } from '../level/arena'
+import { MS_PER_SECOND, PLAYER_RADIUS } from '#shared/constants.ts'
+import type { Difficulty } from '#shared/records/playerData.ts'
+import { type Level, levelOf } from '#world/level/arena.ts'
 import {
   forEachSeat,
   isOut,
@@ -13,10 +13,10 @@ import {
   playerCountOf,
   playersOf,
   seatStateAt,
-} from '../party/party'
-import { chunkHealthScaleOf } from '../run/dareLadder'
-import { spreadSpawns } from '../run/difficulty'
-import { type World, modifyWorldFields } from '../schema/world'
+} from '#world/party/party.ts'
+import { chunkHealthScaleOf } from '#world/run/dareLadder.ts'
+import { spreadSpawns } from '#world/run/difficulty.ts'
+import { type World, modifyWorldFields } from '#world/schema/world.ts'
 import {
   Boss,
   GameEvent,
@@ -27,11 +27,12 @@ import {
   type Vector,
   ZombieState,
   roundWaveOf,
-} from '../schema/worldSchema'
-import { bossHp, wavePlanHpScale } from '../zombies/boss'
-import { isBoss } from '../zombies/zombies'
-import { dareItemsFoundOf, isDareListDone } from './dare'
-import { Finale } from './dareSchema'
+} from '#world/schema/worldSchema.ts'
+import { bossHp, wavePlanHpScale } from '#world/zombies/boss.ts'
+import { isBoss } from '#world/zombies/zombies.ts'
+
+import { dareItemsFoundOf, isDareListDone } from './dare.ts'
+import { Finale } from './dareSchema.ts'
 
 type FinaleRules = Readonly<{
   keyFlightMs: number

@@ -6,14 +6,22 @@ import { HtmlLocator } from '@effect/ui/html/testing'
 import { Locator } from '@effect/ui/testing'
 import { describe, it } from '@effect/vitest'
 
-import { Message } from '../../../../../app/message'
-import { type Model, Phase } from '../../../../../app/model'
+import { Message } from '#app/message.ts'
+import { type Model, Phase } from '#app/model.ts'
+import { HAND_DIALOG_ID, PROFILE_DIALOG_ID } from '#domain/clientSchema.ts'
+import type { LookPart } from '#domain/looks.ts'
 import {
-  HAND_DIALOG_ID,
-  PROFILE_DIALOG_ID,
-} from '../../../../../domain/clientSchema'
-import type { LookPart } from '../../../../../domain/looks'
-import { home } from '../../../../../test/model.fixture'
+  type LookDesk,
+  atLookRoot,
+  characterButton,
+  inLook,
+  lookDeskOf,
+  lookOption,
+  openLookSection,
+  seeLook,
+  settleLook,
+} from '#features/profile/__tests__/profile.fixture.ts'
+import { home } from '#test/model.fixture.ts'
 import {
   button,
   byClass,
@@ -30,24 +38,8 @@ import {
   shareMountSettles,
   showDialog,
   withAttrs,
-} from '../../../../../test/sceneTesting'
-import {
-  type StoryStep,
-  sceneOf,
-  send,
-  steps,
-} from '../../../../../test/testing'
-import {
-  type LookDesk,
-  atLookRoot,
-  characterButton,
-  inLook,
-  lookDeskOf,
-  lookOption,
-  openLookSection,
-  seeLook,
-  settleLook,
-} from '../../../__tests__/profile.fixture'
+} from '#test/sceneTesting.ts'
+import { type StoryStep, sceneOf, send, steps } from '#test/testing.ts'
 
 const characterCard = button('Character: change how you look')
 const randomizeButton = button('Roll a random look')

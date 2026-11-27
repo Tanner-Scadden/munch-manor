@@ -1,7 +1,7 @@
 import { Array, Option, Record, String } from 'effect'
 import { describe, expect, test } from 'vitest'
 
-import { LOOK } from '../../src/render/iso/lookSpecs'
+import { LOOK } from '../../src/render/iso/light/lookSpecs'
 import {
   CONTROLS,
   SHIPPED_TABLES,
@@ -123,12 +123,12 @@ describe('the lab', () => {
         [
           'warmer please',
           'Light and color lab: please land these values (tried on the Dining room, Break).',
-          'src/render/iso/lookSpecs.ts',
+          'src/render/iso/light/lookSpecs.ts',
           `  LOOK.steps: ${LOOK.steps} -> 6`,
           `  LOOK.rooms.Dining.fill: ${LOOK.roomFill} (unset, LOOK.roomFill) -> 0.8`,
-          'src/render/iso/lightSpecs.ts',
+          'src/render/iso/light/lightSpecs.ts',
           `  FLAME_LOOKS.Candle.intensity: ${SHIPPED_TABLES.flames.Candle.intensity} -> 14`,
-          'src/render/iso/mood.ts',
+          'src/render/iso/light/mood.ts',
           `  MOOD_AMBIENT.calm: ${SHIPPED_TABLES.moods.calm} -> 1.2`,
         ],
         '\n',

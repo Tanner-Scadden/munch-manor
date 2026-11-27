@@ -2,8 +2,8 @@ import { Array, Effect } from 'effect'
 
 import { describe, expect, it } from '@effect/vitest'
 
-import { BossMove, GameEvent, Glob, type Model } from '../../../app/model'
-import { PLAYER_MAX_HP } from '../../../shared/constants'
+import { BossMove, GameEvent, Glob, type Model } from '#app/model.ts'
+import { PLAYER_MAX_HP } from '#shared/constants.ts'
 import {
   FRAME_MS,
   checkModel,
@@ -11,11 +11,12 @@ import {
   steps,
   tick,
   ticks,
-} from '../../../test/testing'
-import { focusOf } from '../../party/party'
-import { FINAL_WAVE } from '../../waves/wavePlans'
-import { BOSS_RULES } from '../bossRules'
-import { ZOMBIE_KINDS, scaledHp } from '../zombies'
+} from '#test/testing.ts'
+import { focusOf } from '#world/party/party.ts'
+import { FINAL_WAVE } from '#world/waves/wavePlans.ts'
+import { BOSS_RULES } from '#world/zombies/bossRules.ts'
+import { ZOMBIE_KINDS, scaledHp } from '#world/zombies/zombies.ts'
+
 import {
   BOSS_HP,
   CENTER_X,
@@ -28,7 +29,7 @@ import {
   inWave,
   spawnAt,
   sturdy,
-} from './boss.fixture'
+} from './boss.fixture.ts'
 
 const framesOf = (ms: number): number => Math.ceil(ms / FRAME_MS)
 

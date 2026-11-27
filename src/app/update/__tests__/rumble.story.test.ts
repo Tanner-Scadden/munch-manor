@@ -3,22 +3,16 @@ import { Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
+import { Message } from '#app/message.ts'
+import { initialModel } from '#app/pureApp.ts'
 import {
   decodeSave,
   encodeSave,
   restoreSave,
   saveOf,
-} from '../../../platform/save'
-import { readyAfterRead } from '../../../test/model.fixture'
-import {
-  checkModel,
-  jsonOf,
-  send,
-  storyOf,
-  writeSave,
-} from '../../../test/testing'
-import { Message } from '../../message'
-import { initialModel } from '../../pureApp'
+} from '#platform/save/save.ts'
+import { readyAfterRead } from '#test/model.fixture.ts'
+import { checkModel, jsonOf, send, storyOf, writeSave } from '#test/testing.ts'
 
 describe('the rumble setting', () => {
   test('is on for a new player', () => {

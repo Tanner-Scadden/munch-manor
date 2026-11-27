@@ -3,7 +3,7 @@ import { Array, Effect, Option, Result } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { Message } from '../../../app/message'
+import { Message } from '#app/message.ts'
 import {
   BreakClock,
   GameEvent,
@@ -19,7 +19,7 @@ import {
   type Zombie,
   type ZombieKind,
   ZombieState,
-} from '../../../app/model'
+} from '#app/model.ts'
 import {
   FIRE_INTERVAL_MS,
   FIXED_STEP_MS,
@@ -28,12 +28,8 @@ import {
   RESTART_GRACE_MS,
   TILE_SIZE,
   TURRET_RANGE_PX,
-} from '../../../shared/constants'
-import {
-  DISTANT_SPAWN,
-  WAVE_2_FIGHT,
-  trapReady,
-} from '../../../test/model.fixture'
+} from '#shared/constants.ts'
+import { DISTANT_SPAWN, WAVE_2_FIGHT, trapReady } from '#test/model.fixture.ts'
 import {
   BELOW_NORTH_DOOR,
   checkModel,
@@ -50,15 +46,15 @@ import {
   tick,
   ticks,
   zombieOf,
-} from '../../../test/testing'
-import { MANOR, RATTLES_BOX } from '../../level/arena'
-import { distanceAt, flowFieldToward } from '../../level/pathing'
-import { doorSpawnPoint, isInsideRoomAt } from '../../level/tileQueries'
-import { focusOf, modifyFocus } from '../../party/party'
-import { scoreOf } from '../../run/stats'
-import { ZOMBIE_KINDS, ZOMBIE_KIND_ORDER } from '../../zombies/zombies'
-import { TRAPS, stageOf, tollsOf } from '../traps'
-import { WEAPONS } from '../weapons'
+} from '#test/testing.ts'
+import { TRAPS, stageOf, tollsOf } from '#world/gear/traps.ts'
+import { WEAPONS } from '#world/gear/weapons.ts'
+import { MANOR, RATTLES_BOX } from '#world/level/arena.ts'
+import { distanceAt, flowFieldToward } from '#world/level/pathing.ts'
+import { doorSpawnPoint, isInsideRoomAt } from '#world/level/tileQueries.ts'
+import { focusOf, modifyFocus } from '#world/party/party.ts'
+import { scoreOf } from '#world/run/stats.ts'
+import { ZOMBIE_KINDS, ZOMBIE_KIND_ORDER } from '#world/zombies/zombies.ts'
 
 const FRAME_MS = FIXED_STEP_MS
 const LONG_FRAME_MS = 50

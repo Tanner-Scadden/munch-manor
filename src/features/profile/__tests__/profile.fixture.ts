@@ -5,26 +5,26 @@ import { RadioGroup, RadioGroupEvents } from '@effect/ui-kit'
 import { HtmlLocator, HtmlScene } from '@effect/ui/html/testing'
 import type { Locator } from '@effect/ui/testing'
 
-import { Message } from '../../../app/message'
-import type { Model } from '../../../app/model'
-import { profilePropsOf } from '../../../app/profileView'
-import { RootDialog } from '../../../app/rootDialog'
-import type { LookPart } from '../../../domain/looks'
-import { readyAfterRead } from '../../../test/model.fixture'
-import { button, byClass, withAttrs } from '../../../test/sceneTesting'
+import { RootDialog } from '#app/menus/rootDialog.ts'
+import { Message } from '#app/message.ts'
+import type { Model } from '#app/model.ts'
+import { profilePropsOf } from '#app/views/profileView.ts'
+import type { LookPart } from '#domain/looks.ts'
+import { Profile } from '#features/profile/block.ts'
+import { Character } from '#features/profile/blocks/look/block.ts'
+import { Events as LookEvents } from '#features/profile/blocks/look/message.ts'
+import type { CharacterProps } from '#features/profile/blocks/look/model.ts'
+import { Events } from '#features/profile/message.ts'
+import type { ProfileTab } from '#features/profile/model.ts'
+import { readyAfterRead } from '#test/model.fixture.ts'
+import { button, byClass, withAttrs } from '#test/sceneTesting.ts'
 import {
   type AppStory,
   type StoryStep,
   send,
   settleRunCommands,
   storyOf,
-} from '../../../test/testing'
-import { Profile } from '../block'
-import { Character } from '../blocks/look/block'
-import { Events as LookEvents } from '../blocks/look/message'
-import type { CharacterProps } from '../blocks/look/model'
-import { Events } from '../message'
-import type { ProfileTab } from '../model'
+} from '#test/testing.ts'
 
 export const profileOpenOn = (tab: ProfileTab): Model =>
   UiStruct.evolve(readyAfterRead, {

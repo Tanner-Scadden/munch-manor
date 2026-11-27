@@ -3,10 +3,10 @@ import { Array, Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { Message } from '../../app/message'
-import { type Model, Phase } from '../../app/model'
-import { initialModel } from '../../app/pureApp'
-import { FIXED_STEP_MS, PLAYER_MAX_HP } from '../../shared/constants'
+import { Message } from '#app/message.ts'
+import { type Model, Phase } from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
+import { FIXED_STEP_MS, PLAYER_MAX_HP } from '#shared/constants.ts'
 import {
   type AppStory,
   changeModel,
@@ -21,16 +21,16 @@ import {
   steps,
   storyOf,
   throughIntro,
-} from '../../test/testing'
-import { asVeteran } from '../../test/veteran'
+} from '#test/testing.ts'
+import { asVeteran } from '#test/veteran.ts'
 import {
   focusOf,
   forEachSeat,
   modifyFocus,
   playersOf,
-} from '../../world/party/party'
-import { withWorld } from '../../world/schema/world'
-import { FINAL_WAVE } from '../../world/waves/wavePlans'
+} from '#world/party/party.ts'
+import { withWorld } from '#world/schema/world.ts'
+import { FINAL_WAVE } from '#world/waves/wavePlans.ts'
 
 const SURFACE = { left: 0, top: 0, width: 320, height: 180 }
 const MAX_FRAMES = 120_000

@@ -1,15 +1,16 @@
 import { Array, Option, Result, Schema } from 'effect'
 
-import type { SavedJournal } from '../../shared/journalData'
-import type { Difficulty } from '../../shared/playerData'
-import { BIG_KEY, type SavedProof } from '../../shared/proofData'
+import type { SavedJournal } from '#shared/records/journalData.ts'
+import type { Difficulty } from '#shared/records/playerData.ts'
+import { BIG_KEY, type SavedProof } from '#shared/records/proofData.ts'
 import {
   CELLAR_ROOM_ID,
   KITCHEN_ROOM_ID,
   LIBRARY_ROOM_ID,
   PARLOUR_ROOM_ID,
-} from '../level/plan'
-import { DareKind, HOUSE_THINGS } from './dareSchema'
+} from '#world/level/plan.ts'
+
+import { DareKind, HOUSE_THINGS } from './dareSchema.ts'
 
 export const MilestoneId = Schema.Literals([
   'FirstFind',

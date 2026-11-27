@@ -12,8 +12,8 @@ import {
   type SavedBoughtCosmetics,
   type SavedRank,
   cosmeticIdOf,
-} from '../shared/playerData'
-import { bonesBalanceOf } from '../world/heroes/rank'
+} from '#shared/records/playerData.ts'
+import { bonesBalanceOf } from '#world/heroes/rank.ts'
 
 export type LookSource =
   | Readonly<{ kind: 'Free' }>

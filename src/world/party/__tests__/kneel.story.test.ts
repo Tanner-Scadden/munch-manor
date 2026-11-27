@@ -3,14 +3,14 @@ import { Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { Life, type Model, Trap, TurretGun } from '../../../app/model'
-import { FIXED_STEP_MS, PLAYER_RADIUS } from '../../../shared/constants'
+import { Life, type Model, Trap, TurretGun } from '#app/model.ts'
+import { FIXED_STEP_MS, PLAYER_RADIUS } from '#shared/constants.ts'
 import {
   crewInWave,
   pipeline,
   placeSeat,
   withSeatLife,
-} from '../../../test/model.fixture'
+} from '#test/model.fixture.ts'
 import {
   checkModel,
   modelAfter,
@@ -18,12 +18,12 @@ import {
   release,
   steps,
   ticks,
-} from '../../../test/testing'
-import { TRAPS } from '../../gear/traps'
-import type { World } from '../../schema/world'
-import type { Vector } from '../../schema/worldSchema'
-import { distanceBetween } from '../../step/geometry'
-import { COOP_RULES, maybePlayerAt } from '../party'
+} from '#test/testing.ts'
+import { TRAPS } from '#world/gear/traps.ts'
+import { COOP_RULES, maybePlayerAt } from '#world/party/party.ts'
+import type { World } from '#world/schema/world.ts'
+import type { Vector } from '#world/schema/worldSchema.ts'
+import { distanceBetween } from '#world/step/geometry.ts'
 
 const TICK_MS = FIXED_STEP_MS
 const BODY: Vector = { x: 180, y: 84 }

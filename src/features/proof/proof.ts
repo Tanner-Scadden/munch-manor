@@ -2,13 +2,13 @@ import { Array, Function, Number, Option, Schema, String, pipe } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import type { Model } from '../../app/model'
-import { maybeCrewBotAt } from '../../domain/bots'
-import { seatNamesOf } from '../../domain/onlineRun'
-import { isEndScreen } from '../../domain/run'
-import { playedDifficultyOf } from '../../platform/analyticsRun'
-import type { DayStamp } from '../../shared/dayStamp'
-import { Difficulty } from '../../shared/playerData'
+import type { Model } from '#app/model.ts'
+import { maybeCrewBotAt } from '#domain/bots.ts'
+import { seatNamesOf } from '#domain/onlineRun.ts'
+import { isEndScreen } from '#domain/run.ts'
+import { playedDifficultyOf } from '#platform/analytics/analyticsRun.ts'
+import type { DayStamp } from '#shared/records/dayStamp.ts'
+import { Difficulty } from '#shared/records/playerData.ts'
 import {
   BIG_KEY,
   type CrewMate,
@@ -17,16 +17,16 @@ import {
   type ProofStamp,
   type SavedProof,
   shelve,
-} from '../../shared/proofData'
+} from '#shared/records/proofData.ts'
 import {
   DareKind,
   DareThingState,
   Finale,
   HOUSE_THINGS,
-} from '../../world/dare/dareSchema'
-import { dareThingPool, thingsOpenedBy } from '../../world/dare/milestones'
-import { focusOf, playersOf } from '../../world/party/party'
-import { Phase } from '../../world/schema/worldSchema'
+} from '#world/dare/dareSchema.ts'
+import { dareThingPool, thingsOpenedBy } from '#world/dare/milestones.ts'
+import { focusOf, playersOf } from '#world/party/party.ts'
+import { Phase } from '#world/schema/worldSchema.ts'
 
 export const ShelfThing = Schema.Literals([...DareKind.literals, BIG_KEY])
 export type ShelfThing = typeof ShelfThing.Type

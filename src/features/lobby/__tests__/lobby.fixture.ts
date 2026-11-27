@@ -12,11 +12,11 @@ import { Component } from '@effect/ui'
 import { HtmlScene } from '@effect/ui/html/testing'
 import type { Locator } from '@effect/ui/testing'
 
-import { FocusHomeButton } from '../../../app/update/home'
-import { childrenOf } from '../../../test/sceneTesting'
-import type { AppScene, RootStep, SceneStep } from '../../../test/testing'
-import { Lobby } from '../block'
-import { LobbyProps } from '../model'
+import { FocusHomeButton } from '#app/update/home.ts'
+import { Lobby } from '#features/lobby/block.ts'
+import { LobbyProps } from '#features/lobby/model.ts'
+import { childrenOf } from '#test/sceneTesting.ts'
+import type { AppScene, RootStep, SceneStep } from '#test/testing.ts'
 
 const isLobbyProps = Schema.is(LobbyProps)
 

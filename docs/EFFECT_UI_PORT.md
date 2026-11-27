@@ -6,7 +6,7 @@ Typecheck with `npx effect-tsgo tsrs --noEmit` from the repo root (about 3 s), n
 
 ## The root
 
-- `src/app/definition.ts`: `ApplicationDef = Html.component({ name: 'Application', model: Model, message: Message, restore: false })`. The finished component is `ApplicationNoDeps = ApplicationDef.make({...})` and `Application = ApplicationNoDeps.pipe(Component.provide(...))` in `src/app/block.ts`.
+- `src/app/component.ts`: `ApplicationDef = Html.component({ name: 'Application', model: Model, message: Message, restore: false })`. The finished component is `ApplicationNoDeps = ApplicationDef.make({...})` and `Application = ApplicationNoDeps.pipe(Component.provide(...))` in `src/app/block.ts`.
 - `src/app/update/step.ts` holds the Step vocabulary:
   - `App$<Cur>` is Effect UI's update `$` for the root; `UpdateStep = ($: App$) => Model | AppStep`.
   - `unchanged`, `modelStep(change)` (a plain `Model => Model`), `toModel(next)`, `combine([...steps])` (`$.combine`), `withInput`, `releaseInput`, `defineHandlers({...})`.
@@ -36,7 +36,7 @@ The after-message Steps (`afterMessage` in `src/app/update/settle.ts`) run once 
 
 - Every `ApplicationBlock.makeCommand(...)` becomes one of:
   - `Command.make(name, { args }, args => effect)` when the body needs only the browser or nothing at all: focus, full screen, a sound through a module-level engine, a reload.
-  - `class X extends Command.Service<X>()('app/X', { args, success: SomeMessageUnion, mode? }) { static readonly layer = this.toLayer(...) }` when it needs a service (`PlayerStore`, `CoopNet`, the network, the audio engine). Its `.layer` joins `CommandsLayer` in `src/app/layer.ts`.
+  - `class X extends Command.Service<X>()('app/X', { args, success: SomeMessageUnion, mode? }) { static readonly layer = this.toLayer(...) }` when it needs a service (`PlayerStore`, `CoopNet`, the network, the audio engine). Its `.layer` joins `CommandsLayer` in `src/app/commands.ts`.
 - Issue it with `X.make(args)` (`X.make()` for no args) inside `$.run(...)`.
 - A body handles its failure itself (`Effect.match`, `Effect.orElseSucceed`) and returns a Message, or `Component.noop` when nothing is to be reported.
 - Drop the Messages that only said "done" or "failed" and changed nothing (`CompletedFocusX`, `CompletedPlaySound`, `CompletedRegisterServiceWorker`, ...): the body logs a failure with `Effect.logWarning` and ends in `Component.noop`. Remove the dropped cases from their Message group and the handlers from their record.
@@ -50,7 +50,7 @@ The after-message Steps (`afterMessage` in `src/app/update/settle.ts`) run once 
 
 ## Views
 
-- `h` is `Html.H<Message>`; a view returns `View.Content<Message>`. The root's aliases are `ApplicationViewBuilder` (`Html.H<Message>`) and `ApplicationHtml` (`View.Content<Message>`) in `src/app/definition.ts`; a feature imports them with `import type`, the one exception `munch/folder-imports` allows.
+- `h` is `Html.H<Message>`; a view returns `View.Content<Message>`. The root's aliases are `ApplicationViewBuilder` (`Html.H<Message>`) and `ApplicationHtml` (`View.Content<Message>`) in `src/app/component.ts`; a feature imports them with `import type`, the one exception `munch/folder-imports` allows.
 - Elements chain: `h.button.class('a', cond && 'b').attr('aria-label', x).attrs({...}).on('click', Message.X()).style({ camelCase: v }).id(id).key(k).disabled(b).value(v).onMount(M(args)).children(...)`; `h.p('text')` is `.children('text')`. `null`, `false`, and `undefined` render nothing.
 - An attribute helper that returned Foldkit's attribute array becomes a decorator that takes the builder and returns it, as ui-kit's parts do: `const homeButton = <B extends HomeButtonBuilder>(b: B, button: HomeButton): B => b.id(...).attr(...)`, called `homeButton(h.button, 'Play').children(...)`.
 - `h.lazy(view, ...args)` keeps a subtree that changes rarely (the menus) from being rebuilt every frame. The root view runs every frame, so any subtree that depends only on menu state goes through it.
@@ -80,7 +80,7 @@ No 2D canvas anywhere. The world is the 3D `<munch-world>`; the HUD and overlay 
 
 ## Dialogs
 
-A root menu dialog is ui-kit's `Dialog` through `dialogShellView` (`src/ui/dialog.ts`), open while the root's `rootDialog` machine (`src/app/rootDialog.ts`) holds it: Shut, or the one dialog up. Open one with `openRootDialog(name)` and close it with `closeRootDialog(name)` from `src/app/update/dialog.ts`; a close the dialog asks for arrives as `ClosedDialog({ dialog })`. Its insides take the kit's parts, `DialogParts`, in place of Foldkit's `Dialog.RenderInfo`:
+A root menu dialog is ui-kit's `Dialog` through `dialogShellView` (`src/ui/dialog.ts`), open while the root's `rootDialog` machine (`src/app/menus/rootDialog.ts`) holds it: Shut, or the one dialog up. Open one with `openRootDialog(name)` and close it with `closeRootDialog(name)` from `src/app/update/dialog.ts`; a close the dialog asks for arrives as `ClosedDialog({ dialog })`. Its insides take the kit's parts, `DialogParts`, in place of Foldkit's `Dialog.RenderInfo`:
 
 | Foldkit `renderInfo`                       | ui-kit part                   |
 | ------------------------------------------ | ----------------------------- |
@@ -99,7 +99,7 @@ A Foldkit attribute helper becomes a part that takes a builder and returns it, t
 
 The leaves are converted by several agents at once, each owning a disjoint set of files. Rules for each agent:
 
-- Edit only the files you own. Never edit `src/app/main.ts`, `src/app/layer.ts`, `src/app/block.ts`, `src/app/entry.ts`, `src/app/definition.ts`, `src/app/update/step.ts`, `src/app/update/dialog.ts`, `src/app/dialogs.ts`, or `src/ui/dialog.ts`: list what they need in your report instead.
+- Edit only the files you own. Never edit `src/app/main.ts`, `src/app/commands.ts`, `src/app/block.ts`, `src/app/entry.ts`, `src/app/component.ts`, `src/app/update/step.ts`, `src/app/update/dialog.ts`, `src/app/menus/dialogs.ts`, or `src/ui/dialog.ts`: list what they need in your report instead.
 - `src/app/model.ts` and `src/app/message.ts` are shared: change only your own fields or Message group, with the Edit tool, reading the file again just before each edit.
 - Leave tests (`__tests__/`, `*.test.ts`) alone: they are ported later. Do not run `bun run test`, `build`, `lint`, or any heavy job. Typecheck only, filtered to your files.
 - No git commands that change the tree, the index, or the stash.
@@ -143,7 +143,7 @@ A `switch` or `queue` Command may stay pending across steps, but the Story still
 
 ### Children
 
-A child component is a leaf in its parent's Story and Scene: its insides are not drawn there. Test what it draws and sends on its own, `yield* HtmlScene.make(Child, props)` or `yield* Story.make(Child, props)` with `s.send(m).emitted(Event)`; a Block's `OutMessage` is now one of its `Events`. Test the parent's rule by sending the root Message the event maps to. For a child drawn as the root draws it, build its props with the root's own function (`profilePropsOf(model)` in `src/app/profileView.ts`), from a Model a Story left (`modelAfter`).
+A child component is a leaf in its parent's Story and Scene: its insides are not drawn there. Test what it draws and sends on its own, `yield* HtmlScene.make(Child, props)` or `yield* Story.make(Child, props)` with `s.send(m).emitted(Event)`; a Block's `OutMessage` is now one of its `Events`. Test the parent's rule by sending the root Message the event maps to. For a child drawn as the root draws it, build its props with the root's own function (`profilePropsOf(model)` in `src/app/views/profileView.ts`), from a Model a Story left (`modelAfter`).
 
 ### Scenes
 

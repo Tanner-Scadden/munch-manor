@@ -3,22 +3,23 @@ import { Array, Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { Message } from '../../app/message'
-import { type Bullet, Phase } from '../../app/model'
-import { cameraOf, viewToWorld, worldToView } from '../../render/camera'
-import { screenToFloorDirection } from '../../render/lens'
+import { Message } from '#app/message.ts'
+import { type Bullet, Phase } from '#app/model.ts'
+import { MouseButton, Stick } from '#input/inputSchema.ts'
+import { cameraOf, viewToWorld, worldToView } from '#render/camera/camera.ts'
+import { screenToFloorDirection } from '#render/camera/lens.ts'
 import {
   FIXED_STEP_MS,
   STICK_FIRE_ZONE,
   STICK_RADIUS_PX,
-} from '../../shared/constants'
-import { holdingSecond } from '../../test/arsenals'
-import { RIGHT_ON_SCREEN, nearly } from '../../test/lensTesting'
+} from '#shared/constants.ts'
+import { holdingSecond } from '#test/arsenals.ts'
+import { RIGHT_ON_SCREEN, nearly } from '#test/lensTesting.ts'
 import {
   FIGHTING_PHASE,
   playingModel,
   readyModel,
-} from '../../test/model.fixture'
+} from '#test/model.fixture.ts'
 import {
   checkModel,
   send,
@@ -27,10 +28,9 @@ import {
   tick,
   touchDown,
   touchMove,
-} from '../../test/testing'
-import { WEAPONS, freshGun } from '../../world/gear/weapons'
-import { focusOf, modifyFocus } from '../../world/party/party'
-import { MouseButton, Stick } from '../inputSchema'
+} from '#test/testing.ts'
+import { WEAPONS, freshGun } from '#world/gear/weapons.ts'
+import { focusOf, modifyFocus } from '#world/party/party.ts'
 
 const LEFT_THUMB = 11
 const RIGHT_THUMB = 12

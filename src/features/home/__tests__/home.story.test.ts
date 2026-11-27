@@ -3,25 +3,34 @@ import { Array, Effect, Option, type Scope } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import changelogMarkdown from '../../../../CHANGELOG.md?raw'
-import { Message } from '../../../app/message'
+import { Message } from '#app/message.ts'
 import {
   type Model,
   Phase,
   RunMode,
   type ZombieKind,
   noKills,
-} from '../../../app/model'
-import { WriteSave } from '../../../app/update/save'
-import { LobbyMessage } from '../../../features/lobby/message'
-import { saveOf } from '../../../platform/save'
+} from '#app/model.ts'
+import { WriteSave } from '#app/update/save.ts'
+import type { MenuPanel } from '#features/home/homeSchema.ts'
+import { LobbyMessage } from '#features/lobby/message.ts'
+import { MunchopediaPage } from '#features/munchopedia/model.ts'
 import {
-  HOME_BUTTONS,
-  HOME_KEYS,
-  isNewsUnseen,
-} from '../../../screens/home/home'
-import { FIXED_STEP_MS } from '../../../shared/constants'
-import { DISTANT_SPAWN, readyModel } from '../../../test/model.fixture'
+  MUNCHOPEDIA,
+  earnedBadges,
+  hasUnopenedEntry,
+  isDiscovered,
+  unopenedKinds,
+} from '#features/munchopedia/munchopedia.ts'
+import {
+  NEWS_DAYS,
+  newsHeadline,
+  parseChangelog,
+} from '#features/whatsNew/changelog.ts'
+import { saveOf } from '#platform/save/save.ts'
+import { HOME_BUTTONS, HOME_KEYS, isNewsUnseen } from '#screens/home/home.ts'
+import { FIXED_STEP_MS } from '#shared/constants.ts'
+import { DISTANT_SPAWN, readyModel } from '#test/model.fixture.ts'
 import {
   type StoryStep,
   checkModel,
@@ -35,22 +44,10 @@ import {
   throughIntro,
   tick,
   writeSave,
-} from '../../../test/testing'
-import { modifyFocus } from '../../../world/party/party'
-import { MunchopediaPage } from '../../munchopedia/model'
-import {
-  MUNCHOPEDIA,
-  earnedBadges,
-  hasUnopenedEntry,
-  isDiscovered,
-  unopenedKinds,
-} from '../../munchopedia/munchopedia'
-import {
-  NEWS_DAYS,
-  newsHeadline,
-  parseChangelog,
-} from '../../whatsNew/changelog'
-import type { MenuPanel } from '../homeSchema'
+} from '#test/testing.ts'
+import { modifyFocus } from '#world/party/party.ts'
+
+import changelogMarkdown from '../../../../CHANGELOG.md?raw'
 
 const homeAfterRead: Model = UiStruct.evolve(readyModel, {
   saving: UiStruct.evolve({ saveStatus: () => 'Read' }),

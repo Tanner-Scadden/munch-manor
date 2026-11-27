@@ -2,17 +2,18 @@ import { Array, Function, Option, Order, Record } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import type { Model } from '../app/model'
+import type { Model } from '#app/model.ts'
 import {
   type MasterySkin,
   type SavedMastery,
   gunKillsOf,
   heroPointsOf,
-} from '../shared/masteryData'
-import type { Calling, PropStyle } from '../shared/playerData'
-import { CALLINGS } from '../world/heroes/calling'
-import type { WeaponKind } from '../world/schema/worldSchema'
-import { MasteryUnlock } from './clientSchema'
+} from '#shared/records/masteryData.ts'
+import type { Calling, PropStyle } from '#shared/records/playerData.ts'
+import { CALLINGS } from '#world/heroes/calling.ts'
+import type { WeaponKind } from '#world/schema/worldSchema.ts'
+
+import { MasteryUnlock } from './clientSchema.ts'
 
 export const POINTS_PER_WAVE = 10
 export const POINTS_PER_THING = 25

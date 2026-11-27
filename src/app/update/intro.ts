@@ -2,14 +2,15 @@ import { Array } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import { isRunOn } from '../../domain/onlineRun'
-import { raisePocketCardFrom } from '../../features/dare/pocketCard'
-import { introSounds, isSkippable } from '../../features/intro/introBeat'
-import { skipArrival } from '../../world/run/arrival'
-import { advanceGame } from '../frame'
-import type { Model } from '../model'
-import { playSounds, uiCue } from './sound'
-import { type UpdateStep, toModel } from './step'
+import { advanceGame } from '#app/frame/frame.ts'
+import type { Model } from '#app/model.ts'
+import { isRunOn } from '#domain/onlineRun.ts'
+import { raisePocketCardFrom } from '#features/dare/pocketCard.ts'
+import { introSounds, isSkippable } from '#features/intro/introBeat.ts'
+import { skipArrival } from '#world/run/arrival.ts'
+
+import { playSounds, uiCue } from './sound.ts'
+import { type UpdateStep, toModel } from './step.ts'
 
 export const skipIntro = (model: Model): Model => {
   if (!isSkippable(model)) {

@@ -15,7 +15,7 @@ import {
   type SummaryParty,
   type SummaryPartyV2,
   type SummaryPartyV6,
-} from '../../src/platform/analytics.ts'
+} from '../../src/platform/analytics/analytics.ts'
 
 export type BodySize = 'Fits' | 'TooLarge'
 

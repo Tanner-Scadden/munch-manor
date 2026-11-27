@@ -5,11 +5,15 @@ import { HtmlLocator, HtmlScene } from '@effect/ui/html/testing'
 import { Locator } from '@effect/ui/testing'
 import { describe, expect, it } from '@effect/vitest'
 
-import { Message } from '../../../app/message'
-import { type Model, Phase, type ZombieKind } from '../../../app/model'
-import { HAND_DIALOG_ID, PANEL_DIALOG_ID } from '../../../domain/clientSchema'
-import { RESTART_GRACE_MS } from '../../../shared/constants'
-import { home } from '../../../test/model.fixture'
+import { Message } from '#app/message.ts'
+import { type Model, Phase, type ZombieKind } from '#app/model.ts'
+import { HAND_DIALOG_ID, PANEL_DIALOG_ID } from '#domain/clientSchema.ts'
+import { Munchopedia } from '#features/munchopedia/block.ts'
+import { MunchopediaEvents } from '#features/munchopedia/message.ts'
+import { MunchopediaPage } from '#features/munchopedia/model.ts'
+import { NEWS_DAYS } from '#features/whatsNew/changelog.ts'
+import { RESTART_GRACE_MS } from '#shared/constants.ts'
+import { home } from '#test/model.fixture.ts'
 import {
   button,
   byClass,
@@ -22,7 +26,7 @@ import {
   shareMountSettles,
   showDialog,
   withAttrs,
-} from '../../../test/sceneTesting'
+} from '#test/sceneTesting.ts'
 import {
   type AppScene,
   type SceneStep,
@@ -30,11 +34,7 @@ import {
   sceneOf,
   send,
   steps,
-} from '../../../test/testing'
-import { Munchopedia } from '../../munchopedia/block'
-import { MunchopediaEvents } from '../../munchopedia/message'
-import { MunchopediaPage } from '../../munchopedia/model'
-import { NEWS_DAYS } from '../../whatsNew/changelog'
+} from '#test/testing.ts'
 
 const withKills = (
   base: Model,

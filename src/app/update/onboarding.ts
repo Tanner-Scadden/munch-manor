@@ -1,14 +1,15 @@
 import {
   isCaseCardBlocking,
   skipCaseCard,
-} from '../../features/onboarding/caseCard'
-import { endQuest } from '../../features/onboarding/firstBreakQuest'
-import { skipKitchenTour } from '../../features/onboarding/kitchenTour'
-import { skipDebutCard } from '../../features/onboarding/onboarding'
-import { stepWhen } from '../../shared/stepWhen'
-import { isDebutCardBlocking } from './play'
-import { unlockAudio } from './sound'
-import { combine, defineHandlers, modelStep } from './step'
+} from '#features/onboarding/caseCard.ts'
+import { endQuest } from '#features/onboarding/firstBreakQuest.ts'
+import { skipKitchenTour } from '#features/onboarding/kitchenTour.ts'
+import { skipDebutCard } from '#features/onboarding/onboarding.ts'
+import { stepWhen } from '#shared/stepWhen.ts'
+
+import { isDebutCardBlocking } from './play.ts'
+import { unlockAudio } from './sound.ts'
+import { combine, defineHandlers, modelStep } from './step.ts'
 
 export const onboardingHandlers = defineHandlers({
   ClickedDebutCardButton: stepWhen(

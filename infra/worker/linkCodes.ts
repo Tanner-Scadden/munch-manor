@@ -18,7 +18,7 @@ import {
   RedeemAnswer,
   RedeemRequest,
   SessionRefused,
-} from '../../src/shared/sessionApi.ts'
+} from '../../src/shared/records/sessionApi.ts'
 import type { RateLimiter } from './api.ts'
 import {
   CORS_HEADERS,
@@ -100,9 +100,8 @@ export const makeLinkCodeBook: Effect.Effect<
   )`)
 
   const insertOnce = (request: IssueRequest, expiresMs: number) =>
-    Effect.flatMap(
-      drawCode,
-      code => sql`INSERT INTO link_codes (code, public_key, identity, expires_ms)
+    Effect.flatMap(drawCode, code =>
+      sql`INSERT INTO link_codes (code, public_key, identity, expires_ms)
         VALUES (${code}, ${request.publicKey}, ${request.identity}, ${expiresMs})
         ON CONFLICT DO NOTHING RETURNING code`.pipe(
         Effect.map(rows =>

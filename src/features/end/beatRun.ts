@@ -1,19 +1,20 @@
 import { Array, Option } from 'effect'
 
-import type { Model } from '../../app/model'
+import type { Model } from '#app/model.ts'
 import {
   BEAT_PARAM,
   type DareResult,
   type FriendsDare,
   dareCodeOf,
   isBeaten,
-} from '../../domain/beatLink'
-import { maybeTakenDareOf } from '../../domain/beatMyRun'
-import { isBotCrew } from '../../domain/bots'
-import { focusOf, isCoop } from '../../world/party/party'
-import { RunMode } from '../../world/schema/worldSchema'
-import { bestRunOf, endKindOf } from './endBeat'
-import { GAME_URL } from './share'
+} from '#domain/beatLink.ts'
+import { isBotCrew } from '#domain/bots.ts'
+import { maybeTakenDareOf } from '#domain/machines/beatMyRun.ts'
+import { focusOf, isCoop } from '#world/party/party.ts'
+import { RunMode } from '#world/schema/worldSchema.ts'
+
+import { bestRunOf, endKindOf } from './endBeat.ts'
+import { GAME_URL } from './share.ts'
 
 const isLoneRun = (model: Model): boolean =>
   !isCoop(model) && !isBotCrew(model) && model.localPlayers <= 1

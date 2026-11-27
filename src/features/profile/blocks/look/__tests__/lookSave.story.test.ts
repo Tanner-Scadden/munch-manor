@@ -3,18 +3,18 @@ import { describe, expect, test } from 'vitest'
 
 import { cleanLook } from '@munch/netcode'
 
-import { defaultAppearance } from '../../../../../app/model'
-import { initialModel } from '../../../../../app/pureApp'
-import { HAT_ART } from '../../../../../art/sprites/hatArt'
-import { unlocksAt } from '../../../../../domain/unlocks'
+import { defaultAppearance } from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
+import { HAT_ART } from '#art/sprites/hatArt.ts'
+import { unlocksAt } from '#domain/unlocks.ts'
 import {
   SAVE_VERSION,
   decodeSave,
   restoreSave,
   saveOf,
-} from '../../../../../platform/save'
-import { lookCodeOf, lookOfCode } from '../../../../../shared/lookCodes'
-import { noMastery } from '../../../../../shared/masteryData'
+} from '#platform/save/save.ts'
+import { lookCodeOf, lookOfCode } from '#shared/records/lookCodes.ts'
+import { noMastery } from '#shared/records/masteryData.ts'
 import {
   type Appearance,
   GunSkin,
@@ -23,10 +23,10 @@ import {
   PropStyle,
   SEEN_BASELINE,
   ShirtColor,
-} from '../../../../../shared/playerData'
-import { legacySave } from '../../../../../test/store.fixture'
-import { jsonOf } from '../../../../../test/testing'
-import { pointsForRank } from '../../../../../world/heroes/rank'
+} from '#shared/records/playerData.ts'
+import { legacySave } from '#test/store.fixture.ts'
+import { jsonOf } from '#test/testing.ts'
+import { pointsForRank } from '#world/heroes/rank.ts'
 
 const BARE = defaultAppearance
 

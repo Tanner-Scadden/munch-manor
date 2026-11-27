@@ -2,13 +2,18 @@ import { Array, Function, Option } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import { atSeat, modifySeat, seatStateAt } from '../party/party'
-import type { World } from '../schema/world'
-import { GameEvent, type Player, type PlayerSlot } from '../schema/worldSchema'
-import { creditKillEvents } from '../step/combat'
-import { isGrounded } from '../zombies/zombies'
-import { creditStriker, isInArc, maybeNearest, strikeInMelee } from './melee'
-import { isWieldingKnife } from './weapons'
+import { atSeat, modifySeat, seatStateAt } from '#world/party/party.ts'
+import type { World } from '#world/schema/world.ts'
+import {
+  GameEvent,
+  type Player,
+  type PlayerSlot,
+} from '#world/schema/worldSchema.ts'
+import { creditKillEvents } from '#world/step/combat.ts'
+import { isGrounded } from '#world/zombies/zombies.ts'
+
+import { creditStriker, isInArc, maybeNearest, strikeInMelee } from './melee.ts'
+import { isWieldingKnife } from './weapons.ts'
 
 type KnifeRules = Readonly<{
   intervalMs: number

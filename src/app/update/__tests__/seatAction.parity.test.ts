@@ -3,7 +3,9 @@ import { Array, Effect, Option, Order, Record, Struct } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { SHOTGUN, holdingFirst, withPistol } from '../../../test/arsenals'
+import { Message } from '#app/message.ts'
+import { BreakClock, Life, type Model, Phase } from '#app/model.ts'
+import { SHOTGUN, holdingFirst, withPistol } from '#test/arsenals.ts'
 import {
   DISTANT_SPAWN,
   crewInWave,
@@ -12,7 +14,7 @@ import {
   withArsenal,
   withKnifeOut,
   withSeatLife,
-} from '../../../test/model.fixture'
+} from '#test/model.fixture.ts'
 import {
   BELOW_NORTH_DOOR,
   type RootSteps,
@@ -21,19 +23,13 @@ import {
   send,
   settleRunCommands,
   steps,
-} from '../../../test/testing'
-import {
-  actionCodeOf,
-  heldAction,
-  seatActionOf,
-} from '../../../world/net/roomWorld'
-import { MEDIC_RULES } from '../../../world/party/medic'
-import { COOP_RULES, leadSeatOf, modifyFocus } from '../../../world/party/party'
-import type { World } from '../../../world/schema/world'
-import { idleIntent } from '../../../world/schema/worldSchema'
-import { SeatAction, applySeatAction } from '../../../world/step/stepWorld'
-import { Message } from '../../message'
-import { BreakClock, Life, type Model, Phase } from '../../model'
+} from '#test/testing.ts'
+import { actionCodeOf, heldAction, seatActionOf } from '#world/net/roomWorld.ts'
+import { MEDIC_RULES } from '#world/party/medic.ts'
+import { COOP_RULES, leadSeatOf, modifyFocus } from '#world/party/party.ts'
+import type { World } from '#world/schema/world.ts'
+import { idleIntent } from '#world/schema/worldSchema.ts'
+import { SeatAction, applySeatAction } from '#world/step/stepWorld.ts'
 
 const CUE_KEYS: ReadonlySet<keyof World> = new Set(['lessons', 'debutCard'])
 

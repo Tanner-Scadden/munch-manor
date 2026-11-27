@@ -6,13 +6,22 @@ import { HtmlLocator } from '@effect/ui/html/testing'
 import { Locator } from '@effect/ui/testing'
 import { describe, it } from '@effect/vitest'
 
-import { Message } from '../../../app/message'
-import { type Model } from '../../../app/model'
-import { RequestLinkCode } from '../../../app/update/profile'
-import { PROFILE_DIALOG_ID } from '../../../domain/clientSchema'
-import { LinkFlow } from '../../../platform/linkFlow'
-import { SyncState } from '../../../platform/playerSync'
-import { homeAfterRead, inPortrait } from '../../../test/model.fixture'
+import { Message } from '#app/message.ts'
+import { type Model } from '#app/model.ts'
+import { RequestLinkCode } from '#app/update/profile.ts'
+import { PROFILE_DIALOG_ID } from '#domain/clientSchema.ts'
+import {
+  CopyLinkCodeOnClick,
+  PasteLinkCodeOnTap,
+} from '#features/profile/mounts/linkClipboard.ts'
+import { PROFILE_TABS_ID } from '#features/profile/profile.ts'
+import {
+  LINK_TAKES_PROGRESS_NOTE,
+  SHARE_STATS_NOTE,
+} from '#features/profile/view.ts'
+import { LinkFlow } from '#platform/save/linkFlow.ts'
+import { SyncState } from '#platform/save/playerSync.ts'
+import { homeAfterRead, inPortrait } from '#test/model.fixture.ts'
 import {
   button,
   byClass,
@@ -23,7 +32,7 @@ import {
   settingsButton,
   showDialog,
   withAttrs,
-} from '../../../test/sceneTesting'
+} from '#test/sceneTesting.ts'
 import {
   type SceneStep,
   type StoryStep,
@@ -31,10 +40,8 @@ import {
   send,
   settleRunCommands,
   steps,
-} from '../../../test/testing'
-import { CopyLinkCodeOnClick, PasteLinkCodeOnTap } from '../linkClipboard'
-import { PROFILE_TABS_ID } from '../profile'
-import { LINK_TAKES_PROGRESS_NOTE, SHARE_STATS_NOTE } from '../view'
+} from '#test/testing.ts'
+
 import {
   type ProfileDesk,
   type ProfileScene,
@@ -43,7 +50,7 @@ import {
   inPanel,
   profileDeskOf,
   profileTab,
-} from './profile.fixture'
+} from './profile.fixture.ts'
 
 const onTouch: Model = UiStruct.evolve(homeAfterRead, {
   lastDevice: () => 'Touch',

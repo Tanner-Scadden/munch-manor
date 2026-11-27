@@ -2,21 +2,22 @@ import { Array, Option, Result } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import { playerKeyAction } from '../../input/keyActions'
-import { puffDust } from '../../render/particles/particles'
+import { type Model, TrapHint, TrapNotice } from '#app/model.ts'
+import { playerKeyAction } from '#input/keyActions.ts'
+import { puffDust } from '#render/particles/particles.ts'
 import {
   SHAKE_TRAUMA_MAX,
   TRAP_NOTICE_MS,
   TRAP_PLACE_TRAUMA,
-} from '../../shared/constants'
-import { trapCenter } from '../../world/gear/traps'
-import { levelOf } from '../../world/level/arena'
-import { focusOf } from '../../world/party/party'
-import { ActionRefusal, SeatAction } from '../../world/step/stepWorld'
-import { type Model, TrapHint, TrapNotice } from '../model'
-import { actAsLead, tryAsLead } from './action'
-import { playSounds, uiCue } from './sound'
-import { type UpdateStep, toModel } from './step'
+} from '#shared/constants.ts'
+import { trapCenter } from '#world/gear/traps.ts'
+import { levelOf } from '#world/level/arena.ts'
+import { focusOf } from '#world/party/party.ts'
+import { ActionRefusal, SeatAction } from '#world/step/stepWorld.ts'
+
+import { actAsLead, tryAsLead } from './action.ts'
+import { playSounds, uiCue } from './sound.ts'
+import { type UpdateStep, toModel } from './step.ts'
 
 const shakeBy = (model: Model, trauma: number): Model =>
   UiStruct.evolve(model, {

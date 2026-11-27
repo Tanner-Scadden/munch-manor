@@ -3,10 +3,10 @@ import { Effect } from 'effect'
 import { HtmlLocator } from '@effect/ui/html/testing'
 import { describe, it } from '@effect/vitest'
 
-import { quietWave, withDareThings } from '../../../test/model.fixture'
-import { ackHudSlots, measureHud } from '../../../test/sceneTesting'
-import { sceneOf } from '../../../test/testing'
-import { DareThingState } from '../../../world/dare/dareSchema'
+import { quietWave, withDareThings } from '#test/model.fixture.ts'
+import { ackHudSlots, measureHud } from '#test/sceneTesting.ts'
+import { sceneOf } from '#test/testing.ts'
+import { DareThingState } from '#world/dare/dareSchema.ts'
 
 const hunting = withDareThings(quietWave(3), [
   {

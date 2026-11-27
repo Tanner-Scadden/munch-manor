@@ -1,5 +1,6 @@
 import { Function, Option, Result } from 'effect'
 
+import type { Decal, DecalKind, Particle } from '#render/renderSchema.ts'
 import {
   BLOOD_DRAG_PER_SECOND,
   BLOOD_GRAVITY,
@@ -21,11 +22,10 @@ import {
   SHELL_RESTITUTION,
   SPARK_DRAG_PER_SECOND,
   SPARK_GRAVITY,
-} from '../../shared/constants'
-import type { Level } from '../../world/level/arena'
-import { isInsideRoomAt, isSolidAt } from '../../world/level/tileQueries'
-import type { ParticleKind } from '../../world/schema/entitySchema'
-import type { Decal, DecalKind, Particle } from '../renderSchema'
+} from '#shared/constants.ts'
+import type { Level } from '#world/level/arena.ts'
+import { isInsideRoomAt, isSolidAt } from '#world/level/tileQueries.ts'
+import type { ParticleKind } from '#world/schema/entitySchema.ts'
 
 const SMOKE_RISE = 30
 

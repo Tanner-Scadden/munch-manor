@@ -2,34 +2,35 @@ import { Array, Function, Match, Option, Schema } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import { isRunOn } from '../../domain/onlineRun'
-import { foldPocketCard } from '../../features/dare/pocketCard'
-import { isPauseKey, pressKey, releaseAll } from '../../input/input'
-import type { Gamepad, InputDevice } from '../../input/inputSchema'
-import { playerKeyAction } from '../../input/keyActions'
-import type { PageVisibility } from '../../platform/deviceSchema'
-import { focusOf } from '../../world/party/party'
-import { isArriving } from '../../world/run/arrival'
-import { SeatAction, gunSlotAction } from '../../world/step/stepWorld'
-import { Message } from '../message'
-import type { Model } from '../model'
-import { pressInRoom } from './coop'
-import { skipIntro } from './intro'
+import { Message } from '#app/message.ts'
+import type { Model } from '#app/model.ts'
+import { isRunOn } from '#domain/onlineRun.ts'
+import { foldPocketCard } from '#features/dare/pocketCard.ts'
+import { isPauseKey, pressKey, releaseAll } from '#input/input.ts'
+import type { Gamepad, InputDevice } from '#input/inputSchema.ts'
+import { playerKeyAction } from '#input/keyActions.ts'
+import type { PageVisibility } from '#platform/deviceSchema.ts'
+import { focusOf } from '#world/party/party.ts'
+import { isArriving } from '#world/run/arrival.ts'
+import { SeatAction, gunSlotAction } from '#world/step/stepWorld.ts'
+
+import { pressInRoom } from './coop.ts'
+import { skipIntro } from './intro.ts'
 import {
   dareListFromKey,
   forgetPad,
   isDareListKey,
   notePad,
   padPresses,
-} from './play'
-import { toggleAudioFromKey, unlockAudio } from './sound'
+} from './play.ts'
+import { toggleAudioFromKey, unlockAudio } from './sound.ts'
 import {
   type UpdateStep,
   combine,
   modelStep,
   unchanged,
   withInput,
-} from './step'
+} from './step.ts'
 
 const pressInRun = (action: SeatAction): UpdateStep =>
   combine([unlockAudio, pressInRoom(action)])

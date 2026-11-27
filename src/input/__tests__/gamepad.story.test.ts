@@ -3,12 +3,12 @@ import { Array, Effect, Option } from 'effect'
 import { type Command, Component, UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { Message } from '../../app/message'
-import { type Model, Phase } from '../../app/model'
-import { Rumble } from '../../app/update/rumble'
-import { screenToFloorDirection } from '../../render/lens'
-import { FIXED_STEP_MS } from '../../shared/constants'
-import { armedBreak, armedFight, openFloorWave } from '../../test/model.fixture'
+import { Message } from '#app/message.ts'
+import { type Model, Phase } from '#app/model.ts'
+import { Rumble } from '#app/update/rumble.ts'
+import { screenToFloorDirection } from '#render/camera/lens.ts'
+import { FIXED_STEP_MS } from '#shared/constants.ts'
+import { armedBreak, armedFight, openFloorWave } from '#test/model.fixture.ts'
 import {
   type AppStory,
   type StoryStep,
@@ -22,11 +22,11 @@ import {
   storyOf,
   tick,
   zombieOf,
-} from '../../test/testing'
-import { isWieldingMelee } from '../../world/gear/weapons'
-import { focusOf, modifyFocus } from '../../world/party/party'
-import { Arsenal } from '../../world/schema/worldSchema'
-import { ZOMBIE_KINDS } from '../../world/zombies/zombies'
+} from '#test/testing.ts'
+import { isWieldingMelee } from '#world/gear/weapons.ts'
+import { focusOf, modifyFocus } from '#world/party/party.ts'
+import { Arsenal } from '#world/schema/worldSchema.ts'
+import { ZOMBIE_KINDS } from '#world/zombies/zombies.ts'
 
 const FRAME_MS = 50
 

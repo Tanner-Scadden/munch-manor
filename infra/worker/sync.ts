@@ -6,7 +6,6 @@ import type {
   DurableObjectNamespace,
   RateLimit,
 } from '@cloudflare/workers-types'
-
 import { SCOPE_PATHS } from '@munch/sync-engine'
 
 import { roomScopeStub } from './gameRoom.ts'

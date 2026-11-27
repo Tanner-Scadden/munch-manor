@@ -1,7 +1,7 @@
 import { Array, Record } from 'effect'
 
-import { makeValueHasher } from '../../shared/valueHash'
-import { World } from '../schema/world'
+import { makeValueHasher } from '#shared/valueHash.ts'
+import { World } from '#world/schema/world.ts'
 
 const WORLD_FIELDS: ReadonlyArray<keyof World> = Array.sort(
   Record.keys(World.fields),

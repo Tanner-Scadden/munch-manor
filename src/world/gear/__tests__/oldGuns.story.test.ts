@@ -3,15 +3,15 @@ import { Array, Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { type Model, type WeaponKind, type Zombie } from '../../../app/model'
-import { FIXED_STEP_MS } from '../../../shared/constants'
-import { holdingSecond, maybeSpareGun } from '../../../test/arsenals'
+import { type Model, type WeaponKind, type Zombie } from '#app/model.ts'
+import { FIXED_STEP_MS } from '#shared/constants.ts'
+import { holdingSecond, maybeSpareGun } from '#test/arsenals.ts'
 import {
   atOpenedCase,
   playingModel,
   quietWave,
   withArsenal,
-} from '../../../test/model.fixture'
+} from '#test/model.fixture.ts'
 import {
   HOLD_TICKS,
   checkModel,
@@ -27,11 +27,16 @@ import {
   tick,
   ticks,
   zombieOf,
-} from '../../../test/testing'
-import { CASE_SPOTS } from '../../feats/caseSpots'
-import { rollCases } from '../../feats/cases'
-import { focusOf, modifyFocus } from '../../party/party'
-import { WEAPONS, freshGun, gunPierce, isCarrying } from '../weapons'
+} from '#test/testing.ts'
+import { CASE_SPOTS } from '#world/feats/caseSpots.ts'
+import { rollCases } from '#world/feats/cases.ts'
+import {
+  WEAPONS,
+  freshGun,
+  gunPierce,
+  isCarrying,
+} from '#world/gear/weapons.ts'
+import { focusOf, modifyFocus } from '#world/party/party.ts'
 
 const FRAME_MS = FIXED_STEP_MS
 const PLAYER_X = 150

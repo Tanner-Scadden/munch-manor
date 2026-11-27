@@ -2,15 +2,15 @@ import { Array, Function, Option } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import type { World } from '../schema/world'
+import type { World } from '#world/schema/world.ts'
 import {
   type GameEvent,
   type Vector,
   type Zombie,
   ZombieAction,
-} from '../schema/worldSchema'
-import { ZOMBIE_BLAST_TARGET } from '../step/combat'
-import { isWalking } from '../zombies/zombies'
+} from '#world/schema/worldSchema.ts'
+import { ZOMBIE_BLAST_TARGET } from '#world/step/combat.ts'
+import { isWalking } from '#world/zombies/zombies.ts'
 
 export type Knock = Readonly<{
   damage: number

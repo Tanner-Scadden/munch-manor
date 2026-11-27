@@ -1,8 +1,8 @@
 import { Array, Option } from 'effect'
 import { describe, expect, test } from 'vitest'
 
-import { TILE_SIZE } from '../../../shared/constants'
-import { type Level, levelFor, roomAt } from '../arena'
+import { TILE_SIZE } from '#shared/constants.ts'
+import { type Level, levelFor, roomAt } from '#world/level/arena.ts'
 import {
   CELLAR_ROOM_ID,
   EAST_EXIT,
@@ -14,10 +14,15 @@ import {
   SLOTS,
   manorSpecFor,
   roomSpotsOf,
-} from '../plan'
-import { DOOR_SYMBOLS, tilesWithSymbol } from '../tileGrid'
-import { doorSpawnPoint, isInsideRoomAt, isWalkableTile } from '../tileQueries'
-import { EVERY_EXIT } from './exits.fixture'
+} from '#world/level/plan.ts'
+import { DOOR_SYMBOLS, tilesWithSymbol } from '#world/level/tileGrid.ts'
+import {
+  doorSpawnPoint,
+  isInsideRoomAt,
+  isWalkableTile,
+} from '#world/level/tileQueries.ts'
+
+import { EVERY_EXIT } from './exits.fixture.ts'
 
 const WHOLE_HOUSE = levelFor(MANOR_SPEC, EVERY_EXIT)
 

@@ -20,12 +20,12 @@ import * as Statement from 'effect/sql/Statement'
 
 import { describe, expect, it } from '@effect/vitest'
 
-import { PlayerLogSchema } from '../../src/platform/playerEvents.ts'
+import { PlayerLogSchema } from '../../src/platform/save/playerEvents.ts'
 import {
   PlayerHandlers,
   createPlayerTables,
   readPlayerFacts,
-} from '../../src/platform/playerProjection.ts'
+} from '../../src/platform/save/playerProjection.ts'
 import {
   type LinkCode,
   PlayerLogRpcs,
@@ -33,7 +33,7 @@ import {
   SessionRefused,
   newIdentity,
   playerStoreOf,
-} from '../../src/shared/sessionApi.ts'
+} from '../../src/shared/records/sessionApi.ts'
 import type { LinkCodeBook } from './linkCodes.ts'
 import {
   DurableObjectStorage,

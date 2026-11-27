@@ -269,6 +269,18 @@ tester.run('no-comments', ruleOf('no-comments'), {
 tester.run('folder-imports', ruleOf('folder-imports'), {
   valid: [
     {
+      code: "import { stepWorld } from '#world/step/stepWorld.ts'",
+      filename: '/repo/src/world/net/roomWorld.ts',
+    },
+    {
+      code: "import type { Model } from '#app/model.ts'",
+      filename: '/repo/src/features/hud/readyNudge.ts',
+    },
+    {
+      code: "import { Picked } from '#features/heroes/message.ts'",
+      filename: '/repo/src/features/lobby/view.ts',
+    },
+    {
       code: "import { stepWorld } from '../step/stepWorld'",
       filename: '/repo/src/world/net/roomWorld.ts',
     },
@@ -321,11 +333,11 @@ tester.run('folder-imports', ruleOf('folder-imports'), {
       filename: '/repo/src/render/camera.ts',
     },
     {
-      code: "import { type ApplicationViewBuilder } from '../../app/definition'",
+      code: "import { type ApplicationViewBuilder } from '../../app/component'",
       filename: '/repo/src/features/hud/wavePreview.ts',
     },
     {
-      code: "import type { ApplicationHtml, ApplicationMount } from '../../app/definition'",
+      code: "import type { ApplicationHtml, ApplicationMount } from '../../app/component'",
       filename: '/repo/src/screens/game/hud.ts',
     },
     {
@@ -507,6 +519,21 @@ tester.run('folder-imports', ruleOf('folder-imports'), {
       filename: '/repo/src/render/juice.ts',
       errors: 1,
     },
+    {
+      code: "import { hudShapes } from '#screens/game/hud.ts'",
+      filename: '/repo/src/features/fridge/fridgeRevealView.ts',
+      errors: 1,
+    },
+    {
+      code: "import { Model } from '#app/model.ts'",
+      filename: '/repo/src/world/step/firing.ts',
+      errors: 1,
+    },
+    {
+      code: "import { home } from '#test/model.fixture.ts'",
+      filename: '/repo/src/world/step/firing.ts',
+      errors: 1,
+    },
   ],
 })
 
@@ -601,5 +628,48 @@ tester.run('step-world-alone', ruleOf('step-world-alone'), {
   invalid: [
     one('const ticked = stepWorld(intended, inputs)'),
     one('const ticked = stepWorld({ ...model, phase }, inputs)'),
+  ],
+})
+
+tester.run('subpath-imports', ruleOf('subpath-imports'), {
+  valid: [
+    {
+      code: "import { stepWorld } from '#world/step/stepWorld.ts'",
+      filename: '/repo/src/world/net/roomWorld.ts',
+    },
+    {
+      code: "import { keysOf } from './keys.ts'\nimport './coop.css'",
+      filename: '/repo/src/world/keys/held.ts',
+    },
+    {
+      code: "import news from '../../../CHANGELOG.md?raw'",
+      filename: '/repo/src/features/whatsNew/changelog.ts',
+    },
+    {
+      code: "import { lensOf } from '../../src/render/lens'",
+      filename: '/repo/tools/audit/lib.ts',
+    },
+  ],
+  invalid: [
+    {
+      code: "import { stepWorld } from '../step/stepWorld.ts'",
+      filename: '/repo/src/world/net/roomWorld.ts',
+      errors: 1,
+    },
+    {
+      code: "import { keysOf } from './keys'",
+      filename: '/repo/src/world/keys/held.ts',
+      errors: 1,
+    },
+    {
+      code: "export { keysOf } from '#world/keys/keys'",
+      filename: '/repo/src/world/keys/held.ts',
+      errors: 1,
+    },
+    {
+      code: "const view = import('../../features/hud/hud.ts')",
+      filename: '/repo/src/render/iso/scene.ts',
+      errors: 1,
+    },
   ],
 })

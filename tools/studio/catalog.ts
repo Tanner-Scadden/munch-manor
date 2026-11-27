@@ -63,8 +63,8 @@ import {
   SHELF_SPRITES,
   SWUNG_SHELF_SPRITES,
 } from '../../src/render/room/libraryArt'
-import { MasterySkin } from '../../src/shared/masteryData'
-import { Hat, Outfit, PropStyle } from '../../src/shared/playerData'
+import { MasterySkin } from '../../src/shared/records/masteryData'
+import { Hat, Outfit, PropStyle } from '../../src/shared/records/playerData'
 import { DareKind } from '../../src/world/dare/dareSchema'
 import { CALLINGS } from '../../src/world/heroes/calling'
 import {

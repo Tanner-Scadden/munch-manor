@@ -1,11 +1,11 @@
 import { Array, Function, Option, Record, String } from 'effect'
 
-import { TILE_SIZE } from '../../shared/constants'
+import { TILE_SIZE } from '#shared/constants.ts'
 import {
   DOOR_SYMBOLS,
   OUTSIDE_SYMBOL,
   WALL_SYMBOL,
-} from '../../world/level/tileGrid'
+} from '#world/level/tileGrid.ts'
 
 export const UNIT = 1 / TILE_SIZE
 

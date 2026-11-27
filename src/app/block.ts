@@ -2,13 +2,14 @@ import { Layer } from 'effect'
 
 import { Component, Head } from '@effect/ui'
 
-import { GAME_TITLE } from '../shared/constants'
-import { ApplicationDef } from './definition'
-import { CommandsLayer } from './layer'
-import { init, update } from './main'
-import { ApplicationLayer } from './services'
-import { subscriptions } from './subscriptions'
-import { view } from './view'
+import { GAME_TITLE } from '#shared/constants.ts'
+
+import { CommandsLayer } from './commands.ts'
+import { ApplicationDef } from './component.ts'
+import { init, update } from './main.ts'
+import { ApplicationLayer } from './services.ts'
+import { subscriptions } from './subscriptions.ts'
+import { view } from './view.ts'
 
 export const ApplicationNoDeps = ApplicationDef.make({
   init,

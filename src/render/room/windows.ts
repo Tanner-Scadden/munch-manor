@@ -1,18 +1,19 @@
 import { Array, Option } from 'effect'
 
-import { TILE_SIZE } from '../../shared/constants'
-import type { Level } from '../../world/level/arena'
+import { TILE_SIZE } from '#shared/constants.ts'
+import type { Level } from '#world/level/arena.ts'
 import {
   KITCHEN_ROOM_ID,
   LIBRARY_ROOM_ID,
   PARLOUR_ROOM_ID,
-} from '../../world/level/plan'
-import { WALL_SYMBOL, symbolAt } from '../../world/level/tileGrid'
-import { libraryWindowPaneOf } from './libraryArt'
-import { roomBoxOf } from './room'
-import type { Box } from './roomPalette'
-import { PARLOUR_WINDOW_GAPS, doorBox } from './roomWalls'
-import { roseGlassOf, roseLightsOf } from './roseWindowArt'
+} from '#world/level/plan.ts'
+import { WALL_SYMBOL, symbolAt } from '#world/level/tileGrid.ts'
+
+import { libraryWindowPaneOf } from './libraryArt.ts'
+import { roomBoxOf } from './room.ts'
+import type { Box } from './roomPalette.ts'
+import { PARLOUR_WINDOW_GAPS, doorBox } from './roomWalls.ts'
+import { roseGlassOf, roseLightsOf } from './roseWindowArt.ts'
 
 type PaneKind = 'High' | 'Side' | 'Rose'
 

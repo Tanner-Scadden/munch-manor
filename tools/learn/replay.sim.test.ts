@@ -7,7 +7,10 @@ import { Message } from '../../src/app/message'
 import { type Model, Phase } from '../../src/app/model'
 import { initialModel } from '../../src/app/pureApp'
 import { addBot } from '../../src/domain/bots'
-import { RunRecordingJson, finishRecording } from '../../src/platform/recording'
+import {
+  RunRecordingJson,
+  finishRecording,
+} from '../../src/platform/recording/recording'
 import { PLAYER_MAX_HP } from '../../src/shared/constants'
 import {
   SURFACE,

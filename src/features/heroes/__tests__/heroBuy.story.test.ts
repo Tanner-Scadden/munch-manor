@@ -4,14 +4,17 @@ import { UiStruct } from '@effect/ui'
 import { HtmlScene } from '@effect/ui/html/testing'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { Message } from '../../../app/message'
-import type { Model } from '../../../app/model'
-import { addBot } from '../../../domain/bots'
-import { LobbyMessage } from '../../../features/lobby/message'
-import { restoreSave, saveOf } from '../../../platform/save'
-import type { Calling } from '../../../shared/playerData'
-import { readyAfterRead } from '../../../test/model.fixture'
-import { byClass } from '../../../test/sceneTesting'
+import { Message } from '#app/message.ts'
+import type { Model } from '#app/model.ts'
+import { addBot } from '#domain/bots.ts'
+import { HeroPicker } from '#features/heroes/block.ts'
+import { startingCallingOf } from '#features/heroes/callingPick.ts'
+import { LobbyMessage } from '#features/lobby/message.ts'
+import { isHeroPickerUp } from '#features/lobby/model.ts'
+import { restoreSave, saveOf } from '#platform/save/save.ts'
+import type { Calling } from '#shared/records/playerData.ts'
+import { readyAfterRead } from '#test/model.fixture.ts'
+import { byClass } from '#test/sceneTesting.ts'
 import {
   type StoryStep,
   modelAfter,
@@ -22,18 +25,15 @@ import {
   storyOf,
   tapLobbyHero,
   writeSave,
-} from '../../../test/testing'
-import { callingStandingOf } from '../../../world/heroes/calling'
+} from '#test/testing.ts'
+import { callingStandingOf } from '#world/heroes/calling.ts'
 import {
   bonesBalanceOf,
   pointsForRank,
   rankOf,
   totalPointsOf,
-} from '../../../world/heroes/rank'
-import { focusOf } from '../../../world/party/party'
-import { isHeroPickerUp } from '../../lobby/model'
-import { HeroPicker } from '../block'
-import { startingCallingOf } from '../callingPick'
+} from '#world/heroes/rank.ts'
+import { focusOf } from '#world/party/party.ts'
 
 const player = (
   rank: number,

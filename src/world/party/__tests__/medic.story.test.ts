@@ -3,9 +3,9 @@ import { Array, Result } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { type Bot, Life, type Model } from '../../../app/model'
-import { botInputs } from '../../../features/bots/teammateBot'
-import { FIXED_STEP_MS } from '../../../shared/constants'
+import { type Bot, Life, type Model } from '#app/model.ts'
+import { botInputs } from '#features/bots/teammateBot.ts'
+import { FIXED_STEP_MS } from '#shared/constants.ts'
 import {
   crewInWave,
   pickupAt,
@@ -13,7 +13,7 @@ import {
   placeSeat,
   withPickups,
   withSeatLife,
-} from '../../../test/model.fixture'
+} from '#test/model.fixture.ts'
 import {
   checkModel,
   hasEvent,
@@ -21,11 +21,11 @@ import {
   steps,
   tap,
   ticks,
-} from '../../../test/testing'
-import type { World } from '../../schema/world'
-import { SeatAction, trySeatAction } from '../../step/stepWorld'
-import { MEDIC_RULES, isCallFresh } from '../medic'
-import { COOP_RULES, seatStateAt } from '../party'
+} from '#test/testing.ts'
+import { MEDIC_RULES, isCallFresh } from '#world/party/medic.ts'
+import { COOP_RULES, seatStateAt } from '#world/party/party.ts'
+import type { World } from '#world/schema/world.ts'
+import { SeatAction, trySeatAction } from '#world/step/stepWorld.ts'
 
 const TICK_MS = FIXED_STEP_MS
 const LEFT_X = 60

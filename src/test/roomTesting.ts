@@ -27,11 +27,11 @@ import {
   pastArrival,
   startRoomWorld,
   stepRoomWorld,
-} from '../world/net/roomWorld'
-import { maybePlayerAt, modifySeat, playersOf } from '../world/party/party'
-import { Phase, type Vector, ZombieState } from '../world/schema/worldSchema'
-import { normalize } from '../world/step/geometry'
-import { SeatAction } from '../world/step/stepWorld'
+} from '#world/net/roomWorld.ts'
+import { maybePlayerAt, modifySeat, playersOf } from '#world/party/party.ts'
+import { Phase, type Vector, ZombieState } from '#world/schema/worldSchema.ts'
+import { normalize } from '#world/step/geometry.ts'
+import { SeatAction } from '#world/step/stepWorld.ts'
 
 export const TWO_SEAT_ROOM = pastArrival(
   startRoomWorld([0, 1], 7, DEFAULT_ROOM_SETTINGS),

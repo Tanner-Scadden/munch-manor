@@ -2,13 +2,13 @@ import { Array, Function, Option } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import type { Model } from '../../app/model'
-import { isHumanCrew } from '../../domain/bots'
-import { effectiveModifiersOf, playedMarkOf } from '../../domain/onlineRun'
-import { isEndScreen, isGuided, isInRun, isOnHome } from '../../domain/run'
-import { playedDifficultyOf } from '../../platform/analyticsRun'
-import { purseBonesAt, purseRanksBetween } from '../../shared/rankCurve'
-import { dareItemsFoundOf } from '../../world/dare/dare'
+import type { Model } from '#app/model.ts'
+import { isHumanCrew } from '#domain/bots.ts'
+import { effectiveModifiersOf, playedMarkOf } from '#domain/onlineRun.ts'
+import { isEndScreen, isGuided, isInRun, isOnHome } from '#domain/run.ts'
+import { playedDifficultyOf } from '#platform/analytics/analyticsRun.ts'
+import { purseBonesAt, purseRanksBetween } from '#shared/records/rankCurve.ts'
+import { dareItemsFoundOf } from '#world/dare/dare.ts'
 import {
   type RunPayInput,
   bonesForRun,
@@ -16,12 +16,13 @@ import {
   pointsForRun,
   rankOf,
   totalPointsOf,
-} from '../../world/heroes/rank'
-import { leadSeatOf } from '../../world/party/party'
-import { runBonusPercentOf } from '../../world/run/dareLadder'
-import { killTotal } from '../../world/run/stats'
-import { Phase } from '../../world/schema/worldSchema'
-import { awardsOf, crewOf } from './crewAwards'
+} from '#world/heroes/rank.ts'
+import { leadSeatOf } from '#world/party/party.ts'
+import { runBonusPercentOf } from '#world/run/dareLadder.ts'
+import { killTotal } from '#world/run/stats.ts'
+import { Phase } from '#world/schema/worldSchema.ts'
+
+import { awardsOf, crewOf } from './crewAwards.ts'
 
 const payInputOf = (run: Model, isEnded: boolean): RunPayInput => {
   const seat = leadSeatOf(run)

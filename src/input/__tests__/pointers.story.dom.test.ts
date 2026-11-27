@@ -3,11 +3,13 @@ import { Array, Effect, Fiber, Option, Stream } from 'effect'
 import { type Subscription, UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { Message } from '../../app/message'
-import { GameEvent, type Model, Phase } from '../../app/model'
-import { initialModel } from '../../app/pureApp'
-import { subscriptions } from '../../app/subscriptions'
-import { FIXED_STEP_MS } from '../../shared/constants'
+import { Message } from '#app/message.ts'
+import { GameEvent, type Model, Phase } from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
+import { subscriptions } from '#app/subscriptions.ts'
+import { isTrackingPointer } from '#input/input.ts'
+import { MouseButton, Stick } from '#input/inputSchema.ts'
+import { FIXED_STEP_MS } from '#shared/constants.ts'
 import {
   FIRE_LIFT,
   FIRE_PRESS,
@@ -19,11 +21,9 @@ import {
   storyOf,
   tick,
   ticks,
-} from '../../test/testing'
-import { asVeteran } from '../../test/veteran'
-import { focusOf } from '../../world/party/party'
-import { isTrackingPointer } from '../input'
-import { MouseButton, Stick } from '../inputSchema'
+} from '#test/testing.ts'
+import { asVeteran } from '#test/veteran.ts'
+import { focusOf } from '#world/party/party.ts'
 
 const LEFT_THUMB = 11
 const RIGHT_THUMB = 12

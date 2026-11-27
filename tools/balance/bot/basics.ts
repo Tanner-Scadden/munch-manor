@@ -13,16 +13,16 @@ import {
   cameraFor,
   isInView as isLensInView,
   worldWindowOf,
-} from '../../../src/render/camera'
-import { floorToScreenDirection } from '../../../src/render/lens'
+} from '../../../src/render/camera/camera'
+import { floorToScreenDirection } from '../../../src/render/camera/lens'
 import {
   DEFAULT_PORTRAIT_SCREEN,
   LANDSCAPE_MAX_WIDTH,
   LANDSCAPE_TOUCH_SCREEN,
   type Screen,
   landscapeTouchScreen,
-} from '../../../src/render/screen'
-import type { Calling } from '../../../src/shared/playerData'
+} from '../../../src/render/camera/screen'
+import type { Calling } from '../../../src/shared/records/playerData'
 import { CALLINGS } from '../../../src/world/heroes/calling'
 import { levelOf } from '../../../src/world/level/arena'
 import { MAX_MARK } from '../../../src/world/run/dareLadder'

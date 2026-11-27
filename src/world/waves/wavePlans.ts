@@ -6,11 +6,11 @@ import {
   PACK_GAP_MS,
   SPAWN_JITTER_MS,
   STRAGGLER_JITTER_MS,
-} from '../../shared/constants'
-import { START_LEVEL } from '../level/arena'
-import { DOOR_IDS } from '../level/tileGrid'
-import type { DoorId, Hold, ZombieKind } from '../schema/worldSchema'
-import { ZOMBIE_KIND_ORDER } from '../zombies/zombies'
+} from '#shared/constants.ts'
+import { START_LEVEL } from '#world/level/arena.ts'
+import { DOOR_IDS } from '#world/level/tileGrid.ts'
+import type { DoorId, Hold, ZombieKind } from '#world/schema/worldSchema.ts'
+import { ZOMBIE_KIND_ORDER } from '#world/zombies/zombies.ts'
 
 export type KindWeight = Readonly<{ kind: ZombieKind; weight: number }>
 

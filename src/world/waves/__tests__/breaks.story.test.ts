@@ -3,7 +3,7 @@ import { Effect, Option } from 'effect'
 import { Component, UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { Message } from '../../../app/message'
+import { Message } from '#app/message.ts'
 import {
   BreakClock,
   DebutCard,
@@ -14,18 +14,18 @@ import {
   Phase,
   Reload,
   RunMode,
-} from '../../../app/model'
-import { initialModel } from '../../../app/pureApp'
-import { SetFullscreen } from '../../../app/update/fullscreen'
-import { ShowInstallPrompt } from '../../../app/update/home'
+} from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
+import { SetFullscreen } from '#app/update/fullscreen.ts'
+import { ShowInstallPrompt } from '#app/update/home.ts'
 import {
   DEBUT_CARD_MIN_MS,
   DEBUT_CARD_MS,
   isCountdownBeckoning,
   shownHints,
-} from '../../../features/onboarding/onboarding'
-import { FIXED_STEP_MS, PREPARATION_MS } from '../../../shared/constants'
-import { home, onHard, pastTimedBreaks } from '../../../test/model.fixture'
+} from '#features/onboarding/onboarding.ts'
+import { FIXED_STEP_MS, PREPARATION_MS } from '#shared/constants.ts'
+import { home, onHard, pastTimedBreaks } from '#test/model.fixture.ts'
 import {
   checkModel,
   modelAfter,
@@ -34,11 +34,11 @@ import {
   tap,
   tick,
   ticks,
-} from '../../../test/testing'
-import { STARTING_PISTOL } from '../../gear/weapons'
-import { focusOf, modifyFocus } from '../../party/party'
-import { breakMsOf } from '../../run/difficulty'
-import { Arsenal } from '../../schema/worldSchema'
+} from '#test/testing.ts'
+import { STARTING_PISTOL } from '#world/gear/weapons.ts'
+import { focusOf, modifyFocus } from '#world/party/party.ts'
+import { breakMsOf } from '#world/run/difficulty.ts'
+import { Arsenal } from '#world/schema/worldSchema.ts'
 
 const TICK_MS = 50
 

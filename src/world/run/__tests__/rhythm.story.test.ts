@@ -3,11 +3,11 @@ import { Array, Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { type Difficulty, type Model, Phase } from '../../../app/model'
-import { FIXED_STEP_MS } from '../../../shared/constants'
-import { breakSpawns, home, pastTimedBreaks } from '../../../test/model.fixture'
-import { modelAfter, tick } from '../../../test/testing'
-import { DIFFICULTIES } from '../difficulty'
+import { type Difficulty, type Model, Phase } from '#app/model.ts'
+import { FIXED_STEP_MS } from '#shared/constants.ts'
+import { breakSpawns, home, pastTimedBreaks } from '#test/model.fixture.ts'
+import { modelAfter, tick } from '#test/testing.ts'
+import { DIFFICULTIES } from '#world/run/difficulty.ts'
 
 const clearingOn = (difficulty: Difficulty): Model =>
   UiStruct.evolve(pastTimedBreaks(home), {

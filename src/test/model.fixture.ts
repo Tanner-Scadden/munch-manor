@@ -2,6 +2,7 @@ import { Array, Function, Option, Order } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
+import { freshRun } from '#app/frame/runReset.ts'
 import {
   BreakClock,
   type Bullet,
@@ -15,23 +16,26 @@ import {
   Phase,
   type PlannedSpawn,
   type Zombie,
-} from '../app/model'
-import { initialModel } from '../app/pureApp'
-import { freshRun } from '../app/runReset'
-import { missionsOn } from '../features/missions/missions'
-import { PLAYER_MAX_HP, PREPARATION_MS } from '../shared/constants'
-import { freezeOn } from '../shared/missionData'
-import { heroIdOf } from '../shared/playerData'
-import { nextRandom } from '../shared/prng'
-import { type DareThing, Finale } from '../world/dare/dareSchema'
-import { frontDoorSillOf } from '../world/dare/finale'
-import { caseBoxOf } from '../world/feats/caseSpots'
-import { fridgeBoxOf, pickPrize, prizeWeights } from '../world/fridge/leftovers'
-import { STARTING_PISTOL } from '../world/gear/weapons'
-import { CALLINGS, isCallingUnlocked } from '../world/heroes/calling'
-import { grantedVeteran } from '../world/heroes/rank'
-import { VALVE_RULES, valveBoxOf } from '../world/kitchen/gasValve'
-import { STOVE_RULES, stoveBoxOf } from '../world/kitchen/stove'
+} from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
+import { missionsOn } from '#features/missions/missions.ts'
+import { PLAYER_MAX_HP, PREPARATION_MS } from '#shared/constants.ts'
+import { nextRandom } from '#shared/prng.ts'
+import { freezeOn } from '#shared/records/missionData.ts'
+import { heroIdOf } from '#shared/records/playerData.ts'
+import { type DareThing, Finale } from '#world/dare/dareSchema.ts'
+import { frontDoorSillOf } from '#world/dare/finale.ts'
+import { caseBoxOf } from '#world/feats/caseSpots.ts'
+import {
+  fridgeBoxOf,
+  pickPrize,
+  prizeWeights,
+} from '#world/fridge/leftovers.ts'
+import { STARTING_PISTOL } from '#world/gear/weapons.ts'
+import { CALLINGS, isCallingUnlocked } from '#world/heroes/calling.ts'
+import { grantedVeteran } from '#world/heroes/rank.ts'
+import { VALVE_RULES, valveBoxOf } from '#world/kitchen/gasValve.ts'
+import { STOVE_RULES, stoveBoxOf } from '#world/kitchen/stove.ts'
 import {
   type Level,
   START_LEVEL,
@@ -40,15 +44,15 @@ import {
   openExitIn,
   startingLevel,
   startingLevelFor,
-} from '../world/level/arena'
-import { KITCHEN_EXIT } from '../world/level/exits'
+} from '#world/level/arena.ts'
+import { KITCHEN_EXIT } from '#world/level/exits.ts'
 import {
   EVERY_LEVEL_SPEC,
   SLOTS,
   SLOT_IDS,
   roomSpotsOf,
-} from '../world/level/plan'
-import { tileCenter } from '../world/level/tileGrid'
+} from '#world/level/plan.ts'
+import { tileCenter } from '#world/level/tileGrid.ts'
 import {
   atSeatBy,
   focusOf,
@@ -57,9 +61,13 @@ import {
   modifyFocus,
   modifySeatRecord,
   seatCrew,
-} from '../world/party/party'
-import { biteGraceScale } from '../world/run/difficulty'
-import { type World, modifyWorldFields, withWorld } from '../world/schema/world'
+} from '#world/party/party.ts'
+import { biteGraceScale } from '#world/run/difficulty.ts'
+import {
+  type World,
+  modifyWorldFields,
+  withWorld,
+} from '#world/schema/world.ts'
 import {
   type Arrangement,
   Arsenal,
@@ -78,16 +86,17 @@ import {
   type SlotRoomId,
   type Vector,
   type WeaponKind,
-} from '../world/schema/worldSchema'
-import { SHOTGUN, maybeSpareGun } from './arsenals'
+} from '#world/schema/worldSchema.ts'
+
+import { SHOTGUN, maybeSpareGun } from './arsenals.ts'
 import {
   PHONE_PORTRAIT,
   SURFACE,
   bulletInto,
   doomed,
   zombieOf,
-} from './testing'
-import { asVeteran } from './veteran'
+} from './testing.ts'
+import { asVeteran } from './veteran.ts'
 
 export const EVERY_LEVEL: ReadonlyArray<Level> = Array.flatMap(
   EVERY_LEVEL_SPEC,

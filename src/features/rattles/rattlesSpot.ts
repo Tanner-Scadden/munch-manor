@@ -1,13 +1,13 @@
 import type { Array } from 'effect'
 import { Function } from 'effect'
 
-import { GLYPH_SPRITES } from '../../art/font'
+import { GLYPH_SPRITES } from '#art/font.ts'
 import {
   AWAKE_FACE,
   BLINK_FACE,
   RATTLES_PALETTE,
   rattlesPixels,
-} from '../../art/rattlesArt'
+} from '#art/rattlesArt.ts'
 import {
   type Sprite,
   TOP_LEFT,
@@ -15,9 +15,9 @@ import {
   group,
   placeAt,
   spriteShapes,
-} from '../../art/sprite'
-import * as Draw from '../../render/draw'
-import { RATTLES_BOX } from '../../world/level/arena'
+} from '#art/sprite.ts'
+import * as Draw from '#render/draw.ts'
+import { RATTLES_BOX } from '#world/level/arena.ts'
 
 const TRUNK_TOP_COLOR = '#6b4423'
 const TRUNK_LID_EDGE_COLOR = '#8a5a2b'

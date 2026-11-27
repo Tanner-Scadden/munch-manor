@@ -14,7 +14,7 @@ import {
   type Zombie,
   type ZombieKind,
   ZombieState,
-} from '../../../app/model'
+} from '#app/model.ts'
 import {
   DOOR_HALF_WIDTH_PX,
   FIXED_STEP_MS,
@@ -22,12 +22,8 @@ import {
   PLAYER_MAX_HP,
   ZOMBIE_BUMP_SPEED,
   ZOMBIE_KNOCKBACK_SPEED,
-} from '../../../shared/constants'
-import {
-  DISTANT_SPAWN,
-  quietWave,
-  withActors,
-} from '../../../test/model.fixture'
+} from '#shared/constants.ts'
+import { DISTANT_SPAWN, quietWave, withActors } from '#test/model.fixture.ts'
 import {
   blastFrames,
   checkModel,
@@ -37,25 +33,25 @@ import {
   tick,
   ticks,
   zombieOf,
-} from '../../../test/testing'
-import { START_LEVEL } from '../../level/arena'
-import { doorSpawnPoint, nearestDoor } from '../../level/tileQueries'
-import { focusOf, modifyFocus } from '../../party/party'
-import { vectorLength } from '../../step/geometry'
-import { rollSpawns } from '../../waves/endlessWaves'
+} from '#test/testing.ts'
+import { START_LEVEL } from '#world/level/arena.ts'
+import { doorSpawnPoint, nearestDoor } from '#world/level/tileQueries.ts'
+import { focusOf, modifyFocus } from '#world/party/party.ts'
+import { vectorLength } from '#world/step/geometry.ts'
+import { rollSpawns } from '#world/waves/endlessWaves.ts'
 import {
   FINAL_WAVE,
   type KindWeight,
   WAVE_PLANS,
   debutKinds,
   pickKind,
-} from '../../waves/wavePlans'
+} from '#world/waves/wavePlans.ts'
 import {
   Behavior,
   ZOMBIE_KINDS,
   ZOMBIE_KIND_ORDER,
   isFloorKind,
-} from '../zombies'
+} from '#world/zombies/zombies.ts'
 
 const FRAME_MS = FIXED_STEP_MS
 const LONG_FRAME_MS = 50

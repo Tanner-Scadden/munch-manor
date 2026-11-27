@@ -1,4 +1,4 @@
-import '../../src/art/spriteAtlasBoot'
+import '../../src/art/atlas/spriteAtlasBoot'
 import { Effect, Layer } from 'effect'
 
 import { Head } from '@effect/ui'

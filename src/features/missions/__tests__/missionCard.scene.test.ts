@@ -5,23 +5,23 @@ import { HtmlLocator } from '@effect/ui/html/testing'
 import { Locator } from '@effect/ui/testing'
 import { describe, it } from '@effect/vitest'
 
-import { PANEL_DIALOG_ID } from '../../../domain/clientSchema'
+import { PANEL_DIALOG_ID } from '#domain/clientSchema.ts'
+import { missionsOn } from '#features/missions/missions.ts'
 import {
   MISSION_RULES,
   type MissionId,
   noMissions,
-} from '../../../shared/missionData'
-import { home, knowingDay } from '../../../test/model.fixture'
+} from '#shared/records/missionData.ts'
+import { home, knowingDay } from '#test/model.fixture.ts'
 import {
   byClass,
   expectAttr,
   measureSurface,
   showDialog,
   withAttrs,
-} from '../../../test/sceneTesting'
-import { sceneOf } from '../../../test/testing'
-import { MISSIONS_TITLE, MISSION_NAMES } from '../../../world/names'
-import { missionsOn } from '../missions'
+} from '#test/sceneTesting.ts'
+import { sceneOf } from '#test/testing.ts'
+import { MISSIONS_TITLE, MISSION_NAMES } from '#world/names.ts'
 
 const TODAY = '2026-11-12'
 

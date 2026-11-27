@@ -1,22 +1,20 @@
 import { Function } from 'effect'
 
-import type {
-  ApplicationHtml,
-  ApplicationViewBuilder,
-} from '../../app/definition'
-import type { Model } from '../../app/model'
-import { pocketBoxOf } from '../../features/dare/dareCard'
+import type { ApplicationHtml, ApplicationViewBuilder } from '#app/component.ts'
+import type { Model } from '#app/model.ts'
+import { pocketBoxOf } from '#features/dare/dareCard.ts'
 import {
   isDareCardToggling,
   isPocketCardOpened,
-} from '../../features/dare/pocketCard'
-import { isCaseCardUp } from '../../features/onboarding/caseCard'
-import { isDebutCardUp } from '../../features/onboarding/onboarding'
-import { RunButtonMessage } from '../../input/message'
-import { hudLayoutFor } from '../../render/hudLayout'
-import { type Screen, screenOf } from '../../render/screen'
-import { percentOf } from '../../ui/menuParts'
-import { pocketOf } from './pocket'
+} from '#features/dare/pocketCard.ts'
+import { isCaseCardUp } from '#features/onboarding/caseCard.ts'
+import { isDebutCardUp } from '#features/onboarding/onboarding.ts'
+import { RunButtonMessage } from '#input/message.ts'
+import { type Screen, screenOf } from '#render/camera/screen.ts'
+import { hudLayoutFor } from '#render/hud/hudLayout.ts'
+import { percentOf } from '#ui/menuParts.ts'
+
+import { pocketOf } from './pocket.ts'
 
 const HIT_PAD = 2
 const TAP_PX = 48

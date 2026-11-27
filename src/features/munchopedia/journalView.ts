@@ -3,27 +3,28 @@ import { Array, Option } from 'effect'
 import type { View } from '@effect/ui'
 import type { Html } from '@effect/ui/html'
 
-import { PROP_ICONS } from '../../art/callingArt'
+import { PROP_ICONS } from '#art/callingArt.ts'
 import {
   DARE_ICON_URLS,
   DARE_SILHOUETTE_URLS,
   JOURNAL_ICON_URL,
-} from '../../art/dareArt'
-import { PADLOCK_ICON } from '../../art/icons'
-import { maybeRoomIcon } from '../../art/roomIcons'
-import { spriteImage } from '../../art/sprite'
-import { isHeroStoryOpen } from '../../domain/mastery'
-import { Calling } from '../../shared/playerData'
-import { iconView } from '../../ui/menuParts'
-import type { DareKind } from '../../world/dare/dareSchema'
-import { type MilestoneId, maybeOpenerOf } from '../../world/dare/milestones'
+} from '#art/dareArt.ts'
+import { PADLOCK_ICON } from '#art/icons/icons.ts'
+import { maybeRoomIcon } from '#art/icons/roomIcons.ts'
+import { spriteImage } from '#art/sprite.ts'
+import { isHeroStoryOpen } from '#domain/mastery.ts'
+import { Calling } from '#shared/records/playerData.ts'
+import { iconView } from '#ui/menuParts.ts'
+import type { DareKind } from '#world/dare/dareSchema.ts'
+import { type MilestoneId, maybeOpenerOf } from '#world/dare/milestones.ts'
 import {
   CALLING_NAMES,
   DARE_LINES,
   DARE_NAMES,
   MILESTONE_HINTS,
   STORY_TITLES,
-} from '../../world/names'
+} from '#world/names.ts'
+
 import {
   HERO_REASONS,
   HERO_STORIES,
@@ -43,9 +44,9 @@ import {
   journalTabId,
   storyPageNumber,
   thingStanding,
-} from './journalPages'
-import { Message } from './message'
-import { type MunchopediaProps, tabOfPage } from './model'
+} from './journalPages.ts'
+import { Message } from './message.ts'
+import { type MunchopediaProps, tabOfPage } from './model.ts'
 
 type H = Html.H<Message>
 type Content = View.Content<Message>

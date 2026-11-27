@@ -7,7 +7,7 @@ import {
   clientToView,
   portraitHeightFor,
   stagePlacement,
-} from '../screen'
+} from '#render/camera/screen.ts'
 
 const surface = (width: number, height: number, pixelRatio?: number) => ({
   left: 0,

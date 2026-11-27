@@ -8,7 +8,7 @@ import {
   screenCameraOf,
   viewToWorld,
   worldToView,
-} from '../../../src/render/camera'
+} from '../../../src/render/camera/camera'
 import { PLAYER_RADIUS } from '../../../src/shared/constants'
 import {
   isFridgeWeapon,

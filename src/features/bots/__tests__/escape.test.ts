@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest'
 
-import { PARLOUR } from '../../../world/level/arena'
-import { escapeHeading } from '../escape'
+import { escapeHeading } from '#features/bots/escape.ts'
+import { PARLOUR } from '#world/level/arena.ts'
 
 const dot = (a: { x: number; y: number }, b: { x: number; y: number }) =>
   a.x * b.x + a.y * b.y

@@ -1,22 +1,20 @@
 import { Array, Function } from 'effect'
 
-import type {
-  ApplicationHtml,
-  ApplicationViewBuilder,
-} from '../../app/definition'
-import type { Model } from '../../app/model'
-import { DICE_ICON } from '../../art/icons'
+import type { ApplicationHtml, ApplicationViewBuilder } from '#app/component.ts'
+import type { Model } from '#app/model.ts'
+import { DICE_ICON } from '#art/icons/icons.ts'
 import {
   ALL_THREE_ICON,
   MISSION_DONE_ICON,
   MISSION_ICONS,
-} from '../../art/missionIcons'
-import { ALL_THREE_BONES } from '../../shared/missionData'
-import { iconView, percentOf } from '../../ui/menuParts'
-import { boneCountView } from '../../ui/rankBadgeView'
-import { ALL_THREE_TAG, MISSIONS_TITLE, MISSION_NAMES } from '../../world/names'
-import { MissionMessage } from './message'
-import { type MissionRow, isAllThreeDone, missionRowsOf } from './missions'
+} from '#art/icons/missionIcons.ts'
+import { ALL_THREE_BONES } from '#shared/records/missionData.ts'
+import { iconView, percentOf } from '#ui/menuParts.ts'
+import { boneCountView } from '#ui/rankBadgeView.ts'
+import { ALL_THREE_TAG, MISSIONS_TITLE, MISSION_NAMES } from '#world/names.ts'
+
+import { MissionMessage } from './message.ts'
+import { type MissionRow, isAllThreeDone, missionRowsOf } from './missions.ts'
 
 const rowLabel = (row: MissionRow): string =>
   row.isDone

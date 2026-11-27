@@ -20,12 +20,12 @@ import {
   RELAX_TRICKLE_MAX,
   RESTLESS_QUIET_MAX_MS,
   ZOMBIE_ALIVE_MAX,
-} from '../../shared/constants'
-import * as DetMath from '../../shared/detMath'
-import { sameIfUnchanged } from '../../shared/sameList'
-import { type Level, levelOf } from '../level/arena'
-import { boxCenter, distanceToBox } from '../level/tileGrid'
-import type { World } from '../schema/world'
+} from '#shared/constants.ts'
+import * as DetMath from '#shared/detMath.ts'
+import { sameIfUnchanged } from '#shared/sameList.ts'
+import { type Level, levelOf } from '#world/level/arena.ts'
+import { boxCenter, distanceToBox } from '#world/level/tileGrid.ts'
+import type { World } from '#world/schema/world.ts'
 import {
   Alarm,
   Beat,
@@ -36,10 +36,16 @@ import {
   type Vector,
   type Zombie,
   type ZombieKind,
-} from '../schema/worldSchema'
-import { isFrenzyPack } from '../zombies/frenzy'
-import { isFloorKind, isFree, isFusing, isWalking } from '../zombies/zombies'
-import { bySpawnTime } from './wavePacks'
+} from '#world/schema/worldSchema.ts'
+import { isFrenzyPack } from '#world/zombies/frenzy.ts'
+import {
+  isFloorKind,
+  isFree,
+  isFusing,
+  isWalking,
+} from '#world/zombies/zombies.ts'
+
+import { bySpawnTime } from './wavePacks.ts'
 
 export const isAlive = (zombie: Zombie): boolean =>
   isWalking(zombie) || isFusing(zombie)

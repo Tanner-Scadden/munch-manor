@@ -10,12 +10,13 @@ import {
   DifficultyCard,
   type Model,
   Phase,
-} from '../../../app/model'
-import { initialModel } from '../../../app/pureApp'
-import { saveOf } from '../../../platform/save'
-import { FIXED_STEP_MS } from '../../../shared/constants'
-import { SavedOnboarding } from '../../../shared/playerData'
-import { DISTANT_SPAWN } from '../../../test/model.fixture'
+} from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
+import { isOnLastShots } from '#features/hud/ammoWarning.ts'
+import { saveOf } from '#platform/save/save.ts'
+import { FIXED_STEP_MS } from '#shared/constants.ts'
+import { SavedOnboarding } from '#shared/records/playerData.ts'
+import { DISTANT_SPAWN } from '#test/model.fixture.ts'
 import {
   SURFACE,
   checkPendingSounds,
@@ -23,10 +24,9 @@ import {
   holdFire,
   steps,
   tick,
-} from '../../../test/testing'
-import { STARTING_PISTOL, freshGun } from '../../../world/gear/weapons'
-import { modifyFocus } from '../../../world/party/party'
-import { isOnLastShots } from '../ammoWarning'
+} from '#test/testing.ts'
+import { STARTING_PISTOL, freshGun } from '#world/gear/weapons.ts'
+import { modifyFocus } from '#world/party/party.ts'
 
 const FRAME_MS = FIXED_STEP_MS
 

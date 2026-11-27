@@ -2,19 +2,19 @@ import { Array, Function, Option, Result, Schema, String, pipe } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import type { Model } from '../../app/model'
-import type { HintIcon } from '../../art/hintIcons'
-import { type HintBand, QuestTour, Tour } from '../../domain/clientSchema'
-import { type InputDevice, Stick } from '../../input/inputSchema'
-import { screenCameraOf, worldToView } from '../../render/camera'
-import { landscapeFrameOffset, screenOf } from '../../render/screen'
-import * as DetMath from '../../shared/detMath'
-import { maybeLevelProgress } from '../../world/gear/gunLevels'
-import { TURRET_WEAPON, maybeSelectedKind } from '../../world/gear/traps'
-import { heldGun, isWieldingMelee } from '../../world/gear/weapons'
-import { focusOf, focusSlotOf, isCoop } from '../../world/party/party'
-import { isPending, isTimedBreak, learn } from '../../world/run/lessons'
-import { isKitchenTourOn } from '../../world/run/tutorialRules'
+import type { Model } from '#app/model.ts'
+import type { HintIcon } from '#art/icons/hintIcons.ts'
+import { type HintBand, QuestTour, Tour } from '#domain/clientSchema.ts'
+import { type InputDevice, Stick } from '#input/inputSchema.ts'
+import { screenCameraOf, worldToView } from '#render/camera/camera.ts'
+import { landscapeFrameOffset, screenOf } from '#render/camera/screen.ts'
+import * as DetMath from '#shared/detMath.ts'
+import { maybeLevelProgress } from '#world/gear/gunLevels.ts'
+import { TURRET_WEAPON, maybeSelectedKind } from '#world/gear/traps.ts'
+import { heldGun, isWieldingMelee } from '#world/gear/weapons.ts'
+import { focusOf, focusSlotOf, isCoop } from '#world/party/party.ts'
+import { isPending, isTimedBreak, learn } from '#world/run/lessons.ts'
+import { isKitchenTourOn } from '#world/run/tutorialRules.ts'
 import {
   BreakClock,
   DebutCard,
@@ -25,10 +25,10 @@ import {
   type Practice,
   TrapHint,
   type ZombieKind,
-} from '../../world/schema/worldSchema'
-import { vectorLength } from '../../world/step/geometry'
-import { isBreak } from '../../world/waves/waves'
-import { ZOMBIE_KIND_ORDER } from '../../world/zombies/zombies'
+} from '#world/schema/worldSchema.ts'
+import { vectorLength } from '#world/step/geometry.ts'
+import { isBreak } from '#world/waves/waves.ts'
+import { ZOMBIE_KIND_ORDER } from '#world/zombies/zombies.ts'
 
 const learnWhen = (isDone: boolean, atMs: number) => (lesson: Lesson) =>
   isDone ? learn(lesson, atMs) : lesson

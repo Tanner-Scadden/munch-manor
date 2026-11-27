@@ -1,22 +1,23 @@
 import { Array, Function, Option, pipe } from 'effect'
 
-import type { HomeMode } from '../../domain/clientSchema'
-import { FOCUS_STEP_OFFSET, type FocusStep } from '../../input/input'
-import type { MapId } from '../../shared/nameKeys'
-import type { Difficulty } from '../../shared/playerData'
+import type { HomeMode } from '#domain/clientSchema.ts'
+import { FOCUS_STEP_OFFSET, type FocusStep } from '#input/input.ts'
+import type { MapId } from '#shared/nameKeys.ts'
+import type { Difficulty } from '#shared/records/playerData.ts'
 import {
   isCoveredByMark,
   runBonusPercentOf,
   withMarkModifiers,
-} from '../../world/run/dareLadder'
-import { DIFFICULTY_ORDER, isLocked } from '../../world/run/difficulty'
+} from '#world/run/dareLadder.ts'
+import { DIFFICULTY_ORDER, isLocked } from '#world/run/difficulty.ts'
 import {
   MODIFIER_ORDER,
   type Modifier,
   isModifierOn,
-} from '../../world/run/modifiers'
-import type { DifficultySetting } from '../../world/schema/worldSchema'
-import type { LobbyControl, LobbyPicks } from './model'
+} from '#world/run/modifiers.ts'
+import type { DifficultySetting } from '#world/schema/worldSchema.ts'
+
+import type { LobbyControl, LobbyPicks } from './model.ts'
 
 export const SEATS: ReadonlyArray<readonly [LobbyControl, LobbyControl]> = [
   ['Bot1', 'Drop1'],

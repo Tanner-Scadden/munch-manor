@@ -2,8 +2,8 @@ import { Array, Effect } from 'effect'
 
 import { type Appearance, defaultAppearance } from '@game/app/model'
 import { playerPalette, playerPixels } from '@game/art/appearance'
-import { pixelIconUrl } from '@game/art/icons'
-import { HairStyle } from '@game/shared/playerData'
+import { pixelIconUrl } from '@game/art/icons/icons'
+import { HairStyle } from '@game/shared/records/playerData'
 import { CALLINGS } from '@game/world/heroes/calling'
 
 import { auditTag, finish, openBrowser, runAudit, shot } from './lib'

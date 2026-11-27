@@ -3,15 +3,15 @@ import { Array } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { BreakClock, type Model, type Phase } from '../../../app/model'
+import { BreakClock, type Model, type Phase } from '#app/model.ts'
 import {
   WAVE_2_BREAK,
   breakBefore,
   pastTimedBreaks,
   readyModel,
-} from '../../../test/model.fixture'
-import { checkModel, modelAfter, steps, tap } from '../../../test/testing'
-import { readyPointsFor } from '../../heroes/rank'
+} from '#test/model.fixture.ts'
+import { checkModel, modelAfter, steps, tap } from '#test/testing.ts'
+import { readyPointsFor } from '#world/heroes/rank.ts'
 
 const onBreak = (phase: Phase): Model =>
   UiStruct.evolve(pastTimedBreaks(readyModel), { phase: () => phase })

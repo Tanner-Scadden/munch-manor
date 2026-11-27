@@ -2,22 +2,22 @@ import { Array, Function, Option, Result, pipe } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import { SHOP_FIRST_WAVE } from '../../shared/constants'
-import { nextRandom } from '../../shared/prng'
-import { isMissingHeart, maxHpOf } from '../heroes/calling'
-import { type Level, levelOf } from '../level/arena'
-import { type LevelSpec, roomSpotsOf } from '../level/plan'
-import { type Tile, tileCenter } from '../level/tileGrid'
+import { SHOP_FIRST_WAVE } from '#shared/constants.ts'
+import { nextRandom } from '#shared/prng.ts'
+import { isMissingHeart, maxHpOf } from '#world/heroes/calling.ts'
+import { type Level, levelOf } from '#world/level/arena.ts'
+import { type LevelSpec, roomSpotsOf } from '#world/level/plan.ts'
+import { type Tile, tileCenter } from '#world/level/tileGrid.ts'
 import {
   atSeat,
   forEachSeat,
   isCoop,
   isStanding,
   seatStateAt,
-} from '../party/party'
-import { activeModifiersOf } from '../run/dareLadder'
-import { isPending } from '../run/lessons'
-import type { World } from '../schema/world'
+} from '#world/party/party.ts'
+import { activeModifiersOf } from '#world/run/dareLadder.ts'
+import { isPending } from '#world/run/lessons.ts'
+import type { World } from '#world/schema/world.ts'
 import {
   type Crate,
   CrateRoom,
@@ -27,9 +27,10 @@ import {
   type PlayerSlot,
   type TrapKind,
   type Vector,
-} from '../schema/worldSchema'
-import { distanceBetween } from '../step/geometry'
-import { ownedCount, stockTrap, trapLimitOf } from './traps'
+} from '#world/schema/worldSchema.ts'
+import { distanceBetween } from '#world/step/geometry.ts'
+
+import { ownedCount, stockTrap, trapLimitOf } from './traps.ts'
 
 type CrateRules = Readonly<{
   reachPx: number

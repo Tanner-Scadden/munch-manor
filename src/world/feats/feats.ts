@@ -2,16 +2,16 @@ import { Array, Function, Option } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import { isInKitchenAt } from '../kitchen/kitchenKeys'
-import { type Level, levelOf } from '../level/arena'
+import { isInKitchenAt } from '#world/kitchen/kitchenKeys.ts'
+import { type Level, levelOf } from '#world/level/arena.ts'
 import {
   forEachSeat,
   isCoop,
   maybePlayerAt,
   modifySeat,
   seatStateAt,
-} from '../party/party'
-import type { World } from '../schema/world'
+} from '#world/party/party.ts'
+import type { World } from '#world/schema/world.ts'
 import {
   type Armament,
   Feat,
@@ -27,7 +27,7 @@ import {
   type SeatState,
   type Vector,
   isHolding,
-} from '../schema/worldSchema'
+} from '#world/schema/worldSchema.ts'
 
 export const goalOf = (feat: Feat): number =>
   Feat.match(feat, {

@@ -1,13 +1,14 @@
 import { Function } from 'effect'
 
-import { type Palette, type SpriteDepth, TRANSPARENT } from '../sprite'
+import { type Palette, type SpriteDepth, TRANSPARENT } from '#art/sprite.ts'
+
 import {
   type FramePixels,
   type Patch,
   applyPatches,
   patch,
   wornThrough,
-} from './wear'
+} from './wear.ts'
 
 export const BOSS_PALETTE: Palette = {
   P: '#b49ab0',

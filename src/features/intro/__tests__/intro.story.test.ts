@@ -3,12 +3,13 @@ import { Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { Message } from '../../../app/message'
-import { AudioState, type Model, Phase } from '../../../app/model'
-import type { SoundEffect } from '../../../audio/audio'
-import { saveOf } from '../../../platform/save'
-import { MAX_FRAME_DELTA_MS } from '../../../shared/constants'
-import { newPlayerCardSeen, readyModel } from '../../../test/model.fixture'
+import { Message } from '#app/message.ts'
+import { AudioState, type Model, Phase } from '#app/model.ts'
+import type { SoundEffect } from '#audio/audio.ts'
+import { KNOCK_BACK_MS, maybeIntroFrameOf } from '#features/intro/introBeat.ts'
+import { saveOf } from '#platform/save/save.ts'
+import { MAX_FRAME_DELTA_MS } from '#shared/constants.ts'
+import { newPlayerCardSeen, readyModel } from '#test/model.fixture.ts'
 import {
   type StoryStep,
   checkModel,
@@ -23,10 +24,9 @@ import {
   tick,
   ticks,
   ticksFor,
-} from '../../../test/testing'
-import { focusOf } from '../../../world/party/party'
-import { ARRIVAL_MS, SLAM_MS, slamAtMs } from '../../../world/run/arrival'
-import { KNOCK_BACK_MS, maybeIntroFrameOf } from '../introBeat'
+} from '#test/testing.ts'
+import { focusOf } from '#world/party/party.ts'
+import { ARRIVAL_MS, SLAM_MS, slamAtMs } from '#world/run/arrival.ts'
 
 const firstTimer: Model = UiStruct.evolve(readyModel, {
   introSeen: () => 'Unseen',

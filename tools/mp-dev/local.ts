@@ -14,7 +14,7 @@ import { FetchHttpClient, HttpClient, HttpClientRequest } from 'effect/http'
 import * as NodeRuntime from '@effect/platform-node/NodeRuntime'
 import * as NodeServices from '@effect/platform-node/NodeServices'
 
-import { LINK_REDEEM_PATH } from '../../src/shared/sessionApi'
+import { LINK_REDEEM_PATH } from '../../src/shared/records/sessionApi'
 
 const here = import.meta.dirname
 

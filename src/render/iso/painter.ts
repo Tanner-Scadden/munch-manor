@@ -16,11 +16,12 @@ import {
   PlaneGeometry,
 } from '@pixi/3d'
 
-import type { Level } from '../../world/level/arena'
-import type * as Draw from '../draw'
-import { type Affine, type Leaf, flatten, isSameLeaves } from './flatten'
-import { STRETCH, UNIT, zOf } from './space'
-import { type Textures, colorOf } from './textures'
+import type * as Draw from '#render/draw.ts'
+import type { Level } from '#world/level/arena.ts'
+
+import { type Affine, type Leaf, flatten, isSameLeaves } from './flatten.ts'
+import { STRETCH, UNIT, zOf } from './space.ts'
+import { type Textures, colorOf } from './textures.ts'
 
 const matrixOf = (m: Affine): Matrix => new Matrix(m.a, m.b, m.c, m.d, m.e, m.f)
 

@@ -2,9 +2,9 @@ import { Array, Clock, Effect, Option, Queue, Schema, Stream } from 'effect'
 
 import { Subscription } from '@effect/ui'
 
-import { isRoomFrameDue } from '../domain/onlineRun'
-import type { CoopNet } from '../features/coop/net'
-import { coopSubscriptions } from '../features/coop/subscriptions'
+import { isRoomFrameDue } from '#domain/onlineRun.ts'
+import type { CoopNet } from '#features/coop/services/net.ts'
+import { coopSubscriptions } from '#features/coop/subscriptions.ts'
 import {
   MENU_REPEAT_DELAY_MS,
   MENU_REPEAT_MS,
@@ -12,39 +12,40 @@ import {
   isSamePoll,
   padDirection,
   pickPad,
-} from '../input/gamepad'
-import { isTrackingPointer } from '../input/input'
-import type { Gamepad } from '../input/inputSchema'
+} from '#input/gamepad.ts'
+import { isTrackingPointer } from '#input/input.ts'
+import type { Gamepad } from '#input/inputSchema.ts'
 import {
   KEY_WATCH_QUIET_MS,
   isGrabbedKeyUp,
   isLetterKeyCode,
-} from '../input/keyGrab'
+} from '#input/keyGrab.ts'
 import type {
   DisconnectedGamepad,
   PolledGamepad,
   RepeatedPadDirection,
-} from '../input/message'
-import { InstallPrompt } from '../platform/install'
-import { StoreEvent } from '../platform/playerSync'
-import { PlayerStore } from '../platform/store'
-import { todays } from '../platform/today'
+} from '#input/message.ts'
+import { InstallPrompt } from '#platform/install.ts'
+import { StoreEvent } from '#platform/save/playerSync.ts'
+import { PlayerStore } from '#platform/save/store.ts'
+import { todays } from '#platform/today.ts'
 import {
   RUNNING_BUILD,
   UPDATE_CHECK_INTERVAL,
   isCheckingForUpdates,
   isUpdateCheckWindow,
-} from '../platform/version'
-import { DARE_LIST_BUTTON_CLASS } from '../screens/game/dareListButton'
-import { isRunUnderway } from '../world/run/arrival'
-import { isRoundActive } from '../world/waves/waves'
+} from '#platform/version.ts'
+import { DARE_LIST_BUTTON_CLASS } from '#screens/game/dareListButton.ts'
+import { isRunUnderway } from '#world/run/arrival.ts'
+import { isRoundActive } from '#world/waves/waves.ts'
+
 import {
   type FramePace,
   OPEN_GATE,
   framePaceOf,
   gateFor,
   gateFrame,
-} from './frameGate'
+} from './frame/frameGate.ts'
 import {
   type BlurredWindow,
   type CancelledPointer,
@@ -58,10 +59,10 @@ import {
   type ReleasedPointer,
   type RestoredPageFromCache,
   type TickedFrame,
-} from './message'
-import type { Model } from './model'
-import { isPadMenuUp } from './update/padMenu'
-import { isScreenAnimated } from './update/run'
+} from './message.ts'
+import type { Model } from './model.ts'
+import { isPadMenuUp } from './update/padMenu.ts'
+import { isScreenAnimated } from './update/run.ts'
 
 const isFrameActive = (model: Model): boolean =>
   isRunUnderway(model.phase) || isScreenAnimated(model.phase)

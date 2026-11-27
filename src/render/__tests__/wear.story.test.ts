@@ -11,16 +11,19 @@ import {
   type ParticleKind,
   type Zombie,
   ZombieKind,
-} from '../../app/model'
-import { frameAt } from '../../art/sprite'
+} from '#app/model.ts'
+import { frameAt } from '#art/sprite.ts'
 import {
   KABOOMER_FUSE_MAX,
   ZOMBIE_SPRITES,
   kaboomerFuseTip,
-} from '../../art/sprites/zombies'
-import { DECAL_MAX, FIXED_STEP_MS, PARTICLE_MAX } from '../../shared/constants'
-import type { SoundEffect } from '../../shared/soundEffect'
-import { quietWave } from '../../test/model.fixture'
+} from '#art/sprites/zombies.ts'
+import { zombieHealthBarShapes } from '#render/bodies/zombieView.ts'
+import { healthBarShapes } from '#render/hud/healthBarView.ts'
+import type { Decal, Particle } from '#render/renderSchema.ts'
+import { DECAL_MAX, FIXED_STEP_MS, PARTICLE_MAX } from '#shared/constants.ts'
+import type { SoundEffect } from '#shared/soundEffect.ts'
+import { quietWave } from '#test/model.fixture.ts'
 import {
   bulletInto,
   checkModel,
@@ -29,17 +32,14 @@ import {
   steps,
   tick,
   zombieOf,
-} from '../../test/testing'
-import { START_LEVEL } from '../../world/level/arena'
+} from '#test/testing.ts'
+import { START_LEVEL } from '#world/level/arena.ts'
 import {
   ZOMBIE_KINDS,
   isArmorPart,
   isArmorShedAt,
   wearAt,
-} from '../../world/zombies/zombies'
-import { healthBarShapes } from '../healthBarView'
-import type { Decal, Particle } from '../renderSchema'
-import { zombieHealthBarShapes } from '../zombieView'
+} from '#world/zombies/zombies.ts'
 
 const FRAME_MS = FIXED_STEP_MS
 const FAR_X = START_LEVEL.start.x + 60

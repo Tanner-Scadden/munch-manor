@@ -2,8 +2,9 @@ import { Effect, Option, Predicate, Schema } from 'effect'
 
 import { Html } from '@effect/ui/html'
 
-import { toBrowserError } from '../../shared/describeError'
-import type { OverlayPicture, OverlayScene } from './overlayScene'
+import { toBrowserError } from '#shared/describeError.ts'
+
+import type { OverlayPicture, OverlayScene } from './overlayScene.ts'
 
 const TAG = 'munch-overlay'
 
@@ -25,7 +26,7 @@ const startScene = (
 ) =>
   Effect.gen(function* () {
     const { createOverlayScene } = yield* Effect.tryPromise({
-      try: () => import('./overlayScene'),
+      try: () => import('./overlayScene.ts'),
       catch: toBrowserError,
     })
     return yield* createOverlayScene({ host, picture, onLoaded })

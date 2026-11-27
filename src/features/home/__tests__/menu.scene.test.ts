@@ -6,21 +6,45 @@ import { HtmlLocator, HtmlScene } from '@effect/ui/html/testing'
 import { Locator } from '@effect/ui/testing'
 import { describe, it, expect as vitestExpect } from '@effect/vitest'
 
-import { Message } from '../../../app/message'
-import { type Model, Phase } from '../../../app/model'
-import { profilePropsOf } from '../../../app/profileView'
-import { FocusHandCard, FocusHomeButton } from '../../../app/update/home'
-import { FocusProfileElement } from '../../../app/update/profile'
-import { ApplyRotation } from '../../../app/update/rotation'
+import { Message } from '#app/message.ts'
+import { type Model, Phase } from '#app/model.ts'
+import { FocusHandCard, FocusHomeButton } from '#app/update/home.ts'
+import { FocusProfileElement } from '#app/update/profile.ts'
+import { ApplyRotation } from '#app/update/rotation.ts'
+import { profilePropsOf } from '#app/views/profileView.ts'
 import {
   HAND_DIALOG_ID,
   PANEL_DIALOG_ID,
   PROFILE_DIALOG_ID,
-} from '../../../domain/clientSchema'
-import { withBests } from '../../../domain/run'
-import { noSavedBests, restoreSave, saveOf } from '../../../platform/save'
-import { RESTART_GRACE_MS } from '../../../shared/constants'
-import { home, withoutSupportLink } from '../../../test/model.fixture'
+} from '#domain/clientSchema.ts'
+import { withBests } from '#domain/run.ts'
+import { HeroPicker } from '#features/heroes/block.ts'
+import { Events as HeroEvents } from '#features/heroes/message.ts'
+import type { HandCard, HomeButton } from '#features/home/homeSchema.ts'
+import {
+  type LobbyScene,
+  expectLobbyDrawn,
+  lobbyAttr,
+  lobbyPropsIn,
+  lobbySceneIn,
+} from '#features/lobby/__tests__/lobby.fixture.ts'
+import { Lobby } from '#features/lobby/block.ts'
+import { HERO_DIALOG_ID } from '#features/lobby/lobby.ts'
+import { Events as LobbyEvents } from '#features/lobby/message.ts'
+import { isLobbyShown } from '#features/lobby/model.ts'
+import {
+  atRoot,
+  inPanel,
+  profileDeskOf,
+} from '#features/profile/__tests__/profile.fixture.ts'
+import { Profile } from '#features/profile/block.ts'
+import {
+  KEEP_TUTORIAL_BUTTON_ID,
+  RESET_TUTORIAL_BUTTON_ID,
+} from '#features/profile/profile.ts'
+import { noSavedBests, restoreSave, saveOf } from '#platform/save/save.ts'
+import { RESTART_GRACE_MS } from '#shared/constants.ts'
+import { home, withoutSupportLink } from '#test/model.fixture.ts'
 import {
   ackHudSlots,
   button,
@@ -49,7 +73,7 @@ import {
   statusLine,
   throughIntroInScene,
   withAttrs,
-} from '../../../test/sceneTesting'
+} from '#test/sceneTesting.ts'
 import {
   type SceneStep,
   foldLobby,
@@ -59,32 +83,8 @@ import {
   send,
   steps,
   writeSave,
-} from '../../../test/testing'
-import { pause } from '../../../world/waves/waves'
-import { HeroPicker } from '../../heroes/block'
-import { Events as HeroEvents } from '../../heroes/message'
-import {
-  type LobbyScene,
-  expectLobbyDrawn,
-  lobbyAttr,
-  lobbyPropsIn,
-  lobbySceneIn,
-} from '../../lobby/__tests__/lobby.fixture'
-import { Lobby } from '../../lobby/block'
-import { HERO_DIALOG_ID } from '../../lobby/lobby'
-import { Events as LobbyEvents } from '../../lobby/message'
-import { isLobbyShown } from '../../lobby/model'
-import {
-  atRoot,
-  inPanel,
-  profileDeskOf,
-} from '../../profile/__tests__/profile.fixture'
-import { Profile } from '../../profile/block'
-import {
-  KEEP_TUTORIAL_BUTTON_ID,
-  RESET_TUTORIAL_BUTTON_ID,
-} from '../../profile/profile'
-import type { HandCard, HomeButton } from '../homeSchema'
+} from '#test/testing.ts'
+import { pause } from '#world/waves/waves.ts'
 
 const playCluster = HtmlLocator.role('group', { name: 'Play' })
 const hand = HtmlLocator.role('dialog', { name: 'The manor' })

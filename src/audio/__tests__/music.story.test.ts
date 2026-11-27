@@ -3,7 +3,7 @@ import { Effect, Option } from 'effect'
 import { Component, UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { Message } from '../../app/message'
+import { Message } from '#app/message.ts'
 import {
   AudioState,
   BreakClock,
@@ -14,22 +14,23 @@ import {
   RunMode,
   ZombieAction,
   ZombieState,
-} from '../../app/model'
-import { initialModel } from '../../app/pureApp'
-import { CueMusic } from '../../app/update/music'
+} from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
+import { CueMusic } from '#app/update/music.ts'
 import {
   AcquireAudioEngine,
   PlaySound,
   ResumeAudio,
-} from '../../app/update/sound'
-import { FetchBuild } from '../../app/update/version'
+} from '#app/update/sound.ts'
+import { FetchBuild } from '#app/update/version.ts'
+import type { MusicMood } from '#audio/music.ts'
 import {
   FIXED_STEP_MS,
   MAX_FRAME_DELTA_MS,
   ZOMBIE_MAX_HP,
-} from '../../shared/constants'
-import { type SoundEffect } from '../../shared/soundEffect'
-import { DISTANT_SPAWN, escaping, withFinale } from '../../test/model.fixture'
+} from '#shared/constants.ts'
+import { type SoundEffect } from '#shared/soundEffect.ts'
+import { DISTANT_SPAWN, escaping, withFinale } from '#test/model.fixture.ts'
 import {
   SLAM_FRAMES,
   SURFACE,
@@ -44,13 +45,12 @@ import {
   send,
   storyOf,
   tick,
-} from '../../test/testing'
-import { asVeteran } from '../../test/veteran'
-import { Finale } from '../../world/dare/dareSchema'
-import { START_LEVEL } from '../../world/level/arena'
-import { modifyFocus } from '../../world/party/party'
-import { FINAL_WAVE } from '../../world/waves/wavePlans'
-import type { MusicMood } from '../music'
+} from '#test/testing.ts'
+import { asVeteran } from '#test/veteran.ts'
+import { Finale } from '#world/dare/dareSchema.ts'
+import { START_LEVEL } from '#world/level/arena.ts'
+import { modifyFocus } from '#world/party/party.ts'
+import { FINAL_WAVE } from '#world/waves/wavePlans.ts'
 
 const FRAME_MS = FIXED_STEP_MS
 const FAR_AWAY_SPAWN: PlannedSpawn = {

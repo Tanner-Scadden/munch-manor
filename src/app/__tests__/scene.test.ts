@@ -5,17 +5,26 @@ import { HtmlLocator } from '@effect/ui/html/testing'
 import { Locator, Story } from '@effect/ui/testing'
 import { describe, it, expect as vitestExpect } from '@effect/vitest'
 
-import indexHtml from '../../../index.html?raw'
-import { FEEDBACK_RUNS } from '../../domain/run'
-import { DEBUT_CARD_MIN_MS } from '../../features/onboarding/onboarding'
+import { Message } from '#app/message.ts'
+import {
+  BreakClock,
+  DifficultyCard,
+  type Model,
+  Phase,
+  Reload,
+} from '#app/model.ts'
+import { PressGameSurface } from '#app/mount.ts'
+import { initialModel } from '#app/pureApp.ts'
+import { FEEDBACK_RUNS } from '#domain/run.ts'
+import { DEBUT_CARD_MIN_MS } from '#features/onboarding/onboarding.ts'
 import {
   FIXED_STEP_MS,
   GAME_TITLE,
   PLAYER_MAX_HP,
   PREPARATION_MS,
-} from '../../shared/constants'
-import { holdingSecond, withPistol } from '../../test/arsenals'
-import { pastFirstBreak, withKeys } from '../../test/model.fixture'
+} from '#shared/constants.ts'
+import { holdingSecond, withPistol } from '#test/arsenals.ts'
+import { pastFirstBreak, withKeys } from '#test/model.fixture.ts'
 import {
   ackHudSlots,
   byClass,
@@ -31,7 +40,7 @@ import {
   startRunInScene,
   statusLine,
   throughIntroByTapInScene,
-} from '../../test/sceneTesting'
+} from '#test/sceneTesting.ts'
 import {
   BELOW_NORTH_DOOR,
   type SceneStep,
@@ -41,16 +50,14 @@ import {
   settleRunCommands,
   steps,
   storyOf,
-} from '../../test/testing'
-import { asVeteran } from '../../test/veteran'
-import { crateSpotOf } from '../../world/gear/crates'
-import { START_LEVEL } from '../../world/level/arena'
-import { focusOf, modifyFocus } from '../../world/party/party'
-import { pause } from '../../world/waves/waves'
-import { Message } from '../message'
-import { BreakClock, DifficultyCard, type Model, Phase, Reload } from '../model'
-import { PressGameSurface } from '../mount'
-import { initialModel } from '../pureApp'
+} from '#test/testing.ts'
+import { asVeteran } from '#test/veteran.ts'
+import { crateSpotOf } from '#world/gear/crates.ts'
+import { START_LEVEL } from '#world/level/arena.ts'
+import { focusOf, modifyFocus } from '#world/party/party.ts'
+import { pause } from '#world/waves/waves.ts'
+
+import indexHtml from '../../../index.html?raw'
 
 const role = HtmlLocator.role
 

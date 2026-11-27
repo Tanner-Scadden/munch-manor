@@ -3,7 +3,7 @@ import { Array, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { Message } from '../../../app/message'
+import { Message } from '#app/message.ts'
 import {
   FridgeDoor,
   type FridgePrize,
@@ -12,10 +12,10 @@ import {
   type Model,
   Phase,
   Purchase,
-} from '../../../app/model'
-import { FIXED_STEP_MS, PLAYER_MAX_HP } from '../../../shared/constants'
-import { nextRandom } from '../../../shared/prng'
-import { holdingFirst, holdingSecond, pistolOnly } from '../../../test/arsenals'
+} from '#app/model.ts'
+import { FIXED_STEP_MS, PLAYER_MAX_HP } from '#shared/constants.ts'
+import { nextRandom } from '#shared/prng.ts'
+import { holdingFirst, holdingSecond, pistolOnly } from '#test/arsenals.ts'
 import {
   AT_FRIDGE,
   DISTANT_SPAWN,
@@ -23,7 +23,7 @@ import {
   freshRunModel,
   fridgeSeededFor,
   withSeat,
-} from '../../../test/model.fixture'
+} from '#test/model.fixture.ts'
 import {
   FRIDGE_OPEN_TICKS,
   checkModel,
@@ -35,26 +35,27 @@ import {
   steps,
   tick,
   ticks,
-} from '../../../test/testing'
-import { freshGun } from '../../gear/weapons'
+} from '#test/testing.ts'
+import {
+  FRIDGE_RULES,
+  PRIZE_ORDER,
+  pickPrize,
+  prizeWeights,
+} from '#world/fridge/leftovers.ts'
+import { freshGun } from '#world/gear/weapons.ts'
 import {
   focusOf,
   focusSlotOf,
   maybePlayerAt,
   modifyFocus,
   seatCrew,
-} from '../../party/party'
-import { withWorld } from '../../schema/world'
-import { idleIntent, shutFridge } from '../../schema/worldSchema'
-import { PURCHASE_RULES, offersOf } from '../../shop/purchase'
-import { stepWorld } from '../../step/stepWorld'
-import {
-  FRIDGE_RULES,
-  PRIZE_ORDER,
-  pickPrize,
-  prizeWeights,
-} from '../leftovers'
-import { isFridgeOffered } from './leftovers.fixture'
+} from '#world/party/party.ts'
+import { withWorld } from '#world/schema/world.ts'
+import { idleIntent, shutFridge } from '#world/schema/worldSchema.ts'
+import { PURCHASE_RULES, offersOf } from '#world/shop/purchase.ts'
+import { stepWorld } from '#world/step/stepWorld.ts'
+
+import { isFridgeOffered } from './leftovers.fixture.ts'
 
 const FRAME_MS = FIXED_STEP_MS
 

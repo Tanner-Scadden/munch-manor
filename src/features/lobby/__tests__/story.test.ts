@@ -4,12 +4,25 @@ import { Component, UiStruct } from '@effect/ui'
 import { Story } from '@effect/ui/testing'
 import { describe, expect, it } from '@effect/vitest'
 
-import { Message } from '../../../app/message'
-import { type Model } from '../../../app/model'
-import { FocusHomeButton } from '../../../app/update/home'
-import { FocusLobbyControl } from '../../../app/update/lobby'
-import { defaultAppearance } from '../../../domain/clientSchema'
-import { heroesBoughtBy, readyModel } from '../../../test/model.fixture'
+import { Message } from '#app/message.ts'
+import { type Model } from '#app/model.ts'
+import { FocusHomeButton } from '#app/update/home.ts'
+import { FocusLobbyControl } from '#app/update/lobby.ts'
+import { defaultAppearance } from '#domain/clientSchema.ts'
+import { Lobby } from '#features/lobby/block.ts'
+import {
+  Events,
+  Message as LobbyComponentMessage,
+  LobbyMessage,
+} from '#features/lobby/message.ts'
+import {
+  type LobbyPicks,
+  type LobbyProps,
+  initialLobby,
+  isHeroPickerUp,
+  openedLobby,
+} from '#features/lobby/model.ts'
+import { heroesBoughtBy, readyModel } from '#test/model.fixture.ts'
 import {
   type StoryStep,
   checkModel,
@@ -20,22 +33,9 @@ import {
   resolveFocusLobby,
   send,
   storyOf,
-} from '../../../test/testing'
-import { pointsForRank } from '../../../world/heroes/rank'
-import { noModifiers } from '../../../world/run/modifiers'
-import { Lobby } from '../block'
-import {
-  Events,
-  Message as LobbyComponentMessage,
-  LobbyMessage,
-} from '../message'
-import {
-  type LobbyPicks,
-  type LobbyProps,
-  initialLobby,
-  isHeroPickerUp,
-  openedLobby,
-} from '../model'
+} from '#test/testing.ts'
+import { pointsForRank } from '#world/heroes/rank.ts'
+import { noModifiers } from '#world/run/modifiers.ts'
 
 const PICKS: LobbyPicks = {
   mode: 'Campaign',

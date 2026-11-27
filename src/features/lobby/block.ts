@@ -2,9 +2,9 @@ import { Schema } from 'effect'
 
 import { Html } from '@effect/ui/html'
 
-import { Events, Message } from './message'
-import { LobbyProps } from './model'
-import { lobbyCardView } from './view'
+import { Events, Message } from './message.ts'
+import { LobbyProps } from './model.ts'
+import { lobbyCardView } from './view.ts'
 
 export const Lobby = Html.component({
   name: 'Lobby',

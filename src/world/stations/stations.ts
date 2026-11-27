@@ -2,13 +2,13 @@ import { Array, Function, Option } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import { hoistChandelier, isChandelierDown } from '../dining/chandelier'
-import { levelOf } from '../level/arena'
-import { boxCenter, distanceToBox } from '../level/tileGrid'
-import { spinShelf } from '../library/revolvingShelf'
-import { isHeapDown, toppleStack } from '../library/stacks'
-import { seatStateAt } from '../party/party'
-import type { World } from '../schema/world'
+import { hoistChandelier, isChandelierDown } from '#world/dining/chandelier.ts'
+import { levelOf } from '#world/level/arena.ts'
+import { boxCenter, distanceToBox } from '#world/level/tileGrid.ts'
+import { spinShelf } from '#world/library/revolvingShelf.ts'
+import { isHeapDown, toppleStack } from '#world/library/stacks.ts'
+import { seatStateAt } from '#world/party/party.ts'
+import type { World } from '#world/schema/world.ts'
 import {
   GameEvent,
   Phase,
@@ -16,10 +16,11 @@ import {
   StationId,
   type StationState,
   type Vector,
-} from '../schema/worldSchema'
-import { isStationOpen, stationBoxOf, stationCenterOf } from './stationSpots'
-import { TOOL_RULES } from './toolRules'
-import { DRAIN_SCALE, isStill } from './work'
+} from '#world/schema/worldSchema.ts'
+
+import { isStationOpen, stationBoxOf, stationCenterOf } from './stationSpots.ts'
+import { TOOL_RULES } from './toolRules.ts'
+import { DRAIN_SCALE, isStill } from './work.ts'
 
 type StationRules = Readonly<{
   isReady: (world: World) => boolean

@@ -6,15 +6,15 @@ import type {
   ApplicationHtml,
   ApplicationMount,
   ApplicationViewBuilder,
-} from '../../app/definition'
-import type { Model } from '../../app/model'
-import { pixelArtStyle } from '../../art/artSize'
+} from '#app/component.ts'
+import type { Model } from '#app/model.ts'
+import { pixelArtStyle } from '#art/icons/artSize.ts'
 import {
   CHECK_ICON,
   COOP_ICON,
   LEAVE_ICON,
   portraitOf,
-} from '../../art/coopIcons'
+} from '#art/icons/coopIcons.ts'
 import {
   ENDLESS_ICON,
   FULLSCREEN_ICON,
@@ -28,19 +28,19 @@ import {
   SHARE_ICON,
   SOUND_OFF_ICON,
   SOUND_ON_ICON,
-} from '../../art/icons'
-import { callingOfMember, seatLookOf } from '../../art/seatLooks'
-import { SoundMessage } from '../../audio/message'
-import { type Room as CoopRoom, maybeRoomOf } from '../../domain/coopRoom'
-import { runDifficultyOf } from '../../domain/onlineRun'
-import { meIn, pickedModeOf } from '../../features/coop/roomState'
-import { isOpen as isCoopOpen } from '../../features/coop/update'
-import { shareUrlOf } from '../../features/end/beatRun'
+} from '#art/icons/icons.ts'
+import { callingOfMember, seatLookOf } from '#art/seatLooks.ts'
+import { SoundMessage } from '#audio/message.ts'
+import { type Room as CoopRoom, maybeRoomOf } from '#domain/coopRoom.ts'
+import { runDifficultyOf } from '#domain/onlineRun.ts'
+import { meIn, pickedModeOf } from '#features/coop/roomState.ts'
+import { isOpen as isCoopOpen } from '#features/coop/update.ts'
+import { shareUrlOf } from '#features/end/beatRun.ts'
 import {
   isRunCardHeld,
   isShareCopied,
   sharedRunOf,
-} from '../../features/end/endBeat'
+} from '#features/end/endBeat.ts'
 import {
   END_LEAVE_ROOM_BUTTON_ID,
   END_LOBBY_BUTTON_ID,
@@ -48,19 +48,20 @@ import {
   END_RETRY_BUTTON_ID,
   END_SHARE_BUTTON_ID,
   endOffer,
-} from '../../features/end/endOffer'
-import { EndMessage } from '../../features/end/message'
-import { shareText } from '../../features/end/share'
-import { SHARE_TEXT_DATA, SHARE_URL_DATA } from '../../features/end/share'
-import { HomeMessage } from '../../features/home/message'
-import { OnboardingMessage } from '../../features/onboarding/message'
-import { canSkipDebutCard } from '../../features/onboarding/onboarding'
-import { RunButtonMessage } from '../../input/message'
-import { DeviceMessage } from '../../platform/message'
-import type { ZombieKind } from '../../world/schema/entitySchema'
-import { DebutCard, Phase, RunMode } from '../../world/schema/worldSchema'
-import { ZOMBIE_KINDS } from '../../world/zombies/zombies'
-import { iconButtonView } from './touchControls'
+} from '#features/end/endOffer.ts'
+import { EndMessage } from '#features/end/message.ts'
+import { shareText } from '#features/end/share.ts'
+import { SHARE_TEXT_DATA, SHARE_URL_DATA } from '#features/end/share.ts'
+import { HomeMessage } from '#features/home/message.ts'
+import { OnboardingMessage } from '#features/onboarding/message.ts'
+import { canSkipDebutCard } from '#features/onboarding/onboarding.ts'
+import { RunButtonMessage } from '#input/message.ts'
+import { DeviceMessage } from '#platform/message.ts'
+import type { ZombieKind } from '#world/schema/entitySchema.ts'
+import { DebutCard, Phase, RunMode } from '#world/schema/worldSchema.ts'
+import { ZOMBIE_KINDS } from '#world/zombies/zombies.ts'
+
+import { iconButtonView } from './touchControls.ts'
 
 const SENTENCE_END = /([.!?]\s+)/
 const STARTS_LOWER = /^[a-z]/

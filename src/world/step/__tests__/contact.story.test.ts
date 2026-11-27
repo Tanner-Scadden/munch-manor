@@ -10,14 +10,14 @@ import {
   type Model,
   type Zombie,
   ZombieAction,
-} from '../../../app/model'
+} from '#app/model.ts'
 import {
   CONTACT_ALLOWANCE_PX,
   FIXED_STEP_MS,
   PLAYER_RADIUS,
-} from '../../../shared/constants'
-import { holdingSecond } from '../../../test/arsenals'
-import { openFloorWave } from '../../../test/model.fixture'
+} from '#shared/constants.ts'
+import { holdingSecond } from '#test/arsenals.ts'
+import { openFloorWave } from '#test/model.fixture.ts'
 import {
   checkModel,
   holdFire,
@@ -25,10 +25,10 @@ import {
   steps,
   tick,
   zombieOf,
-} from '../../../test/testing'
-import { WEAPONS } from '../../gear/weapons'
-import { focusOf, modifyFocus } from '../../party/party'
-import { ZOMBIE_KINDS, bodyRadiusOf } from '../../zombies/zombies'
+} from '#test/testing.ts'
+import { WEAPONS } from '#world/gear/weapons.ts'
+import { focusOf, modifyFocus } from '#world/party/party.ts'
+import { ZOMBIE_KINDS, bodyRadiusOf } from '#world/zombies/zombies.ts'
 
 const FRAME_MS = FIXED_STEP_MS
 const LONG_FRAME_MS = 50

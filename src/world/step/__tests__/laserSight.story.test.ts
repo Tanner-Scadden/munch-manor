@@ -2,13 +2,13 @@ import { Array, Effect } from 'effect'
 
 import { describe, expect, it } from '@effect/vitest'
 
-import type { Model } from '../../../app/model'
-import { FIXED_STEP_MS } from '../../../shared/constants'
-import { SHOTGUN, holdingSecond } from '../../../test/arsenals'
-import { quietWave, withArsenal } from '../../../test/model.fixture'
-import { holdFire, modelAfter, steps, tick } from '../../../test/testing'
-import { LASER_SPREAD_SCALE } from '../../gear/powerups'
-import { modifyFocus } from '../../party/party'
+import type { Model } from '#app/model.ts'
+import { FIXED_STEP_MS } from '#shared/constants.ts'
+import { SHOTGUN, holdingSecond } from '#test/arsenals.ts'
+import { quietWave, withArsenal } from '#test/model.fixture.ts'
+import { holdFire, modelAfter, steps, tick } from '#test/testing.ts'
+import { LASER_SPREAD_SCALE } from '#world/gear/powerups.ts'
+import { modifyFocus } from '#world/party/party.ts'
 
 const shotgunReady = (laserSight: 'None' | 'Fitted'): Model =>
   modifyFocus(withArsenal(quietWave(2), holdingSecond(SHOTGUN)), {

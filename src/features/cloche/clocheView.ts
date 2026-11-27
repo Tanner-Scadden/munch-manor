@@ -1,7 +1,7 @@
 import { Function } from 'effect'
 
-import type { Model } from '../../app/model'
-import { ROOM_ICONS } from '../../art/roomIcons'
+import type { Model } from '#app/model.ts'
+import { ROOM_ICONS } from '#art/icons/roomIcons.ts'
 import {
   type Palette,
   type Sprite,
@@ -9,13 +9,14 @@ import {
   placeAt,
   placeScaled,
   spriteShapes,
-} from '../../art/sprite'
-import { ClocheLift } from '../../domain/clientSchema'
-import { type Camera, placedAt } from '../../render/camera'
-import type * as Draw from '../../render/draw'
-import type { SlotRoomId, Vector } from '../../world/schema/entitySchema'
-import { clamp, easeOut } from '../../world/step/geometry'
-import { CLOCHE_RULES } from './clocheReveal'
+} from '#art/sprite.ts'
+import { ClocheLift } from '#domain/clientSchema.ts'
+import { type Camera, placedAt } from '#render/camera/camera.ts'
+import type * as Draw from '#render/draw.ts'
+import type { SlotRoomId, Vector } from '#world/schema/entitySchema.ts'
+import { clamp, easeOut } from '#world/step/geometry.ts'
+
+import { CLOCHE_RULES } from './clocheReveal.ts'
 
 const OUTLINE = '#140c10'
 

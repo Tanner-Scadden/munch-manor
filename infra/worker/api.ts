@@ -21,7 +21,7 @@ import {
   HEALTH_PATH,
   RUNS_PATH,
   SHARES_PATH,
-} from '../../src/platform/analytics.ts'
+} from '../../src/platform/analytics/analytics.ts'
 import {
   type RateDecision,
   type RunRow,

@@ -3,7 +3,7 @@ import { Array, Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { Message } from '../../../app/message'
+import { Message } from '#app/message.ts'
 import {
   Arsenal,
   BreakClock,
@@ -12,8 +12,8 @@ import {
   type Model,
   Phase,
   Reload,
-} from '../../../app/model'
-import { initialModel } from '../../../app/pureApp'
+} from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
 import {
   FIRE_INTERVAL_MS,
   FIXED_STEP_MS,
@@ -21,15 +21,15 @@ import {
   PISTOL_MAGAZINE,
   PISTOL_RELOAD_MS,
   PREPARATION_MS,
-} from '../../../shared/constants'
+} from '#shared/constants.ts'
 import {
   holdingFirst,
   holdingSecond,
   maybeSpareGun,
   pistolOf,
   withPistol,
-} from '../../../test/arsenals'
-import { DISTANT_SPAWN, withArsenal } from '../../../test/model.fixture'
+} from '#test/arsenals.ts'
+import { DISTANT_SPAWN, withArsenal } from '#test/model.fixture.ts'
 import {
   checkModel,
   countdownTicks,
@@ -43,9 +43,9 @@ import {
   tagsOf,
   tick,
   ticks,
-} from '../../../test/testing'
-import { focusOf, modifyFocus } from '../../party/party'
-import { WEAPONS } from '../weapons'
+} from '#test/testing.ts'
+import { WEAPONS } from '#world/gear/weapons.ts'
+import { focusOf, modifyFocus } from '#world/party/party.ts'
 
 const FRAME_MS = FIXED_STEP_MS
 const TICKS_PER_SHOT = countdownTicks(FIRE_INTERVAL_MS)

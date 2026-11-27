@@ -2,19 +2,19 @@ import { Array, Match, Option } from 'effect'
 
 import { describe, expect, test } from '@effect/vitest'
 
-import { prizeOnPaperSprite, prizeSprite } from '../../../art/prizeArt'
-import { cameraOf } from '../../../render/camera'
-import type * as Draw from '../../../render/draw'
-import { clearWindowOf } from '../../../render/hudLayout'
-import { screenOf } from '../../../render/screen'
-import { atFridge } from '../../../test/model.fixture'
-import { drawnBoxesOf, imagesIn, isOverBox } from '../../../test/viewReading'
-import { PRIZE_ORDER } from '../../../world/fridge/leftovers'
+import { prizeOnPaperSprite, prizeSprite } from '#art/prizeArt.ts'
 import {
   fridgeOddsKeepoutsOf,
   fridgeOddsShapes,
   fridgeOverheadShapes,
-} from '../fridgeView'
+} from '#features/fridge/fridgeView.ts'
+import { cameraOf } from '#render/camera/camera.ts'
+import { screenOf } from '#render/camera/screen.ts'
+import type * as Draw from '#render/draw.ts'
+import { clearWindowOf } from '#render/hud/hudLayout.ts'
+import { atFridge } from '#test/model.fixture.ts'
+import { drawnBoxesOf, imagesIn, isOverBox } from '#test/viewReading.ts'
+import { PRIZE_ORDER } from '#world/fridge/leftovers.ts'
 
 const model = atFridge(10)
 const camera = cameraOf(model)

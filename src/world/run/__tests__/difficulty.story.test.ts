@@ -3,7 +3,7 @@ import { Array, Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { Message } from '../../../app/message'
+import { Message } from '#app/message.ts'
 import {
   type Difficulty,
   DifficultyCard,
@@ -17,16 +17,16 @@ import {
   type Zombie,
   ZombieAction,
   ZombieState,
-} from '../../../app/model'
-import { LobbyMessage } from '../../../features/lobby/message'
-import { bestsFor } from '../../../screens/home/home'
-import { FIXED_STEP_MS } from '../../../shared/constants'
+} from '#app/model.ts'
+import { LobbyMessage } from '#features/lobby/message.ts'
+import { bestsFor } from '#screens/home/home.ts'
+import { FIXED_STEP_MS } from '#shared/constants.ts'
 import {
   DISTANT_SPAWN,
   escaping,
   newPlayerReady,
   readyModel,
-} from '../../../test/model.fixture'
+} from '#test/model.fixture.ts'
 import {
   checkModel,
   modelAfter,
@@ -40,11 +40,15 @@ import {
   steps,
   throughIntro,
   tick,
-} from '../../../test/testing'
-import { focusOf, modifyFocus } from '../../party/party'
-import { FINAL_WAVE } from '../../waves/wavePlans'
-import { ZOMBIE_KINDS } from '../../zombies/zombies'
-import { DIFFICULTIES, biteDamage, toughenSpawns } from '../difficulty'
+} from '#test/testing.ts'
+import { focusOf, modifyFocus } from '#world/party/party.ts'
+import {
+  DIFFICULTIES,
+  biteDamage,
+  toughenSpawns,
+} from '#world/run/difficulty.ts'
+import { FINAL_WAVE } from '#world/waves/wavePlans.ts'
+import { ZOMBIE_KINDS } from '#world/zombies/zombies.ts'
 
 const pick = (difficulty: Difficulty) =>
   send(Message.ClickedDifficultyCardButton({ difficulty }))

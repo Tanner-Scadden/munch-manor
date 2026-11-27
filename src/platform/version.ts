@@ -10,8 +10,8 @@ import {
 } from 'effect'
 import { FetchHttpClient, HttpClient, HttpClientResponse } from 'effect/http'
 
-import { describeError } from '../shared/describeError'
-import { Phase } from '../world/schema/worldSchema'
+import { describeError } from '#shared/describeError.ts'
+import { Phase } from '#world/schema/worldSchema.ts'
 
 export const DEV_BUILD = 'dev'
 

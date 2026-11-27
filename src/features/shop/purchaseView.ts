@@ -1,16 +1,16 @@
 import { Array, Function, Option, Record } from 'effect'
 
-import type { Model } from '../../app/model'
-import { CASE_HEIGHT, PRIZE_SPRITES } from '../../art/caseArt'
-import { CHICKEN_ICON, CHICKEN_ICON_SIZE } from '../../art/chickenArt'
+import type { Model } from '#app/model.ts'
+import { CASE_HEIGHT, PRIZE_SPRITES } from '#art/caseArt.ts'
+import { CHICKEN_ICON, CHICKEN_ICON_SIZE } from '#art/chickenArt.ts'
 import {
   type BakedText,
   GLYPH_HEIGHT,
   bakeText,
   placeBaked,
   textShapes,
-} from '../../art/font'
-import { GRAB_HAND, prizeSprite } from '../../art/prizeArt'
+} from '#art/font.ts'
+import { GRAB_HAND, prizeSprite } from '#art/prizeArt.ts'
 import {
   type Sprite,
   TOP_LEFT,
@@ -19,42 +19,42 @@ import {
   group,
   placeAt,
   spriteShapes,
-} from '../../art/sprite'
-import { gunIcon } from '../../art/sprites/guns'
-import { type Camera, anchoredAt, placedAt } from '../../render/camera'
-import type * as Draw from '../../render/draw'
-import { type RingPixel, rect, ringPixels } from '../../render/drawing'
+} from '#art/sprite.ts'
+import { gunIcon } from '#art/sprites/guns.ts'
+import { type Camera, anchoredAt, placedAt } from '#render/camera/camera.ts'
+import { screenOf } from '#render/camera/screen.ts'
+import type * as Draw from '#render/draw.ts'
+import { type RingPixel, rect, ringPixels } from '#render/drawing.ts'
 import {
   featLockBoxOf,
   featLockShapes,
   lockSpotIn,
-} from '../../render/featLockView'
-import { clearWindowOf } from '../../render/hudLayout'
-import { type Keepout, clearOfKeepouts } from '../../render/keepout'
+} from '#render/hud/featLockView.ts'
+import { clearWindowOf } from '#render/hud/hudLayout.ts'
+import { type Keepout, clearOfKeepouts } from '#render/hud/keepout.ts'
 import {
   COOKED_GUN_ICONS,
   COOKED_GUN_ICON_WIDTH,
   FLAME_ICON,
   PERK_ICON_SIZE,
-} from '../../render/kitchenGearView'
-import { PADLOCK_SPRITE } from '../../render/room/kitchenView'
-import { screenOf } from '../../render/screen'
-import { FRIDGE_RULES } from '../../world/fridge/leftovers'
-import { hasPan, maybeReplacedGun } from '../../world/gear/weapons'
-import { crewAtBackDoorOf } from '../../world/kitchen/backDoor'
-import { maybeValveLock } from '../../world/kitchen/gasValve'
-import { maybeStoveLock, maybeStovePerk } from '../../world/kitchen/stove'
-import { levelOf } from '../../world/level/arena'
-import { EXIT_RULES } from '../../world/level/exits'
-import { focusOf, focusSlotOf } from '../../world/party/party'
-import type { FridgePrize } from '../../world/schema/entitySchema'
+} from '#render/room/kitchenGearView.ts'
+import { PADLOCK_SPRITE } from '#render/room/kitchenView.ts'
+import { FRIDGE_RULES } from '#world/fridge/leftovers.ts'
+import { hasPan, maybeReplacedGun } from '#world/gear/weapons.ts'
+import { crewAtBackDoorOf } from '#world/kitchen/backDoor.ts'
+import { maybeValveLock } from '#world/kitchen/gasValve.ts'
+import { maybeStoveLock, maybeStovePerk } from '#world/kitchen/stove.ts'
+import { levelOf } from '#world/level/arena.ts'
+import { EXIT_RULES } from '#world/level/exits.ts'
+import { focusOf, focusSlotOf } from '#world/party/party.ts'
+import type { FridgePrize } from '#world/schema/entitySchema.ts'
 import {
   type CasePrize,
   FridgeDoor,
   type GunPerk,
   Purchasable,
   Purchase,
-} from '../../world/schema/worldSchema'
+} from '#world/schema/worldSchema.ts'
 import {
   type Offer,
   PURCHASE_RULES,
@@ -62,8 +62,8 @@ import {
   isSamePurchasable,
   maybeOfferInReach,
   offersOf,
-} from '../../world/shop/purchase'
-import { clamp } from '../../world/step/geometry'
+} from '#world/shop/purchase.ts'
+import { clamp } from '#world/step/geometry.ts'
 
 const TAG_PAD = 2
 const RING_STEPS = 24

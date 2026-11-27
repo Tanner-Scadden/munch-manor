@@ -4,19 +4,20 @@ import type {
   ApplicationHtml,
   ApplicationMount,
   ApplicationViewBuilder,
-} from '../../app/definition'
-import type { Model } from '../../app/model'
+} from '#app/component.ts'
+import type { Model } from '#app/model.ts'
 import {
   HELP_DEMO_SPRITES,
   HINT_ICON_SPRITES,
   type HintIconSprites,
-} from '../../art/hintIcons'
-import { standaloneSource } from '../../art/sprite'
-import type { InputDevice } from '../../input/inputSchema'
-import { KNIFE_NAME } from '../../world/names'
-import { Phase } from '../../world/schema/worldSchema'
-import { type HelpCard, HelpMessage } from './message'
-import { pauseProgressView } from './pauseProgress'
+} from '#art/icons/hintIcons.ts'
+import { standaloneSource } from '#art/sprite.ts'
+import type { InputDevice } from '#input/inputSchema.ts'
+import { KNIFE_NAME } from '#world/names.ts'
+import { Phase } from '#world/schema/worldSchema.ts'
+
+import { type HelpCard, HelpMessage } from './message.ts'
+import { pauseProgressView } from './pauseProgress.ts'
 
 type Input = Readonly<{ line: string; sprites: HintIconSprites }>
 

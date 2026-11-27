@@ -5,13 +5,14 @@ import { HtmlLocator } from '@effect/ui/html/testing'
 import { Locator } from '@effect/ui/testing'
 import { describe, it, expect as vitestExpect } from '@effect/vitest'
 
-import { Message } from '../../../app/message'
-import { BreakClock, type Model, Phase } from '../../../app/model'
-import { PressGameSurface } from '../../../app/mount'
-import { initialModel } from '../../../app/pureApp'
-import { MouseButton } from '../../../input/inputSchema'
-import { PREPARATION_MS } from '../../../shared/constants'
-import { fighting } from '../../../test/model.fixture'
+import { Message } from '#app/message.ts'
+import { BreakClock, type Model, Phase } from '#app/model.ts'
+import { PressGameSurface } from '#app/mount.ts'
+import { initialModel } from '#app/pureApp.ts'
+import { CONTROL_CARDS, helpLineOf } from '#features/menus/pauseHelp.ts'
+import { MouseButton } from '#input/inputSchema.ts'
+import { PREPARATION_MS } from '#shared/constants.ts'
+import { fighting } from '#test/model.fixture.ts'
 import {
   ackHudSlots,
   byClass,
@@ -22,7 +23,7 @@ import {
   pauseButton,
   pausePressRuns,
   statusLine,
-} from '../../../test/sceneTesting'
+} from '#test/sceneTesting.ts'
 import {
   SURFACE,
   type SceneStep,
@@ -30,12 +31,11 @@ import {
   sceneOf,
   send,
   storyOf,
-} from '../../../test/testing'
-import { STARTING_PISTOL, WEAPONS, tierName } from '../../../world/gear/weapons'
-import { modifyFocus } from '../../../world/party/party'
-import { Arsenal } from '../../../world/schema/worldSchema'
-import { pause } from '../../../world/waves/waves'
-import { CONTROL_CARDS, helpLineOf } from '../pauseHelp'
+} from '#test/testing.ts'
+import { STARTING_PISTOL, WEAPONS, tierName } from '#world/gear/weapons.ts'
+import { modifyFocus } from '#world/party/party.ts'
+import { Arsenal } from '#world/schema/worldSchema.ts'
+import { pause } from '#world/waves/waves.ts'
 
 const pausedOn = (device: Model['lastDevice']): Model =>
   pause(UiStruct.evolve(fighting, { lastDevice: () => device }))

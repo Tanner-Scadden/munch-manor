@@ -2,16 +2,16 @@ import { Array, Function } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import type { Model } from '../app/model'
-import { isObjectFirst } from '../shared/dualArgs'
-import type { Level } from '../world/level/arena'
-import { isPending } from '../world/run/lessons'
+import type { Model } from '#app/model.ts'
+import { isObjectFirst } from '#shared/dualArgs.ts'
+import type { Level } from '#world/level/arena.ts'
+import { isPending } from '#world/run/lessons.ts'
 import {
   type Difficulty,
   type DifficultyBests,
   Phase,
-} from '../world/schema/worldSchema'
-import { roundWave } from '../world/waves/waves'
+} from '#world/schema/worldSchema.ts'
+import { roundWave } from '#world/waves/waves.ts'
 
 export const isOnHome = Phase.isAnyOf(['Ready'])
 

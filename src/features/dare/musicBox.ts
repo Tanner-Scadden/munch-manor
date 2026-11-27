@@ -1,10 +1,10 @@
 import { Function, Option } from 'effect'
 
-import type { Model } from '../../app/model'
-import { maybeTuneSpot } from '../../world/dare/dare'
-import { focusOf } from '../../world/party/party'
-import { clamp, distanceBetween } from '../../world/step/geometry'
-import { isRoundActive } from '../../world/waves/waves'
+import type { Model } from '#app/model.ts'
+import { maybeTuneSpot } from '#world/dare/dare.ts'
+import { focusOf } from '#world/party/party.ts'
+import { clamp, distanceBetween } from '#world/step/geometry.ts'
+import { isRoundActive } from '#world/waves/waves.ts'
 
 const TUNE_BEAT_MS = 2400
 const TUNE_REACH_PX = 200

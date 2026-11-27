@@ -59,10 +59,12 @@ bun dev
 
 The rest lives in a few docs:
 
-- [GAME_DESIGN.md](./GAME_DESIGN.md): the vision, the zombies, the waves, and every decision so far
-- [MULTIPLAYER.md](./MULTIPLAYER.md): how co-op works
-- [PLATFORM.md](./PLATFORM.md): hosting, saves, and sync
+- [GAME_DESIGN.md](./docs/GAME_DESIGN.md): the vision, the zombies, the waves, and every decision so far
+- [MULTIPLAYER.md](./docs/MULTIPLAYER.md): how co-op works
+- [PLATFORM.md](./docs/PLATFORM.md): hosting, saves, and sync
+- [docs/](./docs/README.md): every other plan and design record
 - [AGENTS.md](./AGENTS.md): commands and code rules for contributors
+- `src/<layer>/README.md` ([app](./src/app/README.md), [world](./src/world/README.md), [render](./src/render/README.md), ...): what every module in the code holds
 
 ## License
 

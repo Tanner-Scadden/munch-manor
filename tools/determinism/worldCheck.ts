@@ -19,7 +19,7 @@ import * as NodeServices from '@effect/platform-node/NodeServices'
 import { UiStruct } from '@effect/ui'
 import { PlayerInput } from '@munch/netcode'
 
-import { refreshIntent } from '../../src/app/frame'
+import { refreshIntent } from '../../src/app/frame/frame'
 import { worldToJson } from '../../src/world/net/worldWire'
 import { focusOf, modifySeat, seatCrew } from '../../src/world/party/party'
 import type { Intent } from '../../src/world/schema/worldSchema'
@@ -54,10 +54,10 @@ const isRoomModule = (path: string): boolean =>
   ROOM_FOLDERS.test(path) && !String.includes('/__tests__/')(path)
 
 const INFRA_OWN_MODULES: ReadonlyArray<RegExp> = [
-  /^src\/platform\/playerEvents\.ts$/,
-  /^src\/platform\/playerProjection\.ts$/,
-  /^src\/platform\/analytics\.ts$/,
-  /^src\/platform\/recordingApi\.ts$/,
+  /^src\/platform\/save\/playerEvents\.ts$/,
+  /^src\/platform\/save\/playerProjection\.ts$/,
+  /^src\/platform\/analytics\/analytics\.ts$/,
+  /^src\/platform\/recording\/recordingApi\.ts$/,
 ]
 
 const ALLOWED_PACKAGES: ReadonlyArray<RegExp> = [

@@ -1,7 +1,8 @@
 import { Duration, Effect, Option, Schema, pipe } from 'effect'
 
-import { describeError } from '../shared/describeError'
-import { DEV_BUILD } from './version'
+import { describeError } from '#shared/describeError.ts'
+
+import { DEV_BUILD } from './version.ts'
 
 const TEST_BUILD = 'test'
 

@@ -1,18 +1,22 @@
 import { Array, Option, Order, Record } from 'effect'
 import { describe, expect, test } from 'vitest'
 
-import { spriteDepthOf } from '../../../art/sprite'
-import { TILE_SIZE } from '../../../shared/constants'
-import { zombieAt } from '../../../test/testing'
-import { levelFor } from '../../../world/level/arena'
-import { MANOR_SPEC } from '../../../world/level/plan'
-import { COVER_SYMBOLS, symbolAt } from '../../../world/level/tileGrid'
-import { isInsideRoomAt, isSolidAt } from '../../../world/level/tileQueries'
-import type { Player, Zombie } from '../../../world/schema/entitySchema'
-import { initialPlayer } from '../../../world/schema/worldSchema'
-import { depthSortedShapes } from '../../depth'
-import type * as Draw from '../../draw'
-import { type TallCover, tallCoverDrawables, tallCoverOf } from '../tallCover'
+import { spriteDepthOf } from '#art/sprite.ts'
+import { depthSortedShapes } from '#render/depth.ts'
+import type * as Draw from '#render/draw.ts'
+import {
+  type TallCover,
+  tallCoverDrawables,
+  tallCoverOf,
+} from '#render/room/tallCover.ts'
+import { TILE_SIZE } from '#shared/constants.ts'
+import { zombieAt } from '#test/testing.ts'
+import { levelFor } from '#world/level/arena.ts'
+import { MANOR_SPEC } from '#world/level/plan.ts'
+import { COVER_SYMBOLS, symbolAt } from '#world/level/tileGrid.ts'
+import { isInsideRoomAt, isSolidAt } from '#world/level/tileQueries.ts'
+import type { Player, Zombie } from '#world/schema/entitySchema.ts'
+import { initialPlayer } from '#world/schema/worldSchema.ts'
 
 const level = levelFor(MANOR_SPEC)
 

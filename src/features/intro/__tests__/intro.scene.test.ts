@@ -5,8 +5,8 @@ import { HtmlLocator } from '@effect/ui/html/testing'
 import { Locator } from '@effect/ui/testing'
 import { describe, it } from '@effect/vitest'
 
-import type { Model } from '../../../app/model'
-import { initialModel } from '../../../app/pureApp'
+import type { Model } from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
 import {
   ackHudSlots,
   measureSurface,
@@ -16,9 +16,9 @@ import {
   statusLine,
   throughIntroByTapInScene,
   withAttrs,
-} from '../../../test/sceneTesting'
-import { sceneOf } from '../../../test/testing'
-import { asVeteran } from '../../../test/veteran'
+} from '#test/sceneTesting.ts'
+import { sceneOf } from '#test/testing.ts'
+import { asVeteran } from '#test/veteran.ts'
 
 const ARRIVING_STATUS = 'Arriving at the manor. Press any key or tap to skip.'
 const startWave = HtmlLocator.role('button', { name: 'Start wave 1 now' })

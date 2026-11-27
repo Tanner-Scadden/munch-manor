@@ -1,15 +1,15 @@
 import { Array } from 'effect'
 import { describe, expect, test } from 'vitest'
 
-import { randoms } from '../../../test/testing'
-import type { Vector } from '../../schema/worldSchema'
+import { randoms } from '#test/testing.ts'
+import type { Vector } from '#world/schema/worldSchema.ts'
 import {
   buildGrid,
   queryAround,
   queryBox,
   queryBuffer,
   sortAscending,
-} from '../grid'
+} from '#world/step/grid.ts'
 
 const scatter = (
   seed: number,

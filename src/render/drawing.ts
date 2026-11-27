@@ -1,6 +1,6 @@
 import { Array, Function, Result, pipe } from 'effect'
 
-import { GLYPH_HEIGHT, type TextTone, textShapes } from '../art/font'
+import { GLYPH_HEIGHT, type TextTone, textShapes } from '#art/font.ts'
 import {
   type Facing,
   type Palette,
@@ -8,11 +8,12 @@ import {
   bakeShapes,
   placeAt,
   spriteRects,
-} from '../art/sprite'
-import { SHADOW_HEIGHT } from '../shared/constants'
-import type { Vector } from '../world/schema/entitySchema'
-import { clamp } from '../world/step/geometry'
-import * as Draw from './draw'
+} from '#art/sprite.ts'
+import { SHADOW_HEIGHT } from '#shared/constants.ts'
+import type { Vector } from '#world/schema/entitySchema.ts'
+import { clamp } from '#world/step/geometry.ts'
+
+import * as Draw from './draw.ts'
 
 export const UNIT_SCALE: Vector = { x: 1, y: 1 }
 export const QUARTER_TURN = Math.PI / 2

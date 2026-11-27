@@ -5,7 +5,8 @@ import {
   type Voxel,
   blocksModelOf,
   pixelViewOfShapes,
-} from '../../art/carve'
+} from '#art/carve.ts'
+
 import {
   SHELF_BOOK_COLORS,
   SHELF_CASE_HEIGHT,
@@ -13,7 +14,7 @@ import {
   SHELF_FRAME_COLORS,
   type ShelfWall,
   shelfCaseShapes,
-} from './libraryArt'
+} from './libraryArt.ts'
 
 const DEPTH = 3
 const FRAME_Z = 1

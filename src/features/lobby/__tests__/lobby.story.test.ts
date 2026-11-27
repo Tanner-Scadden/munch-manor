@@ -3,16 +3,17 @@ import { Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { MenuState, isLobbyOpen, menuState } from '../../../app/menuState'
-import { Message } from '../../../app/message'
-import { DifficultyCard, Lesson, Phase, RunMode } from '../../../app/model'
-import { initialModel } from '../../../app/pureApp'
-import { RESTART_GRACE_MS } from '../../../shared/constants'
+import { MenuState, isLobbyOpen, menuState } from '#app/menus/menuState.ts'
+import { Message } from '#app/message.ts'
+import { DifficultyCard, Lesson, Phase, RunMode } from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
+import { LobbyMessage } from '#features/lobby/message.ts'
+import { RESTART_GRACE_MS } from '#shared/constants.ts'
 import {
   heroesBoughtBy,
   newPlayerCardSeen,
   readyModel,
-} from '../../../test/model.fixture'
+} from '#test/model.fixture.ts'
 import {
   checkModel,
   foldLobby,
@@ -23,11 +24,11 @@ import {
   startRunFromHome,
   storyOf,
   throughIntro,
-} from '../../../test/testing'
-import { pointsForRank } from '../../../world/heroes/rank'
-import { focusOf } from '../../../world/party/party'
-import { LobbyMessage } from '../message'
-import { focusesPlay } from './lobby.fixture'
+} from '#test/testing.ts'
+import { pointsForRank } from '#world/heroes/rank.ts'
+import { focusOf } from '#world/party/party.ts'
+
+import { focusesPlay } from './lobby.fixture.ts'
 
 describe('PLAY opens the lobby', () => {
   it.effect('a tap on PLAY opens it, focuses START, and starts no run', () =>

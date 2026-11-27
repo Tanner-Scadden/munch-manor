@@ -1,6 +1,6 @@
 import { Array, Order, pipe } from 'effect'
 
-import type * as Draw from './draw'
+import type * as Draw from './draw.ts'
 
 type DepthRank = 'Prop' | 'Trap' | 'Pickup' | 'Zombie' | 'Player' | 'Glow'
 

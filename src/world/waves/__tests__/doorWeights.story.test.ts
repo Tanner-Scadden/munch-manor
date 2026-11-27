@@ -3,20 +3,20 @@ import { Array, Effect } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { Life, type Model, Phase } from '../../../app/model'
-import { FIXED_STEP_MS } from '../../../shared/constants'
+import { Life, type Model, Phase } from '#app/model.ts'
+import { FIXED_STEP_MS } from '#shared/constants.ts'
 import {
   breakSpawns,
   home,
   pastTimedBreaks,
   placeSeat,
   withSeatLife,
-} from '../../../test/model.fixture'
-import { modelAfter, tick } from '../../../test/testing'
-import { levelOf, startingLevel } from '../../level/arena'
-import type { DoorId, PlannedSpawn } from '../../schema/worldSchema'
-import { nearDoorsOf } from '../doorWeights'
-import { rollWave } from '../endlessWaves'
+} from '#test/model.fixture.ts'
+import { modelAfter, tick } from '#test/testing.ts'
+import { levelOf, startingLevel } from '#world/level/arena.ts'
+import type { DoorId, PlannedSpawn } from '#world/schema/worldSchema.ts'
+import { nearDoorsOf } from '#world/waves/doorWeights.ts'
+import { rollWave } from '#world/waves/endlessWaves.ts'
 
 const OPEN_HOUSE = {
   ...startingLevel,

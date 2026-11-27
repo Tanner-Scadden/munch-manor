@@ -3,7 +3,7 @@ import { Array, Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { Message } from '../../../app/message'
+import { Message } from '#app/message.ts'
 import {
   BreakClock,
   FridgeDoor,
@@ -12,17 +12,21 @@ import {
   Party,
   Phase,
   Tour,
-} from '../../../app/model'
-import { forgetTutorial } from '../../../platform/save'
-import { FIXED_STEP_MS, KITCHEN_FIRST_WAVE } from '../../../shared/constants'
-import { nextRandom } from '../../../shared/prng'
+} from '#app/model.ts'
+import {
+  type KitchenStep,
+  kitchenStepOf,
+} from '#features/onboarding/kitchenTour.ts'
+import { forgetTutorial } from '#platform/save/save.ts'
+import { FIXED_STEP_MS, KITCHEN_FIRST_WAVE } from '#shared/constants.ts'
+import { nextRandom } from '#shared/prng.ts'
 import {
   AT_FRIDGE,
   DISTANT_SPAWN,
   atFridgeOnWave,
   freshRunModel,
   withKeys,
-} from '../../../test/model.fixture'
+} from '#test/model.fixture.ts'
 import {
   BELOW_KITCHEN_DOOR,
   FRIDGE_OPEN_TICKS,
@@ -35,28 +39,23 @@ import {
   steps,
   storyOf,
   ticks,
-} from '../../../test/testing'
-import { asTutorialDone } from '../../../test/veteran'
+} from '#test/testing.ts'
+import { asTutorialDone } from '#test/veteran.ts'
 import {
   FRIDGE_RULES,
   fridgePriceFor,
   isFridgePrizeWeapon,
   pickPrize,
   prizeWeights,
-} from '../../../world/fridge/leftovers'
-import { heldKeys } from '../../../world/keys/keys'
-import { isKitchenOpen } from '../../../world/kitchen/kitchen'
-import { levelOf } from '../../../world/level/arena'
-import {
-  EXIT_RULES,
-  KITCHEN_EXIT,
-  exitPriceFor,
-} from '../../../world/level/exits'
-import { WEST_EXIT } from '../../../world/level/plan'
-import { focusOf, modifyFocus, soloSeat } from '../../../world/party/party'
-import { isPending } from '../../../world/run/lessons'
-import { isKitchenTourOn } from '../../../world/run/tutorialRules'
-import { type KitchenStep, kitchenStepOf } from '../kitchenTour'
+} from '#world/fridge/leftovers.ts'
+import { heldKeys } from '#world/keys/keys.ts'
+import { isKitchenOpen } from '#world/kitchen/kitchen.ts'
+import { levelOf } from '#world/level/arena.ts'
+import { EXIT_RULES, KITCHEN_EXIT, exitPriceFor } from '#world/level/exits.ts'
+import { WEST_EXIT } from '#world/level/plan.ts'
+import { focusOf, modifyFocus, soloSeat } from '#world/party/party.ts'
+import { isPending } from '#world/run/lessons.ts'
+import { isKitchenTourOn } from '#world/run/tutorialRules.ts'
 
 const FRAME_MS = FIXED_STEP_MS
 const OFFER_FRAMES = Math.ceil(FRIDGE_RULES.offerMs / FRAME_MS) + 2

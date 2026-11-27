@@ -1,21 +1,19 @@
 import { Array, Function } from 'effect'
 
-import type {
-  ApplicationHtml,
-  ApplicationViewBuilder,
-} from '../../app/definition'
-import type { Model } from '../../app/model'
-import { pixelArtStyle } from '../../art/artSize'
+import type { ApplicationHtml, ApplicationViewBuilder } from '#app/component.ts'
+import type { Model } from '#app/model.ts'
+import { pixelArtStyle } from '#art/icons/artSize.ts'
 import {
   ADD_TO_HOME_SCREEN_ICON,
   HOME_SCREEN_APP_ICON,
   INSTALL_ICON,
   SHARE_ICON,
-} from '../../art/icons'
-import { InstallMessage } from '../../platform/message'
-import { closeButtonView } from '../../ui/cornerButtons'
-import type { DialogParts } from '../../ui/dialog'
-import { isInstallTileShown } from './home'
+} from '#art/icons/icons.ts'
+import { InstallMessage } from '#platform/message.ts'
+import { closeButtonView } from '#ui/cornerButtons.ts'
+import type { DialogParts } from '#ui/dialog.ts'
+
+import { isInstallTileShown } from './home.ts'
 
 const tileLabel = (model: Model): string =>
   model.release.installOffer === 'Ready'

@@ -1,25 +1,25 @@
 import { Array, Function, Option } from 'effect'
 
-import type {
-  ApplicationHtml,
-  ApplicationViewBuilder,
-} from '../../app/definition'
-import type { Model } from '../../app/model'
-import { pixelArtStyle } from '../../art/artSize'
-import { PROP_ICONS } from '../../art/callingArt'
-import { DARE_ICON_URLS, DARE_SILHOUETTE_URLS } from '../../art/dareArt'
-import { SKULL_ICONS } from '../../art/icons'
-import { markIcon } from '../../art/markArt'
-import type { DareOutcome, FriendsDare } from '../../domain/beatLink'
-import { maybeShownDareOf, unopenedThingsOf } from '../../domain/beatMyRun'
-import { DifficultyCard } from '../../domain/clientSchema'
-import { isOnHome } from '../../domain/run'
-import { HomeMessage } from '../../features/home/message'
-import { isLearned } from '../../features/onboarding/onboarding'
-import { closeButtonView } from '../../ui/cornerButtons'
-import { iconView } from '../../ui/menuParts'
-import { CALLING_NAMES, DARE_NAMES } from '../../world/names'
-import { DIFFICULTIES } from '../../world/run/difficulty'
+import type { ApplicationHtml, ApplicationViewBuilder } from '#app/component.ts'
+import type { Model } from '#app/model.ts'
+import { PROP_ICONS } from '#art/callingArt.ts'
+import { DARE_ICON_URLS, DARE_SILHOUETTE_URLS } from '#art/dareArt.ts'
+import { pixelArtStyle } from '#art/icons/artSize.ts'
+import { SKULL_ICONS } from '#art/icons/icons.ts'
+import { markIcon } from '#art/markArt.ts'
+import type { DareOutcome, FriendsDare } from '#domain/beatLink.ts'
+import { DifficultyCard } from '#domain/clientSchema.ts'
+import {
+  maybeShownDareOf,
+  unopenedThingsOf,
+} from '#domain/machines/beatMyRun.ts'
+import { isOnHome } from '#domain/run.ts'
+import { HomeMessage } from '#features/home/message.ts'
+import { isLearned } from '#features/onboarding/onboarding.ts'
+import { closeButtonView } from '#ui/cornerButtons.ts'
+import { iconView } from '#ui/menuParts.ts'
+import { CALLING_NAMES, DARE_NAMES } from '#world/names.ts'
+import { DIFFICULTIES } from '#world/run/difficulty.ts'
 
 export const isBeatCardShown = (model: Model): boolean =>
   isOnHome(model.phase) &&

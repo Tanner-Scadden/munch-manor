@@ -1,7 +1,8 @@
 import { Array, Option, String } from 'effect'
 
-import { type CarvedModel, carveSprite } from '../carve'
-import { type Palette, TRANSPARENT, padRow } from '../sprite'
+import { type CarvedModel, carveSprite } from '#art/carve.ts'
+import { type Palette, TRANSPARENT, padRow } from '#art/sprite.ts'
+
 import {
   type FramePixels,
   type Patch,
@@ -9,7 +10,7 @@ import {
   firstFrame,
   patch,
   wornThrough,
-} from './wear'
+} from './wear.ts'
 
 export const FRENZY_EYE = '#ff2b2b'
 

@@ -3,12 +3,15 @@ import { Array, Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { Message } from '../../../app/message'
-import { type Model } from '../../../app/model'
-import { LobbyChange } from '../../../domain/coopRoom'
-import { GOOFY_NAMES } from '../../../domain/playerName'
-import type { Calling } from '../../../shared/playerData'
-import { pointsForRank } from '../../../shared/rankCurve'
+import { Message } from '#app/message.ts'
+import { type Model } from '#app/model.ts'
+import { LobbyChange } from '#domain/coopRoom.ts'
+import { GOOFY_NAMES } from '#domain/playerName.ts'
+import { CoopMessage } from '#features/coop/message.ts'
+import { lobbyOf, memberOf } from '#features/coop/services/testing.ts'
+import { updateCoop } from '#features/coop/update.ts'
+import type { Calling } from '#shared/records/playerData.ts'
+import { pointsForRank } from '#shared/records/rankCurve.ts'
 import {
   type StoryStep,
   checkModel,
@@ -17,12 +20,10 @@ import {
   send,
   steps,
   storyOf,
-} from '../../../test/testing'
-import { bonesBalanceOf } from '../../../world/heroes/rank'
-import { roomSettingsOf } from '../../../world/net/roomWorld'
-import { CoopMessage } from '../message'
-import { lobbyOf, memberOf } from '../testing'
-import { updateCoop } from '../update'
+} from '#test/testing.ts'
+import { bonesBalanceOf } from '#world/heroes/rank.ts'
+import { roomSettingsOf } from '#world/net/roomWorld.ts'
+
 import {
   inRoom,
   inRoomCoop,
@@ -30,7 +31,7 @@ import {
   lobbyUpdate,
   onHub,
   roomOf,
-} from './story.fixture'
+} from './story.fixture.ts'
 
 const tapCard = (calling: Calling): StoryStep =>
   send(Message.PickedCoopHero({ calling }))

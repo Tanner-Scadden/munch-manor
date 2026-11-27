@@ -3,8 +3,9 @@ import { Function } from 'effect'
 import type { View } from '@effect/ui'
 import type { Html } from '@effect/ui/html'
 
-import { CLOCK_ICON } from '../art/icons'
-import { iconView } from './menuParts'
+import { CLOCK_ICON } from '#art/icons/icons.ts'
+
+import { iconView } from './menuParts.ts'
 
 const easyBreakText = (seconds: number): string =>
   seconds > 0 ? `${seconds}s` : '∞'

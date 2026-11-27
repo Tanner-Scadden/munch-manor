@@ -25,14 +25,18 @@ import {
   isInLobby,
   maybeRoomOf,
   noPresses,
-} from '../../domain/coopRoom'
-import { toBrowserError } from '../../shared/describeError'
-import { Calling, type SavedBoughtCosmetics } from '../../shared/playerData'
-import { eventsBetween } from '../../world/net/roomWorld'
-import { DIFFICULTY_ORDER } from '../../world/run/difficulty'
-import { CoopMessage, CoopNotice } from './message'
-import { type Model } from './model'
-import { CoopNet } from './net'
+} from '#domain/coopRoom.ts'
+import { toBrowserError } from '#shared/describeError.ts'
+import {
+  Calling,
+  type SavedBoughtCosmetics,
+} from '#shared/records/playerData.ts'
+import { eventsBetween } from '#world/net/roomWorld.ts'
+import { DIFFICULTY_ORDER } from '#world/run/difficulty.ts'
+
+import { ScreenEvent, stepScreen } from './machines/screenFlow.ts'
+import { CoopMessage, CoopNotice } from './message.ts'
+import { type Model } from './model.ts'
 import {
   CALLING_KEY,
   DIFFICULTY_KEY,
@@ -58,8 +62,8 @@ import {
   startOfEvents,
   withRoom,
   withScreen,
-} from './roomState'
-import { ScreenEvent, stepScreen } from './screenFlow'
+} from './roomState.ts'
+import { CoopNet } from './services/net.ts'
 import {
   ChangeLobby,
   type CoopResultOf,
@@ -72,7 +76,7 @@ import {
   lobbyMeOf,
   pickHero,
   togglePicker,
-} from './steps'
+} from './steps.ts'
 
 export class RequestRoom extends Command.Service<RequestRoom>()(
   'coop/RequestRoom',

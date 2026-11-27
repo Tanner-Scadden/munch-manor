@@ -1,11 +1,11 @@
 import { Array, Function, Option, Order, Result, pipe } from 'effect'
 
-import { PLAYER_RADIUS, PLAYER_SPEED } from '../../shared/constants'
-import * as DetMath from '../../shared/detMath'
-import { frontDoorSillOf, isFrontDoorOpen } from '../../world/dare/finale'
-import { PAN_RULES } from '../../world/fridge/fridgeWeapons'
-import { KNIFE_RULES } from '../../world/gear/knife'
-import { PICKUP_LIFETIME_MS } from '../../world/gear/powerups'
+import { PLAYER_RADIUS, PLAYER_SPEED } from '#shared/constants.ts'
+import * as DetMath from '#shared/detMath.ts'
+import { frontDoorSillOf, isFrontDoorOpen } from '#world/dare/finale.ts'
+import { PAN_RULES } from '#world/fridge/fridgeWeapons.ts'
+import { KNIFE_RULES } from '#world/gear/knife.ts'
+import { PICKUP_LIFETIME_MS } from '#world/gear/powerups.ts'
 import {
   canReload,
   carriedMagazine,
@@ -13,20 +13,20 @@ import {
   heldGun,
   heldLoaded,
   isReloading,
-} from '../../world/gear/weapons'
-import { maxHpOf } from '../../world/heroes/calling'
-import { backDoorStandOf } from '../../world/kitchen/backDoor'
-import { type Level, levelOf } from '../../world/level/arena'
-import { flowFieldToward, steerToward } from '../../world/level/pathing'
-import { boxCenter } from '../../world/level/tileGrid'
+} from '#world/gear/weapons.ts'
+import { maxHpOf } from '#world/heroes/calling.ts'
+import { backDoorStandOf } from '#world/kitchen/backDoor.ts'
+import { type Level, levelOf } from '#world/level/arena.ts'
+import { flowFieldToward, steerToward } from '#world/level/pathing.ts'
+import { boxCenter } from '#world/level/tileGrid.ts'
 import {
   hasClearPath,
   hasLineOfSight,
   isInYardAt,
   isInsideRoomAt,
   isSolidAt,
-} from '../../world/level/tileQueries'
-import { isCallFresh } from '../../world/party/medic'
+} from '#world/level/tileQueries.ts'
+import { isCallFresh } from '#world/party/medic.ts'
 import {
   COOP_RULES,
   isDowned,
@@ -34,8 +34,8 @@ import {
   isStanding,
   leadSeatOf,
   playersOf,
-} from '../../world/party/party'
-import type { World } from '../../world/schema/world'
+} from '#world/party/party.ts'
+import type { World } from '#world/schema/world.ts'
 import {
   BreakClock,
   type Intent,
@@ -48,28 +48,34 @@ import {
   type Vector,
   type Zombie,
   idleIntent,
-} from '../../world/schema/worldSchema'
+} from '#world/schema/worldSchema.ts'
 import {
   ZERO_VECTOR,
   closestPointOnSegment,
   directionBetween,
   distanceBetween,
   normalize,
-} from '../../world/step/geometry'
+} from '#world/step/geometry.ts'
 import {
   type InputsByPlayer,
   SeatAction,
   applySeatAction,
-} from '../../world/step/stepWorld'
-import { bodyRadiusOf } from '../../world/zombies/zombies'
+} from '#world/step/stepWorld.ts'
+import { bodyRadiusOf } from '#world/zombies/zombies.ts'
+
 import {
   chandelierShot,
   isSafeToSearch,
   isWorkingSearch,
   pantryErrand,
   searchSpot,
-} from './dareSearch'
-import { CHUNK_KEEP_PX, type Threat, chunkDodge, escapeHeading } from './escape'
+} from './dareSearch.ts'
+import {
+  CHUNK_KEEP_PX,
+  type Threat,
+  chunkDodge,
+  escapeHeading,
+} from './escape.ts'
 
 const FIRE_RANGE_PX = 100
 const ELBOW_ROOM_PX = 18

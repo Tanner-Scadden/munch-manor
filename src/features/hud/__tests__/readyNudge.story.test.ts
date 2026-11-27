@@ -3,28 +3,7 @@ import { Array, Effect } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { type Difficulty, type Model, Phase, Tour } from '../../../app/model'
-import { OPEN_BREAK_WAVE } from '../../../shared/constants'
-import { crewInWave, home, pastTimedBreaks } from '../../../test/model.fixture'
-import {
-  checkModel,
-  press,
-  storyOf,
-  tap,
-  tick,
-  ticks,
-} from '../../../test/testing'
-import { modifyFocus } from '../../../world/party/party'
-import { withWorld } from '../../../world/schema/world'
-import { idleIntent } from '../../../world/schema/worldSchema'
-import {
-  SeatAction,
-  applySeatAction,
-  soloInputs,
-  stepWorld,
-} from '../../../world/step/stepWorld'
-import { beginPreparation, startWaveEarly } from '../../../world/waves/waves'
-import { raiseDebutCardFrom } from '../../onboarding/onboarding'
+import { type Difficulty, type Model, Phase, Tour } from '#app/model.ts'
 import {
   CREW_NUDGE_MS,
   LAST_ONE_NUDGE_MS,
@@ -32,7 +11,21 @@ import {
   advanceBreakIdle,
   breakIdleMsOf,
   isWaitingOnYou,
-} from '../readyNudge'
+} from '#features/hud/readyNudge.ts'
+import { raiseDebutCardFrom } from '#features/onboarding/onboarding.ts'
+import { OPEN_BREAK_WAVE } from '#shared/constants.ts'
+import { crewInWave, home, pastTimedBreaks } from '#test/model.fixture.ts'
+import { checkModel, press, storyOf, tap, tick, ticks } from '#test/testing.ts'
+import { modifyFocus } from '#world/party/party.ts'
+import { withWorld } from '#world/schema/world.ts'
+import { idleIntent } from '#world/schema/worldSchema.ts'
+import {
+  SeatAction,
+  applySeatAction,
+  soloInputs,
+  stepWorld,
+} from '#world/step/stepWorld.ts'
+import { beginPreparation, startWaveEarly } from '#world/waves/waves.ts'
 
 const FRAME_MS = 100
 

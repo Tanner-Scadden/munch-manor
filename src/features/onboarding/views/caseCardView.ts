@@ -1,0 +1,255 @@
+import { Function, Option, String } from 'effect'
+
+import type { ApplicationHtml, ApplicationViewBuilder } from '#app/component.ts'
+import type { Model } from '#app/model.ts'
+import {
+  CARD_ARROW,
+  CASE_ART,
+  CASE_HEIGHT,
+  CASE_WIDTH,
+  PRIZE_SPRITES,
+} from '#art/caseArt.ts'
+import { type BakedText, bakeText, placeBaked, textShapes } from '#art/font.ts'
+import { group, placeAt } from '#art/sprite.ts'
+import { CaseCard } from '#domain/clientSchema.ts'
+import {
+  CASE_CARD_MS,
+  canSkipCaseCard,
+  maybeCardCase,
+} from '#features/onboarding/caseCard.ts'
+import { OnboardingMessage } from '#features/onboarding/message.ts'
+import { LANDSCAPE_SIZE } from '#render/camera/screen.ts'
+import * as Draw from '#render/draw.ts'
+import { featLockShapes } from '#render/hud/featLockView.ts'
+import { caseLookOf } from '#world/feats/caseSpots.ts'
+import { levelOf } from '#world/level/arena.ts'
+import { DISPLAY_CASE_NAME, GUN_NAMES } from '#world/names.ts'
+import { focusOf } from '#world/party/party.ts'
+import {
+  type Armament,
+  type DisplayCase,
+  Feat,
+} from '#world/schema/worldSchema.ts'
+import { clamp } from '#world/step/geometry.ts'
+
+const CENTER_X = LANDSCAPE_SIZE.width / 2
+const CARD_TOP = 40
+const CARD_BOTTOM = 136
+const CARD_FILL = 'rgba(24, 14, 22, 0.94)'
+const CARD_EDGE = '#ff8a3d'
+const CARD_DIM = 'rgba(8, 10, 12, 0.4)'
+const ART_SCALE = 2
+const ART_MIDDLE_Y = 82
+const LOCK_X = CENTER_X - 48
+const ARROW_X = CENTER_X + 18
+const CASE_LEFT = CENTER_X + 34
+const TITLE_Y = CARD_TOP + 6
+const LINE_Y = 115
+const FEAT_LABEL_Y = 100
+const TIMER_Y = 128
+const TIMER_WIDTH = 96
+const TIMER_BACK = 'rgba(255, 138, 61, 0.25)'
+const TITLE_SCALE = 2
+
+const TITLE: BakedText = bakeText(
+  String.toUpperCase(DISPLAY_CASE_NAME),
+  'Title',
+)
+const LINE: BakedText = bakeText("DO THE DEED. WIN WHAT'S INSIDE.", 'Plain')
+
+const plural = (count: number, one: string, many: string): string =>
+  `${count} ${count === 1 ? one : many}`
+
+const armamentWords = (armament: Armament): string => {
+  if (armament === 'Knife') {
+    return 'KNIFE'
+  } else if (armament === 'Fire') {
+    return 'FIRE'
+  } else {
+    return String.toUpperCase(GUN_NAMES[armament])
+  }
+}
+
+export const featLabelOf = (feat: Feat): string =>
+  Feat.match(feat, {
+    Kills: ({ count }) => plural(count, 'KILL', 'KILLS'),
+    KillsWith: ({ armament, count }) =>
+      `${plural(count, 'KILL', 'KILLS')} WITH ${armamentWords(armament)}`,
+    KillsOf: ({ count }) => `KILL ${count} OF THESE`,
+    NoHitWave: ({ count }) => `${plural(count, 'WAVE', 'WAVES')} NO HITS`,
+    Streak: ({ count }) => `${count} KILLS NO HITS`,
+    OwnBlast: ({ count }) => `${plural(count, 'BLAST KILL', 'BLAST KILLS')}`,
+    OpenedRoom: ({ count }) => `OPEN ${plural(count, 'ROOM', 'ROOMS')}`,
+    LitFire: () => 'LIGHT THE FIRE',
+    KeyFromMarked: ({ count }) =>
+      `${plural(count, 'MARKED KEY', 'MARKED KEYS')}`,
+    KitchenKills: ({ count }) => `${count} KITCHEN KILLS`,
+    KitchenStandKills: ({ count }) => `${count} KILLS IN THE KITCHEN`,
+  })
+
+const centered = (baked: BakedText, y: number, scale = 1): Draw.Shape =>
+  placeBaked(baked, { x: CENTER_X, y, align: 'Center', scale })
+
+const DIM = Draw.Rect({
+  x: -LANDSCAPE_SIZE.width,
+  y: -LANDSCAPE_SIZE.height * 2,
+  width: LANDSCAPE_SIZE.width * 3,
+  height: LANDSCAPE_SIZE.height * 5,
+  fill: CARD_DIM,
+})
+
+const BAND: ReadonlyArray<Draw.Shape> = [
+  Draw.Rect({
+    x: 0,
+    y: CARD_TOP - 1,
+    width: LANDSCAPE_SIZE.width,
+    height: CARD_BOTTOM - CARD_TOP + 2,
+    fill: CARD_EDGE,
+  }),
+  Draw.Rect({
+    x: 0,
+    y: CARD_TOP,
+    width: LANDSCAPE_SIZE.width,
+    height: CARD_BOTTOM - CARD_TOP,
+    fill: CARD_FILL,
+  }),
+]
+
+const timerShapes = (ageMs: number): ReadonlyArray<Draw.Shape> => {
+  const left = CENTER_X - TIMER_WIDTH / 2
+  return [
+    Draw.Rect({
+      x: left,
+      y: TIMER_Y,
+      width: TIMER_WIDTH,
+      height: 2,
+      fill: TIMER_BACK,
+    }),
+    Draw.Rect({
+      x: left,
+      y: TIMER_Y,
+      width: Math.round(TIMER_WIDTH * clamp(1 - ageMs / CASE_CARD_MS, 0, 1)),
+      height: 2,
+      fill: CARD_EDGE,
+    }),
+  ]
+}
+
+const bigCaseShapes = (model: Model, displayCase: DisplayCase): Draw.Shape => {
+  const art = CASE_ART[caseLookOf(levelOf(model), displayCase)]
+  return group({
+    translate: {
+      x: CASE_LEFT,
+      y: ART_MIDDLE_Y - (CASE_HEIGHT * ART_SCALE) / 2,
+    },
+    scale: { x: ART_SCALE, y: ART_SCALE },
+    shapes: [
+      placeAt(0, 0, art.body),
+      placeAt(
+        CASE_WIDTH / 2,
+        art.prizeDropPx,
+        PRIZE_SPRITES[displayCase.prize],
+      ),
+      placeAt(0, 0, art.front),
+    ],
+  })
+}
+
+const cardShapes = (
+  model: Model,
+  displayCase: DisplayCase,
+  ageMs: number,
+): ReadonlyArray<Draw.Shape> => [
+  DIM,
+  ...BAND,
+  centered(TITLE, TITLE_Y, TITLE_SCALE),
+  group({
+    translate: { x: LOCK_X, y: ART_MIDDLE_Y },
+    scale: { x: ART_SCALE, y: ART_SCALE },
+    shapes: featLockShapes(displayCase.feat, focusOf(model), {
+      x: 0,
+      y: 0,
+      countSide: 'Right',
+      countShows: 'Always',
+    }),
+  }),
+  ...textShapes(
+    featLabelOf(displayCase.feat),
+    'Coin',
+    LOCK_X,
+    FEAT_LABEL_Y,
+    'Center',
+  ),
+  group({
+    translate: { x: ARROW_X, y: ART_MIDDLE_Y },
+    scale: { x: ART_SCALE, y: ART_SCALE },
+    shapes: CARD_ARROW,
+  }),
+  bigCaseShapes(model, displayCase),
+  centered(LINE, LINE_Y),
+  ...timerShapes(ageMs),
+]
+
+export const caseCardShapes = (model: Model): ReadonlyArray<Draw.Shape> =>
+  CaseCard.match(model.caseCard, {
+    Hidden: () => [],
+    Showing: ({ ageMs }) =>
+      Option.match(maybeCardCase(model), {
+        onNone: () => [],
+        onSome: displayCase => cardShapes(model, displayCase, ageMs),
+      }),
+  })
+
+const CASE_TITLE_ID = 'case-card-title'
+const CASE_BODY_ID = 'case-card-body'
+
+const buttonView = (
+  model: Model,
+  h: ApplicationViewBuilder,
+): ApplicationHtml | null =>
+  canSkipCaseCard(model)
+    ? h.button
+        .attr('type', 'button')
+        .class('debut-card-button')
+        .attr('data-device', model.lastDevice)
+        .attr('aria-keyshortcuts', 'Enter')
+        .on('click', OnboardingMessage.ClickedCaseCardButton())
+        .children(
+          model.lastDevice === 'Touch'
+            ? ['GOT IT']
+            : [
+                'GOT IT',
+                h.kbd
+                  .class('debut-card-key')
+                  .attr('aria-hidden', 'true')
+                  .children('ENTER'),
+              ],
+        )
+    : null
+
+export const caseCardView: {
+  (h: ApplicationViewBuilder): (model: Model) => ApplicationHtml
+  (model: Model, h: ApplicationViewBuilder): ApplicationHtml
+} = Function.dual(
+  2,
+  (model: Model, h: ApplicationViewBuilder): ApplicationHtml | null =>
+    CaseCard.match(model.caseCard, {
+      Hidden: () => null,
+      Showing: () =>
+        h.div
+          .class('debut-card')
+          .attr('role', 'group')
+          .attr('aria-labelledby', CASE_TITLE_ID)
+          .attr('aria-describedby', CASE_BODY_ID)
+          .children(
+            h.h2.id(CASE_TITLE_ID).class('sr-only').children(DISPLAY_CASE_NAME),
+            h.p
+              .id(CASE_BODY_ID)
+              .class('sr-only')
+              .children(
+                "Do the deed. Win what's inside. The lock over each case shows its deed and how far along you are.",
+              ),
+            buttonView(model, h),
+          ),
+    }),
+)

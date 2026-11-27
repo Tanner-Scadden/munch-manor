@@ -2,12 +2,12 @@ import { Array, Function, Option, pipe } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import type { Model } from '../../app/model'
-import { ClocheLift } from '../../domain/clientSchema'
-import { levelOf } from '../../world/level/arena'
-import { exitBoxOf } from '../../world/level/exits'
-import { slotOfExit } from '../../world/level/plan'
-import type { World } from '../../world/schema/world'
+import type { Model } from '#app/model.ts'
+import { ClocheLift } from '#domain/clientSchema.ts'
+import { levelOf } from '#world/level/arena.ts'
+import { exitBoxOf } from '#world/level/exits.ts'
+import { slotOfExit } from '#world/level/plan.ts'
+import type { World } from '#world/schema/world.ts'
 
 type ClocheRules = Readonly<{
   rattleMs: number

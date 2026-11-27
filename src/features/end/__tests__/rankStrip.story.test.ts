@@ -3,18 +3,7 @@ import { describe, expect, test } from 'vitest'
 
 import { UiStruct } from '@effect/ui'
 
-import { type Model, Phase, RunMode } from '../../../app/model'
-import type * as Draw from '../../../render/draw'
-import {
-  DEFAULT_PORTRAIT_SCREEN,
-  LANDSCAPE_SCREEN,
-  type Screen,
-  landscapeFrameOffset,
-  landscapeTouchScreen,
-} from '../../../render/screen'
-import { readyModel } from '../../../test/model.fixture'
-import { jsonOf } from '../../../test/testing'
-import { pointsForRank } from '../../../world/heroes/rank'
+import { type Model, Phase, RunMode } from '#app/model.ts'
 import {
   CALLING_FLIP_MS,
   RANK_FILL_MS,
@@ -32,9 +21,20 @@ import {
   unlockGoneMs,
   unlockStartMs,
   unlocksOf,
-} from '../endBeat'
-import { endOverlayShapes, unlockSpotOf } from '../endView'
-import { unlockCardBox } from '../rankStripView'
+} from '#features/end/endBeat.ts'
+import { endOverlayShapes, unlockSpotOf } from '#features/end/views/endView.ts'
+import { unlockCardBox } from '#features/end/views/rankStripView.ts'
+import {
+  DEFAULT_PORTRAIT_SCREEN,
+  LANDSCAPE_SCREEN,
+  type Screen,
+  landscapeFrameOffset,
+  landscapeTouchScreen,
+} from '#render/camera/screen.ts'
+import type * as Draw from '#render/draw.ts'
+import { readyModel } from '#test/model.fixture.ts'
+import { jsonOf } from '#test/testing.ts'
+import { pointsForRank } from '#world/heroes/rank.ts'
 
 type Gain = Model['runGains']['maybeRankGain']
 

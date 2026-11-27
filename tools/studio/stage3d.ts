@@ -6,29 +6,32 @@ import { AmbientLight, Container3D, View3D } from '@pixi/3d'
 import { OutlinePass } from '@pixi/3d/extras'
 
 import { isFlashShape } from '../../src/art/sprite'
-import { worldBloomOf } from '../../src/render/iso/bloom'
-import { viewFloorOf } from '../../src/render/iso/cull'
-import { type Leaf, flatten } from '../../src/render/iso/flatten'
-import { floorArtOf } from '../../src/render/iso/house'
-import { AMBIENT } from '../../src/render/iso/lightSpecs'
-import { type HouseLights, houseLightsOf } from '../../src/render/iso/lights'
-import { LOOK_TUNING } from '../../src/render/iso/lookSpecs'
-import { mixColor } from '../../src/render/iso/mood'
-import { FloorLayer } from '../../src/render/iso/painter'
-import { STORM_COLOR, STORM_LIFT } from '../../src/render/iso/scene'
-import { ShadowWatch } from '../../src/render/iso/shadowWatch'
-import { CAMERA_UP, PITCH, UNIT, zOf } from '../../src/render/iso/space'
-import { Textures } from '../../src/render/iso/textures'
 import {
   type VoxelMeshData,
   voxelMeshOf,
-} from '../../src/render/iso/voxelShape'
+} from '../../src/render/iso/bodies/voxelShape'
 import {
   type StandInput,
   VoxelBatch,
   type VoxelPlacement,
   newReach,
-} from '../../src/render/iso/voxels'
+} from '../../src/render/iso/bodies/voxels'
+import { viewFloorOf } from '../../src/render/iso/cull'
+import { type Leaf, flatten } from '../../src/render/iso/flatten'
+import { floorArtOf } from '../../src/render/iso/house/house'
+import { AMBIENT } from '../../src/render/iso/light/lightSpecs'
+import {
+  type HouseLights,
+  houseLightsOf,
+} from '../../src/render/iso/light/lights'
+import { LOOK_TUNING } from '../../src/render/iso/light/lookSpecs'
+import { mixColor } from '../../src/render/iso/light/mood'
+import { FloorLayer } from '../../src/render/iso/painter'
+import { worldBloomOf } from '../../src/render/iso/quality/bloom'
+import { ShadowWatch } from '../../src/render/iso/quality/shadowWatch'
+import { STORM_COLOR, STORM_LIFT } from '../../src/render/iso/scene'
+import { CAMERA_UP, PITCH, UNIT, zOf } from '../../src/render/iso/space'
+import { Textures } from '../../src/render/iso/textures'
 import { toBrowserError } from '../../src/shared/describeError'
 import type { Level } from '../../src/world/level/arena'
 import { initialPlayer } from '../../src/world/schema/worldSchema'

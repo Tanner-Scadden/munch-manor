@@ -2,21 +2,26 @@ import { Array, Option, Record, pipe } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import { nextRandom } from '../../shared/prng'
-import type { SoundEffect } from '../../shared/soundEffect'
-import { isMissingHeart, maxHpOf } from '../heroes/calling'
-import { grantKeys } from '../keys/keys'
-import { type Level, levelOf } from '../level/arena'
-import { boxAround } from '../level/exits'
+import { nextRandom } from '#shared/prng.ts'
+import type { SoundEffect } from '#shared/soundEffect.ts'
+import { isMissingHeart, maxHpOf } from '#world/heroes/calling.ts'
+import { grantKeys } from '#world/keys/keys.ts'
+import { type Level, levelOf } from '#world/level/arena.ts'
+import { boxAround } from '#world/level/exits.ts'
 import {
   type Box,
   COVER_SYMBOLS,
   tileBox,
   tilesWithSymbol,
-} from '../level/tileGrid'
-import { atSeat, forEachSeat, isStanding, seatStateAt } from '../party/party'
-import { activeModifiersOf } from '../run/dareLadder'
-import type { World } from '../schema/world'
+} from '#world/level/tileGrid.ts'
+import {
+  atSeat,
+  forEachSeat,
+  isStanding,
+  seatStateAt,
+} from '#world/party/party.ts'
+import { activeModifiersOf } from '#world/run/dareLadder.ts'
+import type { World } from '#world/schema/world.ts'
 import {
   GameEvent,
   Pantry,
@@ -26,9 +31,10 @@ import {
   type Player,
   type PlayerSlot,
   type Vector,
-} from '../schema/worldSchema'
-import { distanceBetween } from '../step/geometry'
-import { isKitchenOpen } from './kitchen'
+} from '#world/schema/worldSchema.ts'
+import { distanceBetween } from '#world/step/geometry.ts'
+
+import { isKitchenOpen } from './kitchen.ts'
 
 type PantryRules = Readonly<{
   keys: number

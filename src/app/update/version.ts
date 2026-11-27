@@ -2,28 +2,29 @@ import { Effect, Function, Option } from 'effect'
 
 import { Command, Component, UiStruct } from '@effect/ui'
 
-import { VersionMessage } from '../../platform/message'
+import { VersionMessage } from '#platform/message.ts'
 import {
   isUsingServiceWorker,
   registerServiceWorker,
   updateServiceWorker,
-} from '../../platform/serviceWorker'
+} from '#platform/serviceWorker.ts'
 import {
   RUNNING_BUILD,
   fetchRemoteBuild,
   isCheckingForUpdates,
   isGreetingDue,
   maybeNewerBuild,
-} from '../../platform/version'
+} from '#platform/version.ts'
+
 import {
   greetUpdate,
   newsFromGreeting,
   reloadOntoNewerBuild,
   rewrapUpdateGift,
   unwrapUpdateGift,
-} from './home'
-import { tapSound, unlockAudio } from './sound'
-import { type UpdateStep, combine, defineHandlers } from './step'
+} from './home.ts'
+import { tapSound, unlockAudio } from './sound.ts'
+import { type UpdateStep, combine, defineHandlers } from './step.ts'
 
 export class FetchBuild extends Command.Service<FetchBuild>()(
   'app/FetchBuild',

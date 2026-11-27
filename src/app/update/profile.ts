@@ -2,42 +2,36 @@ import { Effect, Function, Option, Schema, pipe } from 'effect'
 
 import { Command, Component, UiStruct } from '@effect/ui'
 
-import { randomAppearance } from '../../art/appearance'
-import {
-  type GearTap,
-  canAfford,
-  gearTapOf,
-  priceOf,
-} from '../../domain/closet'
-import { type LookPart, chooseLook as lookWith } from '../../domain/looks'
-import { isStyleOpen } from '../../domain/mastery'
+import { MenuState, menuState } from '#app/menus/menuState.ts'
+import type { Model } from '#app/model.ts'
+import { randomAppearance } from '#art/appearance.ts'
+import { type GearTap, canAfford, gearTapOf, priceOf } from '#domain/closet.ts'
+import { type LookPart, chooseLook as lookWith } from '#domain/looks.ts'
+import { isStyleOpen } from '#domain/mastery.ts'
 import {
   cleanName,
   draftName,
   rollName,
   shownName,
-} from '../../domain/playerName'
-import { lookUnlockId, markLooksSeen, withoutFresh } from '../../domain/unlocks'
-import type { LookToggle } from '../../features/profile/blocks/look/lookSchema'
+} from '#domain/playerName.ts'
+import { lookUnlockId, markLooksSeen, withoutFresh } from '#domain/unlocks.ts'
+import type { LookToggle } from '#features/profile/blocks/look/lookSchema.ts'
 import {
   type Gear,
   flipLook as flipped,
   gearOf,
-} from '../../features/profile/blocks/look/model'
-import {
-  ProfileMessage,
-  type SettingTile,
-} from '../../features/profile/message'
+} from '#features/profile/blocks/look/model.ts'
+import { ResetEvent, stepReset } from '#features/profile/machines/resetFlow.ts'
+import { ProfileMessage, type SettingTile } from '#features/profile/message.ts'
 import type {
   LookOutcome,
   Model as ProfileModel,
   ProfileTab,
-} from '../../features/profile/model'
+} from '#features/profile/model.ts'
 import {
   KEEP_TUTORIAL_BUTTON_ID,
   RESET_TUTORIAL_BUTTON_ID,
-} from '../../features/profile/profile'
-import { ResetEvent, stepReset } from '../../features/profile/resetFlow'
+} from '#features/profile/profile.ts'
 import {
   opened,
   showTab,
@@ -45,30 +39,29 @@ import {
   withOutcome,
   withSyncedName,
   withoutPreview,
-} from '../../features/profile/steps'
-import { isCharacterKey } from '../../input/input'
-import { LinkEvent, LinkFlow, stepLink } from '../../platform/linkFlow'
-import { forgetTutorial } from '../../platform/save'
-import { PlayerStore } from '../../platform/store'
+} from '#features/profile/steps.ts'
+import { isCharacterKey } from '#input/input.ts'
+import { LinkEvent, LinkFlow, stepLink } from '#platform/save/linkFlow.ts'
+import { forgetTutorial } from '#platform/save/save.ts'
+import { PlayerStore } from '#platform/save/store.ts'
 import {
   type CosmeticKind,
   type PropStyle,
   cosmeticIdOf,
-} from '../../shared/playerData'
-import { stepWhen } from '../../shared/stepWhen'
-import { rankOf, totalPointsOf } from '../../world/heroes/rank'
-import { MenuState, menuState } from '../menuState'
-import type { Model } from '../model'
-import { keepName, openRootDialog } from './dialog'
-import { toggleFullscreen } from './fullscreen'
-import { toggleRotation } from './rotation'
+} from '#shared/records/playerData.ts'
+import { stepWhen } from '#shared/stepWhen.ts'
+import { rankOf, totalPointsOf } from '#world/heroes/rank.ts'
+
+import { keepName, openRootDialog } from './dialog.ts'
+import { toggleFullscreen } from './fullscreen.ts'
+import { toggleRotation } from './rotation.ts'
 import {
   playSounds,
   toggleMusic,
   toggleSound,
   uiCue,
   unlockAudio,
-} from './sound'
+} from './sound.ts'
 import {
   type UpdateStep,
   combine,
@@ -76,7 +69,7 @@ import {
   modelStep,
   releaseInput,
   unchanged,
-} from './step'
+} from './step.ts'
 
 export class RequestLinkCode extends Command.Service<RequestLinkCode>()(
   'app/RequestLinkCode',

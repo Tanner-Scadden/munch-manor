@@ -3,7 +3,7 @@ import { Array, Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { Message } from '../../../app/message'
+import { Message } from '#app/message.ts'
 import {
   Arsenal,
   type CarriedGun,
@@ -14,15 +14,11 @@ import {
   Phase,
   type Zombie,
   ZombieAction,
-} from '../../../app/model'
-import { initialModel } from '../../../app/pureApp'
-import { FIXED_STEP_MS, PLAYER_MAX_HP } from '../../../shared/constants'
-import {
-  holdingFirst,
-  holdingSecond,
-  maybeSpareGun,
-} from '../../../test/arsenals'
-import { DISTANT_SPAWN } from '../../../test/model.fixture'
+} from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
+import { FIXED_STEP_MS, PLAYER_MAX_HP } from '#shared/constants.ts'
+import { holdingFirst, holdingSecond, maybeSpareGun } from '#test/arsenals.ts'
+import { DISTANT_SPAWN } from '#test/model.fixture.ts'
 import {
   FIRE_LIFT,
   FIRE_PRESS,
@@ -40,18 +36,23 @@ import {
   tickCountFor,
   ticks,
   zombieOf,
-} from '../../../test/testing'
-import { asVeteran } from '../../../test/veteran'
-import { WEAPONS, freshGun, magazineOf, maybePanOf } from '../../gear/weapons'
-import { focusOf, modifyFocus } from '../../party/party'
-import { SHATTER_SCALE } from '../../step/combat'
-import { REELING_GUARD_MS } from '../../zombies/actions'
+} from '#test/testing.ts'
+import { asVeteran } from '#test/veteran.ts'
 import {
   COOKER_RULES,
   FREEZE_RULES,
   PAN_RULES,
   lidBlastRadius,
-} from '../fridgeWeapons'
+} from '#world/fridge/fridgeWeapons.ts'
+import {
+  WEAPONS,
+  freshGun,
+  magazineOf,
+  maybePanOf,
+} from '#world/gear/weapons.ts'
+import { focusOf, modifyFocus } from '#world/party/party.ts'
+import { SHATTER_SCALE } from '#world/step/combat.ts'
+import { REELING_GUARD_MS } from '#world/zombies/actions.ts'
 
 const FRAME_MS = FIXED_STEP_MS
 const ROW_Y = 85

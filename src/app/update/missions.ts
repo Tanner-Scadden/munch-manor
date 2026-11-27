@@ -1,12 +1,13 @@
 import { Option } from 'effect'
 
-import { maybeRerollFor, rerollMission } from '../../features/missions/missions'
-import { stepWhen } from '../../shared/stepWhen'
-import { isPanelOpen } from '../menuState'
-import type { Model } from '../model'
-import { openMissions } from './home'
-import { tapSound, unlockAudio } from './sound'
-import { combine, defineHandlers, modelStep } from './step'
+import { isPanelOpen } from '#app/menus/menuState.ts'
+import type { Model } from '#app/model.ts'
+import { maybeRerollFor, rerollMission } from '#features/missions/missions.ts'
+import { stepWhen } from '#shared/stepWhen.ts'
+
+import { openMissions } from './home.ts'
+import { tapSound, unlockAudio } from './sound.ts'
+import { combine, defineHandlers, modelStep } from './step.ts'
 
 const canReroll = (model: Model, slot: number): boolean =>
   isPanelOpen(model, 'Missions') && Option.isSome(maybeRerollFor(model, slot))

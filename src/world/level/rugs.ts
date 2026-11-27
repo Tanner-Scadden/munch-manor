@@ -1,7 +1,7 @@
 import { Array, Option } from 'effect'
 
-import type { Level } from './arena'
-import { DINING_ROOM_ID, LIBRARY_ROOM_ID, PARLOUR_ROOM_ID } from './plan'
+import type { Level } from './arena.ts'
+import { DINING_ROOM_ID, LIBRARY_ROOM_ID, PARLOUR_ROOM_ID } from './plan.ts'
 
 export type Rug = Readonly<{
   x: number

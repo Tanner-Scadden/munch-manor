@@ -4,14 +4,9 @@ import { UiSchema } from '@effect/ui'
 import { PickedMode, RoomDifficulty } from '@munch/netcode'
 import { LobbyEvent, QuickPlayEvent, RoomEvent } from '@munch/netcode/browser'
 
-import {
-  CodeCopy,
-  CoopProblem,
-  NudgeReason,
-  Share,
-} from '../../domain/coopRoom'
-import { Calling } from '../../shared/playerData'
-import { Modifier } from '../../world/run/modifiers'
+import { CodeCopy, CoopProblem, NudgeReason, Share } from '#domain/coopRoom.ts'
+import { Calling } from '#shared/records/playerData.ts'
+import { Modifier } from '#world/run/modifiers.ts'
 
 export const coopCases = {
   ClickedCoopQuickPlayButton: {},

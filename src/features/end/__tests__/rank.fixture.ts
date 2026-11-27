@@ -2,18 +2,18 @@ import { Array, type Effect, Function } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import { Message } from '../../../app/message'
-import { type Model, Phase, RunMode } from '../../../app/model'
-import { WriteSave } from '../../../app/update/save'
-import { type PlayerChange } from '../../../platform/playerSync'
-import { FIXED_STEP_MS } from '../../../shared/constants'
+import { Message } from '#app/message.ts'
+import { type Model, Phase, RunMode } from '#app/model.ts'
+import { WriteSave } from '#app/update/save.ts'
+import { type PlayerChange } from '#platform/save/playerSync.ts'
+import { FIXED_STEP_MS } from '#shared/constants.ts'
 import {
   DISTANT_SPAWN,
   escaping,
   lastHeart,
   readyAfterRead,
   withDareThings,
-} from '../../../test/model.fixture'
+} from '#test/model.fixture.ts'
 import {
   type RootStep,
   type StoryStep,
@@ -23,9 +23,9 @@ import {
   steps,
   tick,
   writeSave,
-} from '../../../test/testing'
-import { type DareThing, DareThingState } from '../../../world/dare/dareSchema'
-import { noKills } from '../../../world/schema/worldSchema'
+} from '#test/testing.ts'
+import { type DareThing, DareThingState } from '#world/dare/dareSchema.ts'
+import { noKills } from '#world/schema/worldSchema.ts'
 
 export const frame: StoryStep = tick(FIXED_STEP_MS)
 

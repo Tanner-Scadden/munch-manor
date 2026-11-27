@@ -5,18 +5,18 @@ import { HtmlLocator, HtmlScene } from '@effect/ui/html/testing'
 import { Locator } from '@effect/ui/testing'
 import { describe, it, expect as vitestExpect } from '@effect/vitest'
 
-import { Message } from '../../app/message'
-import { type Model, Phase } from '../../app/model'
-import { PressGameSurface } from '../../app/mount'
+import { Message } from '#app/message.ts'
+import { type Model, Phase } from '#app/model.ts'
+import { PressGameSurface } from '#app/mount.ts'
 import {
   HAND_DIALOG_ID,
   PANEL_DIALOG_ID,
   PROFILE_DIALOG_ID,
-} from '../../domain/clientSchema'
-import { munchopediaPropsOf } from '../../features/munchopedia/__tests__/munchopedia.fixture'
-import { Munchopedia } from '../../features/munchopedia/block'
-import { ATLAS_SHEET } from '../../test/atlasHtml.setup'
-import { fighting, home } from '../../test/model.fixture'
+} from '#domain/clientSchema.ts'
+import { munchopediaPropsOf } from '#features/munchopedia/__tests__/munchopedia.fixture.ts'
+import { Munchopedia } from '#features/munchopedia/block.ts'
+import { ATLAS_SHEET } from '#test/atlasHtml.setup.ts'
+import { fighting, home } from '#test/model.fixture.ts'
 import {
   byClass,
   emitPressedKey,
@@ -25,14 +25,14 @@ import {
   pickCardInScene,
   requestDialogClose,
   showDialog,
-} from '../../test/sceneTesting'
+} from '#test/sceneTesting.ts'
 import {
   type SceneStep,
   modelAfter,
   sceneOf,
   send,
   steps,
-} from '../../test/testing'
+} from '#test/testing.ts'
 
 const BAGS = ['attrs', 'props'] as const
 

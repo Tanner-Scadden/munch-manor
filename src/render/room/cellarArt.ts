@@ -1,10 +1,11 @@
 import { Array, Function, Result } from 'effect'
 
-import { bakeShapes } from '../../art/sprite'
-import { TILE_SIZE } from '../../shared/constants'
-import type { Level } from '../../world/level/arena'
-import type * as Draw from '../draw'
-import { pixelArt, rect } from '../drawing'
+import { bakeShapes } from '#art/sprite.ts'
+import type * as Draw from '#render/draw.ts'
+import { pixelArt, rect } from '#render/drawing.ts'
+import { TILE_SIZE } from '#shared/constants.ts'
+import type { Level } from '#world/level/arena.ts'
+
 import {
   BASEBOARD_Y,
   type Box,
@@ -13,8 +14,8 @@ import {
   GOLD_DARK_COLOR,
   pick,
   roll,
-} from './roomPalette'
-import { type Span, spansWithin } from './roomWalls'
+} from './roomPalette.ts'
+import { type Span, spansWithin } from './roomWalls.ts'
 
 const MORTAR_COLOR = '#211d1c'
 const STONE_SHADES: Array.NonEmptyReadonlyArray<string> = [

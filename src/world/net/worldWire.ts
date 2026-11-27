@@ -1,6 +1,6 @@
 import { type Effect, Schema } from 'effect'
 
-import { World } from '../schema/world'
+import { World } from '#world/schema/world.ts'
 
 const worldCodec = Schema.toCodecJson(World)
 const WorldJson = Schema.fromJsonString(worldCodec)

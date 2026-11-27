@@ -1,3 +1,3 @@
-import { useSpriteMode } from '../art/spriteAtlas'
+import { useSpriteMode } from '#art/atlas/spriteAtlas.ts'
 
 useSpriteMode('StandIn')

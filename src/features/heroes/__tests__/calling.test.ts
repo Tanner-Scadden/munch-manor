@@ -1,11 +1,11 @@
 import { Array, Option } from 'effect'
 import { describe, expect, test } from 'vitest'
 
-import { defaultAppearance } from '../../../app/model'
-import { playerPixels } from '../../../art/appearance'
-import { specialsOf } from '../../../domain/callingSpecials'
-import { PLAYER_MAX_HP } from '../../../shared/constants'
-import { heldGun } from '../../../world/gear/weapons'
+import { defaultAppearance } from '#app/model.ts'
+import { playerPixels } from '#art/appearance.ts'
+import { specialsOf } from '#domain/callingSpecials.ts'
+import { PLAYER_MAX_HP } from '#shared/constants.ts'
+import { heldGun } from '#world/gear/weapons.ts'
 import {
   CALLINGS,
   UNLOCK_RANKS,
@@ -25,9 +25,9 @@ import {
   stoveKillsFor,
   trapHealthScaleOf,
   woundGraceScaleOf,
-} from '../../../world/heroes/calling'
-import { playerOfCalling } from '../../../world/heroes/callingPlayer'
-import { initialPlayer } from '../../../world/schema/worldSchema'
+} from '#world/heroes/calling.ts'
+import { playerOfCalling } from '#world/heroes/callingPlayer.ts'
+import { initialPlayer } from '#world/schema/worldSchema.ts'
 
 describe('unlocking', () => {
   test('YOU is open at rank 1, the rest at 3, 6, 10, and 15', () => {

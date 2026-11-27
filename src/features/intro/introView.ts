@@ -1,7 +1,7 @@
 import { Array, Function, Option, Record, Result } from 'effect'
 
-import type { Model } from '../../app/model'
-import { type BakedText, bakeText, placeBaked } from '../../art/font'
+import type { Model } from '#app/model.ts'
+import { type BakedText, bakeText, placeBaked } from '#art/font.ts'
 import {
   ANTENNA,
   BEAM,
@@ -36,21 +36,22 @@ import {
   STEAM,
   STEPS_BACKDROP,
   speechBubble,
-} from '../../art/introArt'
-import { type Sprite, group, placeAt } from '../../art/sprite'
-import * as Draw from '../../render/draw'
-import type { Screen } from '../../render/screen'
-import { FRIEND_LINES } from '../../world/names'
-import { ARRIVAL_MS } from '../../world/run/arrival'
-import type { Vector } from '../../world/schema/worldSchema'
-import { lerp } from '../../world/step/geometry'
+} from '#art/introArt.ts'
+import { type Sprite, group, placeAt } from '#art/sprite.ts'
+import type { Screen } from '#render/camera/screen.ts'
+import * as Draw from '#render/draw.ts'
+import { FRIEND_LINES } from '#world/names.ts'
+import { ARRIVAL_MS } from '#world/run/arrival.ts'
+import type { Vector } from '#world/schema/worldSchema.ts'
+import { lerp } from '#world/step/geometry.ts'
+
 import {
   type IntroBeat,
   type IntroFrame,
   KNOCKS_MS,
   KNOCK_BACK_MS,
   maybeIntroFrameOf,
-} from './introBeat'
+} from './introBeat.ts'
 
 const NIGHT_BLACK = '#0d0816'
 

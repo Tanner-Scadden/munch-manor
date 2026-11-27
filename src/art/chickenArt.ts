@@ -1,4 +1,4 @@
-import { type Palette, type Sprite, spriteShapes } from './sprite'
+import { type Palette, type Sprite, spriteShapes } from './sprite.ts'
 
 const CHICKEN_PALETTE: Palette = {
   k: '#140c10',

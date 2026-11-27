@@ -1,5 +1,6 @@
-import type { SoundEffect } from '../shared/soundEffect'
-import { type Recipe, at, delayedEnvelope } from './soundRecipe'
+import type { SoundEffect } from '#shared/soundEffect.ts'
+
+import { type Recipe, at, delayedEnvelope } from './soundRecipe.ts'
 
 export const WEATHER_RECIPES = {
   Thunder: {

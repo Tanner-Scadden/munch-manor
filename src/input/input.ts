@@ -2,23 +2,23 @@ import { Array, Function, Option, pipe } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import { type Camera, viewToWorld } from '../render/camera'
-import { screenToFloorDirection } from '../render/lens'
-import { clientToView, isLeftHalf } from '../render/screen'
+import { type Camera, viewToWorld } from '#render/camera/camera.ts'
+import { screenToFloorDirection } from '#render/camera/lens.ts'
+import { clientToView, isLeftHalf } from '#render/camera/screen.ts'
 import {
   CAMERA_LEAN_PX,
   MOUSE_LEAN_SHARE,
   STICK_DEAD_ZONE,
   STICK_FIRE_ZONE,
   STICK_RADIUS_PX,
-} from '../shared/constants'
-import * as DetMath from '../shared/detMath'
+} from '#shared/constants.ts'
+import * as DetMath from '#shared/detMath.ts'
 import type {
   Intent,
   Player,
   Trigger,
   Vector,
-} from '../world/schema/entitySchema'
+} from '#world/schema/entitySchema.ts'
 import {
   ZERO_VECTOR,
   addVectors,
@@ -27,7 +27,8 @@ import {
   normalize,
   scaleVector,
   vectorLength,
-} from '../world/step/geometry'
+} from '#world/step/geometry.ts'
+
 import {
   PAD_SELECT,
   PAD_START,
@@ -38,7 +39,7 @@ import {
   padAim,
   padAimReach,
   padMove,
-} from './gamepad'
+} from './gamepad.ts'
 import {
   HoldButton,
   type Input,
@@ -46,8 +47,8 @@ import {
   type PointerDevice,
   Stick,
   type SurfaceRectangle,
-} from './inputSchema'
-import { INTERACT_KEY } from './keyActions'
+} from './inputSchema.ts'
+import { INTERACT_KEY } from './keyActions.ts'
 
 const UP_KEY = 'KeyW'
 const DOWN_KEY = 'KeyS'

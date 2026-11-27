@@ -62,10 +62,7 @@ const cleanUp = (env: Bindings, scheduledMs: number) =>
   )
 
 const ROUTES: ReadonlyArray<
-  (
-    request: Request,
-    env: Bindings,
-  ) => Effect.Effect<Option.Option<Response>>
+  (request: Request, env: Bindings) => Effect.Effect<Option.Option<Response>>
 > = [
   (request, env) => routePlayerLog(request, env),
   (request, env) =>

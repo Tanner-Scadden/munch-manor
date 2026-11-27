@@ -1,7 +1,8 @@
-import type { CaseLook } from '../world/feats/caseSpots'
-import type { CasePrize, Feat } from '../world/schema/worldSchema'
-import { type Palette, type Sprite, TOP_LEFT, spriteShapes } from './sprite'
-import { gunIcon } from './sprites/guns'
+import type { CaseLook } from '#world/feats/caseSpots.ts'
+import type { CasePrize, Feat } from '#world/schema/worldSchema.ts'
+
+import { type Palette, type Sprite, TOP_LEFT, spriteShapes } from './sprite.ts'
+import { gunIcon } from './sprites/guns.ts'
 
 const INK = '#140c10'
 

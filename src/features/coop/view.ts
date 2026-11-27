@@ -8,10 +8,7 @@ import {
   type RoomScore,
 } from '@munch/netcode'
 
-import type {
-  ApplicationHtml,
-  ApplicationViewBuilder,
-} from '../../app/definition'
+import type { ApplicationHtml, ApplicationViewBuilder } from '#app/component.ts'
 import {
   AWAY_ICON,
   CHECK_ICON,
@@ -27,10 +24,10 @@ import {
   WAIT_ICON,
   WIFI_ICONS,
   portraitOf,
-} from '../../art/coopIcons'
-import { SHARE_ICON, SKULL_ICONS, TROPHY_ICON } from '../../art/icons'
-import { MISSION_ICONS } from '../../art/missionIcons'
-import { callingOfMember, seatLook, seatLookOf } from '../../art/seatLooks'
+} from '#art/icons/coopIcons.ts'
+import { SHARE_ICON, SKULL_ICONS, TROPHY_ICON } from '#art/icons/icons.ts'
+import { MISSION_ICONS } from '#art/icons/missionIcons.ts'
+import { callingOfMember, seatLook, seatLookOf } from '#art/seatLooks.ts'
 import {
   type CoopProblem,
   type Queue,
@@ -38,26 +35,24 @@ import {
   RoomRequest,
   Screen,
   isInLobby,
-} from '../../domain/coopRoom'
-import { bestMarkOn } from '../../domain/dareMarks'
-import { seatColorOf } from '../../render/partyView'
-import type { SavedDareMarks } from '../../shared/dareMarkData'
+} from '#domain/coopRoom.ts'
+import { bestMarkOn } from '#domain/dareMarks.ts'
+import { HeroPicker } from '#features/heroes/block.ts'
+import { seatColorOf } from '#render/bodies/partyView.ts'
+import type { SavedDareMarks } from '#shared/records/dareMarkData.ts'
 import type {
   Appearance,
   Calling,
   SavedBoughtCosmetics,
-} from '../../shared/playerData'
-import { backButtonView, closeButtonView } from '../../ui/cornerButtons'
-import { dareMarkBadgeView } from '../../ui/dareMarkView'
-import { callingPropView, iconView, rankTagView } from '../../ui/menuParts'
-import { CALLING_NAMES } from '../../world/names'
-import { HeroPicker } from '../heroes/block'
-import { readoutOf } from './auditReadout'
-import { CoopMessage } from './message'
-import { type Model } from './model'
-import { askingView, poofView, queueRollView } from './motionArt'
-import { nameButtonView, namePickerView } from './namePicker'
-import { heroPickView, picksView } from './picksView'
+} from '#shared/records/playerData.ts'
+import { backButtonView, closeButtonView } from '#ui/cornerButtons.ts'
+import { dareMarkBadgeView } from '#ui/dareMarkView.ts'
+import { callingPropView, iconView, rankTagView } from '#ui/menuParts.ts'
+import { CALLING_NAMES } from '#world/names.ts'
+
+import { readoutOf } from './audit/auditReadout.ts'
+import { CoopMessage } from './message.ts'
+import { type Model } from './model.ts'
 import {
   CODE_INPUT,
   CODE_INPUT_ID,
@@ -68,7 +63,10 @@ import {
   ROOM_CODE_LENGTH,
   isHost,
   meIn,
-} from './roomState'
+} from './roomState.ts'
+import { askingView, poofView, queueRollView } from './views/motionArt.ts'
+import { nameButtonView, namePickerView } from './views/namePicker.ts'
+import { heroPickView, picksView } from './views/picksView.ts'
 
 export type ViewInputs = Readonly<{
   look: Appearance

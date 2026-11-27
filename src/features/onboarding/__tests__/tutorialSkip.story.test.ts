@@ -3,7 +3,7 @@ import { Array, Effect, Option, Record } from 'effect'
 import { Component, UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { Message } from '../../../app/message'
+import { Message } from '#app/message.ts'
 import {
   BreakClock,
   DifficultyCard,
@@ -15,25 +15,27 @@ import {
   type TutorialChoice,
   defaultAppearance,
   freshLessons,
-} from '../../../app/model'
-import { FocusProfileElement } from '../../../app/update/profile'
-import { WriteSave } from '../../../app/update/save'
+} from '#app/model.ts'
+import { FocusProfileElement } from '#app/update/profile.ts'
+import { WriteSave } from '#app/update/save.ts'
+import { isLearned } from '#features/onboarding/onboarding.ts'
+import { isRattlesTalking } from '#features/onboarding/rattlesIntro.ts'
 import {
   decodeSave,
   encodeSave,
   restoreSave,
   saveOf,
-} from '../../../platform/save'
+} from '#platform/save/save.ts'
 import {
   FIXED_STEP_MS,
   KITCHEN_FIRST_WAVE,
   SHOP_FIRST_WAVE,
-} from '../../../shared/constants'
+} from '#shared/constants.ts'
 import {
   DISTANT_SPAWN,
   newPlayerReady,
   readyModel,
-} from '../../../test/model.fixture'
+} from '#test/model.fixture.ts'
 import {
   type StoryStep,
   checkModel,
@@ -47,16 +49,11 @@ import {
   throughIntro,
   tick,
   writeSave,
-} from '../../../test/testing'
-import { asTutorialDone } from '../../../test/veteran'
-import { isPending, isPracticeGateHeld } from '../../../world/run/lessons'
-import { noModifiers } from '../../../world/run/modifiers'
-import {
-  DARE_TOUR_WAVE,
-  isKitchenTourOn,
-} from '../../../world/run/tutorialRules'
-import { isLearned } from '../onboarding'
-import { isRattlesTalking } from '../rattlesIntro'
+} from '#test/testing.ts'
+import { asTutorialDone } from '#test/veteran.ts'
+import { isPending, isPracticeGateHeld } from '#world/run/lessons.ts'
+import { noModifiers } from '#world/run/modifiers.ts'
+import { DARE_TOUR_WAVE, isKitchenTourOn } from '#world/run/tutorialRules.ts'
 
 const firstVisit: Model = UiStruct.evolve(newPlayerReady, {
   saving: UiStruct.evolve({ saveStatus: () => 'Read' }),

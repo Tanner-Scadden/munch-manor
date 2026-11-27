@@ -2,19 +2,19 @@ import { Schema } from 'effect'
 
 import { UiSchema } from '@effect/ui'
 
-import { soundCases } from '../audio/message'
-import { FriendsDare } from '../domain/beatLink'
-import { coopCases } from '../features/coop/message'
-import { endCases } from '../features/end/message'
-import { homeCases } from '../features/home/message'
-import { lobbyCases } from '../features/lobby/message'
-import { helpCases } from '../features/menus/message'
-import { missionCases } from '../features/missions/message'
-import { MunchopediaPage } from '../features/munchopedia/model'
-import { onboardingCases } from '../features/onboarding/message'
-import { profileCases } from '../features/profile/message'
-import { whatsNewCases } from '../features/whatsNew/message'
-import { inputCases, runButtonCases } from '../input/message'
+import { soundCases } from '#audio/message.ts'
+import { FriendsDare } from '#domain/beatLink.ts'
+import { coopCases } from '#features/coop/message.ts'
+import { endCases } from '#features/end/message.ts'
+import { homeCases } from '#features/home/message.ts'
+import { lobbyCases } from '#features/lobby/message.ts'
+import { helpCases } from '#features/menus/message.ts'
+import { missionCases } from '#features/missions/message.ts'
+import { MunchopediaPage } from '#features/munchopedia/model.ts'
+import { onboardingCases } from '#features/onboarding/message.ts'
+import { profileCases } from '#features/profile/message.ts'
+import { whatsNewCases } from '#features/whatsNew/message.ts'
+import { inputCases, runButtonCases } from '#input/message.ts'
 import {
   analyticsCases,
   dayCases,
@@ -25,9 +25,10 @@ import {
   recordingCases,
   saveCases,
   versionCases,
-} from '../platform/message'
-import { ZombieKind } from '../world/schema/worldSchema'
-import { DialogName } from './rootDialog'
+} from '#platform/message.ts'
+import { ZombieKind } from '#world/schema/worldSchema.ts'
+
+import { DialogName } from './menus/rootDialog.ts'
 
 export const frameCases = {
   TickedFrame: { deltaTime: Schema.Finite },

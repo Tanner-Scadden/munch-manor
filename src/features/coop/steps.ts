@@ -3,19 +3,19 @@ import { Effect, Option, pipe } from 'effect'
 import { Command, Component, UiStruct } from '@effect/ui'
 import { HtmlCommand } from '@effect/ui/html'
 
-import { callingOfMember } from '../../art/seatLooks'
-import { LobbyChange, isInLobby, maybeRoomOf } from '../../domain/coopRoom'
-import type { Calling } from '../../shared/playerData'
+import { callingOfMember } from '#art/seatLooks.ts'
+import { LobbyChange, isInLobby, maybeRoomOf } from '#domain/coopRoom.ts'
+import type { Calling } from '#shared/records/playerData.ts'
 import {
   type CallingStanding,
   callingPriceOf,
   callingStandingOf,
   isCallingOwned,
-} from '../../world/heroes/calling'
-import { makeEdits } from './lobbyEdits'
-import { CoopNotice } from './message'
-import { type Model } from './model'
-import { CoopNet } from './net'
+} from '#world/heroes/calling.ts'
+
+import { makeEdits } from './lobbyEdits.ts'
+import { CoopNotice } from './message.ts'
+import { type Model } from './model.ts'
 import {
   CALLING_PILL,
   CODE_INPUT,
@@ -25,7 +25,8 @@ import {
   QUICK_PLAY_BUTTON,
   READY_BUTTON,
   meIn,
-} from './roomState'
+} from './roomState.ts'
+import { CoopNet } from './services/net.ts'
 
 export type CoopResultOf<C> = Readonly<{
   model: Model

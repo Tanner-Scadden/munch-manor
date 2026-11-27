@@ -4,7 +4,10 @@ import { Array, Console, Effect, FileSystem, Result, Schema } from 'effect'
 import * as NodeRuntime from '@effect/platform-node/NodeRuntime'
 import * as NodeServices from '@effect/platform-node/NodeServices'
 
-import { RunEnd, RunRecordingJson } from '../../src/platform/recording'
+import {
+  RunEnd,
+  RunRecordingJson,
+} from '../../src/platform/recording/recording'
 import { encodeJson } from '../json'
 import { replayRecording } from './replayRun'
 

@@ -5,16 +5,16 @@ import { HtmlLocator } from '@effect/ui/html/testing'
 import { Locator } from '@effect/ui/testing'
 import { describe, it } from '@effect/vitest'
 
-import { type Model, Phase } from '../../../app/model'
-import { initialModel } from '../../../app/pureApp'
-import { PANEL_DIALOG_ID } from '../../../domain/clientSchema'
+import { type Model, Phase } from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
+import { PANEL_DIALOG_ID } from '#domain/clientSchema.ts'
 import {
   lobbyAttr,
   lobbySceneIn,
-} from '../../../features/lobby/__tests__/lobby.fixture'
-import { Lobby } from '../../../features/lobby/block'
-import { Events as LobbyEvents } from '../../../features/lobby/message'
-import { RESTART_GRACE_MS } from '../../../shared/constants'
+} from '#features/lobby/__tests__/lobby.fixture.ts'
+import { Lobby } from '#features/lobby/block.ts'
+import { Events as LobbyEvents } from '#features/lobby/message.ts'
+import { RESTART_GRACE_MS } from '#shared/constants.ts'
 import {
   byClass,
   expectAttr,
@@ -26,9 +26,9 @@ import {
   showDialog,
   statusLine,
   withAttrs,
-} from '../../../test/sceneTesting'
-import { resolveFocusLobby, sceneOf, steps } from '../../../test/testing'
-import { asVeteran } from '../../../test/veteran'
+} from '#test/sceneTesting.ts'
+import { resolveFocusLobby, sceneOf, steps } from '#test/testing.ts'
+import { asVeteran } from '#test/veteran.ts'
 
 const card = HtmlLocator.role('dialog', { name: 'How tough are you?' })
 const inCard = (locator: Locator.Locator) => Locator.inside(card, locator)

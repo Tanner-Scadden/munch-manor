@@ -1,9 +1,10 @@
 import { Record } from 'effect'
 
-import type { ProofEnding } from '../shared/proofData'
-import { BIG_KEY_PALETTE, BIG_KEY_PIXELS } from './dareArt'
-import { pixelIconUrl } from './icons'
-import type { Palette } from './sprite'
+import type { ProofEnding } from '#shared/records/proofData.ts'
+
+import { BIG_KEY_PALETTE, BIG_KEY_PIXELS } from './dareArt.ts'
+import { pixelIconUrl } from './icons/icons.ts'
+import type { Palette } from './sprite.ts'
 
 type Pixels = ReadonlyArray<string>
 

@@ -3,10 +3,11 @@ import { Function } from 'effect'
 import type { View } from '@effect/ui'
 import type { Html } from '@effect/ui/html'
 
-import { MODIFIER_ICONS } from '../art/icons'
-import { MODIFIER_NAMES } from '../world/names'
-import { type Modifier, bonusPercentOfModifier } from '../world/run/modifiers'
-import { iconView } from './menuParts'
+import { MODIFIER_ICONS } from '#art/icons/icons.ts'
+import { MODIFIER_NAMES } from '#world/names.ts'
+import { type Modifier, bonusPercentOfModifier } from '#world/run/modifiers.ts'
+
+import { iconView } from './menuParts.ts'
 
 const bonusText = (percent: number): string => `+${percent}%`
 

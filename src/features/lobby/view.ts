@@ -3,13 +3,13 @@ import { Array, Function, Option } from 'effect'
 import type { View } from '@effect/ui'
 import type { Html } from '@effect/ui/html'
 
-import { PROP_ICONS } from '../../art/callingArt'
+import { PROP_ICONS } from '#art/callingArt.ts'
 import {
   CHICKEN_ICON,
   SHAKE_ICON,
   TIN_BOT_ICON,
   portraitOf,
-} from '../../art/coopIcons'
+} from '#art/icons/coopIcons.ts'
 import {
   CAMPAIGN_ICON,
   CLOSE_ICON,
@@ -17,39 +17,40 @@ import {
   MANOR_ICON,
   SKULL_ICONS,
   SKULL_OFF_ICON,
-} from '../../art/icons'
+} from '#art/icons/icons.ts'
 import {
   type Special,
   specialsNoteOf,
   specialsOf,
-} from '../../domain/callingSpecials'
-import type { Bot, HomeMode } from '../../domain/clientSchema'
-import type { MapId } from '../../shared/nameKeys'
-import type { Difficulty } from '../../shared/playerData'
-import { dareMarkFaceView, dareMarkLabel } from '../../ui/dareMarkView'
-import { type DialogParts, dialogShellView } from '../../ui/dialog'
-import { easyBreakFaceView, easyBreakLabel } from '../../ui/easyBreakView'
+} from '#domain/callingSpecials.ts'
+import type { Bot, HomeMode } from '#domain/clientSchema.ts'
+import { HeroPicker } from '#features/heroes/block.ts'
+import type { MapId } from '#shared/nameKeys.ts'
+import type { Difficulty } from '#shared/records/playerData.ts'
+import { dareMarkFaceView, dareMarkLabel } from '#ui/dareMarkView.ts'
+import { type DialogParts, dialogShellView } from '#ui/dialog.ts'
+import { easyBreakFaceView, easyBreakLabel } from '#ui/easyBreakView.ts'
 import {
   callingPropView,
   iconView,
   newPipView,
   rankTagView,
   skullFaceViews,
-} from '../../ui/menuParts'
+} from '#ui/menuParts.ts'
 import {
   bonusChipView,
   modifierFaceView,
   modifierLabel,
-} from '../../ui/modifiersView'
-import { CALLING_NAMES, MAP_NAMES, MODE_NAMES } from '../../world/names'
+} from '#ui/modifiersView.ts'
+import { CALLING_NAMES, MAP_NAMES, MODE_NAMES } from '#world/names.ts'
 import {
   DIFFICULTIES,
   DIFFICULTY_ORDER,
   NIGHTMARE_LOCK_NOTE,
   isLocked,
-} from '../../world/run/difficulty'
-import { MODIFIER_ORDER, type Modifier } from '../../world/run/modifiers'
-import { HeroPicker } from '../heroes/block'
+} from '#world/run/difficulty.ts'
+import { MODIFIER_ORDER, type Modifier } from '#world/run/modifiers.ts'
+
 import {
   HERO_DIALOG_ID,
   LOBBY_KEYS,
@@ -64,14 +65,14 @@ import {
   isModifierShownOn,
   lobbyControlId,
   picksBonusPercentOf,
-} from './lobby'
-import { Message } from './message'
+} from './lobby.ts'
+import { Message } from './message.ts'
 import {
   type LobbyControl,
   type LobbyPicks,
   type LobbyProps,
   isLobbyShown,
-} from './model'
+} from './model.ts'
 
 type LobbyH = Html.H<Message>
 type Content = View.Content<Message>

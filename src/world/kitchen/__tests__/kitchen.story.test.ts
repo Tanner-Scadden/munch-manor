@@ -3,7 +3,8 @@ import { Array, Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { Message } from '../../../app/message'
+import { freshRun } from '#app/frame/runReset.ts'
+import { Message } from '#app/message.ts'
 import {
   BreakClock,
   GameEvent,
@@ -14,18 +15,17 @@ import {
   Purchasable,
   Purchase,
   ZombieAction,
-} from '../../../app/model'
-import { freshRun } from '../../../app/runReset'
-import { Stick } from '../../../input/inputSchema'
-import { cameraFor } from '../../../render/camera'
-import { FIXED_STEP_MS } from '../../../shared/constants'
-import { floorSeenOf } from '../../../test/lensTesting'
+} from '#app/model.ts'
+import { Stick } from '#input/inputSchema.ts'
+import { cameraFor } from '#render/camera/camera.ts'
+import { FIXED_STEP_MS } from '#shared/constants.ts'
+import { floorSeenOf } from '#test/lensTesting.ts'
 import {
   DISTANT_SPAWN,
   freshRunModel,
   pastTimedBreaks,
   withKeys,
-} from '../../../test/model.fixture'
+} from '#test/model.fixture.ts'
 import {
   BELOW_KITCHEN_DOOR,
   HOLD_TICKS,
@@ -40,15 +40,24 @@ import {
   tick,
   ticks,
   zombieOf,
-} from '../../../test/testing'
-import { MANOR, levelOf, openExitIn, startingLevel } from '../../level/arena'
-import { EXIT_RULES, KITCHEN_EXIT } from '../../level/exits'
-import { WAKE_RULES, isWakePack } from '../../level/wakeUp'
-import { focusOf, modifyFocus } from '../../party/party'
-import { PURCHASE_RULES, holdProgress } from '../../shop/purchase'
-import { doorCounts, rollSpawns } from '../../waves/endlessWaves'
-import { JOIN_LEAD_MS, beginPreparation, joinNewDoors } from '../../waves/waves'
-import { OVEN_RULES, flameBoxOf, ovenBoxesOf } from '../kitchen'
+} from '#test/testing.ts'
+import { OVEN_RULES, flameBoxOf, ovenBoxesOf } from '#world/kitchen/kitchen.ts'
+import {
+  MANOR,
+  levelOf,
+  openExitIn,
+  startingLevel,
+} from '#world/level/arena.ts'
+import { EXIT_RULES, KITCHEN_EXIT } from '#world/level/exits.ts'
+import { WAKE_RULES, isWakePack } from '#world/level/wakeUp.ts'
+import { focusOf, modifyFocus } from '#world/party/party.ts'
+import { PURCHASE_RULES, holdProgress } from '#world/shop/purchase.ts'
+import { doorCounts, rollSpawns } from '#world/waves/endlessWaves.ts'
+import {
+  JOIN_LEAD_MS,
+  beginPreparation,
+  joinNewDoors,
+} from '#world/waves/waves.ts'
 
 const KEYS = EXIT_RULES.kitchenKeys + 2
 

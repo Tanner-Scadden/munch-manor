@@ -1,9 +1,9 @@
 import { Function, Option } from 'effect'
 
-import type { ApplicationHtml, ApplicationViewBuilder } from '../app/definition'
-import { type Palette, spriteDataUrl } from '../art/sprite'
-import { type Screen, thumbAreaTop } from '../render/screen'
-import { percentOf } from '../ui/menuParts'
+import type { ApplicationHtml, ApplicationViewBuilder } from '#app/component.ts'
+import { type Palette, spriteDataUrl } from '#art/sprite.ts'
+import { type Screen, thumbAreaTop } from '#render/camera/screen.ts'
+import { percentOf } from '#ui/menuParts.ts'
 
 const WAINSCOT_PALETTE: Palette = {
   T: '#5a4668',

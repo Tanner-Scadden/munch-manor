@@ -2,12 +2,13 @@ import { Effect, Option, Schema, pipe } from 'effect'
 
 import { Command, Component } from '@effect/ui'
 
-import { rumbleOf } from '../../input/rumble'
-import { toBrowserError } from '../../shared/describeError'
-import { focusOf } from '../../world/party/party'
-import type { GameEvent } from '../../world/schema/worldSchema'
-import type { Model } from '../model'
-import type { UpdateStep } from './step'
+import type { Model } from '#app/model.ts'
+import { rumbleOf } from '#input/rumble.ts'
+import { toBrowserError } from '#shared/describeError.ts'
+import { focusOf } from '#world/party/party.ts'
+import type { GameEvent } from '#world/schema/worldSchema.ts'
+
+import type { UpdateStep } from './step.ts'
 
 const playRumble = ({
   index,

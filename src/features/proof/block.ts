@@ -3,10 +3,10 @@ import { Effect, Option } from 'effect'
 import { Command, Component, UiStruct } from '@effect/ui'
 import { Html, HtmlSubscription } from '@effect/ui/html'
 
-import { Message } from './message'
-import { Model, ProofShelfProps, initialModel } from './model'
-import { FIRST_SPOT, ShelfSpot, maybeSteppedSpot, slotId } from './proof'
-import { proofShelfView } from './view'
+import { Message } from './message.ts'
+import { Model, ProofShelfProps, initialModel } from './model.ts'
+import { FIRST_SPOT, ShelfSpot, maybeSteppedSpot, slotId } from './proof.ts'
+import { proofShelfView } from './view.ts'
 
 export const FocusShelfSlot = Command.make(
   'FocusShelfSlot',

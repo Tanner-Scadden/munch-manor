@@ -5,32 +5,39 @@ import { Component, UiStruct } from '@effect/ui'
 import { Story } from '@effect/ui/testing'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { ApplicationDef } from '../../app/definition'
-import { Message } from '../../app/message'
-import { type Model, Phase } from '../../app/model'
-import { initialModel } from '../../app/pureApp'
+import { ApplicationDef } from '#app/component.ts'
+import { Message } from '#app/message.ts'
+import { type Model, Phase } from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
 import {
   maybePageShowMessage,
   maybeWindowFocusMessage,
   pageVisibilityMessage,
   updateCheckActivity,
-} from '../../app/subscriptions'
+} from '#app/subscriptions.ts'
 import {
   FocusEndMenuButton,
   ReloadPage,
   WaitForUnwrap,
-} from '../../app/update/home'
-import type { UpdateStep } from '../../app/update/step'
+} from '#app/update/home.ts'
+import type { UpdateStep } from '#app/update/step.ts'
 import {
   FetchBuild,
   RegisterServiceWorker,
   UpdateServiceWorker,
   recordRemoteBuild,
   registerServiceWorkerAfterSplash,
-} from '../../app/update/version'
-import { UpdateGift } from '../../domain/clientSchema'
-import { FIXED_STEP_MS, RESTART_GRACE_MS } from '../../shared/constants'
-import { WAVE_3_BREAK, fighting } from '../../test/model.fixture'
+} from '#app/update/version.ts'
+import { UpdateGift } from '#domain/clientSchema.ts'
+import { isUsingServiceWorker } from '#platform/serviceWorker.ts'
+import {
+  RUNNING_BUILD,
+  fetchRemoteBuild,
+  isCheckingForUpdates,
+  isGreetingDue,
+} from '#platform/version.ts'
+import { FIXED_STEP_MS, RESTART_GRACE_MS } from '#shared/constants.ts'
+import { WAVE_3_BREAK, fighting } from '#test/model.fixture.ts'
 import {
   checkModel,
   modelAfter,
@@ -38,15 +45,8 @@ import {
   steps,
   throughIntro,
   withAudioAsked,
-} from '../../test/testing'
-import { pause } from '../../world/waves/waves'
-import { isUsingServiceWorker } from '../serviceWorker'
-import {
-  RUNNING_BUILD,
-  fetchRemoteBuild,
-  isCheckingForUpdates,
-  isGreetingDue,
-} from '../version'
+} from '#test/testing.ts'
+import { pause } from '#world/waves/waves.ts'
 
 const NEWER_BUILD = 'newer-build'
 

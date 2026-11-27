@@ -1,6 +1,6 @@
 import { Array, Function, Option, Record, String, pipe } from 'effect'
 
-import type * as Draw from '../render/draw'
+import type * as Draw from '#render/draw.ts'
 import {
   ALERT_GLYPH_COLOR,
   COIN_COLOR,
@@ -9,7 +9,8 @@ import {
   GLYPH_SHADOW_COLOR,
   KILL_GLYPH_COLOR,
   STREAK_GLYPH_COLOR,
-} from '../shared/constants'
+} from '#shared/constants.ts'
+
 import {
   type Anchor,
   type Palette,
@@ -20,7 +21,7 @@ import {
   placeAt,
   spriteShapes,
   spriteWidth,
-} from './sprite'
+} from './sprite.ts'
 
 const GLYPH_PIXELS = {
   '0': ['###', '#.#', '#.#', '#.#', '###'],

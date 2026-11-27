@@ -3,10 +3,10 @@ import { Array, Effect } from 'effect'
 import { Component, UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { Message } from '../../../app/message'
-import { AudioState, type Model, Phase } from '../../../app/model'
-import { WriteSave } from '../../../app/update/save'
-import { PlaySound } from '../../../app/update/sound'
+import { Message } from '#app/message.ts'
+import { AudioState, type Model, Phase } from '#app/model.ts'
+import { WriteSave } from '#app/update/save.ts'
+import { PlaySound } from '#app/update/sound.ts'
 import {
   DEFAULT_NAME,
   GOOFY_NAMES,
@@ -17,10 +17,13 @@ import {
   nameLength,
   rollName,
   shownName,
-} from '../../../domain/playerName'
-import { changesBetween } from '../../../platform/playerSync'
-import { saveOf } from '../../../platform/save'
-import { readyAfterRead } from '../../../test/model.fixture'
+} from '#domain/playerName.ts'
+import { TutorialReset } from '#features/profile/machines/resetFlow.ts'
+import { type ProfileTab } from '#features/profile/model.ts'
+import { PROFILE_TABS } from '#features/profile/profile.ts'
+import { changesBetween } from '#platform/save/playerSync.ts'
+import { saveOf } from '#platform/save/save.ts'
+import { readyAfterRead } from '#test/model.fixture.ts'
 import {
   type StoryStep,
   checkModel,
@@ -33,11 +36,9 @@ import {
   steps,
   storyOf,
   writeSave,
-} from '../../../test/testing'
-import { type ProfileTab } from '../model'
-import { PROFILE_TABS } from '../profile'
-import { TutorialReset } from '../resetFlow'
-import { profileOpenOn } from './profile.fixture'
+} from '#test/testing.ts'
+
+import { profileOpenOn } from './profile.fixture.ts'
 
 const selectTab = (tab: ProfileTab): StoryStep =>
   send(Message.SwitchedProfileTab({ tab }))

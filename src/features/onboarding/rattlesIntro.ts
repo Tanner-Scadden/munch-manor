@@ -2,12 +2,12 @@ import { Array, Function, Option } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import type { Model } from '../../app/model'
-import { RattlesIntro } from '../../domain/clientSchema'
-import { isCoop } from '../../world/party/party'
-import { isPending, learn } from '../../world/run/lessons'
-import { DARE_TOUR_WAVE } from '../../world/run/tutorialRules'
-import { Phase } from '../../world/schema/worldSchema'
+import type { Model } from '#app/model.ts'
+import { RattlesIntro } from '#domain/clientSchema.ts'
+import { isCoop } from '#world/party/party.ts'
+import { isPending, learn } from '#world/run/lessons.ts'
+import { DARE_TOUR_WAVE } from '#world/run/tutorialRules.ts'
+import { Phase } from '#world/schema/worldSchema.ts'
 
 export const RATTLES_INTRO_LINES: Array.NonEmptyReadonlyArray<string> = [
   'PSST! OVER HERE, BY THE DOOR!',

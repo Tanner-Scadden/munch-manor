@@ -6,31 +6,31 @@ import { HtmlLocator, HtmlScene } from '@effect/ui/html/testing'
 import { Locator } from '@effect/ui/testing'
 import { describe, expect, it } from '@effect/vitest'
 
-import { defaultAppearance } from '../../../domain/clientSchema'
-import type { Calling } from '../../../shared/playerData'
-import { heroesBoughtBy, home } from '../../../test/model.fixture'
-import { button, byClass, firstOf, withAttrs } from '../../../test/sceneTesting'
+import { defaultAppearance } from '#domain/clientSchema.ts'
+import { HeroPicker, type HeroPickerProps } from '#features/heroes/block.ts'
+import { startingCallingOf } from '#features/heroes/callingPick.ts'
+import { Events } from '#features/heroes/message.ts'
+import { Lobby } from '#features/lobby/block.ts'
+import { HERO_DIALOG_ID } from '#features/lobby/lobby.ts'
+import { Events as LobbyEvents, LobbyMessage } from '#features/lobby/message.ts'
+import {
+  type LobbyProps,
+  initialLobby,
+  isHeroPickerUp,
+  openedLobby,
+} from '#features/lobby/model.ts'
+import type { Calling } from '#shared/records/playerData.ts'
+import { heroesBoughtBy, home } from '#test/model.fixture.ts'
+import { button, byClass, firstOf, withAttrs } from '#test/sceneTesting.ts'
 import {
   modelAfter,
   openLobbyByKey,
   send,
   steps,
   tapLobbyHero,
-} from '../../../test/testing'
-import { pointsForRank } from '../../../world/heroes/rank'
-import { noModifiers } from '../../../world/run/modifiers'
-import { Lobby } from '../../lobby/block'
-import { HERO_DIALOG_ID } from '../../lobby/lobby'
-import { Events as LobbyEvents, LobbyMessage } from '../../lobby/message'
-import {
-  type LobbyProps,
-  initialLobby,
-  isHeroPickerUp,
-  openedLobby,
-} from '../../lobby/model'
-import { HeroPicker, type HeroPickerProps } from '../block'
-import { startingCallingOf } from '../callingPick'
-import { Events } from '../message'
+} from '#test/testing.ts'
+import { pointsForRank } from '#world/heroes/rank.ts'
+import { noModifiers } from '#world/run/modifiers.ts'
 
 const atRank = (rank: number, calling: Calling) =>
   UiStruct.evolve(home, {

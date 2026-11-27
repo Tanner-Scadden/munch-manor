@@ -4,22 +4,18 @@ import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 import { NEUTRAL_INPUT, type PlayerInput } from '@munch/netcode'
 
-import { Message } from '../../../app/message'
+import { Message } from '#app/message.ts'
 import {
   type CarriedGun,
   GameEvent,
   type Model,
   Phase,
   type Zombie,
-} from '../../../app/model'
-import { initialModel } from '../../../app/pureApp'
-import { FIXED_STEP_MS, PISTOL_MAGAZINE } from '../../../shared/constants'
-import { holdingFirst, holdingSecond, pistolOnly } from '../../../test/arsenals'
-import {
-  DISTANT_SPAWN,
-  atOpenedCase,
-  withSeat,
-} from '../../../test/model.fixture'
+} from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
+import { FIXED_STEP_MS, PISTOL_MAGAZINE } from '#shared/constants.ts'
+import { holdingFirst, holdingSecond, pistolOnly } from '#test/arsenals.ts'
+import { DISTANT_SPAWN, atOpenedCase, withSeat } from '#test/model.fixture.ts'
 import {
   FIRE_LIFT,
   FIRE_PRESS,
@@ -40,8 +36,17 @@ import {
   tickCountFor,
   zombieById,
   zombieOf,
-} from '../../../test/testing'
-import { asVeteran } from '../../../test/veteran'
+} from '#test/testing.ts'
+import { asVeteran } from '#test/veteran.ts'
+import { KNIFE_RULES } from '#world/gear/knife.ts'
+import {
+  STARTING_PISTOL,
+  freshGun,
+  gunsOf,
+  heldGun,
+  heldWeapon,
+  inHandOf,
+} from '#world/gear/weapons.ts'
 import {
   AIM_REACH,
   DEFAULT_ROOM_SETTINGS,
@@ -51,19 +56,10 @@ import {
   heldAction,
   startRoomWorld,
   stepRoomWorld,
-} from '../../net/roomWorld'
-import { focusOf, maybePlayerAt, modifyFocus } from '../../party/party'
-import { Arsenal, type Player, Reload } from '../../schema/worldSchema'
-import { SeatAction } from '../../step/stepWorld'
-import { KNIFE_RULES } from '../knife'
-import {
-  STARTING_PISTOL,
-  freshGun,
-  gunsOf,
-  heldGun,
-  heldWeapon,
-  inHandOf,
-} from '../weapons'
+} from '#world/net/roomWorld.ts'
+import { focusOf, maybePlayerAt, modifyFocus } from '#world/party/party.ts'
+import { Arsenal, type Player, Reload } from '#world/schema/worldSchema.ts'
+import { SeatAction } from '#world/step/stepWorld.ts'
 
 const FRAME_MS = FIXED_STEP_MS
 const ROW_Y = 130

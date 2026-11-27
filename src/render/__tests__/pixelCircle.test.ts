@@ -1,8 +1,8 @@
 import { Array } from 'effect'
 import { expect, test } from 'vitest'
 
-import { rectsOf } from '../../test/viewReading'
-import { pixelDiscSpans, pixelRingSpans } from '../pixelCircle'
+import { pixelDiscSpans, pixelRingSpans } from '#render/pixelCircle.ts'
+import { rectsOf } from '#test/viewReading.ts'
 
 type Pixel = readonly [x: number, y: number]
 

@@ -3,22 +3,17 @@ import { Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { Message } from '../../../app/message'
-import { BreakClock, type Model, Phase } from '../../../app/model'
-import { initialModel } from '../../../app/pureApp'
-import { FIXED_STEP_MS, PREPARATION_MS } from '../../../shared/constants'
-import { lastHeart, withDareThings } from '../../../test/model.fixture'
-import {
-  checkModel,
-  send,
-  storyOf,
-  ticks,
-  writeSave,
-} from '../../../test/testing'
-import { noRank } from '../../../world/heroes/rank'
-import { seatCrew } from '../../../world/party/party'
-import { type Modifiers } from '../../../world/run/modifiers'
-import { withWorld } from '../../../world/schema/world'
+import { Message } from '#app/message.ts'
+import { BreakClock, type Model, Phase } from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
+import { FIXED_STEP_MS, PREPARATION_MS } from '#shared/constants.ts'
+import { lastHeart, withDareThings } from '#test/model.fixture.ts'
+import { checkModel, send, storyOf, ticks, writeSave } from '#test/testing.ts'
+import { noRank } from '#world/heroes/rank.ts'
+import { seatCrew } from '#world/party/party.ts'
+import { type Modifiers } from '#world/run/modifiers.ts'
+import { withWorld } from '#world/schema/world.ts'
+
 import {
   FOUND_THINGS,
   checkSavedChanges,
@@ -29,7 +24,7 @@ import {
   leave,
   runAt,
   wave,
-} from './rank.fixture'
+} from './rank.fixture.ts'
 
 const afterBeat = (model: Model): Model =>
   UiStruct.evolve(model, { screenMs: () => 60_000 })

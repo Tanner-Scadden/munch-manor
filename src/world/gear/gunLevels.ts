@@ -2,8 +2,13 @@ import { Array, Function, Option, pipe } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import { isCoop, maybePlayerAt, modifySeat, seatStateAt } from '../party/party'
-import type { World } from '../schema/world'
+import {
+  isCoop,
+  maybePlayerAt,
+  modifySeat,
+  seatStateAt,
+} from '#world/party/party.ts'
+import type { World } from '#world/schema/world.ts'
 import {
   type CarriedGun,
   GameEvent,
@@ -11,7 +16,8 @@ import {
   type PlayerSlot,
   SOLO_SLOT,
   type WeaponKind,
-} from '../schema/worldSchema'
+} from '#world/schema/worldSchema.ts'
+
 import {
   UPGRADE_TIERS,
   carriedMagazine,
@@ -20,7 +26,7 @@ import {
   maybeCarried,
   tierName,
   tierOf,
-} from './weapons'
+} from './weapons.ts'
 
 export const gunName: {
   (slot: PlayerSlot, weapon: WeaponKind): (model: World) => string

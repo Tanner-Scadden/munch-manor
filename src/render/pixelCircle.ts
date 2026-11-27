@@ -1,8 +1,9 @@
 import { Array, Function } from 'effect'
 
-import { type Sprite, bakeShapes, placeAt } from '../art/sprite'
-import type * as Draw from './draw'
-import { rect } from './drawing'
+import { type Sprite, bakeShapes, placeAt } from '#art/sprite.ts'
+
+import type * as Draw from './draw.ts'
+import { rect } from './drawing.ts'
 
 type Span = readonly [row: number, left: number, width: number]
 

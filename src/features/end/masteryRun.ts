@@ -2,17 +2,17 @@ import { Array, Function, Option, Record } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import type { Model } from '../../app/model'
+import type { Model } from '#app/model.ts'
 import {
   MASTERY_GUNS,
   POINTS_PER_THING,
   POINTS_PER_WAVE,
   unlocksBetween,
-} from '../../domain/mastery'
-import { isEndScreen, isGuided, isInRun, isOnHome } from '../../domain/run'
-import { type SavedMastery, addToMastery } from '../../shared/masteryData'
-import { dareItemsFoundOf } from '../../world/dare/dare'
-import { focusOf } from '../../world/party/party'
+} from '#domain/mastery.ts'
+import { isEndScreen, isGuided, isInRun, isOnHome } from '#domain/run.ts'
+import { type SavedMastery, addToMastery } from '#shared/records/masteryData.ts'
+import { dareItemsFoundOf } from '#world/dare/dare.ts'
+import { focusOf } from '#world/party/party.ts'
 
 const paidCount = (counts: Readonly<Record<string, number>>, key: string) =>
   Option.getOrElse(Record.get(counts, key), () => 0)

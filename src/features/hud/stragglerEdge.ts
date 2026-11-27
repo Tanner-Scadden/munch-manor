@@ -1,15 +1,15 @@
 import { Array, Function, pipe } from 'effect'
 
-import type { Model } from '../../app/model'
-import { placeAt } from '../../art/sprite'
-import { type Camera, worldToView } from '../../render/camera'
-import type * as Draw from '../../render/draw'
-import { EDGE_BADGE_PX, edgeBadgeOf } from '../../render/edgeBadge'
-import { clearWindowOf } from '../../render/hudLayout'
-import type { Screen } from '../../render/screen'
-import { ZombieAction } from '../../world/schema/worldSchema'
-import { clamp } from '../../world/step/geometry'
-import { isLastZombie } from '../../world/zombies/lastZombie'
+import type { Model } from '#app/model.ts'
+import { placeAt } from '#art/sprite.ts'
+import { type Camera, worldToView } from '#render/camera/camera.ts'
+import type { Screen } from '#render/camera/screen.ts'
+import type * as Draw from '#render/draw.ts'
+import { EDGE_BADGE_PX, edgeBadgeOf } from '#render/hud/edgeBadge.ts'
+import { clearWindowOf } from '#render/hud/hudLayout.ts'
+import { ZombieAction } from '#world/schema/worldSchema.ts'
+import { clamp } from '#world/step/geometry.ts'
+import { isLastZombie } from '#world/zombies/lastZombie.ts'
 
 const EDGE_GAP = 3
 const BLINK_MS = 160

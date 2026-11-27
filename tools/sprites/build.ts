@@ -17,14 +17,14 @@ import {
 import * as NodeRuntime from '@effect/platform-node/NodeRuntime'
 import * as NodeServices from '@effect/platform-node/NodeServices'
 
-import { normalPixelsOf } from '../../src/art/normalMap'
-import { rasterOf } from '../../src/art/png'
+import { normalPixelsOf } from '../../src/art/atlas/normalMap'
+import { rasterOf } from '../../src/art/atlas/png'
 import {
   type AtlasEntry,
   type SpriteAtlas,
   standInKeyOf,
   useSpriteMode,
-} from '../../src/art/spriteAtlas'
+} from '../../src/art/atlas/spriteAtlas'
 import { encodeJson, readJsonFile } from '../json'
 import { SpriteAtlasManifest, SpriteKeys } from './manifest'
 import { packShelves } from './pack'
@@ -38,7 +38,8 @@ const { spriteContents } = await import('../../src/art/sprite')
 await import('../../src/app/view')
 await import('../../src/app/main')
 await import('../../src/app/boot')
-const { precompileSprites } = await import('../../src/art/spritePrecompile')
+const { precompileSprites } =
+  await import('../../src/art/atlas/spritePrecompile')
 precompileSprites()
 const { everyRoomImage } = await import('../../src/render/room/room')
 const { EVERY_LEVEL_SPEC } = await import('../../src/world/level/plan')

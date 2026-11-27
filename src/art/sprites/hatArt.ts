@@ -1,4 +1,4 @@
-import type { Appearance, Hat } from '../../shared/playerData'
+import type { Appearance, Hat } from '#shared/records/playerData.ts'
 
 export type HatArt = Readonly<{
   above: number

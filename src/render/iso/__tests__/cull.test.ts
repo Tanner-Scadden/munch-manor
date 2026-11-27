@@ -1,15 +1,15 @@
 import { Array } from 'effect'
 import { describe, expect, test } from 'vitest'
 
-import { EVERY_LEVEL } from '../../../test/model.fixture'
 import {
   boxFloorOf,
   isNearView,
   isOnFloorSeen,
   viewBoxOf,
   viewFloorOf,
-} from '../cull'
-import { fillSpecOf } from '../lightSpecs'
+} from '#render/iso/cull.ts'
+import { fillSpecOf } from '#render/iso/light/lightSpecs.ts'
+import { EVERY_LEVEL } from '#test/model.fixture.ts'
 
 const ON_ITS_CANVAS = { scale: 1, left: 0, top: 0 }
 

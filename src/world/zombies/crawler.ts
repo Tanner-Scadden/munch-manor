@@ -2,24 +2,25 @@ import { Array, Function, Order, pipe } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import { PLAYER_RADIUS } from '../../shared/constants'
-import { type Seeded, between, nextRandom } from '../../shared/prng'
-import { trapBlockers } from '../gear/traps'
-import type { Level } from '../level/arena'
-import { RATTLES_BOX } from '../level/arena'
-import { distanceToBox } from '../level/tileGrid'
-import { isSolidAt } from '../level/tileQueries'
-import { nearestOf, targetsOf } from '../party/party'
-import type { World } from '../schema/world'
+import { PLAYER_RADIUS } from '#shared/constants.ts'
+import { type Seeded, between, nextRandom } from '#shared/prng.ts'
+import { trapBlockers } from '#world/gear/traps.ts'
+import type { Level } from '#world/level/arena.ts'
+import { RATTLES_BOX } from '#world/level/arena.ts'
+import { distanceToBox } from '#world/level/tileGrid.ts'
+import { isSolidAt } from '#world/level/tileQueries.ts'
+import { nearestOf, targetsOf } from '#world/party/party.ts'
+import type { World } from '#world/schema/world.ts'
 import {
   GameEvent,
   type Trap,
   type Vector,
   type Zombie,
   ZombieAction,
-} from '../schema/worldSchema'
-import { circlesOverlap, distanceBetween } from '../step/geometry'
-import { bodyRadiusOf, isFree, isRoamingAction, isWalking } from './zombies'
+} from '#world/schema/worldSchema.ts'
+import { circlesOverlap, distanceBetween } from '#world/step/geometry.ts'
+
+import { bodyRadiusOf, isFree, isRoamingAction, isWalking } from './zombies.ts'
 
 const isBurrowedZombieAction = ZombieAction.isAnyOf(['Burrowed'])
 const isClingingZombieAction = ZombieAction.isAnyOf(['Clinging'])

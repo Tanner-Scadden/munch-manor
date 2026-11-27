@@ -6,34 +6,35 @@ import {
   deepSprite,
   placeAt,
   spriteShapes,
-} from '../../art/sprite'
-import { WINCH_HEIGHT_PX, WINCH_SLACK, WINCH_TAUT } from '../../art/winchArt'
-import type { Drawable } from '../../render/depth'
-import type * as Draw from '../../render/draw'
-import { rect } from '../../render/drawing'
-import { doorArrowShapes } from '../../render/powerupView'
+} from '#art/sprite.ts'
+import { WINCH_HEIGHT_PX, WINCH_SLACK, WINCH_TAUT } from '#art/winchArt.ts'
+import type { Drawable } from '#render/depth.ts'
+import type * as Draw from '#render/draw.ts'
+import { rect } from '#render/drawing.ts'
+import { doorArrowShapes } from '#render/effects/powerupView.ts'
 import {
   COOLDOWN_RINGS,
   SET_UP_RINGS,
   WORK_RING_RADIUS,
   ringStepOf,
-} from '../../render/workRing'
-import { TILE_SIZE } from '../../shared/constants'
-import type { SoundEffect } from '../../shared/soundEffect'
-import { barrelOf } from '../../world/cellar/barrels'
-import { isChandelierDown } from '../../world/dining/chandelier'
-import { levelOf } from '../../world/level/arena'
-import { STACK_IDS, heapBoxOf, isHeapDown } from '../../world/library/stacks'
-import { focusOf } from '../../world/party/party'
-import type { World } from '../../world/schema/world'
-import type { StationId, Vector } from '../../world/schema/worldSchema'
-import { type StationView, stationViewsOf } from '../../world/stations/stations'
+} from '#render/hud/workRing.ts'
+import { TILE_SIZE } from '#shared/constants.ts'
+import type { SoundEffect } from '#shared/soundEffect.ts'
+import { barrelOf } from '#world/cellar/barrels.ts'
+import { isChandelierDown } from '#world/dining/chandelier.ts'
+import { levelOf } from '#world/level/arena.ts'
+import { STACK_IDS, heapBoxOf, isHeapDown } from '#world/library/stacks.ts'
+import { focusOf } from '#world/party/party.ts'
+import type { World } from '#world/schema/world.ts'
+import type { StationId, Vector } from '#world/schema/worldSchema.ts'
+import { type StationView, stationViewsOf } from '#world/stations/stations.ts'
 import {
   TOOL_RULES,
   isToolActive,
   toolActiveMs,
-} from '../../world/stations/toolRules'
-import { BOOK_PALETTE, HEAP_ROWS } from './heapArt'
+} from '#world/stations/toolRules.ts'
+
+import { BOOK_PALETTE, HEAP_ROWS } from './heapArt.ts'
 
 const HINT_PULSE_MS = 400
 

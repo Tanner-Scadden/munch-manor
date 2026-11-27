@@ -2,11 +2,11 @@ import { Array, Function, Option, Result, pipe } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import { PLAYER_RADIUS } from '../../shared/constants'
-import * as DetMath from '../../shared/detMath'
-import { atSeat, seatStateAt } from '../party/party'
-import { bossAttackPace } from '../run/difficulty'
-import type { World } from '../schema/world'
+import { PLAYER_RADIUS } from '#shared/constants.ts'
+import * as DetMath from '#shared/detMath.ts'
+import { atSeat, seatStateAt } from '#world/party/party.ts'
+import { bossAttackPace } from '#world/run/difficulty.ts'
+import type { World } from '#world/schema/world.ts'
 import {
   Boss,
   BossMove,
@@ -16,15 +16,16 @@ import {
   type PlayerSlot,
   type Vector,
   type Zombie,
-} from '../schema/worldSchema'
-import { woundPlayer } from '../step/combat'
+} from '#world/schema/worldSchema.ts'
+import { woundPlayer } from '#world/step/combat.ts'
 import {
   OUTWARD,
   directionBetween,
   distanceBetween,
   scaleVector,
-} from '../step/geometry'
-import { BOSS_RULES } from './bossRules'
+} from '#world/step/geometry.ts'
+
+import { BOSS_RULES } from './bossRules.ts'
 
 const isDazedBossMove = BossMove.isAnyOf(['Dazed'])
 const isFightingBoss = Boss.isAnyOf(['Fighting'])

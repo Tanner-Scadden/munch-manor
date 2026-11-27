@@ -2,9 +2,14 @@ import { Function } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import { OPEN_BREAK_WAVE } from '../../shared/constants'
-import type { World } from '../schema/world'
-import { BreakClock, Lesson, type Lessons, Phase } from '../schema/worldSchema'
+import { OPEN_BREAK_WAVE } from '#shared/constants.ts'
+import type { World } from '#world/schema/world.ts'
+import {
+  BreakClock,
+  Lesson,
+  type Lessons,
+  Phase,
+} from '#world/schema/worldSchema.ts'
 
 export const learn: {
   (atMs: number): (lesson: Lesson) => Lesson

@@ -11,14 +11,14 @@ import {
   Phase,
   type PlannedSpawn,
   type Zombie,
-} from '../../../app/model'
-import { newPlayerReady } from '../../../test/model.fixture'
-import { zombieOf } from '../../../test/testing'
-import { START_LEVEL } from '../../level/arena'
-import { modifyFocus } from '../../party/party'
-import { FINAL_WAVE, WAVE_PLANS } from '../../waves/wavePlans'
-import { freshFight } from '../boss'
-import { ZOMBIE_KINDS, scaledHp } from '../zombies'
+} from '#app/model.ts'
+import { newPlayerReady } from '#test/model.fixture.ts'
+import { zombieOf } from '#test/testing.ts'
+import { START_LEVEL } from '#world/level/arena.ts'
+import { modifyFocus } from '#world/party/party.ts'
+import { FINAL_WAVE, WAVE_PLANS } from '#world/waves/wavePlans.ts'
+import { freshFight } from '#world/zombies/boss.ts'
+import { ZOMBIE_KINDS, scaledHp } from '#world/zombies/zombies.ts'
 
 export const CENTER_X = START_LEVEL.start.x
 export const CENTER_Y = START_LEVEL.start.y - 15

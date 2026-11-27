@@ -1,8 +1,8 @@
 import { Array, Function, Option, Result, pipe } from 'effect'
 
-import type { Model } from '../../app/model'
-import { type BakedText, bakeText, placeBaked } from '../../art/font'
-import { prizeSprite } from '../../art/prizeArt'
+import type { Model } from '#app/model.ts'
+import { type BakedText, bakeText, placeBaked } from '#art/font.ts'
+import { prizeSprite } from '#art/prizeArt.ts'
 import {
   type Sprite,
   bakeShapes,
@@ -10,9 +10,9 @@ import {
   placeAt,
   placeScaled,
   spriteShapes,
-} from '../../art/sprite'
-import { gunIcon } from '../../art/sprites/guns'
-import { PrizeFlight } from '../../domain/clientSchema'
+} from '#art/sprite.ts'
+import { gunIcon } from '#art/sprites/guns.ts'
+import { PrizeFlight } from '#domain/clientSchema.ts'
 import {
   type Anchored,
   type Camera,
@@ -21,17 +21,18 @@ import {
   placedAt,
   viewBoxOf,
   worldToView,
-} from '../../render/camera'
-import type * as Draw from '../../render/draw'
-import { rect } from '../../render/drawing'
-import { HUD_STRIP_HEIGHT, gunSlotBox } from '../../render/hudLayout'
-import { bakeRings, pixelRing } from '../../render/pixelCircle'
-import type { Screen } from '../../render/screen'
-import { FRIDGE_RULES, refundOf } from '../../world/fridge/leftovers'
-import { heldSlotOf } from '../../world/gear/weapons'
-import { focusOf, maybePlayerAt } from '../../world/party/party'
-import type { FridgePrize, Vector } from '../../world/schema/entitySchema'
-import { clamp, easeOut } from '../../world/step/geometry'
+} from '#render/camera/camera.ts'
+import type { Screen } from '#render/camera/screen.ts'
+import type * as Draw from '#render/draw.ts'
+import { rect } from '#render/drawing.ts'
+import { HUD_STRIP_HEIGHT, gunSlotBox } from '#render/hud/hudLayout.ts'
+import { bakeRings, pixelRing } from '#render/pixelCircle.ts'
+import { FRIDGE_RULES, refundOf } from '#world/fridge/leftovers.ts'
+import { heldSlotOf } from '#world/gear/weapons.ts'
+import { focusOf, maybePlayerAt } from '#world/party/party.ts'
+import type { FridgePrize, Vector } from '#world/schema/entitySchema.ts'
+import { clamp, easeOut } from '#world/step/geometry.ts'
+
 import {
   type DoorReveal,
   REVEAL_RULES,
@@ -40,7 +41,7 @@ import {
   prizeSpotOf,
   revealOf,
   revealStageAt,
-} from './fridgeReveal'
+} from './fridgeReveal.ts'
 
 type RarityLook = Readonly<{ ray: string; ring: string }>
 

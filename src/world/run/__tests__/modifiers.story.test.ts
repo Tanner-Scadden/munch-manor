@@ -3,6 +3,7 @@ import { Array, Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
+import { startOrResume } from '#app/frame/runFlow.ts'
 import {
   type Bullet,
   Life,
@@ -11,13 +12,12 @@ import {
   Pierce,
   RunMode,
   type Zombie,
-} from '../../../app/model'
-import { initialModel } from '../../../app/pureApp'
-import { startOrResume } from '../../../app/runFlow'
-import { addBot } from '../../../domain/bots'
-import { effectiveModifiersOf } from '../../../domain/onlineRun'
-import { LobbyMessage } from '../../../features/lobby/message'
-import { FIXED_STEP_MS, PLAYER_MAX_HP } from '../../../shared/constants'
+} from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
+import { addBot } from '#domain/bots.ts'
+import { effectiveModifiersOf } from '#domain/onlineRun.ts'
+import { LobbyMessage } from '#features/lobby/message.ts'
+import { FIXED_STEP_MS, PLAYER_MAX_HP } from '#shared/constants.ts'
 import {
   DISTANT_SPAWN,
   atFridge,
@@ -27,8 +27,8 @@ import {
   placeSeat,
   readyAfterRead,
   withSeatLife,
-} from '../../../test/model.fixture'
-import { playRoom } from '../../../test/roomTesting'
+} from '#test/model.fixture.ts'
+import { playRoom } from '#test/roomTesting.ts'
 import {
   HOLD_TICKS,
   bulletInto,
@@ -44,12 +44,12 @@ import {
   tick,
   ticks,
   zombieOf,
-} from '../../../test/testing'
-import { asVeteran } from '../../../test/veteran'
-import { advanceLobs } from '../../fridge/fridgeWeapons'
-import { FRIDGE_RULES, pullFridge } from '../../fridge/leftovers'
-import { DROP_RULES } from '../../gear/powerups'
-import { roomSettingsOf, startRoomWorld } from '../../net/roomWorld'
+} from '#test/testing.ts'
+import { asVeteran } from '#test/veteran.ts'
+import { advanceLobs } from '#world/fridge/fridgeWeapons.ts'
+import { FRIDGE_RULES, pullFridge } from '#world/fridge/leftovers.ts'
+import { DROP_RULES } from '#world/gear/powerups.ts'
+import { roomSettingsOf, startRoomWorld } from '#world/net/roomWorld.ts'
 import {
   COOP_RULES,
   focusOf,
@@ -57,13 +57,8 @@ import {
   isFriendlyFireOn,
   maybePlayerAt,
   playersOf,
-} from '../../party/party'
-import type { World } from '../../schema/world'
-import { type Lob, type PlannedSpawn } from '../../schema/worldSchema'
-import { offersOf } from '../../shop/purchase'
-import { beginPreparation } from '../../waves/waves'
-import { ZOMBIE_KINDS } from '../../zombies/zombies'
-import { endArrival } from '../arrival'
+} from '#world/party/party.ts'
+import { endArrival } from '#world/run/arrival.ts'
 import {
   MODIFIER_ORDER,
   type Modifiers,
@@ -75,7 +70,12 @@ import {
   modifiersOn,
   noModifiers,
   toggledModifier,
-} from '../modifiers'
+} from '#world/run/modifiers.ts'
+import type { World } from '#world/schema/world.ts'
+import { type Lob, type PlannedSpawn } from '#world/schema/worldSchema.ts'
+import { offersOf } from '#world/shop/purchase.ts'
+import { beginPreparation } from '#world/waves/waves.ts'
+import { ZOMBIE_KINDS } from '#world/zombies/zombies.ts'
 
 const FRAME_MS = 50
 const TICK_MS = FIXED_STEP_MS

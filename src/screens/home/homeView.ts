@@ -1,12 +1,9 @@
 import { Array, Function, Option } from 'effect'
 
-import type {
-  ApplicationHtml,
-  ApplicationViewBuilder,
-} from '../../app/definition'
-import type { Model } from '../../app/model'
-import { pixelArtStyle } from '../../art/artSize'
-import { COOP_ICON } from '../../art/coopIcons'
+import type { ApplicationHtml, ApplicationViewBuilder } from '#app/component.ts'
+import type { Model } from '#app/model.ts'
+import { pixelArtStyle } from '#art/icons/artSize.ts'
+import { COOP_ICON } from '#art/icons/coopIcons.ts'
 import {
   AIM_ICON,
   CHARACTER_ICON,
@@ -25,64 +22,65 @@ import {
   SKULL_OFF_ICON,
   TROPHY_ICON,
   TURN_PHONE_ICON,
-} from '../../art/icons'
-import { DifficultyCard } from '../../domain/clientSchema'
-import { hasNewJournalPage } from '../../domain/journal'
-import { isEndScreen, isOnHome } from '../../domain/run'
-import { hasUnseenLook } from '../../domain/unlocks'
-import { IS_COOP_RELEASED } from '../../features/coop/release'
+} from '#art/icons/icons.ts'
+import { DifficultyCard } from '#domain/clientSchema.ts'
+import { hasNewJournalPage } from '#domain/journal.ts'
+import { isEndScreen, isOnHome } from '#domain/run.ts'
+import { hasUnseenLook } from '#domain/unlocks.ts'
+import { IS_COOP_RELEASED } from '#features/coop/release.ts'
 import type {
   HandCard,
   HomeButton,
   MenuPanel,
-} from '../../features/home/homeSchema'
-import { HomeMessage } from '../../features/home/message'
-import { padDiagramView } from '../../features/menus/padDiagram'
-import { helpLabel, howToPlayView } from '../../features/menus/pauseHelp'
+} from '#features/home/homeSchema.ts'
+import { HomeMessage } from '#features/home/message.ts'
+import { padDiagramView } from '#features/menus/padDiagram.ts'
+import { helpLabel, howToPlayView } from '#features/menus/pauseHelp.ts'
 import {
   missionsPanelView,
   missionsText,
-} from '../../features/missions/missionCard'
-import { tabOfPage } from '../../features/munchopedia/model'
+} from '#features/missions/missionCard.ts'
+import { tabOfPage } from '#features/munchopedia/model.ts'
 import {
   ENTRY_COUNT,
   discoveredKinds,
   entryName,
   hasUnopenedEntry,
   munchopediaText,
-} from '../../features/munchopedia/munchopedia'
-import { hasNewProof } from '../../features/proof/proof'
+} from '#features/munchopedia/munchopedia.ts'
+import { hasNewProof } from '#features/proof/proof.ts'
 import {
   whatsNewBodyView,
   whatsNewText,
-} from '../../features/whatsNew/whatsNewView'
-import { DeviceMessage } from '../../platform/message'
-import type { TutorialChoice } from '../../shared/nameKeys'
-import type { Difficulty } from '../../shared/playerData'
-import { closeButtonView } from '../../ui/cornerButtons'
-import type { DialogParts } from '../../ui/dialog'
+} from '#features/whatsNew/whatsNewView.ts'
+import { DeviceMessage } from '#platform/message.ts'
+import type { TutorialChoice } from '#shared/nameKeys.ts'
+import type { Difficulty } from '#shared/records/playerData.ts'
+import { closeButtonView } from '#ui/cornerButtons.ts'
+import type { DialogParts } from '#ui/dialog.ts'
 import {
   iconView,
   isKeyboard,
   keyCapView,
   skullFaceViews,
-} from '../../ui/menuParts'
-import { rankChipView } from '../../ui/rankBadgeView'
-import { rankOf, totalPointsOf } from '../../world/heroes/rank'
+} from '#ui/menuParts.ts'
+import { rankChipView } from '#ui/rankBadgeView.ts'
+import { rankOf, totalPointsOf } from '#world/heroes/rank.ts'
 import {
   JOURNAL_NAME,
   MULTIPLAYER_NAME,
   PROOF_NAME,
   TUTORIAL_CHOICE_NAMES,
-} from '../../world/names'
+} from '#world/names.ts'
 import {
   DIFFICULTIES,
   DIFFICULTY_ORDER,
   NIGHTMARE_LOCK_NOTE,
   isLocked,
-} from '../../world/run/difficulty'
-import { beatCardView } from './beatCard'
-import { topLeftView } from './bestsView'
+} from '#world/run/difficulty.ts'
+
+import { beatCardView } from './beatCard.ts'
+import { topLeftView } from './bestsView.ts'
 import {
   HAND_CARDS,
   HAND_KEYS,
@@ -97,10 +95,10 @@ import {
   isNewsUnseen,
   isTurnHintShown,
   steppedHandCard,
-} from './home'
-import { homeButton, homeFocusAttrs, keyBadgeView } from './homeAttributes'
-import { installTileView } from './installView'
-import { updateGiftView } from './updateGift'
+} from './home.ts'
+import { homeButton, homeFocusAttrs, keyBadgeView } from './homeAttributes.ts'
+import { installTileView } from './installView.ts'
+import { updateGiftView } from './updateGift.ts'
 
 const playButtonView = (
   model: Model,

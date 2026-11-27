@@ -2,14 +2,17 @@ import { Array, Function, Option } from 'effect'
 
 import type { PickedMode } from '@munch/netcode'
 
-import type { MasterySkin } from '../shared/masteryData'
-import { CHANDELIER_CRUSH_GOAL, type MissionId } from '../shared/missionData'
 import type {
   HouseSpot,
   MapId,
   ShopGuideSection,
   TutorialChoice,
-} from '../shared/nameKeys'
+} from '#shared/nameKeys.ts'
+import type { MasterySkin } from '#shared/records/masteryData.ts'
+import {
+  CHANDELIER_CRUSH_GOAL,
+  type MissionId,
+} from '#shared/records/missionData.ts'
 import {
   type Calling,
   type CosmeticKind,
@@ -17,12 +20,13 @@ import {
   Hat,
   type PropStyle,
   type RunEnding,
-} from '../shared/playerData'
-import type { ProofEnding } from '../shared/proofData'
-import type { DareKind } from './dare/dareSchema'
-import type { MilestoneId } from './dare/milestones'
-import type { BoneBonus } from './heroes/rank'
-import type { Modifier } from './run/modifiers'
+} from '#shared/records/playerData.ts'
+import type { ProofEnding } from '#shared/records/proofData.ts'
+
+import type { DareKind } from './dare/dareSchema.ts'
+import type { MilestoneId } from './dare/milestones.ts'
+import type { BoneBonus } from './heroes/rank.ts'
+import type { Modifier } from './run/modifiers.ts'
 import type {
   FridgePrize,
   GunPerk,
@@ -30,7 +34,7 @@ import type {
   TrapKind,
   WeaponKind,
   ZombieKind,
-} from './schema/worldSchema'
+} from './schema/worldSchema.ts'
 
 export const GUN_NAMES: Readonly<Record<WeaponKind, string>> = {
   Pistol: 'Pop Pistol',

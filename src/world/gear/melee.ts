@@ -2,10 +2,10 @@ import { Array, Function, Option, Order, pipe } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import { PLAYER_RADIUS } from '../../shared/constants'
-import * as DetMath from '../../shared/detMath'
-import { isCoop, modifySeatRecord } from '../party/party'
-import type { World } from '../schema/world'
+import { PLAYER_RADIUS } from '#shared/constants.ts'
+import * as DetMath from '#shared/detMath.ts'
+import { isCoop, modifySeatRecord } from '#world/party/party.ts'
+import type { World } from '#world/schema/world.ts'
 import {
   GameEvent,
   type Player,
@@ -14,10 +14,10 @@ import {
   type Zombie,
   ZombieAction,
   type ZombieKind,
-} from '../schema/worldSchema'
-import { hitEvent, killEvent, strikeZombie } from '../step/combat'
-import { directionBetween } from '../step/geometry'
-import { bodyRadiusOf, isRoamingAction } from '../zombies/zombies'
+} from '#world/schema/worldSchema.ts'
+import { hitEvent, killEvent, strikeZombie } from '#world/step/combat.ts'
+import { directionBetween } from '#world/step/geometry.ts'
+import { bodyRadiusOf, isRoamingAction } from '#world/zombies/zombies.ts'
 
 const SMALL_KINDS: ReadonlyArray<ZombieKind> = [
   'Shambler',

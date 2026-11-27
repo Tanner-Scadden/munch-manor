@@ -13,6 +13,7 @@
     "groups": [
       ["builtin", "external"],
       "scoped",
+      "subpath",
       ["parent", "sibling", "index"],
       "unknown"
     ]

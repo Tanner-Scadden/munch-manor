@@ -3,20 +3,23 @@ import { Array, Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { Message } from '../../../app/message'
-import { type Model, Phase, RunMode } from '../../../app/model'
-import { startOrResume } from '../../../app/runFlow'
-import { effectiveModifiersOf } from '../../../domain/onlineRun'
-import { LobbyMessage } from '../../../features/lobby/message'
-import { FIXED_STEP_MS } from '../../../shared/constants'
-import { type SavedDareMarks, noDareMarks } from '../../../shared/dareMarkData'
+import { startOrResume } from '#app/frame/runFlow.ts'
+import { Message } from '#app/message.ts'
+import { type Model, Phase, RunMode } from '#app/model.ts'
+import { effectiveModifiersOf } from '#domain/onlineRun.ts'
+import { LobbyMessage } from '#features/lobby/message.ts'
+import { FIXED_STEP_MS } from '#shared/constants.ts'
+import {
+  type SavedDareMarks,
+  noDareMarks,
+} from '#shared/records/dareMarkData.ts'
 import {
   DISTANT_SPAWN,
   escaping,
   quietWave,
   readyAfterRead,
   withFinale,
-} from '../../../test/model.fixture'
+} from '#test/model.fixture.ts'
 import {
   checkModel,
   modelAfter,
@@ -27,17 +30,13 @@ import {
   settleRunCommands,
   steps,
   throughIntro,
-} from '../../../test/testing'
-import { Finale } from '../../dare/dareSchema'
-import { summonAtFrontDoor } from '../../dare/finale'
-import { exitPriceFor } from '../../level/exits'
-import { WEST_EXIT } from '../../level/plan'
-import { roomSettingsOf, startRoomWorld } from '../../net/roomWorld'
-import { focusOf } from '../../party/party'
-import type { World } from '../../schema/world'
-import type { PlannedSpawn } from '../../schema/worldSchema'
-import { FINAL_WAVE } from '../../waves/wavePlans'
-import { beginPreparation } from '../../waves/waves'
+} from '#test/testing.ts'
+import { Finale } from '#world/dare/dareSchema.ts'
+import { summonAtFrontDoor } from '#world/dare/finale.ts'
+import { exitPriceFor } from '#world/level/exits.ts'
+import { WEST_EXIT } from '#world/level/plan.ts'
+import { roomSettingsOf, startRoomWorld } from '#world/net/roomWorld.ts'
+import { focusOf } from '#world/party/party.ts'
 import {
   MARKS,
   activeModifiersOf,
@@ -46,9 +45,13 @@ import {
   markSpawns,
   runBonusPercentOf,
   withMarkModifiers,
-} from '../dareLadder'
-import { breakClockMsOf } from '../difficulty'
-import { bonusPercentOf, noModifiers } from '../modifiers'
+} from '#world/run/dareLadder.ts'
+import { breakClockMsOf } from '#world/run/difficulty.ts'
+import { bonusPercentOf, noModifiers } from '#world/run/modifiers.ts'
+import type { World } from '#world/schema/world.ts'
+import type { PlannedSpawn } from '#world/schema/worldSchema.ts'
+import { FINAL_WAVE } from '#world/waves/wavePlans.ts'
+import { beginPreparation } from '#world/waves/waves.ts'
 
 const atMark = (model: Model, mark: number): Model =>
   UiStruct.evolve(model, { dareMark: () => mark })

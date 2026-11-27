@@ -1,15 +1,15 @@
 import { Array, Function, Option, Result } from 'effect'
 
-import { TILE_SIZE } from '../../shared/constants'
-import { type Level, START_LEVEL } from '../level/arena'
+import { TILE_SIZE } from '#shared/constants.ts'
+import { type Level, START_LEVEL } from '#world/level/arena.ts'
 import {
   type LevelSpec,
   type RoomSpec,
   roomSpotsOf,
   widthOf,
-} from '../level/plan'
-import { type Box, type Tile, tileBox } from '../level/tileGrid'
-import type { DisplayCase, Vector } from '../schema/worldSchema'
+} from '#world/level/plan.ts'
+import { type Box, type Tile, tileBox } from '#world/level/tileGrid.ts'
+import type { DisplayCase, Vector } from '#world/schema/worldSchema.ts'
 
 export type CaseLook = 'Rack' | 'Glass' | 'Trophy'
 

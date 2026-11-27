@@ -1,10 +1,10 @@
 import { Array, Option, Result } from 'effect'
 import { describe, expect, test } from 'vitest'
 
-import { MANOR, levelFor, openExit } from '../../../world/level/arena'
-import { type LevelSpec, MANOR_SPEC } from '../../../world/level/plan'
-import type * as Draw from '../../draw'
-import { everyRoomImage, roomShapes } from '../room'
+import type * as Draw from '#render/draw.ts'
+import { everyRoomImage, roomShapes } from '#render/room/room.ts'
+import { MANOR, levelFor, openExit } from '#world/level/arena.ts'
+import { type LevelSpec, MANOR_SPEC } from '#world/level/plan.ts'
 
 const HOUSE: LevelSpec = {
   id: 'TestImages',

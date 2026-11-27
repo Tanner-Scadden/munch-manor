@@ -3,16 +3,20 @@ import { Array, Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { type Model, Phase, type Zombie } from '../../../app/model'
-import { FIXED_STEP_MS, PLAYER_SPEED } from '../../../shared/constants'
-import { DISTANT_SPAWN, quietWave } from '../../../test/model.fixture'
-import { modelAfter, steps, ticks, zombieAt } from '../../../test/testing'
-import { Finale } from '../../dare/dareSchema'
-import { START_LEVEL } from '../../level/arena'
-import { modifyFocus } from '../../party/party'
-import { BossMove, type PlannedSpawn } from '../../schema/worldSchema'
-import { LAST_ZOMBIE_RULES, lastZombieSpeed } from '../lastZombie'
-import { bossAt, fightingBoss } from './boss.fixture'
+import { type Model, Phase, type Zombie } from '#app/model.ts'
+import { FIXED_STEP_MS, PLAYER_SPEED } from '#shared/constants.ts'
+import { DISTANT_SPAWN, quietWave } from '#test/model.fixture.ts'
+import { modelAfter, steps, ticks, zombieAt } from '#test/testing.ts'
+import { Finale } from '#world/dare/dareSchema.ts'
+import { START_LEVEL } from '#world/level/arena.ts'
+import { modifyFocus } from '#world/party/party.ts'
+import { BossMove, type PlannedSpawn } from '#world/schema/worldSchema.ts'
+import {
+  LAST_ZOMBIE_RULES,
+  lastZombieSpeed,
+} from '#world/zombies/lastZombie.ts'
+
+import { bossAt, fightingBoss } from './boss.fixture.ts'
 
 const FRAME_MS = FIXED_STEP_MS
 const SLOW = 12

@@ -2,24 +2,20 @@ import { Array, Function, Option } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import type { Model } from '../../app/model'
-import { textShapes, textWidth } from '../../art/font'
-import {
-  MOOD_FACES,
-  RATTLES_PALETTE,
-  rattlesPixels,
-} from '../../art/rattlesArt'
-import { placeAt, spriteShapes } from '../../art/sprite'
-import { ZOMBIE_SPRITES } from '../../art/sprites/zombies'
-import type { DeathTip } from '../../domain/clientSchema'
-import type * as Draw from '../../render/draw'
-import { isObjectSecond } from '../../shared/dualArgs'
-import type { Difficulty } from '../../shared/playerData'
-import { pickLine } from '../../shared/prng'
-import { DEATH_TIPS } from '../../world/names'
-import { isCoop } from '../../world/party/party'
-import type { ZombieKind } from '../../world/schema/entitySchema'
-import { Phase } from '../../world/schema/worldSchema'
+import type { Model } from '#app/model.ts'
+import { textShapes, textWidth } from '#art/font.ts'
+import { MOOD_FACES, RATTLES_PALETTE, rattlesPixels } from '#art/rattlesArt.ts'
+import { placeAt, spriteShapes } from '#art/sprite.ts'
+import { ZOMBIE_SPRITES } from '#art/sprites/zombies.ts'
+import type { DeathTip } from '#domain/clientSchema.ts'
+import type * as Draw from '#render/draw.ts'
+import { isObjectSecond } from '#shared/dualArgs.ts'
+import { pickLine } from '#shared/prng.ts'
+import type { Difficulty } from '#shared/records/playerData.ts'
+import { DEATH_TIPS } from '#world/names.ts'
+import { isCoop } from '#world/party/party.ts'
+import type { ZombieKind } from '#world/schema/entitySchema.ts'
+import { Phase } from '#world/schema/worldSchema.ts'
 
 const isMunched = (model: Model): boolean =>
   Phase.isAnyOf(['GameOver'])(model.phase)

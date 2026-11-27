@@ -1,6 +1,6 @@
 import { Array, Function } from 'effect'
 
-import type { Model } from '../../app/model'
+import type { Model } from '#app/model.ts'
 import {
   DARE_CARD_HEIGHT,
   DARE_CARD_ICON,
@@ -10,14 +10,14 @@ import {
   DARE_EMPTY_SLOTS,
   DARE_FOUND_SLOTS,
   DARE_SLOT_SIZE,
-} from '../../art/dareArt'
-import { bakeText, placeBaked, textShapes, textWidth } from '../../art/font'
-import { TOP_LEFT, group, spriteShapes } from '../../art/sprite'
-import type * as Draw from '../../render/draw'
-import { placeSprite, rect } from '../../render/drawing'
-import { type HudLayout, POCKET_CHIP_HEIGHT } from '../../render/hudLayout'
-import { dareCardOf } from '../../world/dare/dare'
-import type { Vector } from '../../world/schema/worldSchema'
+} from '#art/dareArt.ts'
+import { bakeText, placeBaked, textShapes, textWidth } from '#art/font.ts'
+import { TOP_LEFT, group, spriteShapes } from '#art/sprite.ts'
+import type * as Draw from '#render/draw.ts'
+import { placeSprite, rect } from '#render/drawing.ts'
+import { type HudLayout, POCKET_CHIP_HEIGHT } from '#render/hud/hudLayout.ts'
+import { dareCardOf } from '#world/dare/dare.ts'
+import type { Vector } from '#world/schema/worldSchema.ts'
 
 export type DarePocket = 'Shut' | 'Open'
 

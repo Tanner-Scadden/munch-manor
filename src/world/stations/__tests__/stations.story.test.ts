@@ -3,15 +3,15 @@ import { Array, Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { GameEvent, type Model } from '../../../app/model'
-import { FIXED_STEP_MS, PLAYER_RADIUS } from '../../../shared/constants'
+import { GameEvent, type Model } from '#app/model.ts'
+import { FIXED_STEP_MS, PLAYER_RADIUS } from '#shared/constants.ts'
 import {
   breakBefore,
   crewInWave,
   placeSeat,
   quietWave,
   withPlayerAt,
-} from '../../../test/model.fixture'
+} from '#test/model.fixture.ts'
 import {
   changeModel,
   checkModel,
@@ -22,13 +22,13 @@ import {
   steps,
   tick,
   ticks,
-} from '../../../test/testing'
-import { isChandelierDown } from '../../dining/chandelier'
-import { MANOR } from '../../level/arena'
-import { CHANDELIER_DROP } from '../../level/plan'
-import { stationBoxOf } from '../stationSpots'
-import { isWorkingStation } from '../stations'
-import { TOOL_RULES } from '../toolRules'
+} from '#test/testing.ts'
+import { isChandelierDown } from '#world/dining/chandelier.ts'
+import { MANOR } from '#world/level/arena.ts'
+import { CHANDELIER_DROP } from '#world/level/plan.ts'
+import { stationBoxOf } from '#world/stations/stationSpots.ts'
+import { isWorkingStation } from '#world/stations/stations.ts'
+import { TOOL_RULES } from '#world/stations/toolRules.ts'
 
 const FRAME_MS = FIXED_STEP_MS
 const CLEAT = TOOL_RULES.Cleat

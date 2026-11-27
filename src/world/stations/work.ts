@@ -1,9 +1,9 @@
 import { Function } from 'effect'
 
-import * as DetMath from '../../shared/detMath'
-import { isStanding, seatStateAt } from '../party/party'
-import type { World } from '../schema/world'
-import type { PlayerSlot } from '../schema/worldSchema'
+import * as DetMath from '#shared/detMath.ts'
+import { isStanding, seatStateAt } from '#world/party/party.ts'
+import type { World } from '#world/schema/world.ts'
+import type { PlayerSlot } from '#world/schema/worldSchema.ts'
 
 const STILL_MOVE = 0.2
 

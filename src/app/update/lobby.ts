@@ -2,12 +2,14 @@ import { Array, Duration, Effect, Option } from 'effect'
 
 import { Command, Component, UiStruct } from '@effect/ui'
 
-import { isDareTaken, releaseDare } from '../../domain/beatMyRun'
-import { activeBots, addBot, removeBot, setBotCalling } from '../../domain/bots'
-import { fitDareMark, nextMarkOf } from '../../domain/dareMarks'
-import { isOnHome } from '../../domain/run'
-import { markCallingsSeen } from '../../domain/unlocks'
-import { buyCalling, chooseCalling } from '../../features/heroes/callingPick'
+import { isOnHomeMenu } from '#app/menus/menuState.ts'
+import type { HomeMode, Model } from '#app/model.ts'
+import { activeBots, addBot, removeBot, setBotCalling } from '#domain/bots.ts'
+import { fitDareMark, nextMarkOf } from '#domain/dareMarks.ts'
+import { isDareTaken, releaseDare } from '#domain/machines/beatMyRun.ts'
+import { isOnHome } from '#domain/run.ts'
+import { markCallingsSeen } from '#domain/unlocks.ts'
+import { buyCalling, chooseCalling } from '#features/heroes/callingPick.ts'
 import {
   LOBBY_KEYS,
   isEasyBreakShown,
@@ -17,8 +19,8 @@ import {
   lobbyControlId,
   nextDifficultyOf,
   steppedLobbyFocus,
-} from '../../features/lobby/lobby'
-import { LobbyMessage } from '../../features/lobby/message'
+} from '#features/lobby/lobby.ts'
+import { LobbyMessage } from '#features/lobby/message.ts'
 import {
   LobbyControl,
   type LobbyState,
@@ -32,35 +34,34 @@ import {
   withLobbyStatus,
   withTrying,
   withoutPickingBot,
-} from '../../features/lobby/model'
-import { isLearned } from '../../features/onboarding/onboarding'
-import { isStartKey, maybeFocusStep, releaseAll } from '../../input/input'
-import { lobbyPicksOf, runModeOf, switchMode } from '../../screens/home/home'
-import type { Calling, Difficulty } from '../../shared/playerData'
-import { stepWhen } from '../../shared/stepWhen'
-import { focusById } from '../../ui/menuParts'
+} from '#features/lobby/model.ts'
+import { isLearned } from '#features/onboarding/onboarding.ts'
+import { isStartKey, maybeFocusStep, releaseAll } from '#input/input.ts'
+import { lobbyPicksOf, runModeOf, switchMode } from '#screens/home/home.ts'
+import type { Calling, Difficulty } from '#shared/records/playerData.ts'
+import { stepWhen } from '#shared/stepWhen.ts'
+import { focusById } from '#ui/menuParts.ts'
 import {
   type CallingStanding,
   callingStandingOf,
   canAffordCalling,
   isCallingOwned,
-} from '../../world/heroes/calling'
-import { rankOf, totalPointsOf } from '../../world/heroes/rank'
+} from '#world/heroes/calling.ts'
+import { rankOf, totalPointsOf } from '#world/heroes/rank.ts'
 import {
   chooseDifficulty,
   isLocked,
   nextEasyBreakOf,
-} from '../../world/run/difficulty'
-import { type Modifier, toggledModifier } from '../../world/run/modifiers'
-import { isOnHomeMenu } from '../menuState'
-import type { HomeMode, Model } from '../model'
+} from '#world/run/difficulty.ts'
+import { type Modifier, toggledModifier } from '#world/run/modifiers.ts'
+
 import {
   FocusHomeButton,
   isAskingDifficultyFirst,
   startOrAsk,
   startWithMode,
-} from './home'
-import { playSounds, tapSound, uiCue, unlockAudio } from './sound'
+} from './home.ts'
+import { playSounds, tapSound, uiCue, unlockAudio } from './sound.ts'
 import {
   type UpdateStep,
   combine,
@@ -69,7 +70,7 @@ import {
   releaseInput,
   unchanged,
   withInput,
-} from './step'
+} from './step.ts'
 
 export const FocusLobbyControl = Command.make(
   'FocusLobbyControl',

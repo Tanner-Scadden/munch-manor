@@ -1,6 +1,6 @@
-import type { Model } from '../../../app/model'
-import { home } from '../../../test/model.fixture'
-import type { MunchopediaProps } from '../model'
+import type { Model } from '#app/model.ts'
+import type { MunchopediaProps } from '#features/munchopedia/model.ts'
+import { home } from '#test/model.fixture.ts'
 
 export const munchopediaPropsOf = (model: Model): MunchopediaProps => ({
   page: model.munchopediaPage,

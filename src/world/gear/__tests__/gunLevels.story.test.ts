@@ -13,15 +13,15 @@ import {
   Phase,
   type WeaponKind,
   type Zombie,
-} from '../../../app/model'
-import { FIXED_STEP_MS } from '../../../shared/constants'
+} from '#app/model.ts'
+import { FIXED_STEP_MS } from '#shared/constants.ts'
 import {
   gunAt,
   holdingSecond,
   maybeSpareGun,
   pistolOf,
   pistolOnly,
-} from '../../../test/arsenals'
+} from '#test/arsenals.ts'
 import {
   DISTANT_SPAWN,
   atOpenedCase,
@@ -30,7 +30,7 @@ import {
   quietWave,
   spareGunOf,
   withSeat,
-} from '../../../test/model.fixture'
+} from '#test/model.fixture.ts'
 import {
   HOLD_TICKS,
   RESTART_GRACE_TICKS,
@@ -45,16 +45,8 @@ import {
   throughIntro,
   tick,
   zombieAt,
-} from '../../../test/testing'
-import { TIER_LADDER } from '../../names'
-import {
-  DEFAULT_ROOM_SETTINGS,
-  startRoomWorld,
-  stepRoomWorld,
-} from '../../net/roomWorld'
-import { focusOf, maybePlayerAt, modifyFocus } from '../../party/party'
-import { settledLessons } from '../../run/lessons'
-import { maybeLevelProgress, tierForKills } from '../gunLevels'
+} from '#test/testing.ts'
+import { maybeLevelProgress, tierForKills } from '#world/gear/gunLevels.ts'
 import {
   STARTING_PISTOL,
   TIER_KILLS,
@@ -66,7 +58,15 @@ import {
   statsAt,
   tierName,
   tierOf,
-} from '../weapons'
+} from '#world/gear/weapons.ts'
+import { TIER_LADDER } from '#world/names.ts'
+import {
+  DEFAULT_ROOM_SETTINGS,
+  startRoomWorld,
+  stepRoomWorld,
+} from '#world/net/roomWorld.ts'
+import { focusOf, maybePlayerAt, modifyFocus } from '#world/party/party.ts'
+import { settledLessons } from '#world/run/lessons.ts'
 
 const FRAME_MS = FIXED_STEP_MS
 const GRACE_TICK_MS = 50

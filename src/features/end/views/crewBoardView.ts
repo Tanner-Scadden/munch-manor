@@ -1,0 +1,580 @@
+import { Array, Function, Option, Record, String } from 'effect'
+
+import type { Model } from '#app/model.ts'
+import {
+  type BakedText,
+  GLYPH_HEIGHT,
+  KEY_SPRITE,
+  type TextTone,
+  bakeText,
+  placeBaked,
+  textShapes,
+  textWidth,
+} from '#art/font.ts'
+import { badgeSprite } from '#art/rankArt.ts'
+import { type Sprite, group, placeAt } from '#art/sprite.ts'
+import {
+  CREW_AWARDS,
+  type CrewMember,
+  awardsOf,
+  crewOf,
+  mvpOf,
+} from '#features/end/crewAwards.ts'
+import {
+  AWARD_STAMP_MS,
+  type EndKind,
+  type TallyRow,
+  awardsAtMs,
+  countedUp,
+  easeOut,
+  easeOutBack,
+  plain,
+  progressOf,
+  rowStartMs,
+  tallyRowsOf,
+} from '#features/end/endBeat.ts'
+import { seatColorOf, seatModelsOf } from '#render/bodies/partyView.ts'
+import { playerShapes } from '#render/bodies/playerView.ts'
+import { isPortrait } from '#render/camera/screen.ts'
+import type * as Draw from '#render/draw.ts'
+import { rect } from '#render/drawing.ts'
+import { badgeTierOf } from '#world/heroes/rank.ts'
+import { CREW_AWARD_NAMES, type CrewAward } from '#world/names.ts'
+import { focusOf, leadSeatOf } from '#world/party/party.ts'
+
+import {
+  AWARD_ICONS,
+  CROWN,
+  DOWN_ICON,
+  ICON_SHIFT,
+  REVIVE_ICON,
+  TALLY_ICONS,
+} from './tallyIcons.ts'
+
+const PAD = 4
+const GUTTER = 12
+const COLUMN = 54
+const ROW = 7
+const CREW_TOP = 15
+const FOOT = 17
+const NAME_Y = 19
+const STATS_Y = 29
+const TITLE_Y = STATS_Y + 5 * ROW + 1
+const BOTTOM = TITLE_Y + GLYPH_HEIGHT + 1
+const BADGE_STRIDE = 8
+const BADGE_SIDE_PX = 10
+
+export const PANEL_FILL = 'rgba(24, 14, 22, 0.94)'
+export const PANEL_EDGE = '#5a3a4a'
+const OWN_FILL = 'rgba(255, 240, 200, 0.07)'
+
+const PORTRAIT_COLUMNS = 2
+const BLOCK_STEP = BOTTOM + 4
+
+export const crewBoardColumns: {
+  (count: number): (model: Model) => number
+  (model: Model, count: number): number
+} = Function.dual(2, (model: Model, count: number): number =>
+  isPortrait(model) && count > PORTRAIT_COLUMNS ? PORTRAIT_COLUMNS : count,
+)
+
+const rowsOf = (count: number, columns: number): number =>
+  Math.max(1, Math.ceil(count / Math.max(1, columns)))
+
+export const crewBoardHeightPx = (model: Model): number => {
+  const count = crewOf(model).length
+  return (
+    CREW_TOP +
+    BOTTOM +
+    (rowsOf(count, crewBoardColumns(model, count)) - 1) * BLOCK_STEP
+  )
+}
+
+export const crewBoardWidthPx = (model: Model): number =>
+  crewBoardWidth(crewBoardColumns(model, crewOf(model).length))
+
+type StatRow = Readonly<{
+  icon: Sprite
+  shift: number
+  value: (member: CrewMember) => number
+  format: (shown: number) => string
+  tone: TextTone
+  maybeAward: Option.Option<CrewAward>
+}>
+
+const STAT_ROWS: ReadonlyArray<StatRow> = [
+  {
+    icon: TALLY_ICONS.Kills,
+    shift: 0,
+    value: member => member.kills,
+    format: plain,
+    tone: 'Plain',
+    maybeAward: Option.some('Mvp'),
+  },
+  {
+    icon: REVIVE_ICON,
+    shift: 0,
+    value: member => member.revives,
+    format: plain,
+    tone: 'Plain',
+    maybeAward: Option.some('Medic'),
+  },
+  {
+    icon: DOWN_ICON,
+    shift: 0,
+    value: member => member.downs,
+    format: plain,
+    tone: 'Plain',
+    maybeAward: Option.some('MostMunched'),
+  },
+  {
+    icon: TALLY_ICONS.Aim,
+    shift: 0,
+    value: member => member.aim,
+    format: shown => `${shown}%`,
+    tone: 'Plain',
+    maybeAward: Option.some('Sharpshooter'),
+  },
+  {
+    icon: KEY_SPRITE,
+    shift: ICON_SHIFT.Keys,
+    value: member => member.keysFound,
+    format: plain,
+    tone: 'Coin',
+    maybeAward: Option.some('KeyKeeper'),
+  },
+]
+
+const TITLES: Readonly<Record<CrewAward, BakedText>> = Record.map(
+  CREW_AWARD_NAMES,
+  name => bakeText(String.toUpperCase(name), 'Victory'),
+)
+
+const SPARKS = 8
+const SPARK_MS = 420
+const SPARK_REACH = 16
+
+export const sparkShapes: {
+  (y: number, ms: number): (x: number) => ReadonlyArray<Draw.Shape>
+  (x: number, y: number, ms: number): ReadonlyArray<Draw.Shape>
+} = Function.dual(
+  3,
+  (x: number, y: number, ms: number): ReadonlyArray<Draw.Shape> => {
+    const t = progressOf(ms, 0, SPARK_MS)
+    if (t <= 0 || t >= 1) {
+      return []
+    }
+    const reach = SPARK_REACH * easeOut(t)
+    return Array.map(Array.range(0, SPARKS - 1), index => {
+      const angle = (index / SPARKS) * Math.PI * 2
+      return rect(
+        Math.round(x + Math.cos(angle) * reach),
+        Math.round(y + Math.sin(angle) * reach * 0.6),
+        2,
+        2,
+        index % 2 === 0 ? '#ffd23f' : '#ff8a3d',
+      )
+    })
+  },
+)
+
+const ROW_SLIDE_PX = 8
+
+const slideOf = (kind: EndKind, index: number, ms: number): number =>
+  Math.round(
+    ROW_SLIDE_PX * (1 - easeOut(progressOf(ms, rowStartMs(kind, index), 120))),
+  )
+
+const fitted = (name: string, width: number): string =>
+  textWidth(name) <= width || name.length <= 1
+    ? name
+    : fitted(String.slice(0, -1)(name), width)
+
+type Board = Readonly<{
+  kind: EndKind
+  ms: number
+  top: number
+  left: number
+  crew: ReadonlyArray<CrewMember>
+  centerX: number
+  columns: number
+}>
+
+const rowOf = (board: Board, index: number): number =>
+  Math.floor(index / board.columns)
+
+const rowInsetOf = (board: Board, index: number): number => {
+  const inRow = Math.min(
+    board.columns,
+    board.crew.length - rowOf(board, index) * board.columns,
+  )
+  return ((board.columns - inRow) * COLUMN) / 2
+}
+
+const columnX = (board: Board, index: number): number =>
+  Math.round(
+    board.left +
+      PAD +
+      GUTTER +
+      rowInsetOf(board, index) +
+      (index % board.columns) * COLUMN +
+      COLUMN / 2,
+  )
+
+const blockTopOf = (board: Board, index: number): number =>
+  board.top + CREW_TOP + rowOf(board, index) * BLOCK_STEP
+
+const crewKillsOf = (crew: ReadonlyArray<CrewMember>): number =>
+  Array.reduce(crew, 0, (sum, member) => sum + member.kills)
+
+const lineCell = (
+  row: TallyRow,
+  kind: EndKind,
+  ms: number,
+  x: number,
+  y: number,
+): ReadonlyArray<Draw.Shape> => {
+  const value = row.format(countedUp(row.value, kind, 0, ms))
+  const width = 9 + textWidth(value)
+  const left = Math.round(x - width / 2)
+  return [
+    placeAt(
+      left + 3 - ICON_SHIFT[row.icon],
+      y + 3 - ICON_SHIFT[row.icon],
+      TALLY_ICONS[row.icon],
+    ),
+    ...textShapes(value, 'Plain', left + 9, y, 'Left'),
+  ]
+}
+
+const runLineShapes = (
+  model: Model,
+  board: Board,
+): ReadonlyArray<Draw.Shape> => {
+  if (board.ms < rowStartMs(board.kind, 0)) {
+    return []
+  }
+  const y = board.top + PAD
+  const [first, kills] = tallyRowsOf(model)
+  return [
+    ...(first === undefined
+      ? []
+      : lineCell(first, board.kind, board.ms, board.centerX - 30, y)),
+    ...(kills === undefined
+      ? []
+      : lineCell(
+          { ...kills, value: crewKillsOf(board.crew) },
+          board.kind,
+          board.ms,
+          board.centerX + 30,
+          y,
+        )),
+  ]
+}
+
+const isAwarded = (board: Board, ms: number): boolean =>
+  ms >= awardsAtMs(board.kind)
+
+const BADGE_WIDTH = 13
+const BADGE_GAP = 2
+const RANK_LEFT_PX = 29
+const RANK_Y = 9
+
+const rankShapes = (
+  x: number,
+  centerY: number,
+  rank: number,
+): ReadonlyArray<Draw.Shape> => {
+  const left = x - RANK_LEFT_PX
+  return [
+    placeAt(
+      left + Math.floor(BADGE_WIDTH / 2),
+      centerY,
+      badgeSprite(badgeTierOf(rank)),
+    ),
+    ...textShapes(
+      `${rank}`,
+      'Plain',
+      left + BADGE_WIDTH + BADGE_GAP,
+      centerY - Math.floor(GLYPH_HEIGHT / 2),
+      'Left',
+    ),
+  ]
+}
+
+const botMarkShapes = (x: number, centerY: number): ReadonlyArray<Draw.Shape> =>
+  textShapes(
+    'BOT',
+    'Plain',
+    x - RANK_LEFT_PX,
+    centerY - Math.floor(GLYPH_HEIGHT / 2),
+    'Left',
+  )
+
+const headShapes = (
+  model: Model,
+  board: Board,
+  member: CrewMember,
+  index: number,
+): ReadonlyArray<Draw.Shape> => {
+  const x = columnX(board, index)
+  const crewTop = blockTopOf(board, index)
+  const footY = crewTop + FOOT
+  const maybeSeat = Array.findFirst(
+    seatModelsOf(model),
+    seat => seat.slot === member.slot,
+  )
+  const name = fitted(member.name, COLUMN - 4)
+  return [
+    ...Option.match(maybeSeat, {
+      onNone: () => [],
+      onSome: ({ model: seatModel }) => [
+        group({
+          translate: {
+            x: x - focusOf(seatModel).player.x,
+            y: footY - focusOf(seatModel).player.y - 5,
+          },
+          shapes: playerShapes(seatModel),
+        }),
+      ],
+    }),
+    ...textShapes(name, 'Plain', x, crewTop + NAME_Y, 'Center'),
+    rect(
+      Math.round(x - textWidth(name) / 2),
+      crewTop + NAME_Y + GLYPH_HEIGHT + 1,
+      textWidth(name),
+      1,
+      seatColorOf(member.slot),
+    ),
+    ...(member.rank > 0
+      ? rankShapes(x, crewTop + RANK_Y, member.rank)
+      : botMarkShapes(x, crewTop + RANK_Y)),
+  ]
+}
+
+const ownPlateShapes = (
+  model: Model,
+  board: Board,
+): ReadonlyArray<Draw.Shape> =>
+  Option.match(
+    Array.findFirstIndex(
+      board.crew,
+      member => member.slot === leadSeatOf(model).slot,
+    ),
+    {
+      onNone: () => [],
+      onSome: index => [
+        rect(
+          columnX(board, index) - COLUMN / 2 + 1,
+          blockTopOf(board, index) - 3,
+          COLUMN - 2,
+          BOTTOM + 1,
+          OWN_FILL,
+        ),
+      ],
+    },
+  )
+
+const statShapes = (
+  board: Board,
+  winners: ReadonlyMap<CrewAward, number>,
+): ReadonlyArray<Draw.Shape> =>
+  Array.flatMap(STAT_ROWS, (row, rowIndex) => {
+    const tallyIndex = rowIndex + 1
+    if (board.ms < rowStartMs(board.kind, tallyIndex)) {
+      return []
+    }
+    const slide = slideOf(board.kind, tallyIndex, board.ms)
+    const isGold = (member: CrewMember): boolean =>
+      isAwarded(board, board.ms) &&
+      Option.exists(row.maybeAward, award => winners.get(award) === member.slot)
+    return Array.flatMap(
+      Array.range(0, rowsOf(board.crew.length, board.columns) - 1),
+      blockRow => {
+        const y =
+          board.top +
+          CREW_TOP +
+          blockRow * BLOCK_STEP +
+          STATS_Y +
+          rowIndex * ROW
+        return [
+          placeAt(
+            board.left + PAD + 4 - slide - row.shift,
+            y + 3 - row.shift,
+            row.icon,
+          ),
+          ...Array.flatMap(board.crew, (member, index) =>
+            rowOf(board, index) === blockRow
+              ? textShapes(
+                  row.format(
+                    countedUp(
+                      row.value(member),
+                      board.kind,
+                      tallyIndex,
+                      board.ms,
+                    ),
+                  ),
+                  isGold(member) ? 'Victory' : row.tone,
+                  columnX(board, index) - slide,
+                  y,
+                  'Center',
+                )
+              : [],
+          ),
+        ]
+      },
+    )
+  })
+
+const CROWN_DROP_PX = 10
+
+const awardShapes = (
+  board: Board,
+  member: CrewMember,
+  index: number,
+): ReadonlyArray<Draw.Shape> => {
+  const atMs = awardsAtMs(board.kind)
+  if (board.ms < atMs) {
+    return []
+  }
+  const awards = awardsOf(board.crew, member.slot)
+  const x = columnX(board, index)
+  const crewTop = blockTopOf(board, index)
+  const drop = easeOutBack(progressOf(board.ms, atMs, AWARD_STAMP_MS))
+  const pop = 1 + 1.2 * (1 - drop)
+  const isMvp = Option.exists(mvpOf(board.crew), slot => slot === member.slot)
+  const badges = Array.filter(awards, award => award !== 'Mvp')
+  return [
+    ...(isMvp
+      ? [placeAt(x, Math.round(crewTop - CROWN_DROP_PX * (1 - drop)), CROWN)]
+      : []),
+    ...Array.map(badges, (award, badge) =>
+      placeAt(
+        x + BADGE_SIDE_PX + (badge % 2) * BADGE_SIDE_PX,
+        Math.round(
+          crewTop + 3 + Math.floor(badge / 2) * BADGE_STRIDE - 6 * (1 - drop),
+        ),
+        AWARD_ICONS[award],
+      ),
+    ),
+    ...Option.match(Array.head(awards), {
+      onNone: () => [],
+      onSome: award => {
+        const title = TITLES[award]
+        const y = crewTop + TITLE_Y
+        return [
+          placeBaked(title, {
+            x,
+            y: Math.round(y + GLYPH_HEIGHT / 2 - (GLYPH_HEIGHT * pop) / 2),
+            align: 'Center',
+            scale: pop,
+          }),
+          ...sparkShapes(x, y + 3, board.ms - atMs),
+        ]
+      },
+    }),
+  ]
+}
+
+const winnersOf = (
+  crew: ReadonlyArray<CrewMember>,
+): ReadonlyMap<CrewAward, number> =>
+  new Map(
+    Array.flatMap(CREW_AWARDS, award =>
+      Array.flatMap(crew, member =>
+        Array.contains(awardsOf(crew, member.slot), award)
+          ? [[award, member.slot] as const]
+          : [],
+      ),
+    ),
+  )
+
+const crewBoardWidth = (count: number): number =>
+  PAD * 2 + GUTTER + count * COLUMN
+
+export const crewBoardSpan: {
+  (centerX: number): (model: Model) => Readonly<{ left: number; width: number }>
+  (model: Model, centerX: number): Readonly<{ left: number; width: number }>
+} = Function.dual(
+  2,
+  (
+    model: Model,
+    centerX: number,
+  ): Readonly<{ left: number; width: number }> => {
+    const width = crewBoardWidth(crewBoardColumns(model, crewOf(model).length))
+    return { left: Math.round(centerX - width / 2), width }
+  },
+)
+
+export const crewBoardShapes: {
+  (
+    kind: EndKind,
+    ms: number,
+    top: number,
+    centerX: number,
+  ): (model: Model) => Readonly<{
+    panel: ReadonlyArray<Draw.Shape>
+    rows: ReadonlyArray<Draw.Shape>
+  }>
+  (
+    model: Model,
+    kind: EndKind,
+    ms: number,
+    top: number,
+    centerX: number,
+  ): Readonly<{
+    panel: ReadonlyArray<Draw.Shape>
+    rows: ReadonlyArray<Draw.Shape>
+  }>
+} = Function.dual(
+  5,
+  (
+    model: Model,
+    kind: EndKind,
+    ms: number,
+    top: number,
+    centerX: number,
+  ): Readonly<{
+    panel: ReadonlyArray<Draw.Shape>
+    rows: ReadonlyArray<Draw.Shape>
+  }> => {
+    const crew = crewOf(model)
+    const columns = crewBoardColumns(model, crew.length)
+    const width = crewBoardWidth(columns)
+    const height = crewBoardHeightPx(model)
+    const left = Math.round(centerX - width / 2)
+    const board: Board = { kind, ms, top, left, crew, centerX, columns }
+    const winners = winnersOf(crew)
+    return {
+      panel: [
+        rect(left - 1, top - 1, width + 2, height + 2, PANEL_EDGE),
+        rect(left, top, width, height, PANEL_FILL),
+        ...ownPlateShapes(model, board),
+        rect(left + PAD, top + CREW_TOP - 5, width - PAD * 2, 1, PANEL_EDGE),
+        ...Array.map(
+          rowsOf(crew.length, columns) > 1
+            ? Array.makeBy(rowsOf(crew.length, columns) - 1, row => row + 1)
+            : [],
+          blockRow =>
+            rect(
+              left + PAD,
+              top + CREW_TOP + blockRow * BLOCK_STEP - 3,
+              width - PAD * 2,
+              1,
+              PANEL_EDGE,
+            ),
+        ),
+        ...Array.flatMap(crew, (member, index) =>
+          headShapes(model, board, member, index),
+        ),
+      ],
+      rows: [
+        ...runLineShapes(model, board),
+        ...statShapes(board, winners),
+        ...Array.flatMap(crew, (member, index) =>
+          awardShapes(board, member, index),
+        ),
+      ],
+    }
+  },
+)

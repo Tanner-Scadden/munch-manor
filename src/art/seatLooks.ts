@@ -2,9 +2,9 @@ import { Array, Function, Option } from 'effect'
 
 import type { Lobby, LobbyMember } from '@munch/netcode'
 
-import { lookOfCode } from '../shared/lookCodes'
-import { type Calling, callingOfCode } from '../shared/playerData'
-import type { Appearance } from '../world/schema/worldSchema'
+import { lookOfCode } from '#shared/records/lookCodes.ts'
+import { type Calling, callingOfCode } from '#shared/records/playerData.ts'
+import type { Appearance } from '#world/schema/worldSchema.ts'
 
 export const SEAT_LOOKS: Array.NonEmptyReadonlyArray<Appearance> = [
   {

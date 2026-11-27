@@ -10,11 +10,17 @@ import {
   isGuideOpen,
   openedGuide,
   withSection,
-} from '../guide/model'
-import type { JournalTab } from './journalPages'
-import { Message, MunchopediaEvents } from './message'
-import { Model, MunchopediaPage, MunchopediaProps, initialModel } from './model'
-import { munchopediaView } from './view'
+} from '#features/guide/model.ts'
+
+import type { JournalTab } from './journalPages.ts'
+import { Message, MunchopediaEvents } from './message.ts'
+import {
+  Model,
+  MunchopediaPage,
+  MunchopediaProps,
+  initialModel,
+} from './model.ts'
+import { munchopediaView } from './view.ts'
 
 export const FocusGuideControl = Command.make(
   'FocusGuideControl',

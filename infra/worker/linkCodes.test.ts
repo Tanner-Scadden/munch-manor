@@ -12,7 +12,7 @@ import {
   RedeemAnswer,
   RedeemRequest,
   SessionRefused,
-} from '../../src/shared/sessionApi.ts'
+} from '../../src/shared/records/sessionApi.ts'
 import {
   LINK_CODE_TTL_MS,
   type LinkStore,
@@ -157,7 +157,10 @@ describe('link codes', () => {
   it.effect('a new code replaces the old one', () =>
     Effect.gen(function* () {
       const book = yield* linkCodeBook
-      const old = yield* book.issue({ publicKey: PUBLIC_KEY, identity: IDENTITY })
+      const old = yield* book.issue({
+        publicKey: PUBLIC_KEY,
+        identity: IDENTITY,
+      })
       const fresh = yield* book.issue({
         publicKey: PUBLIC_KEY,
         identity: IDENTITY,
@@ -186,26 +189,31 @@ describe('link codes', () => {
     }),
   )
 
-  it.effect('an address past its rate limit is told to wait, and the store is never asked', () =>
-    Effect.gen(function* () {
-      const asked: Array<string> = []
-      const store: LinkStore = {
-        call: path => {
-          asked.push(path)
-          return Promise.resolve({ status: 200, text: () => Promise.resolve('{}') })
-        },
-      }
-      const routed = yield* Effect.flatMap(redeemRequest('ABCDEF'), request =>
-        routeLink(request, { limiter: limiterOf(0), store }),
-      )
-      const response = yield* Effect.fromOption(routed)
-      expect(response.status).toBe(429)
-      const seen8 = yield* answerOf(response)
-      expect(seen8).toEqual(
-        RedeemAnswer.cases.Refused.make({ problem: 'TooManyTries' }),
-      )
-      expect(asked).toEqual([])
-    }),
+  it.effect(
+    'an address past its rate limit is told to wait, and the store is never asked',
+    () =>
+      Effect.gen(function* () {
+        const asked: Array<string> = []
+        const store: LinkStore = {
+          call: path => {
+            asked.push(path)
+            return Promise.resolve({
+              status: 200,
+              text: () => Promise.resolve('{}'),
+            })
+          },
+        }
+        const routed = yield* Effect.flatMap(redeemRequest('ABCDEF'), request =>
+          routeLink(request, { limiter: limiterOf(0), store }),
+        )
+        const response = yield* Effect.fromOption(routed)
+        expect(response.status).toBe(429)
+        const seen8 = yield* answerOf(response)
+        expect(seen8).toEqual(
+          RedeemAnswer.cases.Refused.make({ problem: 'TooManyTries' }),
+        )
+        expect(asked).toEqual([])
+      }),
   )
 
   it.effect('a store that cannot answer makes the issue Unavailable', () =>
@@ -224,7 +232,10 @@ describe('link codes', () => {
     Effect.gen(function* () {
       const routed = yield* routeLink(
         new Request('https://api/link/elsewhere', { method: 'POST' }),
-        { limiter: limiterOf(10), store: { call: () => Promise.reject(new Error('unused')) } },
+        {
+          limiter: limiterOf(10),
+          store: { call: () => Promise.reject(new Error('unused')) },
+        },
       )
       expect(routed).toEqual(Option.none())
     }),

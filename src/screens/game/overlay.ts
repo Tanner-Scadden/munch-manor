@@ -1,7 +1,7 @@
 import { Array, Function, Option, Record, String, pipe } from 'effect'
 
-import type { Model } from '../../app/model'
-import { playerSprites } from '../../art/appearance'
+import type { Model } from '#app/model.ts'
+import { playerSprites } from '#art/appearance.ts'
 import {
   type BakedText,
   GLYPH_HEIGHT,
@@ -12,12 +12,12 @@ import {
   placeBaked,
   textShapes,
   toGlyph,
-} from '../../art/font'
+} from '#art/font.ts'
 import {
   HINT_ICON_SPRITES,
   type HintIconSprites,
   hintIconFrame,
-} from '../../art/hintIcons'
+} from '#art/icons/hintIcons.ts'
 import {
   type Palette,
   type Sprite,
@@ -26,11 +26,11 @@ import {
   group,
   placeAt,
   spriteShapes,
-} from '../../art/sprite'
-import { gunSprite } from '../../art/sprites/guns'
-import { ZOMBIE_SPRITES, showcaseWalk } from '../../art/sprites/zombies'
-import type { HintBand } from '../../domain/clientSchema'
-import { endOverlayShapes } from '../../features/end/endView'
+} from '#art/sprite.ts'
+import { gunSprite } from '#art/sprites/guns.ts'
+import { ZOMBIE_SPRITES, showcaseWalk } from '#art/sprites/zombies.ts'
+import type { HintBand } from '#domain/clientSchema.ts'
+import { endOverlayShapes } from '#features/end/views/endView.ts'
 import {
   DEBUT_CARD_MS,
   HINT_PARTS,
@@ -39,15 +39,15 @@ import {
   isDebutCardUp,
   msIntoPhase,
   shownHints,
-} from '../../features/onboarding/onboarding'
-import type { InputDevice } from '../../input/inputSchema'
-import * as Draw from '../../render/draw'
+} from '#features/onboarding/onboarding.ts'
+import type { InputDevice } from '#input/inputSchema.ts'
 import {
   type FrameSpan,
   type Screen,
   frameSpanOf,
   landscapeFrameOffset,
-} from '../../render/screen'
+} from '#render/camera/screen.ts'
+import * as Draw from '#render/draw.ts'
 import {
   GAME_TITLE,
   MS_PER_SECOND,
@@ -57,24 +57,25 @@ import {
   VIEW_WIDTH,
   WAVE_BANNER_MS,
   WAVE_CLEARED_BANNER_MS,
-} from '../../shared/constants'
-import type { Appearance, Calling } from '../../shared/playerData'
-import { heldGun } from '../../world/gear/weapons'
-import { KEY_RULES } from '../../world/keys/keys'
-import { focusOf, isCoop } from '../../world/party/party'
-import type { ZombieKind } from '../../world/schema/entitySchema'
+} from '#shared/constants.ts'
+import type { Appearance, Calling } from '#shared/records/playerData.ts'
+import { heldGun } from '#world/gear/weapons.ts'
+import { KEY_RULES } from '#world/keys/keys.ts'
+import { focusOf, isCoop } from '#world/party/party.ts'
+import type { ZombieKind } from '#world/schema/entitySchema.ts'
 import {
   Alarm,
   DebutCard,
   Phase,
   RunMode,
   type WeaponKind,
-} from '../../world/schema/worldSchema'
-import { clamp } from '../../world/step/geometry'
-import { endlessDepth, hpScaleFor } from '../../world/waves/endlessWaves'
-import { FINAL_WAVE, debutKinds } from '../../world/waves/wavePlans'
-import { ZOMBIE_KINDS } from '../../world/zombies/zombies'
-import { endMissionShapes } from './endMissions'
+} from '#world/schema/worldSchema.ts'
+import { clamp } from '#world/step/geometry.ts'
+import { endlessDepth, hpScaleFor } from '#world/waves/endlessWaves.ts'
+import { FINAL_WAVE, debutKinds } from '#world/waves/wavePlans.ts'
+import { ZOMBIE_KINDS } from '#world/zombies/zombies.ts'
+
+import { endMissionShapes } from './endMissions.ts'
 
 const CENTER_X = VIEW_WIDTH / 2
 const TITLE_SCALE = 2

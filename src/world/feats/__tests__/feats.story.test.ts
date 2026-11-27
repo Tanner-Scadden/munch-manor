@@ -10,8 +10,8 @@ import {
   Phase,
   Pierce,
   ZombieState,
-} from '../../../app/model'
-import { FIXED_STEP_MS } from '../../../shared/constants'
+} from '#app/model.ts'
+import { FIXED_STEP_MS } from '#shared/constants.ts'
 import {
   DISTANT_SPAWN,
   crewInWave,
@@ -23,7 +23,7 @@ import {
   withFeatsOf,
   withKeys,
   withZombies,
-} from '../../../test/model.fixture'
+} from '#test/model.fixture.ts'
 import {
   BELOW_KITCHEN_DOOR,
   HOLD_TICKS,
@@ -37,12 +37,12 @@ import {
   tick,
   ticks,
   zombieOf,
-} from '../../../test/testing'
-import { START_LEVEL } from '../../level/arena'
-import { EXIT_RULES } from '../../level/exits'
-import { focusOf, maybePlayerAt, modifyFocus } from '../../party/party'
-import { Feat, freshTally } from '../../schema/worldSchema'
-import { goalOf, progressOf } from '../feats'
+} from '#test/testing.ts'
+import { goalOf, progressOf } from '#world/feats/feats.ts'
+import { START_LEVEL } from '#world/level/arena.ts'
+import { EXIT_RULES } from '#world/level/exits.ts'
+import { focusOf, maybePlayerAt, modifyFocus } from '#world/party/party.ts'
+import { Feat, freshTally } from '#world/schema/worldSchema.ts'
 
 const FRAME_MS = FIXED_STEP_MS
 

@@ -3,20 +3,20 @@ import { describe, expect, test } from 'vitest'
 
 import { UiStruct } from '@effect/ui'
 
-import { type Model, Phase } from '../../../app/model'
-import { PICTURE_HEIGHT, PICTURE_WIDTH } from '../../../art/introArt'
-import type * as Draw from '../../../render/draw'
+import { type Model, Phase } from '#app/model.ts'
+import { PICTURE_HEIGHT, PICTURE_WIDTH } from '#art/introArt.ts'
+import { introFrameAt } from '#features/intro/introBeat.ts'
+import { introShapes, widestFriendBubble } from '#features/intro/introView.ts'
 import {
   DEFAULT_PORTRAIT_SCREEN,
   LANDSCAPE_SCREEN,
   type Screen,
-} from '../../../render/screen'
-import { readyModel } from '../../../test/model.fixture'
-import { FRIEND_LINES } from '../../../world/names'
-import { ARRIVAL_MS } from '../../../world/run/arrival'
-import type { IntroCut } from '../../../world/schema/worldSchema'
-import { introFrameAt } from '../introBeat'
-import { introShapes, widestFriendBubble } from '../introView'
+} from '#render/camera/screen.ts'
+import type * as Draw from '#render/draw.ts'
+import { readyModel } from '#test/model.fixture.ts'
+import { FRIEND_LINES } from '#world/names.ts'
+import { ARRIVAL_MS } from '#world/run/arrival.ts'
+import type { IntroCut } from '#world/schema/worldSchema.ts'
 
 const arrivingAt = (cut: IntroCut, elapsedMs: number): Model =>
   UiStruct.evolve(readyModel, {

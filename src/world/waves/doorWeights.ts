@@ -1,11 +1,11 @@
 import { Array, Result } from 'effect'
 
-import { type Level, type Room, levelOf, roomAt } from '../level/arena'
-import type { Box } from '../level/tileGrid'
-import { isStanding } from '../party/party'
-import type { Vector } from '../schema/entitySchema'
-import type { World } from '../schema/world'
-import type { DoorId } from '../schema/worldSchema'
+import { type Level, type Room, levelOf, roomAt } from '#world/level/arena.ts'
+import type { Box } from '#world/level/tileGrid.ts'
+import { isStanding } from '#world/party/party.ts'
+import type { Vector } from '#world/schema/entitySchema.ts'
+import type { World } from '#world/schema/world.ts'
+import type { DoorId } from '#world/schema/worldSchema.ts'
 
 const isInBox = (box: Box, { x, y }: Vector): boolean =>
   x >= box.left && x < box.right && y >= box.top && y < box.bottom

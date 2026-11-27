@@ -3,15 +3,10 @@ import { Array, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import {
-  Invulnerability,
-  type Model,
-  Phase,
-  type Zombie,
-} from '../../../app/model'
-import { initialModel } from '../../../app/pureApp'
-import { FIXED_STEP_MS } from '../../../shared/constants'
-import { DISTANT_SPAWN } from '../../../test/model.fixture'
+import { Invulnerability, type Model, Phase, type Zombie } from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
+import { FIXED_STEP_MS } from '#shared/constants.ts'
+import { DISTANT_SPAWN } from '#test/model.fixture.ts'
 import {
   START_SPOT,
   checkModel,
@@ -20,12 +15,12 @@ import {
   ticks,
   westPlank,
   zombieOf,
-} from '../../../test/testing'
-import { levelOf, openExitIn } from '../../level/arena'
-import { KITCHEN_EXIT } from '../../level/exits'
-import { isInsideRoomAt } from '../../level/tileQueries'
-import { modifyFocus } from '../../party/party'
-import { ZOMBIE_KINDS } from '../zombies'
+} from '#test/testing.ts'
+import { levelOf, openExitIn } from '#world/level/arena.ts'
+import { KITCHEN_EXIT } from '#world/level/exits.ts'
+import { isInsideRoomAt } from '#world/level/tileQueries.ts'
+import { modifyFocus } from '#world/party/party.ts'
+import { ZOMBIE_KINDS } from '#world/zombies/zombies.ts'
 
 const FRAME_MS = FIXED_STEP_MS
 const SECONDS = 40

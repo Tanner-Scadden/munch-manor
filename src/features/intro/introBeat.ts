@@ -1,9 +1,9 @@
 import { Array, Function, Option } from 'effect'
 
-import type { Model } from '../../app/model'
-import type { SoundEffect } from '../../shared/soundEffect'
-import { ARRIVAL_MS, slamAtMs } from '../../world/run/arrival'
-import { type IntroCut, Phase } from '../../world/schema/worldSchema'
+import type { Model } from '#app/model.ts'
+import type { SoundEffect } from '#shared/soundEffect.ts'
+import { ARRIVAL_MS, slamAtMs } from '#world/run/arrival.ts'
+import { type IntroCut, Phase } from '#world/schema/worldSchema.ts'
 
 export type IntroBeat =
   | 'Drive'

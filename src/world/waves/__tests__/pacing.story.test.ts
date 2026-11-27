@@ -3,7 +3,7 @@ import { Array, Effect, Function, Option, Order, Record, pipe } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { Message } from '../../../app/message'
+import { Message } from '#app/message.ts'
 import {
   Alarm,
   Beat,
@@ -20,8 +20,8 @@ import {
   type ZombieKind,
   ZombieState,
   calmPacing,
-} from '../../../app/model'
-import { initialModel } from '../../../app/pureApp'
+} from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
 import {
   DINNER_BELL_MS,
   FADE_RELEASE_BELOW,
@@ -36,8 +36,8 @@ import {
   QUIET_HURRY_MS,
   RELAX_EXTEND_MAX_MS,
   ZOMBIE_ALIVE_MAX,
-} from '../../../shared/constants'
-import { NORMAL_BITE_GRACE } from '../../../test/model.fixture'
+} from '#shared/constants.ts'
+import { NORMAL_BITE_GRACE } from '#test/model.fixture.ts'
 import {
   changeModel,
   checkModel,
@@ -47,12 +47,12 @@ import {
   steps,
   tick,
   ticksFor,
-} from '../../../test/testing'
-import { MANOR, levelOf } from '../../level/arena'
-import { isInsideRoomAt, nearestDoor } from '../../level/tileQueries'
-import { focusOf, modifyFocus } from '../../party/party'
-import { rollSpawns, rollWave } from '../endlessWaves'
-import { FINAL_WAVE, debutKinds } from '../wavePlans'
+} from '#test/testing.ts'
+import { MANOR, levelOf } from '#world/level/arena.ts'
+import { isInsideRoomAt, nearestDoor } from '#world/level/tileQueries.ts'
+import { focusOf, modifyFocus } from '#world/party/party.ts'
+import { rollSpawns, rollWave } from '#world/waves/endlessWaves.ts'
+import { FINAL_WAVE, debutKinds } from '#world/waves/wavePlans.ts'
 
 const FRAME_MS = 50
 

@@ -1,31 +1,41 @@
 import { Array, Function, Option } from 'effect'
 
-import { type Difficulty } from '../../shared/playerData'
-import { type Seeded, nextRandom, shuffle } from '../../shared/prng'
-import { isHiddenInDark } from '../cellar/bulb'
-import { type Level, type Room, levelOf } from '../level/arena'
-import { type LevelSpec, type RoomSpots, roomSpotsOf } from '../level/plan'
-import { tileCenter } from '../level/tileGrid'
-import { focusOf, forEachSeat, isStanding, seatStateAt } from '../party/party'
-import { type World, modifyWorldFields } from '../schema/world'
+import { type Seeded, nextRandom, shuffle } from '#shared/prng.ts'
+import { type Difficulty } from '#shared/records/playerData.ts'
+import { isHiddenInDark } from '#world/cellar/bulb.ts'
+import { type Level, type Room, levelOf } from '#world/level/arena.ts'
+import {
+  type LevelSpec,
+  type RoomSpots,
+  roomSpotsOf,
+} from '#world/level/plan.ts'
+import { tileCenter } from '#world/level/tileGrid.ts'
+import {
+  focusOf,
+  forEachSeat,
+  isStanding,
+  seatStateAt,
+} from '#world/party/party.ts'
+import { type World, modifyWorldFields } from '#world/schema/world.ts'
 import {
   GameEvent,
   Phase,
   type PlayerSlot,
   RunMode,
   type Vector,
-} from '../schema/worldSchema'
-import { DRAIN_SCALE, isStill } from '../stations/work'
-import { distanceBetween } from '../step/geometry'
+} from '#world/schema/worldSchema.ts'
+import { DRAIN_SCALE, isStill } from '#world/stations/work.ts'
+import { distanceBetween } from '#world/step/geometry.ts'
+
 import {
   type Dare,
   type DareKind,
   type DareThing,
   DareThingState,
   Finale,
-} from './dareSchema'
-import { FIND_RULES, type FindStyle, findStyleOfRoom } from './finds'
-import { dareThingPool } from './milestones'
+} from './dareSchema.ts'
+import { FIND_RULES, type FindStyle, findStyleOfRoom } from './finds.ts'
+import { dareThingPool } from './milestones.ts'
 
 export const LIST_LENGTHS: Readonly<Record<Difficulty, number>> = {
   Easy: 2,

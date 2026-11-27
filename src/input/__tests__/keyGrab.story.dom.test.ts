@@ -2,20 +2,20 @@ import { Effect, Option } from 'effect'
 
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { Message } from '../../app/message'
+import { Message } from '#app/message.ts'
 import {
   type KeyDown,
   isKeptFromBrowser,
   maybeKeyDownMessage,
-} from '../../app/subscriptions'
-import { fighting } from '../../test/model.fixture'
-import { checkModel, send, storyOf } from '../../test/testing'
+} from '#app/subscriptions.ts'
 import {
   KEY_WATCH_QUIET_MS,
   type KeyUp,
   isGrabbedKeyUp,
   isKeyGrabToastShown,
-} from '../keyGrab'
+} from '#input/keyGrab.ts'
+import { fighting } from '#test/model.fixture.ts'
+import { checkModel, send, storyOf } from '#test/testing.ts'
 
 const surface = (): HTMLDivElement => {
   const element = document.createElement('div')

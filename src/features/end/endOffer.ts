@@ -1,8 +1,8 @@
 import { Option } from 'effect'
 
-import type { Model } from '../../app/model'
-import { isEndScreen } from '../../domain/run'
-import { RESTART_GRACE_MS } from '../../shared/constants'
+import type { Model } from '#app/model.ts'
+import { isEndScreen } from '#domain/run.ts'
+import { RESTART_GRACE_MS } from '#shared/constants.ts'
 
 type EndOffer = 'Nothing' | 'MenuOnly' | 'MenuAndModes'
 

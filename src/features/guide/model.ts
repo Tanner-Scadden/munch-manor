@@ -2,7 +2,7 @@ import { Schema } from 'effect'
 
 import { UiSchema } from '@effect/ui'
 
-import { ShopGuideSection } from '../../shared/nameKeys'
+import { ShopGuideSection } from '#shared/nameKeys.ts'
 
 export const GUIDE_FOCUS_IDS = {
   back: 'munch-guide-back',

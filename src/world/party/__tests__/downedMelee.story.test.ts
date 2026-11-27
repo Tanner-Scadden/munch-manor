@@ -3,22 +3,22 @@ import { describe, expect, test } from 'vitest'
 
 import { UiStruct } from '@effect/ui'
 
-import { Life, Melee, type Model } from '../../../app/model'
-import { botInputs } from '../../../features/bots/teammateBot'
-import { lyingShapes } from '../../../render/playerView'
+import { Life, Melee, type Model } from '#app/model.ts'
+import { botInputs } from '#features/bots/teammateBot.ts'
+import { lyingShapes } from '#render/bodies/playerView.ts'
 import {
   atSeat,
   crewInWave,
   placeSeat,
   withSeatLife,
   withZombies,
-} from '../../../test/model.fixture'
-import { zombieOf } from '../../../test/testing'
-import { freshGun } from '../../gear/weapons'
-import type { World } from '../../schema/world'
-import { type Intent, idleIntent } from '../../schema/worldSchema'
-import { type InputsByPlayer, stepWorld } from '../../step/stepWorld'
-import { modifyFocus, seatStateAt } from '../party'
+} from '#test/model.fixture.ts'
+import { zombieOf } from '#test/testing.ts'
+import { freshGun } from '#world/gear/weapons.ts'
+import { modifyFocus, seatStateAt } from '#world/party/party.ts'
+import type { World } from '#world/schema/world.ts'
+import { type Intent, idleIntent } from '#world/schema/worldSchema.ts'
+import { type InputsByPlayer, stepWorld } from '#world/step/stepWorld.ts'
 
 const PLAYER_X = 100
 const ROW_Y = 104

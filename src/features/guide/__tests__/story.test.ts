@@ -4,10 +4,10 @@ import { Component } from '@effect/ui'
 import { Story } from '@effect/ui/testing'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { HOME_PROPS } from '../../munchopedia/__tests__/munchopedia.fixture'
-import { FocusGuideControl, Munchopedia } from '../../munchopedia/block'
-import { Message } from '../../munchopedia/message'
-import { GuideStatus, openedGuide, withSection } from '../model'
+import { GuideStatus, openedGuide, withSection } from '#features/guide/model.ts'
+import { HOME_PROPS } from '#features/munchopedia/__tests__/munchopedia.fixture.ts'
+import { FocusGuideControl, Munchopedia } from '#features/munchopedia/block.ts'
+import { Message } from '#features/munchopedia/message.ts'
 
 describe('the shop guide', () => {
   it.effect(

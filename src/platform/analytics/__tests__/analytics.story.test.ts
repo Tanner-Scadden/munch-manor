@@ -1,0 +1,704 @@
+import { Effect, Option, Schema } from 'effect'
+import { FetchHttpClient } from 'effect/http'
+
+import { UiStruct } from '@effect/ui'
+import { Story } from '@effect/ui/testing'
+import { afterEach, describe, expect, it, test, vi } from '@effect/vitest'
+import { MAX_PLAYERS } from '@munch/netcode'
+
+import { ApplicationNoDeps } from '#app/block.ts'
+import { GenerateVisitId } from '#app/boot.ts'
+import { Message } from '#app/message.ts'
+import {
+  Frenzy,
+  HomeMode,
+  type Model,
+  Phase,
+  type Zombie,
+  ZombieAction,
+  ZombieKind,
+  ZombieState,
+  freshStats,
+  noKills,
+} from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
+import { WriteSave } from '#app/update/save.ts'
+import { SendRunSummary } from '#app/update/settle.ts'
+import { InputDevice } from '#input/inputSchema.ts'
+import {
+  CauseOfDeath,
+  MAX_CREW_SIZE,
+  MAX_SUMMARY_BYTES,
+  PostedRunJson,
+  type RunSummary,
+  RunSummaryJson,
+  SOLO_PARTY,
+  SummaryDevice,
+  SummaryKind,
+  SummaryMode,
+} from '#platform/analytics/analytics.ts'
+import {
+  generateVisitId,
+  maybeRunsUrl,
+  sendRunSummary,
+} from '#platform/analytics/analyticsBeacon.ts'
+import { frameTimeBucket } from '#platform/analytics/analyticsRun.ts'
+import { PlayerChange } from '#platform/save/playerSync.ts'
+import { saveOf } from '#platform/save/save.ts'
+import { FIXED_STEP_MS, ZOMBIE_MAX_HP } from '#shared/constants.ts'
+import { DISTANT_SPAWN, escaping, withDareThings } from '#test/model.fixture.ts'
+import {
+  SURFACE,
+  type StoryStep,
+  bootWithoutVisitId,
+  checkModel,
+  jsonOf,
+  resolveSentSummary,
+  send,
+  settleRunCommands,
+  storyOf,
+  writeSave,
+} from '#test/testing.ts'
+import { asVeteran } from '#test/veteran.ts'
+import { DareThingState } from '#world/dare/dareSchema.ts'
+import { START_LEVEL } from '#world/level/arena.ts'
+import { modifyFocus } from '#world/party/party.ts'
+import { type Modifiers, noModifiers } from '#world/run/modifiers.ts'
+import { FINAL_WAVE } from '#world/waves/wavePlans.ts'
+import { pause } from '#world/waves/waves.ts'
+
+const VISIT_ID = '0123456789abcdef'
+
+const home: Model = UiStruct.evolve(asVeteran(initialModel), {
+  maybeSurface: () => Option.some(SURFACE),
+  maybeVisitId: () => Option.some(VISIT_ID),
+})
+
+const runnerAt = (x: number, y: number): Zombie => ({
+  id: 100,
+  kind: 'Runner',
+  x,
+  y,
+  speed: 0,
+  hp: ZOMBIE_MAX_HP,
+  maxHp: ZOMBIE_MAX_HP,
+  knockback: { x: 0, y: 0 },
+  hitRemainingMs: 0,
+  state: ZombieState.Walking(),
+  action: ZombieAction.Roaming(),
+  frenzy: Frenzy.Calm(),
+})
+
+const midRun: Model = UiStruct.evolve(home, {
+  phase: () => Phase.Wave({ wave: 4, elapsedMs: 4000, spawns: [] }),
+  difficulty: setting => UiStruct.evolve(setting, { chosen: () => 'Hard' }),
+  lastDevice: () => 'Touch',
+  settings: UiStruct.evolve({ screenFit: () => 'Installed' }),
+  keys: ring => UiStruct.evolve(ring, { spent: () => 3 }),
+  stats: () =>
+    UiStruct.evolve(freshStats, {
+      kills: () =>
+        UiStruct.evolve(noKills, { Shambler: () => 30, Runner: () => 4 }),
+      heartsLost: () => 2,
+      powerUpsGrabbed: () => 1,
+      trapsPlaced: () => 2,
+      activeFrames: () => 1000,
+      activeFrameMs: () => 16_000,
+      runMs: () => 200_000,
+    }),
+})
+
+const lastHeart: Model = modifyFocus(
+  UiStruct.evolve(midRun, {
+    zombies: () => [runnerAt(START_LEVEL.start.x + 2, START_LEVEL.start.y)],
+  }),
+  { player: player => UiStruct.evolve(player, { hp: () => 1 }) },
+)
+
+const finalWave: Model = escaping(
+  UiStruct.evolve(midRun, {
+    phase: () =>
+      Phase.Wave({
+        wave: FINAL_WAVE,
+        elapsedMs: 90_000,
+        spawns: [DISTANT_SPAWN],
+      }),
+  }),
+)
+
+const FRAME_MS = FIXED_STEP_MS
+
+const expectedSummary = (
+  overrides: Partial<RunSummary> & Pick<RunSummary, 'outcome' | 'wave'>,
+): RunSummary => ({
+  version: 9,
+  visitId: VISIT_ID,
+  build: 'test',
+  mode: 'Campaign',
+  difficulty: 'Hard',
+  runMs: Math.round(200_000 + FRAME_MS),
+  kills: UiStruct.evolve(noKills, { Shambler: () => 30, Runner: () => 4 }),
+  heartsLost: 2,
+  powerUpsGrabbed: 1,
+  trapsPlaced: 2,
+  device: 'Touch',
+  screenFit: 'Installed',
+  frameTime: 'Under17Ms',
+  keysSpent: 3,
+  casesOpened: 0,
+  party: SOLO_PARTY,
+  modifiers: 0,
+  dareItemsFound: 0,
+  dareMark: 0,
+  ...overrides,
+})
+
+const CREW_KEY = '0123456789abcdef'
+
+const CREW_V2 = {
+  _tag: 'Crew',
+  size: 2,
+  seatKills: 5,
+  seatDowns: 1,
+  seatRevives: 0,
+} as const
+
+const CREW_V6 = { ...CREW_V2, runKey: CREW_KEY }
+
+const NETWORK = {
+  rttP50Ms: 65,
+  rttP95Ms: 305,
+  rttSamples: 40,
+  jitterMs: 12,
+  snapshots: 3_000,
+  lateSnapshots: 25,
+  lateMsMean: 80,
+  lateMsMax: 220,
+  reconnects: 1,
+  corrections: 14,
+  correctionPxMax: 9,
+}
+
+const CREW = { ...CREW_V6, network: NETWORK }
+
+describe('the run summary schema', () => {
+  const summary = expectedSummary({
+    outcome: { _tag: 'GameOver', killedBy: 'Runner' },
+    wave: 4,
+  })
+  const { dareMark: _mark, ...unmarked } = summary
+
+  test('a summary round trips through JSON and fits the size cap', () => {
+    const json = Option.getOrThrow(Schema.encodeOption(RunSummaryJson)(summary))
+    expect(Schema.decodeOption(RunSummaryJson)(json)).toEqual(
+      Option.some(summary),
+    )
+    expect(new Blob([json]).size).toBeLessThan(MAX_SUMMARY_BYTES)
+  })
+
+  test('a controller run is a version 6 summary, and a version 5 one never says Gamepad', () => {
+    const decode = Schema.decodeUnknownOption(RunSummaryJson)
+    expect(
+      Option.map(
+        decode(jsonOf({ ...summary, device: 'Gamepad' })),
+        ({ device }) => device,
+      ),
+    ).toEqual(Option.some('Gamepad'))
+    expect(
+      Schema.decodeOption(PostedRunJson)(
+        jsonOf({ ...summary, version: 5, device: 'Gamepad' }),
+      ),
+    ).toEqual(Option.none())
+    expect(
+      Option.isSome(
+        Schema.decodeOption(PostedRunJson)(
+          jsonOf({ ...summary, version: 5, device: 'KeyboardMouse' }),
+        ),
+      ),
+    ).toBe(true)
+  })
+
+  test('bad fields are refused', () => {
+    const decode = Schema.decodeUnknownOption(RunSummaryJson)
+    const withField = (field: string, value: unknown): string =>
+      jsonOf({ ...summary, [field]: value })
+    expect(decode(withField('wave', -1))).toEqual(Option.none())
+    expect(decode(withField('runMs', 1.5))).toEqual(Option.none())
+    expect(decode(withField('visitId', 'not-a-visit'))).toEqual(Option.none())
+    expect(decode(withField('difficulty', 'Impossible'))).toEqual(Option.none())
+    expect(
+      decode(withField('outcome', { _tag: 'GameOver', killedBy: 'Ghost' })),
+    ).toEqual(Option.none())
+    expect(decode(withField('version', 10))).toEqual(Option.none())
+    expect(decode(withField('version', 8))).toEqual(Option.none())
+    expect(decode(withField('dareMark', 9))).toEqual(Option.none())
+    expect(decode(withField('dareMark', -1))).toEqual(Option.none())
+    expect(decode(withField('dareMark', 1.5))).toEqual(Option.none())
+    expect(
+      decode(
+        jsonOf({ ...summary, version: 7, outcome: { _tag: 'LeftEarly' } }),
+      ),
+    ).toEqual(Option.none())
+    expect(
+      Option.isSome(decode(withField('outcome', { _tag: 'LeftEarly' }))),
+    ).toBe(true)
+    expect(decode(withField('device', 'Joystick'))).toEqual(Option.none())
+    expect(decode(withField('keysSpent', -1))).toEqual(Option.none())
+    expect(decode(withField('version', 4))).toEqual(Option.none())
+    expect(decode(withField('outcome', { _tag: 'Victory' }))).toEqual(
+      Option.none(),
+    )
+    expect(decode(withField('dareItemsFound', -1))).toEqual(Option.none())
+    expect(decode(withField('modifiers', 16))).toEqual(Option.none())
+    expect(decode(withField('modifiers', -1))).toEqual(Option.none())
+    expect(decode(withField('modifiers', 1.5))).toEqual(Option.none())
+    expect(
+      decode(
+        withField('party', {
+          _tag: 'Crew',
+          size: MAX_CREW_SIZE + 1,
+          seatKills: 0,
+          seatDowns: 0,
+          seatRevives: 0,
+          runKey: CREW_KEY,
+        }),
+      ),
+    ).toEqual(Option.none())
+    expect(
+      decode(withField('party', { ...CREW, runKey: 'not-a-key' })),
+    ).toEqual(Option.none())
+    expect(decode(withField('party', CREW_V2))).toEqual(Option.none())
+    expect(decode('{"version":1,')).toEqual(Option.none())
+  })
+
+  test('a crew summary round trips with its run key', () => {
+    const crew = { ...summary, party: CREW }
+    const json = Option.getOrThrow(Schema.encodeOption(RunSummaryJson)(crew))
+    expect(Schema.decodeOption(RunSummaryJson)(json)).toEqual(Option.some(crew))
+  })
+
+  test('a crew summary needs its network numbers, in bounds', () => {
+    const decode = Schema.decodeUnknownOption(RunSummaryJson)
+    const crewWith = (network: object) =>
+      jsonOf({ ...summary, party: { ...CREW_V6, network } })
+    expect(Option.isSome(decode(crewWith(NETWORK)))).toBe(true)
+    expect(decode(jsonOf({ ...summary, party: CREW_V6 }))).toEqual(
+      Option.none(),
+    )
+    expect(decode(crewWith({ ...NETWORK, rttP95Ms: 60_001 }))).toEqual(
+      Option.none(),
+    )
+    expect(decode(crewWith({ ...NETWORK, reconnects: -1 }))).toEqual(
+      Option.none(),
+    )
+    expect(decode(crewWith({ ...NETWORK, jitterMs: 1.5 }))).toEqual(
+      Option.none(),
+    )
+  })
+
+  test('a version 6 crew summary from a cached build still decodes, with no network', () => {
+    const json = jsonOf({ ...unmarked, version: 6, party: CREW_V6 })
+    expect(Schema.decodeOption(PostedRunJson)(json)).toEqual(
+      Option.some({ ...unmarked, version: 6, party: CREW_V6 }),
+    )
+    expect(Schema.decodeOption(RunSummaryJson)(json)).toEqual(Option.none())
+  })
+
+  const {
+    keysSpent: _keysSpent,
+    casesOpened: _casesOpened,
+    dareItemsFound: _found,
+    ...shopless
+  } = unmarked
+  const withShop = { ...shopless, purchases: 3 }
+
+  test('a version 8 summary from a cached build still decodes, with no mark', () => {
+    const json = jsonOf({ ...unmarked, version: 8 })
+    expect(Schema.decodeOption(PostedRunJson)(json)).toEqual(
+      Option.some({ ...unmarked, version: 8 }),
+    )
+    expect(Schema.decodeOption(RunSummaryJson)(json)).toEqual(Option.none())
+  })
+
+  test('a version 4 summary from a cached build still decodes, with its purchases', () => {
+    const json = jsonOf({ ...withShop, version: 4 })
+    expect(Schema.decodeOption(PostedRunJson)(json)).toEqual(
+      Option.some({ ...withShop, version: 4 }),
+    )
+    expect(Schema.decodeOption(RunSummaryJson)(json)).toEqual(Option.none())
+  })
+
+  test('a version 4 win from a cached build still decodes as a Victory', () => {
+    const won = { ...withShop, version: 4, outcome: { _tag: 'Victory' } }
+    expect(Schema.decodeOption(PostedRunJson)(jsonOf(won))).toEqual(
+      Option.some(won),
+    )
+  })
+
+  test('a version 3 summary from a cached build still decodes, with no modifiers', () => {
+    const { modifiers: _modifiers, ...older } = withShop
+    const json = jsonOf({ ...older, version: 3 })
+    expect(Schema.decodeOption(PostedRunJson)(json)).toEqual(
+      Option.some({
+        ...older,
+        version: 3,
+      }),
+    )
+    expect(Schema.decodeOption(RunSummaryJson)(json)).toEqual(Option.none())
+  })
+
+  test('a version 2 crew summary from a cached build still decodes, with no key', () => {
+    const { modifiers: _modifiers, ...older } = withShop
+    const json = jsonOf({ ...older, version: 2, party: CREW_V2 })
+    expect(Schema.decodeOption(PostedRunJson)(json)).toEqual(
+      Option.some({
+        ...older,
+        version: 2,
+        party: CREW_V2,
+      }),
+    )
+    expect(Schema.decodeOption(RunSummaryJson)(json)).toEqual(Option.none())
+  })
+
+  test('a version 1 summary from a cached build still decodes, with no party', () => {
+    const { party: _party, modifiers: _modifiers, ...older } = withShop
+    const json = jsonOf({ ...older, version: 1 })
+    expect(Schema.decodeOption(PostedRunJson)(json)).toEqual(
+      Option.some({
+        ...older,
+        version: 1,
+      }),
+    )
+    expect(Schema.decodeOption(RunSummaryJson)(json)).toEqual(Option.none())
+  })
+
+  test("the shared literals still match the game's own", () => {
+    expect(SummaryKind.literals).toEqual(ZombieKind.literals)
+    expect(CauseOfDeath.literals).toEqual([...ZombieKind.literals, 'Unknown'])
+    expect(SummaryMode.literals).toEqual(HomeMode.literals)
+    expect(SummaryDevice.literals).toEqual(InputDevice.literals)
+    expect(MAX_CREW_SIZE).toBe(MAX_PLAYERS)
+  })
+
+  test('the frame time lands in a bucket by its average', () => {
+    const at = (activeFrames: number, activeFrameMs: number) =>
+      frameTimeBucket(
+        UiStruct.evolve(freshStats, {
+          activeFrames: () => activeFrames,
+          activeFrameMs: () => activeFrameMs,
+        }),
+      )
+    expect(at(0, 0)).toBe('Unmeasured')
+    expect(at(10, 83)).toBe('Under10Ms')
+    expect(at(10, 166)).toBe('Under17Ms')
+    expect(at(10, 240)).toBe('Under25Ms')
+    expect(at(10, 333)).toBe('Under34Ms')
+    expect(at(10, 500)).toBe('Over34Ms')
+  })
+})
+
+const frame: StoryStep = send(Message.TickedFrame({ deltaTime: FRAME_MS }))
+
+const sends = (model: Model, summary: RunSummary, check?: StoryStep) =>
+  Effect.gen(function* () {
+    const s = yield* storyOf(model)
+    s.pipe(frame, check ?? (current => current))
+      .expectHas(SendRunSummary.make({ summary }))
+      .pipe(resolveSentSummary, settleRunCommands)
+  })
+
+describe('sending at the end of a run', () => {
+  const lostWith = (modifiers: Modifiers): Model =>
+    UiStruct.evolve(lastHeart, { modifiers: () => modifiers })
+
+  it.effect('the modifiers that were on go in the summary as a mask', () =>
+    sends(
+      lostWith({ ...noModifiers, glass: true, broke: true }),
+      expectedSummary({
+        outcome: { _tag: 'GameOver', killedBy: 'Runner' },
+        wave: 4,
+        heartsLost: 3,
+        frameTime: 'Under17Ms',
+        modifiers: 12,
+      }),
+    ),
+  )
+
+  it.effect('Friendly Fire with no teammate to hit is not counted', () =>
+    sends(
+      lostWith({ ...noModifiers, friendlyFire: true, bigCrowd: true }),
+      expectedSummary({
+        outcome: { _tag: 'GameOver', killedBy: 'Runner' },
+        wave: 4,
+        heartsLost: 3,
+        frameTime: 'Under17Ms',
+        modifiers: 2,
+      }),
+    ),
+  )
+
+  it.effect('Game Over sends the run with what killed the player', () =>
+    sends(
+      lastHeart,
+      expectedSummary({
+        outcome: { _tag: 'GameOver', killedBy: 'Runner' },
+        wave: 4,
+        heartsLost: 3,
+        frameTime: 'Under17Ms',
+      }),
+      checkModel(({ phase }) => {
+        expect(phase).toEqual(Phase.GameOver({ wave: 4 }))
+      }),
+    ),
+  )
+
+  it.effect('an escape sends the won run at its wave', () =>
+    sends(
+      finalWave,
+      expectedSummary({
+        outcome: { _tag: 'Escaped' },
+        wave: FINAL_WAVE,
+      }),
+      checkModel(({ phase }) => {
+        expect(phase).toEqual(Phase.Escaped({ wave: 10 }))
+      }),
+    ),
+  )
+
+  it.effect('an escape counts the things on the list it found', () =>
+    sends(
+      withDareThings(finalWave, [
+        {
+          id: 0,
+          kind: 'SilverSpoon',
+          state: DareThingState.Found({ slot: 0 }),
+        },
+        {
+          id: 1,
+          kind: 'MusicBox',
+          state: DareThingState.Found({ slot: 0 }),
+        },
+      ]),
+      expectedSummary({
+        outcome: { _tag: 'Escaped' },
+        wave: FINAL_WAVE,
+        dareItemsFound: 2,
+      }),
+    ),
+  )
+
+  it.effect(
+    'leaving from the pause MENU sends the run as a Quit, read before it resets',
+    () =>
+      Effect.gen(function* () {
+        const s = yield* storyOf(pause(midRun))
+        s.pipe(
+          send(Message.PressedKey({ code: 'KeyH' })),
+          send(Message.ClickedLeaveRunButton()),
+          checkModel(({ phase, stats }) => {
+            expect(Phase.guards.Ready(phase)).toBe(true)
+            expect(stats).toEqual(freshStats)
+          }),
+        )
+          .expectHas(
+            SendRunSummary.make({
+              summary: expectedSummary({
+                outcome: { _tag: 'Quit' },
+                wave: 4,
+                runMs: 200_000,
+                device: 'KeyboardMouse',
+              }),
+            }),
+          )
+          .pipe(resolveSentSummary, settleRunCommands)
+      }),
+  )
+
+  it.effect('a failed send changes nothing', () =>
+    Effect.gen(function* () {
+      const s = yield* storyOf(lastHeart)
+      s.pipe(
+        frame,
+        resolveSentSummary,
+        checkModel(({ phase }) => {
+          expect(phase).toEqual(Phase.GameOver({ wave: 4 }))
+        }),
+        settleRunCommands,
+      )
+    }),
+  )
+
+  const sendsNothing = (model: Model, check: StoryStep) =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const s = yield* storyOf(model)
+        s.pipe(frame, check, settleRunCommands).expectNone()
+      }),
+    )
+
+  it.effect(
+    'nothing is sent with sharing off, or before the visit has an id',
+    () =>
+      Effect.gen(function* () {
+        yield* sendsNothing(
+          UiStruct.evolve(lastHeart, {
+            settings: UiStruct.evolve({ shareStats: () => 'Off' }),
+          }),
+          checkModel(({ phase }) => {
+            expect(phase).toEqual(Phase.GameOver({ wave: 4 }))
+          }),
+        )
+        yield* sendsNothing(
+          UiStruct.evolve(finalWave, { maybeVisitId: () => Option.none() }),
+          checkModel(({ phase }) => {
+            expect(phase).toEqual(Phase.Escaped({ wave: 10 }))
+          }),
+        )
+      }),
+  )
+
+  it.effect('a frame mid-wave sends nothing', () =>
+    Effect.gen(function* () {
+      const s = yield* storyOf(midRun)
+      s.pipe(frame).expectNone()
+    }),
+  )
+})
+
+describe('the sharing setting', () => {
+  it.effect('the toggle turns sharing off and saves it', () => {
+    const saved = UiStruct.evolve(home, {
+      saving: UiStruct.evolve({ saveStatus: () => 'Read' }),
+    })
+    const off = UiStruct.evolve(saved, {
+      settings: UiStruct.evolve({ shareStats: () => 'Off' }),
+    })
+    return Effect.gen(function* () {
+      const s = yield* storyOf(saved)
+      s.pipe(
+        send(Message.ClickedProfileSetting({ setting: 'ShareStats' })),
+        checkModel(({ settings: { shareStats } }) => {
+          expect(shareStats).toBe('Off')
+        }),
+      )
+        .expectExact(
+          WriteSave.make({
+            save: saveOf(off),
+            changes: [
+              PlayerChange.ChangedSettings({ settings: saveOf(off).settings }),
+            ],
+          }),
+        )
+        .pipe(writeSave)
+    })
+  })
+
+  it.effect('the visit id comes from a Command at start', () =>
+    Effect.gen(function* () {
+      const s = yield* Story.make(ApplicationNoDeps, {})
+      expect(s.model.maybeVisitId).toEqual(Option.none())
+      s.expectHas(GenerateVisitId.make())
+        .resolve(
+          GenerateVisitId,
+          Message.CompletedGenerateVisitId({ visitId: VISIT_ID }),
+        )
+        .pipe(
+          checkModel(({ maybeVisitId }) => {
+            expect(maybeVisitId).toEqual(Option.some(VISIT_ID))
+          }),
+          bootWithoutVisitId,
+        )
+    }),
+  )
+})
+
+describe('the beacon', () => {
+  const summary = expectedSummary({
+    outcome: { _tag: 'Escaped' },
+    wave: FINAL_WAVE,
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it.effect('a visit id is 16 hex digits', () =>
+    Effect.gen(function* () {
+      const generateVisitId_1 = yield* generateVisitId
+      expect(generateVisitId_1).toMatch(/^[0-9a-f]{16}$/)
+    }),
+  )
+
+  it.effect('a build with no API origin sends nothing', () =>
+    Effect.gen(function* () {
+      expect(maybeRunsUrl('')).toEqual(Option.none())
+      const value_1 = yield* sendRunSummary(summary, '')
+      expect(value_1).toBe('Unconfigured')
+    }),
+  )
+
+  it.effect('the summary goes out as a beacon to the runs path', () =>
+    Effect.gen(function* () {
+      const sendBeacon = vi.fn<Navigator['sendBeacon']>(() => true)
+      vi.stubGlobal('navigator', { sendBeacon })
+      const transport = yield* sendRunSummary(
+        summary,
+        'https://api.example.test',
+      )
+      expect(transport).toBe('Beacon')
+      expect(sendBeacon).toHaveBeenCalledWith(
+        'https://api.example.test/api/runs',
+        expect.any(Blob),
+      )
+    }),
+  )
+
+  it.effect('a refused beacon falls back to a keepalive fetch', () =>
+    Effect.gen(function* () {
+      const requests: Array<{ url: string; init: RequestInit | undefined }> = []
+      const fetch: typeof globalThis.fetch = (input, requestInit) => {
+        requests.push({
+          url: input instanceof Request ? input.url : String(input),
+          init: requestInit,
+        })
+        return Promise.resolve(new Response(null))
+      }
+      vi.stubGlobal('navigator', { sendBeacon: () => false })
+      const transport = yield* sendRunSummary(
+        summary,
+        'https://api.example.test',
+      ).pipe(Effect.provideService(FetchHttpClient.Fetch, fetch))
+      expect(transport).toBe('Fetch')
+      expect(requests).toHaveLength(1)
+      expect(requests[0]?.url).toBe('https://api.example.test/api/runs')
+      expect(requests[0]?.init).toEqual(
+        expect.objectContaining({
+          keepalive: true,
+          method: 'POST',
+          mode: 'no-cors',
+          credentials: 'omit',
+        }),
+      )
+      expect(new Headers(requests[0]?.init?.headers).get('content-type')).toBe(
+        'text/plain;charset=UTF-8',
+      )
+      expect(new Headers(requests[0]?.init?.headers).has('traceparent')).toBe(
+        false,
+      )
+    }),
+  )
+
+  it.effect('a keepalive fetch that never goes out is a failed send', () =>
+    Effect.gen(function* () {
+      const fetch: typeof globalThis.fetch = () =>
+        Promise.reject(new TypeError('Failed to fetch'))
+      vi.stubGlobal('navigator', { sendBeacon: () => false })
+      const exit = yield* Effect.exit(
+        sendRunSummary(summary, 'https://api.example.test').pipe(
+          Effect.provideService(FetchHttpClient.Fetch, fetch),
+        ),
+      )
+      expect(exit._tag).toBe('Failure')
+    }),
+  )
+})

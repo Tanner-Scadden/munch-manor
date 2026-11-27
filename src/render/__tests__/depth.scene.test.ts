@@ -3,24 +3,27 @@ import { describe, expect, test } from 'vitest'
 
 import { UiStruct } from '@effect/ui'
 
-import { sceneShapes } from '../../app/layers'
-import { type Model, Phase, type Zombie } from '../../app/model'
-import { initialModel } from '../../app/pureApp'
-import { rattlesShapes } from '../../features/rattles/rattlesSpot'
-import { jsonOf, zombieOf } from '../../test/testing'
+import { type Model, Phase, type Zombie } from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
+import { sceneShapes } from '#app/views/layers.ts'
+import { rattlesShapes } from '#features/rattles/rattlesSpot.ts'
+import { playerShapes } from '#render/bodies/playerView.ts'
+import {
+  zombieHealthBarShapes,
+  zombieShapes,
+} from '#render/bodies/zombieView.ts'
+import { type Drawable, depthSortedShapes } from '#render/depth.ts'
+import * as Draw from '#render/draw.ts'
+import { doorwaysOf, isBehindWall } from '#render/room/doorways.ts'
+import { jsonOf, zombieOf } from '#test/testing.ts'
 import {
   type Level,
   MANOR,
   PARLOUR,
   RATTLES_BOX,
   openExit,
-} from '../../world/level/arena'
-import { focusOf, modifyFocus } from '../../world/party/party'
-import { type Drawable, depthSortedShapes } from '../depth'
-import { doorwaysOf, isBehindWall } from '../doorways'
-import * as Draw from '../draw'
-import { playerShapes } from '../playerView'
-import { zombieHealthBarShapes, zombieShapes } from '../zombieView'
+} from '#world/level/arena.ts'
+import { focusOf, modifyFocus } from '#world/party/party.ts'
 
 const marker = (id: number): Draw.Shape =>
   Draw.Rect({ x: id, y: 0, width: 1, height: 1, fill: '#fff' })

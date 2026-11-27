@@ -3,13 +3,18 @@ import { Effect, Option } from 'effect'
 import { Component, UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
+import { Message } from '#app/message.ts'
+import { type Model } from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
+import { ApplyRotation } from '#app/update/rotation.ts'
+import { FetchBuild } from '#app/update/version.ts'
 import {
   decodeSave,
   encodeSave,
   restoreSave,
   saveOf,
-} from '../../../platform/save'
-import { loadingSave, readyAfterRead } from '../../../test/model.fixture'
+} from '#platform/save/save.ts'
+import { loadingSave, readyAfterRead } from '#test/model.fixture.ts'
 import {
   type StoryStep,
   checkModel,
@@ -18,12 +23,7 @@ import {
   send,
   storyOf,
   writeSave,
-} from '../../../test/testing'
-import { Message } from '../../message'
-import { type Model } from '../../model'
-import { initialModel } from '../../pureApp'
-import { ApplyRotation } from '../rotation'
-import { FetchBuild } from '../version'
+} from '#test/testing.ts'
 
 const onPhone = (base: Model): Model =>
   UiStruct.evolve(base, { orientationLock: () => 'Supported' })

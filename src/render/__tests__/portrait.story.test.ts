@@ -3,36 +3,13 @@ import { Array, Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { refreshIntent } from '../../app/frame'
-import { Message } from '../../app/message'
-import { type Model, Phase } from '../../app/model'
-import { initialModel } from '../../app/pureApp'
-import { moveHintBand } from '../../features/onboarding/onboarding'
-import { aimReachOf } from '../../input/input'
-import { Stick } from '../../input/inputSchema'
-import {
-  CAMERA_LEAN_PX,
-  FIXED_STEP_MS,
-  MOUSE_LEAN_SHARE,
-  STICK_RADIUS_PX,
-} from '../../shared/constants'
-import { floorSeenOf } from '../../test/lensTesting'
-import { DISTANT_SPAWN, withKeys } from '../../test/model.fixture'
-import {
-  PHONE_LANDSCAPE,
-  PHONE_PORTRAIT,
-  checkModel,
-  modelAfter,
-  modelAfterMessages,
-  scoring,
-  send,
-  steps,
-  ticks,
-} from '../../test/testing'
-import { asVeteran } from '../../test/veteran'
-import { levelOf, openExitIn } from '../../world/level/arena'
-import { focusOf, modifyFocus } from '../../world/party/party'
-import { scoreOf } from '../../world/run/stats'
+import { refreshIntent } from '#app/frame/frame.ts'
+import { Message } from '#app/message.ts'
+import { type Model, Phase } from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
+import { moveHintBand } from '#features/onboarding/onboarding.ts'
+import { aimReachOf } from '#input/input.ts'
+import { Stick } from '#input/inputSchema.ts'
 import {
   cameraOf,
   leanCamera,
@@ -40,13 +17,12 @@ import {
   viewToWorld,
   worldToView,
   worldWindowOf,
-} from '../camera'
-import { HUD_STRIP_HEIGHT } from '../hudLayout'
+} from '#render/camera/camera.ts'
 import {
   floorRowsSeen,
   floorToScreenDirection,
   screenToFloorDirection,
-} from '../lens'
+} from '#render/camera/lens.ts'
 import {
   LANDSCAPE_MAX_WIDTH,
   LANDSCAPE_SCREEN,
@@ -62,7 +38,31 @@ import {
   portraitScreen,
   screenOf,
   thumbAreaTop,
-} from '../screen'
+} from '#render/camera/screen.ts'
+import { HUD_STRIP_HEIGHT } from '#render/hud/hudLayout.ts'
+import {
+  CAMERA_LEAN_PX,
+  FIXED_STEP_MS,
+  MOUSE_LEAN_SHARE,
+  STICK_RADIUS_PX,
+} from '#shared/constants.ts'
+import { floorSeenOf } from '#test/lensTesting.ts'
+import { DISTANT_SPAWN, withKeys } from '#test/model.fixture.ts'
+import {
+  PHONE_LANDSCAPE,
+  PHONE_PORTRAIT,
+  checkModel,
+  modelAfter,
+  modelAfterMessages,
+  scoring,
+  send,
+  steps,
+  ticks,
+} from '#test/testing.ts'
+import { asVeteran } from '#test/veteran.ts'
+import { levelOf, openExitIn } from '#world/level/arena.ts'
+import { focusOf, modifyFocus } from '#world/party/party.ts'
+import { scoreOf } from '#world/run/stats.ts'
 
 const LEFT_THUMB = 11
 const RIGHT_THUMB = 12

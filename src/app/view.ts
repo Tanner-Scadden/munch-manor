@@ -3,40 +3,40 @@ import { Array, Function, Option, Result, pipe } from 'effect'
 import {
   isPocketCardOpened,
   isPocketCardReading,
-} from '../features/dare/pocketCard'
-import { awardsOf, crewOf } from '../features/end/crewAwards'
-import { pauseHelpView } from '../features/menus/pauseHelp'
-import { caseCardView } from '../features/onboarding/caseCardView'
-import { isOpenBreak } from '../features/onboarding/onboarding'
-import { questTrackerView } from '../features/onboarding/questView'
-import { purchaseAnnouncementView } from '../features/shop/purchaseHud'
-import { escapeSupportView } from '../features/support/supportView'
-import { keyGrabToastView } from '../input/keyGrab'
+} from '#features/dare/pocketCard.ts'
+import { awardsOf, crewOf } from '#features/end/crewAwards.ts'
+import { pauseHelpView } from '#features/menus/pauseHelp.ts'
+import { isOpenBreak } from '#features/onboarding/onboarding.ts'
+import { caseCardView } from '#features/onboarding/views/caseCardView.ts'
+import { questTrackerView } from '#features/onboarding/views/questView.ts'
+import { purchaseAnnouncementView } from '#features/shop/purchaseHud.ts'
+import { escapeSupportView } from '#features/support/supportView.ts'
+import { keyGrabToastView } from '#input/keyGrab.ts'
 import {
   landscapeFrameOffset,
   screenOf,
   stagePlacement,
-} from '../render/screen'
-import { dareListButtonView } from '../screens/game/dareListButton'
+} from '#render/camera/screen.ts'
+import { dareListButtonView } from '#screens/game/dareListButton.ts'
 import {
   cornerButtonsView,
   debutCardView,
   debutPitch,
   modeChoiceView,
   toSentenceCase,
-} from '../screens/game/menus'
+} from '#screens/game/menus.ts'
 import {
   ghostSticksView,
   gunClusterView,
   preparationControlsView,
   stickView,
-} from '../screens/game/touchControls'
-import { bestsFor, feedbackSentence } from '../screens/home/home'
-import { homeMenuView, newEntryNoticeView } from '../screens/home/homeView'
-import { GAME_TITLE } from '../shared/constants'
-import { dareCardOf, dareItemsFoundOf } from '../world/dare/dare'
-import { BOOST_KIND_ORDER, PICKUPS, isBoosted } from '../world/gear/powerups'
-import { TRAPS, TRAP_KIND_ORDER } from '../world/gear/traps'
+} from '#screens/game/touchControls.ts'
+import { bestsFor, feedbackSentence } from '#screens/home/home.ts'
+import { homeMenuView, newEntryNoticeView } from '#screens/home/homeView.ts'
+import { GAME_TITLE } from '#shared/constants.ts'
+import { dareCardOf, dareItemsFoundOf } from '#world/dare/dare.ts'
+import { BOOST_KIND_ORDER, PICKUPS, isBoosted } from '#world/gear/powerups.ts'
+import { TRAPS, TRAP_KIND_ORDER } from '#world/gear/traps.ts'
 import {
   WEAPONS,
   heldTier,
@@ -46,42 +46,49 @@ import {
   maybeOtherGun,
   meleeNameOf,
   tierName,
-} from '../world/gear/weapons'
-import { heldKeys } from '../world/keys/keys'
-import { CREW_AWARD_NAMES, DARE_LINES, DARE_NAMES } from '../world/names'
-import { focusOf } from '../world/party/party'
-import { DIFFICULTIES } from '../world/run/difficulty'
-import { isPracticeGateHeld } from '../world/run/lessons'
+} from '#world/gear/weapons.ts'
+import { heldKeys } from '#world/keys/keys.ts'
+import { CREW_AWARD_NAMES, DARE_LINES, DARE_NAMES } from '#world/names.ts'
+import { focusOf } from '#world/party/party.ts'
+import { DIFFICULTIES } from '#world/run/difficulty.ts'
+import { isPracticeGateHeld } from '#world/run/lessons.ts'
 import {
   accuracyPercent,
   defeatVerdict,
   escapeVerdict,
   runTimeLabel,
   totalKills,
-} from '../world/run/stats'
-import { isRoundActive, roundWave } from '../world/waves/waves'
-import { ZOMBIE_KINDS, ZOMBIE_KIND_ORDER } from '../world/zombies/zombies'
-import { coopView } from './coopView'
-import type { ApplicationHtml, ApplicationViewBuilder } from './definition'
+} from '#world/run/stats.ts'
+import { isRoundActive, roundWave } from '#world/waves/waves.ts'
+import { ZOMBIE_KINDS, ZOMBIE_KIND_ORDER } from '#world/zombies/zombies.ts'
+
+import type { ApplicationHtml, ApplicationViewBuilder } from './component.ts'
 import {
   homeScreenGuideView,
   manorHandView,
   menuPanelView,
   updateGreetingView,
-} from './dialogs'
-import { gameStageView } from './layers'
-import { lobbyView } from './lobbyView'
-import { isLobbyUp, isProfileOpen } from './menuState'
-import { Message } from './message'
-import { DebutCard, type Model, Phase, RunMode, type RunStats } from './model'
+} from './menus/dialogs.ts'
+import { isLobbyUp, isProfileOpen } from './menus/menuState.ts'
+import { Message } from './message.ts'
+import {
+  DebutCard,
+  type Model,
+  Phase,
+  RunMode,
+  type RunStats,
+} from './model.ts'
 import {
   ListenForTouchTaps,
   PressGameSurface,
   ShareFromClick,
   WatchGameSurface,
-} from './mount'
-import { profileDialogView } from './profileView'
-import { isCoopOpen } from './update/coop'
+} from './mount.ts'
+import { isCoopOpen } from './update/coop.ts'
+import { coopView } from './views/coopView.ts'
+import { gameStageView } from './views/layers.ts'
+import { lobbyView } from './views/lobbyView.ts'
+import { profileDialogView } from './views/profileView.ts'
 
 const statusWave = (model: Model, wave: number): string =>
   RunMode.match(model.mode, {

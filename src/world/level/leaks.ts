@@ -1,20 +1,21 @@
 import { Array, Function, Option, Order } from 'effect'
 
-import { PLAYER_FOOT_OFFSET, TILE_SIZE } from '../../shared/constants'
-import { unitOf } from '../../shared/prng'
-import type { Vector } from '../schema/entitySchema'
-import { clamp } from '../step/geometry'
+import { PLAYER_FOOT_OFFSET, TILE_SIZE } from '#shared/constants.ts'
+import { unitOf } from '#shared/prng.ts'
+import type { Vector } from '#world/schema/entitySchema.ts'
+import { clamp } from '#world/step/geometry.ts'
+
 import {
   type Level,
   TILE_DOOR,
   TILE_PLAYER_SOLID,
   TILE_SOLID,
   hasTileFlag,
-} from './arena'
-import { CELLAR_ROOM_ID } from './plan'
-import { type Rug, rugsOf } from './rugs'
-import { isInsideRoom, symbolAt, tileIndex } from './tileGrid'
-import { tileIndexAt } from './tileQueries'
+} from './arena.ts'
+import { CELLAR_ROOM_ID } from './plan.ts'
+import { type Rug, rugsOf } from './rugs.ts'
+import { isInsideRoom, symbolAt, tileIndex } from './tileGrid.ts'
+import { tileIndexAt } from './tileQueries.ts'
 
 const FLOOR_SYMBOL = '.'
 

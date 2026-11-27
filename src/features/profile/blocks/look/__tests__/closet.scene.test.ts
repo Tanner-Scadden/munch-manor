@@ -5,25 +5,13 @@ import { HtmlLocator, HtmlScene } from '@effect/ui/html/testing'
 import { Locator } from '@effect/ui/testing'
 import { describe, it } from '@effect/vitest'
 
-import { Message } from '../../../../../app/message'
-import type { Model } from '../../../../../app/model'
-import { profilePropsOf } from '../../../../../app/profileView'
-import { FocusProfileElement } from '../../../../../app/update/profile'
-import { PROFILE_DIALOG_ID } from '../../../../../domain/clientSchema'
-import type { LookPart } from '../../../../../domain/looks'
-import { unlocksAt } from '../../../../../domain/unlocks'
-import { homeAfterRead } from '../../../../../test/model.fixture'
-import {
-  byClass,
-  emitPressedKey,
-  lookGroup,
-  lookSection,
-  measureSurface,
-  showDialog,
-  withAttrs,
-} from '../../../../../test/sceneTesting'
-import { sceneOf, send, steps, writeSave } from '../../../../../test/testing'
-import { noRank, pointsForRank } from '../../../../../world/heroes/rank'
+import { Message } from '#app/message.ts'
+import type { Model } from '#app/model.ts'
+import { FocusProfileElement } from '#app/update/profile.ts'
+import { profilePropsOf } from '#app/views/profileView.ts'
+import { PROFILE_DIALOG_ID } from '#domain/clientSchema.ts'
+import type { LookPart } from '#domain/looks.ts'
+import { unlocksAt } from '#domain/unlocks.ts'
 import {
   type LookDesk,
   atLookRoot,
@@ -33,8 +21,20 @@ import {
   openLookSection,
   seeLook,
   settleLook,
-} from '../../../__tests__/profile.fixture'
-import { Profile } from '../../../block'
+} from '#features/profile/__tests__/profile.fixture.ts'
+import { Profile } from '#features/profile/block.ts'
+import { homeAfterRead } from '#test/model.fixture.ts'
+import {
+  byClass,
+  emitPressedKey,
+  lookGroup,
+  lookSection,
+  measureSurface,
+  showDialog,
+  withAttrs,
+} from '#test/sceneTesting.ts'
+import { sceneOf, send, steps, writeSave } from '#test/testing.ts'
+import { noRank, pointsForRank } from '#world/heroes/rank.ts'
 
 const closet: Model = UiStruct.evolve(homeAfterRead, {
   rank: () => ({

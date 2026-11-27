@@ -3,10 +3,11 @@ import { Array, Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import type { Model } from '../../../app/model'
-import type { DeathTip } from '../../../domain/clientSchema'
-import { DEATH_TIPS } from '../../../world/names'
-import { diesOnWave7, ended } from './rank.fixture'
+import type { Model } from '#app/model.ts'
+import type { DeathTip } from '#domain/clientSchema.ts'
+import { DEATH_TIPS } from '#world/names.ts'
+
+import { diesOnWave7, ended } from './rank.fixture.ts'
 
 const tipOf = (model: Model): Option.Option<DeathTip> =>
   model.endCard.maybeDeathTip

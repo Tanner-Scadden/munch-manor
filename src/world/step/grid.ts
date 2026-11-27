@@ -1,6 +1,6 @@
 import { Function } from 'effect'
 
-import type { Vector } from '../schema/worldSchema'
+import type { Vector } from '#world/schema/worldSchema.ts'
 
 export type Grid = Readonly<{
   minX: number

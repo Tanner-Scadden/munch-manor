@@ -1,9 +1,10 @@
 import { Array, Function, Option, Schema, pipe } from 'effect'
 
-import { focusSlotOf, isDowned, seatStateAt } from '../world/party/party'
-import type { World } from '../world/schema/world'
-import { isInteractTaken } from '../world/shop/purchase'
-import { SeatAction, cycleWeaponAction } from '../world/step/stepWorld'
+import { focusSlotOf, isDowned, seatStateAt } from '#world/party/party.ts'
+import type { World } from '#world/schema/world.ts'
+import { isInteractTaken } from '#world/shop/purchase.ts'
+import { SeatAction, cycleWeaponAction } from '#world/step/stepWorld.ts'
+
 import {
   PAD_A,
   PAD_B,
@@ -13,7 +14,7 @@ import {
   PAD_X,
   PAD_Y,
   type PadDirection,
-} from './gamepad'
+} from './gamepad.ts'
 
 export const INTERACT_KEY = 'Enter'
 

@@ -1,10 +1,10 @@
 import { Array, Function, Option, Order, Result, pipe } from 'effect'
 
-import type { Model } from '../../app/model'
-import { seatNamesOf, seatRanksOf } from '../../domain/onlineRun'
-import type { CrewAward } from '../../world/names'
-import { isCoop, playersOf } from '../../world/party/party'
-import type { PlayerSlot } from '../../world/schema/worldSchema'
+import type { Model } from '#app/model.ts'
+import { seatNamesOf, seatRanksOf } from '#domain/onlineRun.ts'
+import type { CrewAward } from '#world/names.ts'
+import { isCoop, playersOf } from '#world/party/party.ts'
+import type { PlayerSlot } from '#world/schema/worldSchema.ts'
 
 export type CrewMember = Readonly<{
   slot: PlayerSlot

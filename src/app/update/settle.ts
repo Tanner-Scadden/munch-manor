@@ -2,39 +2,43 @@ import { Effect, Function, Option, pipe } from 'effect'
 
 import { Command, Component } from '@effect/ui'
 
-import { climbLadder, fitDareMark } from '../../domain/dareMarks'
-import { keepJournal, tallyJournalFrom } from '../../domain/journal'
-import { fitPropStyle } from '../../domain/mastery'
-import { runDifficultyOf } from '../../domain/onlineRun'
-import { noteDeathTip } from '../../features/end/deathTip'
-import { noteRecords, reachRecords } from '../../features/end/endBeat'
-import { earnMastery } from '../../features/end/masteryRun'
-import { earnRank, payPursesFrom } from '../../features/end/rankRun'
-import { notePulledPrize } from '../../features/guide/shopGuide'
-import { noteRunEnding, pickCarLine } from '../../features/intro/carLine'
+import type { Model } from '#app/model.ts'
+import { climbLadder, fitDareMark } from '#domain/dareMarks.ts'
+import { keepJournal, tallyJournalFrom } from '#domain/journal.ts'
+import { fitPropStyle } from '#domain/mastery.ts'
+import { runDifficultyOf } from '#domain/onlineRun.ts'
+import { noteDeathTip } from '#features/end/deathTip.ts'
+import { noteRecords, reachRecords } from '#features/end/endBeat.ts'
+import { earnMastery } from '#features/end/masteryRun.ts'
+import { earnRank, payPursesFrom } from '#features/end/rankRun.ts'
+import { notePulledPrize } from '#features/guide/shopGuide.ts'
+import { noteRunEnding, pickCarLine } from '#features/intro/carLine.ts'
 import {
   freezeMissionsFrom,
   payMissions,
   tallyMissionsFrom,
-} from '../../features/missions/missions'
-import { shelveRun } from '../../features/proof/proof'
-import { RunSummary } from '../../platform/analytics'
-import { maybeRunOutcome, runSummaryOf } from '../../platform/analyticsRun'
-import { PlayerStore } from '../../platform/store'
-import { sendOrQueueRunSummary } from '../../platform/summaryQueue'
-import { RUNNING_BUILD } from '../../platform/version'
-import { countRunFrom, forgetNewEntriesFrom } from '../../screens/home/home'
-import type { Model } from '../model'
+} from '#features/missions/missions.ts'
+import { shelveRun } from '#features/proof/proof.ts'
+import { RunSummary } from '#platform/analytics/analytics.ts'
+import {
+  maybeRunOutcome,
+  runSummaryOf,
+} from '#platform/analytics/analyticsRun.ts'
+import { sendOrQueueRunSummary } from '#platform/analytics/summaryQueue.ts'
+import { PlayerStore } from '#platform/save/store.ts'
+import { RUNNING_BUILD } from '#platform/version.ts'
+import { countRunFrom, forgetNewEntriesFrom } from '#screens/home/home.ts'
+
 import {
   focusEndMenuFrom,
   settleNightmareFrom,
   unlockNightmareFrom,
-} from './home'
-import { cueMusicFrom } from './music'
-import { finishRecordingFrom } from './recording'
-import { applyRotationFrom } from './rotation'
-import { writeSaveFrom } from './save'
-import { type UpdateStep, modelStep } from './step'
+} from './home.ts'
+import { cueMusicFrom } from './music.ts'
+import { finishRecordingFrom } from './recording.ts'
+import { applyRotationFrom } from './rotation.ts'
+import { writeSaveFrom } from './save.ts'
+import { type UpdateStep, modelStep } from './step.ts'
 
 export class SendRunSummary extends Command.Service<SendRunSummary>()(
   'app/SendRunSummary',

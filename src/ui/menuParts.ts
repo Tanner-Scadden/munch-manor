@@ -3,13 +3,13 @@ import { Effect, Function, Option } from 'effect'
 import type { View } from '@effect/ui'
 import type { Html } from '@effect/ui/html'
 
-import type { Model } from '../app/model'
-import { pixelArtStyle } from '../art/artSize'
-import { PROP_ICONS } from '../art/callingArt'
-import { PADLOCK_ICON, SKULL_OFF_ICON } from '../art/icons'
-import { badgeImage } from '../art/rankArt'
-import type { Calling } from '../shared/playerData'
-import { badgeTierOf } from '../world/heroes/rank'
+import type { Model } from '#app/model.ts'
+import { PROP_ICONS } from '#art/callingArt.ts'
+import { pixelArtStyle } from '#art/icons/artSize.ts'
+import { PADLOCK_ICON, SKULL_OFF_ICON } from '#art/icons/icons.ts'
+import { badgeImage } from '#art/rankArt.ts'
+import type { Calling } from '#shared/records/playerData.ts'
+import { badgeTierOf } from '#world/heroes/rank.ts'
 
 export const iconView: {
   <Message>(

@@ -1,4 +1,4 @@
-import { type AtlasEntry, useSpriteAtlas } from '../art/spriteAtlas'
+import { type AtlasEntry, useSpriteAtlas } from '#art/atlas/spriteAtlas.ts'
 
 export const ATLAS_SHEET = 'atlas-sheet.png'
 

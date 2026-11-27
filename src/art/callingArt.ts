@@ -1,8 +1,9 @@
 import { Array, String } from 'effect'
 
-import type { Calling } from '../shared/playerData'
-import { pixelIconUrl } from './icons'
-import type { Palette } from './sprite'
+import type { Calling } from '#shared/records/playerData.ts'
+
+import { pixelIconUrl } from './icons/icons.ts'
+import type { Palette } from './sprite.ts'
 
 const PALETTE: Palette = {
   X: '#f4f1de',

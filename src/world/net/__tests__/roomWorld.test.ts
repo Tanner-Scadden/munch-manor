@@ -4,27 +4,14 @@ import { describe, expect, test } from 'vitest'
 import { UiStruct } from '@effect/ui'
 import { NEUTRAL_INPUT, makeReader, makeWriter } from '@munch/netcode'
 
-import { initialModel } from '../../../app/pureApp'
-import { freshRun } from '../../../app/runReset'
-import { INTENSITY_PER_HEART } from '../../../shared/constants'
-import { holdingSecond } from '../../../test/arsenals'
-import { withSeat } from '../../../test/model.fixture'
-import {
-  TWO_SEAT_ROOM,
-  playRoom,
-  scriptedTicks,
-} from '../../../test/roomTesting'
-import { zombieAt } from '../../../test/testing'
-import { openExitIn } from '../../level/arena'
-import { maybePlayerAt, modifyFocus } from '../../party/party'
-import {
-  Phase,
-  RunMode,
-  freshLevel,
-  idleIntent,
-} from '../../schema/worldSchema'
-import { SeatAction } from '../../step/stepWorld'
-import { beginPreparation } from '../../waves/waves'
+import { freshRun } from '#app/frame/runReset.ts'
+import { initialModel } from '#app/pureApp.ts'
+import { INTENSITY_PER_HEART } from '#shared/constants.ts'
+import { holdingSecond } from '#test/arsenals.ts'
+import { withSeat } from '#test/model.fixture.ts'
+import { TWO_SEAT_ROOM, playRoom, scriptedTicks } from '#test/roomTesting.ts'
+import { zombieAt } from '#test/testing.ts'
+import { openExitIn } from '#world/level/arena.ts'
 import {
   AIM_REACH,
   FIRE_BUTTON,
@@ -45,8 +32,17 @@ import {
   stepRoomWorld,
   writeRoomDiff,
   writeRoomSnapshot,
-} from '../roomWorld'
-import { isSameOnWire } from '../worldCodec'
+} from '#world/net/roomWorld.ts'
+import { isSameOnWire } from '#world/net/worldCodec.ts'
+import { maybePlayerAt, modifyFocus } from '#world/party/party.ts'
+import {
+  Phase,
+  RunMode,
+  freshLevel,
+  idleIntent,
+} from '#world/schema/worldSchema.ts'
+import { SeatAction } from '#world/step/stepWorld.ts'
+import { beginPreparation } from '#world/waves/waves.ts'
 
 const snapshotOf = (room: RoomWorld): Uint8Array => {
   const writer = makeWriter()

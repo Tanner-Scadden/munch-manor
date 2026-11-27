@@ -2,9 +2,10 @@ import { Array, Function, Option } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import { TOP_MARK } from '../../shared/dareMarkData'
-import type { PlannedSpawn } from '../schema/worldSchema'
-import { type Modifier, type Modifiers, bonusPercentOf } from './modifiers'
+import { TOP_MARK } from '#shared/records/dareMarkData.ts'
+import type { PlannedSpawn } from '#world/schema/worldSchema.ts'
+
+import { type Modifier, type Modifiers, bonusPercentOf } from './modifiers.ts'
 
 export const MAX_MARK = TOP_MARK
 

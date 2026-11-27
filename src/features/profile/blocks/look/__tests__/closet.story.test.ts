@@ -3,18 +3,18 @@ import { Array, Effect, Option, Record, String, pipe } from 'effect'
 import { Component, UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { Message } from '../../../../../app/message'
-import { type Model, Reload, defaultAppearance } from '../../../../../app/model'
-import { RootDialog } from '../../../../../app/rootDialog'
-import { FocusProfileElement } from '../../../../../app/update/profile'
-import { WriteSave } from '../../../../../app/update/save'
-import { playerPixels, randomAppearance } from '../../../../../art/appearance'
+import { RootDialog } from '#app/menus/rootDialog.ts'
+import { Message } from '#app/message.ts'
+import { type Model, Reload, defaultAppearance } from '#app/model.ts'
+import { FocusProfileElement } from '#app/update/profile.ts'
+import { WriteSave } from '#app/update/save.ts'
+import { playerPixels, randomAppearance } from '#art/appearance.ts'
 import {
   HAT_ART,
   HAT_COLORS,
   MAX_HAT_ABOVE,
   hatRiseOf,
-} from '../../../../../art/sprites/hatArt'
+} from '#art/sprites/hatArt.ts'
 import {
   GIFTS,
   gearTapOf,
@@ -23,11 +23,15 @@ import {
   lookInOwned,
   sourceOf,
   standingOf,
-} from '../../../../../domain/closet'
-import { type LookPart, PART_OF_KIND } from '../../../../../domain/looks'
-import { PlayerChange } from '../../../../../platform/playerSync'
-import { restoreSave, saveOf } from '../../../../../platform/save'
-import { reloadBarShapes } from '../../../../../render/playerView'
+} from '#domain/closet.ts'
+import { type LookPart, PART_OF_KIND } from '#domain/looks.ts'
+import {
+  pickLook,
+  rollLookDice,
+} from '#features/profile/__tests__/profile.fixture.ts'
+import { PlayerChange } from '#platform/save/playerSync.ts'
+import { restoreSave, saveOf } from '#platform/save/save.ts'
+import { reloadBarShapes } from '#render/bodies/playerView.ts'
 import {
   type Appearance,
   COSMETIC_GIFT_RANKS,
@@ -35,8 +39,8 @@ import {
   GiftHat,
   type SavedRank,
   SoldHat,
-} from '../../../../../shared/playerData'
-import { readyAfterRead } from '../../../../../test/model.fixture'
+} from '#shared/records/playerData.ts'
+import { readyAfterRead } from '#test/model.fixture.ts'
 import {
   type StoryStep,
   checkModel,
@@ -45,15 +49,14 @@ import {
   send,
   steps,
   writeSave,
-} from '../../../../../test/testing'
+} from '#test/testing.ts'
 import {
   bonesBalanceOf,
   noRank,
   pointsForRank,
   rankOf,
-} from '../../../../../world/heroes/rank'
-import { focusOf } from '../../../../../world/party/party'
-import { pickLook, rollLookDice } from '../../../__tests__/profile.fixture'
+} from '#world/heroes/rank.ts'
+import { focusOf } from '#world/party/party.ts'
 
 const HATS = [...GiftHat.literals, ...SoldHat.literals]
 

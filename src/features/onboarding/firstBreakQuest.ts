@@ -2,29 +2,30 @@ import { Array, Function, Option, pipe } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import type { Model } from '../../app/model'
-import { QuestTour } from '../../domain/clientSchema'
-import { caseBoxOf } from '../../world/feats/caseSpots'
-import { heldKeys } from '../../world/keys/keys'
-import { levelOf } from '../../world/level/arena'
+import type { Model } from '#app/model.ts'
+import { QuestTour } from '#domain/clientSchema.ts'
+import { caseBoxOf } from '#world/feats/caseSpots.ts'
+import { heldKeys } from '#world/keys/keys.ts'
+import { levelOf } from '#world/level/arena.ts'
 import {
   type Padlock,
   hasOpenedBoards,
   isExitOfferOpenFor,
   maybeCheapestPadlock,
   padlockMarkOf,
-} from '../../world/level/exits'
-import { distanceToBox } from '../../world/level/tileGrid'
-import { focusOf, isCoop } from '../../world/party/party'
-import { isPending, learn } from '../../world/run/lessons'
+} from '#world/level/exits.ts'
+import { distanceToBox } from '#world/level/tileGrid.ts'
+import { focusOf, isCoop } from '#world/party/party.ts'
+import { isPending, learn } from '#world/run/lessons.ts'
 import {
   isDareTourBreak,
   maybeTutorialCase,
   tutorialKeySpotOf,
-} from '../../world/run/tutorialRules'
-import { CaseState, Phase, type Vector } from '../../world/schema/worldSchema'
-import { kitchenStepOf } from './kitchenTour'
-import { isRattlesTalking } from './rattlesIntro'
+} from '#world/run/tutorialRules.ts'
+import { CaseState, Phase, type Vector } from '#world/schema/worldSchema.ts'
+
+import { kitchenStepOf } from './kitchenTour.ts'
+import { isRattlesTalking } from './rattlesIntro.ts'
 
 export type QuestStep = 'Key' | 'Lock' | 'Case' | 'Card' | 'Start'
 

@@ -1,6 +1,6 @@
 import { Array, Config, Console, Effect, Option, String } from 'effect'
 
-import { AUDIT_PARAM } from '@game/features/coop/readout'
+import { AUDIT_PARAM } from '@game/features/coop/audit/readout'
 
 type CoopConfig = Readonly<{
   base: string

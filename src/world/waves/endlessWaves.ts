@@ -11,26 +11,27 @@ import {
   ENDLESS_TANKS_BASE,
   ENDLESS_WAVES_PER_EXTRA_TANK,
   PINCER_LAG_MAX_MS,
-} from '../../shared/constants'
-import { type Seeded, nextRandom } from '../../shared/prng'
-import { DOOR_IDS } from '../level/tileGrid'
+} from '#shared/constants.ts'
+import { type Seeded, nextRandom } from '#shared/prng.ts'
+import { DOOR_IDS } from '#world/level/tileGrid.ts'
 import type {
   DoorId,
   Hold,
   PlannedSpawn,
   Trap,
   ZombieKind,
-} from '../schema/worldSchema'
-import { ZOMBIE_KIND_ORDER } from '../zombies/zombies'
-import { routeSpawns } from './doorRoute'
-import { isThroughDoor } from './pacing'
+} from '#world/schema/worldSchema.ts'
+import { ZOMBIE_KIND_ORDER } from '#world/zombies/zombies.ts'
+
+import { routeSpawns } from './doorRoute.ts'
+import { isThroughDoor } from './pacing.ts'
 import {
   CHUCKER_ESCORT_SIZE,
   byHoldTime,
   bySpawnTime,
   pairsWithin,
   rollGroup,
-} from './wavePacks'
+} from './wavePacks.ts'
 import {
   type DoorPattern,
   FINAL_WAVE,
@@ -52,7 +53,7 @@ import {
   planFor,
   singles,
   squads,
-} from './wavePlans'
+} from './wavePlans.ts'
 
 export const endlessDepth = (wave: number): number =>
   Math.max(0, wave - FINAL_WAVE)

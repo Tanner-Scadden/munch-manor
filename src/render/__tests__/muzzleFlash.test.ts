@@ -3,28 +3,33 @@ import { describe, expect, test } from 'vitest'
 
 import { UiStruct } from '@effect/ui'
 
-import type { Model } from '../../app/model'
-import { initialModel } from '../../app/pureApp'
-import { gunSprite } from '../../art/sprites/guns'
-import { holdingSecond } from '../../test/arsenals'
-import { decodePng } from '../../test/testPng'
-import { WEAPONS, freshGun } from '../../world/gear/weapons'
-import { levelOf } from '../../world/level/arena'
-import { modifyFocus } from '../../world/party/party'
-import type { Vector, WeaponKind } from '../../world/schema/worldSchema'
-import type * as Draw from '../draw'
-import { type Leaf, flatten } from '../iso/flatten'
-import { flameSpecsOf } from '../iso/lightSpecs'
-import { CAMERA_UP, UNIT, type Vec3, standingPointOf } from '../iso/space'
+import type { Model } from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
+import { gunSprite } from '#art/sprites/guns.ts'
 import {
   muzzlePointOf,
   playerFlashDrawable,
   playerFootY,
   playerShapes,
-} from '../playerView'
-import { candelabraShapes } from '../room/diningArt'
-import { coverBlocks } from '../room/roomCover'
-import { FLAME_COLOR } from '../room/roomPalette'
+} from '#render/bodies/playerView.ts'
+import type * as Draw from '#render/draw.ts'
+import { type Leaf, flatten } from '#render/iso/flatten.ts'
+import { flameSpecsOf } from '#render/iso/light/lightSpecs.ts'
+import {
+  CAMERA_UP,
+  UNIT,
+  type Vec3,
+  standingPointOf,
+} from '#render/iso/space.ts'
+import { candelabraShapes } from '#render/room/diningArt.ts'
+import { coverBlocks } from '#render/room/roomCover.ts'
+import { FLAME_COLOR } from '#render/room/roomPalette.ts'
+import { holdingSecond } from '#test/arsenals.ts'
+import { decodePng } from '#test/testPng.ts'
+import { WEAPONS, freshGun } from '#world/gear/weapons.ts'
+import { levelOf } from '#world/level/arena.ts'
+import { modifyFocus } from '#world/party/party.ts'
+import type { Vector, WeaponKind } from '#world/schema/worldSchema.ts'
 
 const FACINGS: ReadonlyArray<Vector> = Array.makeBy(8, index => ({
   x: Math.round(Math.cos((index * Math.PI) / 4) * 1000) / 1000,

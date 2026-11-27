@@ -20,11 +20,12 @@ import {
   Screen,
   maybeRoomOf,
   noPresses,
-} from '../../domain/coopRoom'
-import { actionCodeOf, heldAction } from '../../world/net/roomWorld'
-import type { Bullet } from '../../world/schema/worldSchema'
-import type { SeatAction } from '../../world/step/stepWorld'
-import { type Model } from './model'
+} from '#domain/coopRoom.ts'
+import { actionCodeOf, heldAction } from '#world/net/roomWorld.ts'
+import type { Bullet } from '#world/schema/worldSchema.ts'
+import type { SeatAction } from '#world/step/stepWorld.ts'
+
+import { type Model } from './model.ts'
 
 export const QUICK_PLAY_BUTTON_ID = 'coop-quick'
 export const CODE_INPUT_ID = 'coop-code'

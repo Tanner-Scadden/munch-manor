@@ -9,16 +9,17 @@ import {
   type ShareOutcome,
   type SharePost,
   copiedLineOf,
-} from '../features/end/share'
-import { listenForTouchTaps } from '../input/touchTaps'
-import { isTextField, liftFieldsOverKeyboard } from '../platform/keyboard'
+} from '#features/end/share.ts'
+import { listenForTouchTaps } from '#input/touchTaps.ts'
+import { isTextField, liftFieldsOverKeyboard } from '#platform/keyboard.ts'
+
 import {
   type MeasuredGameSurface,
   Message,
   type PressedPointer,
   type SettledShare,
   type TappedWithTouch,
-} from './message'
+} from './message.ts'
 
 const measure = (element: Element): MeasuredGameSurface => {
   const { left, top, width, height } = element.getBoundingClientRect()

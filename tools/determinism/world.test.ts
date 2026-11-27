@@ -1,7 +1,7 @@
 import { Array, Record, Struct } from 'effect'
 import { describe, expect, test } from 'vitest'
 
-import { refreshIntent } from '../../src/app/frame'
+import { refreshIntent } from '../../src/app/frame/frame'
 import type { Model } from '../../src/app/model'
 import { WORLD_KEYS } from '../../src/test/testing'
 import { focusOf } from '../../src/world/party/party'

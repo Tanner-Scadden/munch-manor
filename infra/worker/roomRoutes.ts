@@ -14,7 +14,6 @@ import {
   normalizeRoomCode,
   roomScopeId,
 } from '@munch/netcode'
-import { verifyToken } from './sessionToken.ts'
 
 import { type GameRoomBindings, refusalResponse } from './gameRoom.ts'
 import { ROOM_CODE_HEADER } from './gameRoomCore.ts'
@@ -25,6 +24,7 @@ import {
   createRoomIn,
   joinRoomIn,
 } from './roomCalls.ts'
+import { verifyToken } from './sessionToken.ts'
 import {
   CORS_HEADERS,
   bearerOf,

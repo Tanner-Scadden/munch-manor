@@ -1,8 +1,9 @@
 import { Array, Record } from 'effect'
 
-import type { Zombie } from '../schema/worldSchema'
-import { type Grid, buildGrid } from '../step/grid'
-import { ZOMBIE_KINDS, bodyRadiusOf, isGrounded, statsOf } from './zombies'
+import type { Zombie } from '#world/schema/worldSchema.ts'
+import { type Grid, buildGrid } from '#world/step/grid.ts'
+
+import { ZOMBIE_KINDS, bodyRadiusOf, isGrounded, statsOf } from './zombies.ts'
 
 export const MAX_BODY_RADIUS_PX = Math.max(
   ...Array.map(Record.values(ZOMBIE_KINDS), ({ bodyRadius }) => bodyRadius),

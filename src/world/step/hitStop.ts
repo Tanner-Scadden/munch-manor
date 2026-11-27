@@ -12,9 +12,9 @@ import {
   HIT_STOP_MAX_MS,
   HIT_STOP_WAVE_CLEAR_MS,
   STEP_EPSILON_MS,
-} from '../../shared/constants'
-import type { World } from '../schema/world'
-import { GameEvent, HitStop } from '../schema/worldSchema'
+} from '#shared/constants.ts'
+import type { World } from '#world/schema/world.ts'
+import { GameEvent, HitStop } from '#world/schema/worldSchema.ts'
 
 type Thaw = Readonly<{ hitStop: HitStop; worldMs: number }>
 
